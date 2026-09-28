@@ -534,6 +534,9 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             if ($pageBlockIdx < $totalBlockCount) {
                 echo '<button type="button" class="btn vf-nav-btn vf-nav-next" data-vf-action="next">' . $t('ui.siguiente') . '<i class="fa-solid fa-arrow-right ms-2"></i></button>';
             } else {
+                if (!empty($turnstile['enabled'])) {
+                    echo '<div class="cf-turnstile d-flex justify-content-center" data-sitekey="' . View::escape((string) ($turnstile['site_key'] ?? '')) . '"></div>';
+                }
                 echo '<button type="submit" id="vfSubmit" class="vf-submit"><span class="vf-submit-label"><i class="fa-solid fa-paper-plane me-2"></i>' . $t('ui.enviar') . '</span></button>';
             }
             echo '</div>';
@@ -576,6 +579,12 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
 
         <?php if (!$hasPages): ?>
         <div class="vf-submit-row flip-in">
+            <?php if (!empty($turnstile['enabled'])): ?>
+            <!-- B2 — Turnstile: el widget inyecta su token en cf-turnstile-response
+                 al resolver. El script y el iframe de Cloudflare solo se cargan
+                 cuando el formulario lo pide (la CSP de esta página ya lo permite). -->
+            <div class="cf-turnstile mb-3 d-flex justify-content-center" data-sitekey="<?= View::escape((string) ($turnstile['site_key'] ?? '')) ?>"></div>
+            <?php endif; ?>
             <button type="submit" id="vfSubmit" class="vf-submit">
                 <span class="vf-submit-label"><i class="fa-solid fa-paper-plane me-2"></i><?= $t('ui.enviar') ?></span>
             </button>
@@ -586,6 +595,9 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
 
 <div id="vfAutosave" class="vf-autosave" role="status" aria-live="polite"></div>
 
+<?php if (!empty($turnstile['enabled'])): ?>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer async></script>
+<?php endif; ?>
 <script src="<?= View::asset('js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= View::asset('js/fill.js') ?>"></script>
 </body>

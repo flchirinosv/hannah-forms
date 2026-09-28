@@ -36,12 +36,13 @@ final class FormSettings
                     'to_field' => null,
                 ],
             ],
-            'webhook'    => ['url' => '', 'allow_private_hosts' => false],
+            'webhook'    => ['url' => '', 'allow_private_hosts' => false, 'kind' => 'generic', 'secret' => ''],
             'thanks'     => ['message' => '', 'redirect_url' => ''],
             'quiz'       => ['enabled' => false],
             'randomize'  => ['questions' => false],
             'embed'      => ['enabled' => false],
             'honeypot'   => ['enabled' => true],
+            'anti_bot'   => ['enabled' => false],
             'locale'     => ['code' => 'es'],
         ];
     }
@@ -122,6 +123,15 @@ final class FormSettings
             // propia. OJO: la clave tiene que estar aquí o normalize() la
             // borraría y el opt-in nunca llegaría a Webhook.
             $out['webhook']['allow_private_hosts'] = !empty($raw['webhook']['allow_private_hosts']);
+            // B1 — tipo de destino: 'generic' (payload JSON crudo) o 'slack'
+            // (mensaje de la API de incoming-webhooks de Slack).
+            $kind = $raw['webhook']['kind'] ?? 'generic';
+            $out['webhook']['kind'] = in_array($kind, ['generic', 'slack'], true) ? $kind : 'generic';
+            // B1 — secreto opcional: si se fija, el POST viaja firmado (HMAC-SHA256
+            // del body) en `X-VanillaForms-Signature` para que el receptor pueda
+            // verificar que la petición es de esta instancia.
+            $secret = $raw['webhook']['secret'] ?? '';
+            $out['webhook']['secret'] = is_string($secret) ? self::short(trim($secret), 190) : '';
         }
 
         if (isset($raw['thanks']) && is_array($raw['thanks'])) {
@@ -132,7 +142,7 @@ final class FormSettings
                 ? self::short(trim($t['redirect_url']), 500) : '';
         }
 
-        foreach (['quiz', 'randomize', 'embed', 'honeypot'] as $k) {
+        foreach (['quiz', 'randomize', 'embed', 'honeypot', 'anti_bot'] as $k) {
             if (isset($raw[$k]) && is_array($raw[$k])) {
                 $out[$k]['enabled'] = (bool) ($raw[$k]['enabled'] ?? false);
             }
@@ -185,6 +195,9 @@ final class FormSettings
             if ($u !== '' && self::invalidUrl($u)) {
                 return 'La URL del webhook no es válida (debe ser http/https).';
             }
+        }
+        if (!in_array($n['webhook']['kind'], ['generic', 'slack'], true)) {
+            return 'El tipo de webhook debe ser "generic" o "slack".';
         }
 
         $r = $n['thanks']['redirect_url'];

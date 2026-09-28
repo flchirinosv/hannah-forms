@@ -21,6 +21,7 @@ use App\Services\LogicEvaluator;
 use App\Services\Notifier;
 use App\Services\QuizScore;
 use App\Services\RedirectGuard;
+use App\Services\Turnstile;
 use App\Services\Uploader;
 use App\Services\Webhook;
 
@@ -99,26 +100,69 @@ class FillController
             return;
         }
 
-        $this->allowEmbedHeaders();
-
         // P8 — Barajar también en el embed (mismo comportamiento que show).
         $form['fields'] = self::randomizeFields($form['fields'], $settings);
-        $this->renderFill($form, $settings);
+        $this->renderFill($form, $settings, [], true);
     }
 
     /**
      * Render del formulario compartido por show() y embed(). El head aplica el
      * tema (themeCss) y el form incluye el honeypot cuando el setting lo exige.
+     *
+     * @param array $old Valores previos (re-render de error).
+     * @param bool  $embed Emite X-Frame-Options SAMEORIGIN y relaja
+     *   frame-ancestors (solo para /f/{slug}/embed).
      */
-    private function renderFill(array $form, array $settings, array $old = []): void
+    private function renderFill(array $form, array $settings, array $old = [], bool $embed = false): void
     {
+        // B2 — La CSP de ESTA respuesta depende del tipo de página: embed
+        // (frame-ancestors 'self') y Turnstile (script-src/frame-src del widget).
+        $this->emitFillCsp($settings, $embed);
+
         View::render('fill/show', [
             'form'     => $form,
             'fields'   => $form['fields'],
             'csrf'     => Csrf::token(),
             'settings' => $settings,
             'old'      => $old,
+            'turnstile' => self::turnstileData($settings),
             // Gap sin JS: el render ya sale con la visibilidad resuelta.
+            'hidden'   => self::initialVisibility($form['fields'], $old),
+        ], null);
+    }
+
+    /**
+     * B2 — Datos para pintar el widget. Solo se pinta sobre un formulario que
+     * lo pide y cuando la instancia tiene claves (las sin claves ya quedaron
+     * bloqueadas en renderAvailabilityGate).
+     */
+    private static function turnstileData(array $settings): array
+    {
+        if (empty($settings['anti_bot']['enabled']) || !Turnstile::isConfigured()) {
+            return ['enabled' => false];
+        }
+        return [
+            'enabled'   => true,
+            'site_key'  => Turnstile::publicSiteKey(),
+        ];
+    }
+
+    /**
+     * Re-render del formulario con errores (validación o verificación bot).
+     * Comparte el data de renderFill pero con `errors` y con las respuestas
+     * previas como fuentes de visibilidad (lo que vería el participante).
+     */
+    private function renderFillErrors(array $form, array $settings, array $errors): void
+    {
+        $this->emitFillCsp($settings, false);
+        $old = Request::all();
+        View::render('fill/show', [
+            'form'     => $form,
+            'fields'   => $form['fields'],
+            'csrf'     => Csrf::token(),
+            'errors'   => $errors,
+            'old'      => $old,
+            'turnstile' => self::turnstileData($settings),
             'hidden'   => self::initialVisibility($form['fields'], $old),
         ], null);
     }
@@ -247,6 +291,20 @@ class FillController
     private function renderAvailabilityGate(array $form, array $settings): bool
     {
         $locale = I18n::forRequest($settings);
+
+        // B2 — Antes de nada, el anti-bot: si el form lo pide y la instancia no
+        // tiene claves Turnstile, el formulario NO se muestra (protegido a
+        // medias es lo mismo que no protegido, pero con aviso).
+        if (!empty($settings['anti_bot']['enabled']) && !Turnstile::isConfigured()) {
+            View::render('fill/closed', [
+                'form' => $form,
+                'locale' => $locale,
+                'heading' => I18n::t('status.misconfigured_title', $locale),
+                'note' => I18n::t('status.misconfigured_note', $locale),
+            ], null);
+            return true;
+        }
+
         $state = self::scheduleState($settings);
         if ($state === 'closed') {
             View::render('fill/closed', [
@@ -325,6 +383,24 @@ class FillController
         if (self::honeypotTriggered($settings)) {
             $this->redirectToThanks($form, $settings);
             return;
+        }
+
+        // B2 — Verificación bot server-side (Turnstile). Si el form lo pide pero
+        // la instancia no tiene claves, es un formulario mal configurado: se
+        // corta como si no aceptara respuestas (el GET ya lo bloquea igual).
+        if (!empty($settings['anti_bot']['enabled'])) {
+            if (!Turnstile::isConfigured()) {
+                Response::abort(403, I18n::t('err.not_accepting', $locale));
+                return;
+            }
+            // El widget inyecta su token en `cf-turnstile-response` (el nombre
+            // es de Cloudflare). El token es de UN SOLO uso: si la verificación
+            // falla se re-renderiza el form con el error y el visitante reintenta.
+            $token = trim((string) Request::post('cf-turnstile-response', ''));
+            if ($token === '' || !Turnstile::verify($token, Request::ip())) {
+                $this->renderFillErrors($form, $settings, [I18n::t('err.turnstile', $locale)]);
+                return;
+            }
         }
 
         // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos
@@ -493,18 +569,7 @@ class FillController
             // P10: los archivos ya subidos en este intento no deben quedar
             // huérfanos en disco si el resto del envío es inválido.
             Uploader::rollback($storedFiles);
-
-            $old = Request::all();
-            View::render('fill/show', [
-                'form' => $form,
-                'fields' => $form['fields'],
-                'csrf' => Csrf::token(),
-                'errors' => $errors,
-                'old' => $old,
-                // Con las respuestas ya enviadas como fuentes: así el
-                // re-render muestra lo mismo que vería el participante.
-                'hidden' => self::initialVisibility($form['fields'], $old),
-            ], null);
+            $this->renderFillErrors($form, $settings, $errors);
             return;
         }
 
@@ -718,19 +783,57 @@ class FillController
     }
 
     /**
-     * Relaja X-Frame-Options y frame-ancestors a 'self' (P7). Solo afecta a la
-     * respuesta HTTP real; en CLI (runner de tests) no se emiten headers.
+     * CSP que necesita ESTA respuesta HTTP, sobre el default de la app:
+     *
+     *  - Embed (P7): relaja X-Frame-Options y frame-ancestors a 'self' para
+     *    poder estar en un iframe del mismo origen.
+     *  - Turnstile (B2): el widget de Cloudflare carga un script y se pinta en
+     *    un iframe desde challenges.cloudflare.com, así que esa página concreta
+     *    necesita script-src/frame-src para ese origen. Solo cuando el form lo
+     *    pide y la instancia tiene claves; el resto de la app sigue 'self'.
+     *
+     * Solo emite headers en la respuesta HTTP real; en CLI (runner) no se hace
+     * nada (el test de vista no depende de esto: ninguna vista inyecta scripts).
      */
-    private function allowEmbedHeaders(): void
+    private function emitFillCsp(array $settings, bool $embed): void
     {
         if (PHP_SAPI === 'cli') {
             return;
         }
-        header('X-Frame-Options: SAMEORIGIN');
+
         $csp = (string) Config::get('app.csp_policy', '');
-        if ($csp !== '') {
+        $changed = false;
+
+        if ($embed) {
+            header('X-Frame-Options: SAMEORIGIN');
             $relaxed = preg_replace("/frame-ancestors\s+'none'/", "frame-ancestors 'self'", $csp);
-            header('Content-Security-Policy: ' . ($relaxed ?? $csp));
+            if ($relaxed !== null && $relaxed !== $csp) {
+                $csp = $relaxed;
+                $changed = true;
+            }
+        }
+
+        if (!empty($settings['anti_bot']['enabled']) && Turnstile::isConfigured() && $csp !== '') {
+            $origin = 'https://challenges.cloudflare.com';
+            // script-src ya existe ('self' en el default): se añade el origen
+            // al final de la directiva (antes del ';' que la cierra).
+            if (preg_match('/script-src\s+([^;]*);/', $csp, $m) === 1) {
+                if (strpos($m[1], $origin) === false) {
+                    $csp = str_replace('script-src ' . $m[1] . ';', 'script-src ' . $m[1] . ' ' . $origin . ';', $csp);
+                    $changed = true;
+                }
+            } else {
+                $csp .= '; script-src ' . $origin;
+                $changed = true;
+            }
+            if (strpos($csp, 'frame-src') === false) {
+                $csp .= '; frame-src ' . $origin;
+                $changed = true;
+            }
+        }
+
+        if ($changed && $csp !== '') {
+            header('Content-Security-Policy: ' . $csp);
         }
     }
 

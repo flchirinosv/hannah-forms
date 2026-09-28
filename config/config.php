@@ -40,6 +40,13 @@ return [
         ),
         // X-Frame-Options: DENY | SAMEORIGIN | vacío (para embeber formularios).
         'frame_options' => (string) App\Core\Env::get('FRAME_OPTIONS', 'DENY'),
+        // B2 — Cloudflare Turnstile (anti-bot opt-in por formulario). Sin claves
+        // la instancia NO sirve formularios que lo pidan: los bloquea en el
+        // fill con un aviso (nunca abrir un formulario "protegido" sin protección).
+        'turnstile' => [
+            'site_key'   => (string) App\Core\Env::get('TURNSTILE_SITE_KEY', ''),
+            'secret_key' => (string) App\Core\Env::get('TURNSTILE_SECRET_KEY', ''),
+        ],
         // Webhooks a la red local (fase 2, item 2.2). Este es el opt-in del
         // SERVIDOR y es el que cierra el SSRF: aunque el dueño de un formulario
         // mande `webhook.allow_private_hosts: true` en sus settings, sin esto

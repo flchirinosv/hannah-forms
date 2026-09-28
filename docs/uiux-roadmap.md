@@ -55,8 +55,8 @@ Composer, CSP `script-src 'self'`, tests siempre verdes).
 
 | # | Ítem | Notas |
 |---|---|---|
-| B1 | Slack incoming-webhook por formulario + endurecer `Webhook` (firma HMAC opcional, 1 retry con backoff) | Cierra parte realista de "integraciones" sin OAuth; con tests del payload/firma |
-| B2 | Turnstile opt-in por formulario (`settings.anti_bot`): verificación server-side del token | Requiere claves en `.env`; evolución natural del honeypot |
+| B1 | Slack incoming-webhook por formulario + endurecer `Webhook` (firma HMAC opcional, 1 retry con backoff) | HECHO | Cierra parte realista de "integraciones" sin OAuth; con tests del payload/firma |
+| B2 | Turnstile opt-in por formulario (`settings.anti_bot`): verificación server-side del token | HECHO | Requiere claves en `.env`; evolución natural del honeypot |
 
 ## Fuera de alcance (documentado, no estratégico para un self-hosted)
 
@@ -65,7 +65,7 @@ colaboración real-time, idiomas extra (pt/fr) e integraciones OAuth (Sheets/CRM
 
 ## Reglas transversales
 
-- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (473+).
+- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (494+).
 - Todo JS nuevo va en archivos externos; carga con `defer` salvo que sea crítico (CSP).
 - No se introducen dependencias externas (ni Composer, ni npm, ni CDN).
 - Commit por fase cerrada.

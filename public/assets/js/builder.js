@@ -1944,12 +1944,15 @@
             st('stConfirmMessage').value = (s.notify && s.notify.confirmation && s.notify.confirmation.message) || '';
             st('stConfirmToField').value = (s.notify && s.notify.confirmation && s.notify.confirmation.to_field) || '';
             st('stWebhookUrl').value = (s.webhook && s.webhook.url) || '';
+            st('stWebhookKind').value = (s.webhook && s.webhook.kind === 'slack') ? 'slack' : 'generic';
+            st('stWebhookSecret').value = (s.webhook && s.webhook.secret) || '';
             st('stThanksMessage').value = (s.thanks && s.thanks.message) || '';
             st('stThanksRedirect').value = (s.thanks && s.thanks.redirect_url) || '';
             st('stQuizEnabled').checked = !!(s.quiz && s.quiz.enabled);
             st('stRandQuestions').checked = !!(s.randomize && s.randomize.questions);
             st('stEmbedEnabled').checked = !!(s.embed && s.embed.enabled);
             st('stHoneypotEnabled').checked = !!(s.honeypot && s.honeypot.enabled);
+            st('stAntiBotEnabled').checked = !!(s.anti_bot && s.anti_bot.enabled);
             st('stLocale').value = (s.locale && s.locale.code) || 'es';
         }
 
@@ -1976,7 +1979,11 @@
                         to_field: g('stConfirmToField').value.trim() || null,
                     },
                 },
-                webhook: { url: g('stWebhookUrl').value.trim() },
+                webhook: {
+                    url: g('stWebhookUrl').value.trim(),
+                    kind: g('stWebhookKind').value === 'slack' ? 'slack' : 'generic',
+                    secret: g('stWebhookSecret').value.trim(),
+                },
                 thanks: {
                     message: g('stThanksMessage').value.trim(),
                     redirect_url: g('stThanksRedirect').value.trim(),
@@ -1985,6 +1992,7 @@
                 randomize: { questions: g('stRandQuestions').checked },
                 embed: { enabled: g('stEmbedEnabled').checked },
                 honeypot: { enabled: g('stHoneypotEnabled').checked },
+                anti_bot: { enabled: g('stAntiBotEnabled').checked },
                 locale: { code: g('stLocale').value },
             };
         }

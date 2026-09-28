@@ -18,7 +18,7 @@ use App\Core\Config;
  * - Solo http/https (evita file:// y otros schemes).
  * - Timeout corto (5s) y nunca lanza hacia FillController.
  *
- * SSRF (fase 2, item 2.2). Que la URL la configure el dueño del formulario no
+* SSRF (fase 2, item 2.2). Que la URL la configure el dueño del formulario no
  * la hace de fiar: el destino se RESUELVE y se comprueba antes de conectar, y
  * se rechazan loopback, RFC1918, link-local (incluida 169.254.169.254 de la
  * metadata de la nube), CGNAT, multicast y reservadas. La comprobación es por
@@ -29,6 +29,14 @@ use App\Core\Config;
  * La conexión se fija a la IP ya validada (TOCTOU) pero el `Host` y el SNI
  * siguen siendo el nombre: así el TLS se verifica contra el nombre real, que es
  * lo que rompe si te conectas a la IP suelta. No se siguen redirecciones.
+ *
+ * B1 (Track B): además del envío en crudo (kind 'generic') el webhook sabe
+ * hablar el formato de los incoming-webhooks de Slack (kind 'slack', mensaje
+ * plano con las respuestas). Un secreto opcional (`webhook.secret`) firma el
+ * body con HMAC-SHA256 en `X-VanillaForms-Signature`; el envío tiene UN único
+ * reintento con backoff corto (1 s) cuando el primer intento no obtiene un 2xx
+ * (o no conecta). El receptor genérico puede verificar la firma comparando
+ * `hash_hmac('sha256', $body, $secret)`.
  *
  * Para apuntar a un servicio de la red local propio hacen falta DOS opt-ins
  * (ambos por defecto false):
@@ -47,14 +55,28 @@ use App\Core\Config;
  * settings que mande. Al revés tampoco: con el servidor abierto, cada formulario
  * sigue teniendo que pedirlo.
  *
- * Testeable: Webhook::setHandler() inyecta un callable (url, payload, config)
+ * Testeable: Webhook::setHandler() inyecta un callable (url, payload, settings)
  * que se llama en lugar de hacer el POST real, y Webhook::setAllowPrivate()
  * fija el opt-in del servidor para poder probar los dos interruptores.
+ * Webhook::setTransport() sustituye SOLO el transporte (el POST en crudo) para
+ * probar firma/reintentos con el cuerpo ya formateado; Webhook::setRetryBackoff()
+ * baja el backoff del retry y no ralentiza la suite.
  */
 final class Webhook
 {
     /** @var callable|null (string $url, array $payload, array $settings): void */
     private static $handler = null;
+
+    /**
+     * @var callable|null (array $target, string $body, ?string $signature,
+     *     int $attempt): int Sustituye SOLO el transporte (el POST en crudo)
+     *     para que los tests puedan capturar el body formateado, la firma y el
+     *     número de intentos sin redes. Devuelve el código HTTP (0 = no conectó).
+     */
+    private static $transport = null;
+
+    /** @var int Backoff (segundos) entre el intento 1 y el retry. Baja la suite. */
+    private static $retryBackoff = self::RETRY_BACKOFF;
 
     /**
      * @var callable|null (string $host): string[] Sustituye la resolución DNS
@@ -71,6 +93,8 @@ final class Webhook
 
     private const CONNECT_TIMEOUT = 5;
     private const IO_TIMEOUT = 5;
+    private const RETRY_BACKOFF = 1;
+    private const MAX_ATTEMPTS = 2;
 
     /**
      * Rangos que NO se pueden alcanzar desde un webhook. Formato cidr.
@@ -111,6 +135,18 @@ final class Webhook
     public static function setHandler(?callable $fn): void
     {
         self::$handler = $fn;
+    }
+
+    /** Sustituye el transporte real (tests). null = POST en crudo. */
+    public static function setTransport(?callable $fn): void
+    {
+        self::$transport = $fn;
+    }
+
+    /** Backoff del retry (tests). null = el real de 1 s. */
+    public static function setRetryBackoff(?int $seconds): void
+    {
+        self::$retryBackoff = $seconds === null ? self::RETRY_BACKOFF : max(0, $seconds);
     }
 
     /**
@@ -170,15 +206,104 @@ final class Webhook
             return;
         }
 
-        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        // B1 — el cuerpo depende del tipo de destino: genérico (payload JSON
+        // crudo) o Slack (mensaje de la API de incoming-webhooks).
+        $kind = (string) ($settings['webhook']['kind'] ?? 'generic');
+        if ($kind === 'slack') {
+            $json = json_encode(self::slackBody($payload), JSON_UNESCAPED_UNICODE);
+        } else {
+            $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        }
         if ($json === false) {
             self::log('Webhook: payload no serializable en ' . $url);
             return;
         }
 
-        if (!self::post($target, $json, $url)) {
-            self::log('Webhook falló: ' . $url);
+        // Firma opcional: HMAC-SHA256 del body tal cual.
+        $secret = trim((string) ($settings['webhook']['secret'] ?? ''));
+        $signature = $secret !== '' ? self::signature($secret, $json) : null;
+
+        // UN reintento con backoff cuando el primer intento no devolvió 2xx.
+        $status = self::send($target, $json, $signature, 1);
+        if ($status < 200 || $status >= 300) {
+            if (self::$retryBackoff > 0) {
+                usleep((int) (self::$retryBackoff * 1000000));
+            }
+            $status = self::send($target, $json, $signature, 2);
+            if ($status < 200 || $status >= 300) {
+                self::log('Webhook falló: ' . $url . ' (última entrega HTTP ' . $status . ')');
+            }
         }
+    }
+
+    /**
+     * Mensaje de la API de incoming-webhooks de Slack (`kind: 'slack'`):
+     * un texto plano legible con el formulario y las respuestas. Slack no
+     * entiende el payload de VanillaForms, así que esto es lo que viaja. Se
+     * acota a 3900 caracteres: el límite de un mensaje de Slack es 40000, pero
+     * un formulario largo no debe tumbar el envío.
+     */
+    public static function slackBody(array $payload): array
+    {
+        $form = (array) ($payload['form'] ?? []);
+        $fieldsById = [];
+        foreach ((array) ($payload['fields'] ?? []) as $f) {
+            $fieldsById[(string) ($f['id'] ?? '')] = (string) ($f['label'] ?? '');
+        }
+
+        $lines = ['Nueva respuesta a «' . (string) ($form['title'] ?? '') . '»'];
+        foreach ((array) ($payload['answers'] ?? []) as $id => $value) {
+            $label = $fieldsById[(string) $id] ?? ('respuesta ' . $id);
+            $lines[] = '• ' . $label . ': ' . self::slackValue($value);
+        }
+
+        $text = implode("\n", $lines);
+        if (mb_strlen($text) > 3900) {
+            $suffix = "\n… (mensaje truncado)";
+            $text = mb_substr($text, 0, 3900 - mb_strlen($suffix)) . $suffix;
+        }
+
+        return [
+            'text'          => $text,
+            'unfurl_links'  => false,
+        ];
+    }
+
+    /**
+     * Valor listo para el mensaje de Slack: las listas/mapas (checkbox, star,
+     * ranking…) se aplanan a texto.
+     */
+    private static function slackValue($value): string
+    {
+        if (is_array($value)) {
+            $flat = [];
+            foreach ($value as $k => $v) {
+                if (is_array($v)) {
+                    $v = implode(', ', array_map('strval', $v));
+                }
+                $flat[] = is_string($k) ? ($k . ': ' . $v) : (string) $v;
+            }
+            return implode('; ', $flat);
+        }
+        return (string) $value;
+    }
+
+    /**
+     * Firma HMAC-SHA256 del body: `sha256=<hex>`. El receptor la verifica
+     * recomputando sobre el body recibido tal cual.
+     */
+    public static function signature(string $secret, string $body): string
+    {
+        return 'sha256=' . hash_hmac('sha256', $body, $secret);
+    }
+
+    /** Ejecuta un intento de transporte (real o inyectado). */
+    private static function send(array $target, string $body, ?string $signature, int $attempt): int
+    {
+        if (self::$transport !== null) {
+            return (int) (self::$transport)($target, $body, $signature, $attempt);
+        }
+        return self::post($target, $body, $signature, $attempt);
     }
 
     /**
@@ -342,9 +467,11 @@ final class Webhook
 
     /**
      * POST con la IP fijada (la ya validada) y el Host/SNI del nombre real, para
-     * no caer en la ventana TOCTOU entre validar y conectar.
+     * no caer en la ventana TOCTOU entre validar y conectar. Devuelve el código
+     * HTTP de la respuesta (0 = no conectó / no escribió / sin status legible),
+     * que es lo que decide el retry de `fire()`.
      */
-    private static function post(array $target, string $body, string $url): bool
+    private static function post(array $target, string $body, ?string $signature, int $attempt): int
     {
         $scheme = $target['scheme'];
         $ip = $target['ip'];
@@ -382,15 +509,20 @@ final class Webhook
 
         if ($socket === false) {
             self::log('Webhook: no se pudo conectar a ' . $ip . ':' . $port . ' (' . $errstr . ')');
-            return false;
+            return 0;
         }
 
         stream_set_timeout($socket, self::IO_TIMEOUT);
 
+        $signatureHeader = $signature !== null
+            ? 'X-VanillaForms-Signature: ' . $signature . "\r\n"
+            : '';
         $request = 'POST ' . $target['path'] . " HTTP/1.1\r\n"
             . 'Host: ' . $hostHeader . "\r\n"
             . "User-Agent: VanillaForms/1.0\r\n"
             . "Content-Type: application/json; charset=utf-8\r\n"
+            . 'X-VanillaForms-Attempt: ' . $attempt . "\r\n"
+            . $signatureHeader
             . 'Content-Length: ' . strlen($body) . "\r\n"
             . "Connection: close\r\n"
             . "Accept: */*\r\n"
@@ -400,15 +532,19 @@ final class Webhook
         $written = @fwrite($socket, $request);
         if ($written === false || $written < strlen($request)) {
             @fclose($socket);
-            return false;
+            return 0;
         }
 
-        // Fire-and-forget: no interesa la respuesta, pero hay que leer hasta
-        // que cierre para no dejar el socket colgado ni cortar a la mitad.
-        @stream_get_contents($socket, 8192);
+        // Fire-and-forget: no importa el cuerpo, pero hay que leer hasta que
+        // cierre para no dejar el socket colgado ni cortar a la mitad. De la
+        // respuesta solo importa el código: es lo que decide el retry.
+        $response = (string) @stream_get_contents($socket, 16384);
         @fclose($socket);
 
-        return true;
+        if (preg_match('#^HTTP/\d(?:\.\d)?\s+(\d{3})#', $response, $m) !== 1) {
+            return 0;
+        }
+        return (int) $m[1];
     }
 
     /**

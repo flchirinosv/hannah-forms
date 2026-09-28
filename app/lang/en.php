@@ -84,6 +84,8 @@ return [
     'status.not_open_note'  => 'does not accept responses yet. Check back later.',
     'status.full_title'     => 'Capacity reached',
     'status.full_note'      => 'has reached the maximum number of responses.',
+    'status.misconfigured_title' => 'Temporarily unavailable',
+    'status.misconfigured_note'  => 'has a bot check enabled that this server is not configured for yet.',
     'status.draft_title'    => 'In preparation',
     'status.draft_note'     => 'This form has not been published yet.',
 
@@ -147,4 +149,5 @@ return [
     'err.not_accepting' => 'This form is not accepting responses right now.',
     'err.upload_too_big_global' => 'The submission exceeds the maximum size allowed by the server ({max} MB). Try smaller files.',
     'err.not_embeddable' => 'This form cannot be embedded.',
+    'err.turnstile' => 'We could not verify you are not a robot. Tick the box and try again.',
 ];

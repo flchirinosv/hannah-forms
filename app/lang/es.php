@@ -85,6 +85,8 @@ return [
     'status.not_open_note'  => 'aún no acepta respuestas. Vuelve más tarde.',
     'status.full_title'     => 'Cupo agotado',
     'status.full_note'      => 'alcanzó el límite de respuestas permitidas.',
+    'status.misconfigured_title' => 'Temporalmente no disponible',
+    'status.misconfigured_note'  => 'tiene una verificación de robot activada que el servidor no tiene configurada todavía.',
     'status.draft_title'    => 'En preparación',
     'status.draft_note'     => 'Este formulario aún no ha sido publicado por su propietario.',
 
@@ -148,4 +150,5 @@ return [
     'err.not_accepting' => 'Este formulario no acepta respuestas en este momento.',
     'err.upload_too_big_global' => 'El envío supera el tamaño máximo permitido por el servidor ({max} MB). Intenta con archivos más pequeños.',
     'err.not_embeddable' => 'Este formulario no permite ser embebido.',
+    'err.turnstile' => 'No pudimos verificar que no eres un robot. Marca la casilla e inténtalo de nuevo.',
 ];

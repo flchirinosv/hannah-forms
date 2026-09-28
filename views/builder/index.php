@@ -391,9 +391,20 @@ $fieldTypes = [
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-link me-1"></i>Integraciones y final</h6>
                 <div class="row g-3 mb-4">
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <label for="stWebhookUrl" class="form-label small fw-semibold">Webhook (URL)</label>
                         <input type="url" class="form-control form-control-sm" id="stWebhookUrl" placeholder="https://ejemplo.com/hook">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="stWebhookKind" class="form-label small fw-semibold">Formato</label>
+                        <select class="form-select form-select-sm" id="stWebhookKind">
+                            <option value="generic">JSON</option>
+                            <option value="slack">Slack</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="stWebhookSecret" class="form-label small fw-semibold">Secreto (firma)</label>
+                        <input type="text" class="form-control form-control-sm" id="stWebhookSecret" placeholder="Opcional" autocomplete="off">
                     </div>
                     <div class="col-md-12">
                         <label for="stThanksMessage" class="form-label small fw-semibold">Mensaje de gracias personalizado</label>
@@ -429,6 +440,12 @@ $fieldTypes = [
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stHoneypotEnabled">
                             <label class="form-check-label small fw-semibold" for="stHoneypotEnabled">Anti-spam (honeypot)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="stAntiBotEnabled">
+                            <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)</label>
                         </div>
                     </div>
                     <div class="col-md-4">
