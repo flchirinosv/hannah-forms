@@ -2,6 +2,38 @@
 (function () {
     'use strict';
 
+    /* ---------- Q5 · Presets de rango (7/30/90 días, este mes) ----------
+     * Ponen los inputs from/to y reenvían el GET de filtrado. Se registra a
+     * nivel documento para que funcione aunque el bloque de gráficas se salte. */
+    var pickIso = function (date) {
+        var m = String(date.getMonth() + 1);
+        var d = String(date.getDate());
+        return date.getFullYear() + '-' + (m.length === 1 ? '0' + m : m) + '-' + (d.length === 1 ? '0' + d : d);
+    };
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('[data-preset]') : null;
+        if (!btn) {
+            return;
+        }
+        var form = btn.closest('form');
+        var fromInput = form && form.querySelector('input[name="from"]');
+        var toInput = form && form.querySelector('input[name="to"]');
+        if (!fromInput || !toInput || btn.dataset.preset === '') {
+            return;
+        }
+        var to = new Date();
+        to.setHours(0, 0, 0, 0);
+        var from = new Date(to);
+        if (btn.dataset.preset === 'month') {
+            from.setDate(1);
+        } else {
+            from.setDate(from.getDate() - parseInt(btn.dataset.preset, 10));
+        }
+        fromInput.value = pickIso(from);
+        toInput.value = pickIso(to);
+        form.submit();
+    });
+
     var D = null;
     var chartEl = document.getElementById('analyticsApp');
     if (chartEl && chartEl.getAttribute('data-chart')) {

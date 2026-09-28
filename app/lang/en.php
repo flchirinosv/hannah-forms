@@ -31,6 +31,8 @@ return [
     'ui.page_title'      => 'Step {n}',
     'ui.leave_empty'     => 'Leave this field empty',
     'ui.form'            => 'The form',
+    'ui.questions_count' => '{n} questions',
+    'ui.est_minutes'     => '~{n} min',
 
     // Condition operator labels
     'op.contains'     => 'contains',

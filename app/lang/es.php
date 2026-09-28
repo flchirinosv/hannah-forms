@@ -32,6 +32,8 @@ return [
     'ui.page_title'      => 'Paso {n}',
     'ui.leave_empty'     => 'Deja este campo vacío',
     'ui.form'            => 'El formulario',
+    'ui.questions_count' => '{n} preguntas',
+    'ui.est_minutes'     => '~{n} min',
 
     // Etiquetas de operadores (régimen) en el chip de condición
     'op.contains'     => 'contiene',

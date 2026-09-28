@@ -36,7 +36,7 @@ class FillController
         }
 
         if ($form['status'] === 'closed') {
-            $locale = I18n::resolve(Form::settings((int) $form['id']));
+            $locale = I18n::forRequest(Form::settings((int) $form['id']));
             View::render('fill/closed', [
                 'form' => $form,
                 'locale' => $locale,
@@ -47,7 +47,7 @@ class FillController
         }
 
         if ($form['status'] === 'draft') {
-            $locale = I18n::resolve(Form::settings((int) $form['id']));
+            $locale = I18n::forRequest(Form::settings((int) $form['id']));
             View::render('fill/draft', ['form' => $form, 'locale' => $locale], null);
             return;
         }
@@ -88,11 +88,11 @@ class FillController
         }
 
         if ($form['status'] === 'closed') {
-            View::render('fill/closed', ['form' => $form], null);
+            View::render('fill/closed', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
             return;
         }
         if ($form['status'] === 'draft') {
-            View::render('fill/draft', ['form' => $form], null);
+            View::render('fill/draft', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
             return;
         }
         if ($this->renderAvailabilityGate($form, $settings)) {
@@ -246,7 +246,7 @@ class FillController
 
     private function renderAvailabilityGate(array $form, array $settings): bool
     {
-        $locale = I18n::resolve($settings);
+        $locale = I18n::forRequest($settings);
         $state = self::scheduleState($settings);
         if ($state === 'closed') {
             View::render('fill/closed', [
@@ -283,7 +283,7 @@ class FillController
         }
 
         $settings = Form::settings((int) $form['id']);
-        $locale = I18n::resolve($settings);
+        $locale = I18n::forRequest($settings);
 
         if ($form['status'] !== 'published') {
             Response::abort(403, I18n::t('err.not_accepting', $locale));
@@ -623,6 +623,14 @@ class FillController
         }
         if ($path === '') {
             $path = '/f/' . rawurlencode((string) $form['slug']) . '/thanks';
+            // Q6 — Si el gracias se servirá en un idioma distinto del que fija
+            // el formulario (override ?lang= o navegante), llevarlo en el PRG
+            // para que la página de gracias no cambie de idioma al llegar.
+            $locale = I18n::forRequest($settings);
+            $expected = I18n::resolve($settings);
+            if ($locale !== $expected) {
+                $path .= '?lang=' . $locale;
+            }
         }
         Response::redirect($path);
         return;

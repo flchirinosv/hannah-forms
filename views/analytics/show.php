@@ -28,6 +28,12 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
         </div>
         <div class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center">
             <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap flex-sm-nowrap gap-2 align-items-center">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Presets de rango">
+                    <button type="button" class="btn btn-outline-secondary" data-preset="7" title="Últimos 7 días">7d</button>
+                    <button type="button" class="btn btn-outline-secondary" data-preset="30" title="Últimos 30 días">30d</button>
+                    <button type="button" class="btn btn-outline-secondary" data-preset="90" title="Últimos 90 días">90d</button>
+                    <button type="button" class="btn btn-outline-secondary" data-preset="month" title="Este mes">Mes</button>
+                </div>
                 <input type="date" class="form-control form-control-sm" name="from" value="<?= View::escape($from) ?>">
                 <span class="text-muted small d-none d-sm-inline">a</span>
                 <input type="date" class="form-control form-control-sm" name="to" value="<?= View::escape($to) ?>">

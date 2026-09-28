@@ -4,8 +4,10 @@ $old = isset($old) ? $old : [];
 $settings = $settings ?? [];
 $fieldTypes = ['text', 'textarea', 'email', 'number', 'date', 'select', 'radio', 'checkbox', 'scale', 'url', 'tel', 'time', 'datetime-local', 'range', 'section', 'matrix', 'nps', 'star', 'ranking', 'file'];
 
-// P9 — i18n reducido: idioma del formulario (settings.locale > app.locale > es).
-$locale = \App\Core\I18n::resolve($settings);
+// Q6 — i18n del fill: override del request (?lang= / campo oculto lang en el
+// POST) > settings.locale > Accept-Language (si el form no fija idioma) >
+// app.locale > es. `forRequest()` es la única puerta para GET y POST.
+$locale = \App\Core\I18n::forRequest($settings);
 $t = static fn (string $key, array $params = []): string => \App\Core\I18n::t($key, $locale, $params);
 
 // Subcatalog para el cliente (fill.js): las claves ui./val./js. visibles.
@@ -414,6 +416,25 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             <div class="vf-desc"><?= nl2br(View::escape($form['description'])) ?></div>
         <?php endif; ?>
 
+        <?php
+        // Q1 — Meta del formulario: nº de preguntas contestables y duración
+        // estimada (una pregunta ≈ 12 s).
+        $answerableTypes = ['text', 'textarea', 'email', 'number', 'date', 'select', 'radio', 'checkbox', 'scale', 'url', 'tel', 'time', 'datetime-local', 'range', 'matrix', 'nps', 'star', 'ranking', 'file'];
+        $answerableCount = 0;
+        foreach ($fields as $fld) {
+            if (in_array(($fld['type'] ?? ''), $answerableTypes, true)) {
+                $answerableCount++;
+            }
+        }
+        $estMinutes = max(1, (int) ceil($answerableCount / 5));
+        ?>
+        <?php if ($answerableCount > 0): ?>
+            <div class="vf-header-meta d-flex flex-wrap gap-3 small text-muted mt-2">
+                <span><i class="fa-solid fa-list-check me-1"></i><?= $t('ui.questions_count', ['n' => $answerableCount]) ?></span>
+                <span><i class="fa-solid fa-clock me-1"></i><?= $t('ui.est_minutes', ['n' => $estMinutes]) ?></span>
+            </div>
+        <?php endif; ?>
+
         <div class="vf-progress-wrap" id="vfProgressWrap">
             <div class="vf-progress-meta">
                 <span><i class="fa-solid fa-circle-half-stroke me-1"></i><?= $t('ui.avance') ?></span>
@@ -440,6 +461,10 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
     <?php $hasFileField = false; foreach ($fields as $fld) { if (($fld['type'] ?? '') === 'file') { $hasFileField = true; break; } } ?>
     <form method="post" action="/f/<?= View::escape($form['slug']) ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>" data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
         <?= \App\Core\Csrf::field() ?>
+
+        <?php // Q6 — El idioma renderizado viaja en el POST para que el re-render
+        // con errores y el submit no cambien de idioma en mitad del flujo. ?>
+        <input type="hidden" name="lang" value="<?= View::escape($locale) ?>">
 
         <?php // P7 — Honeypot: trampa invisible para bots (CSS lo saca de la vista). ?>
         <?php if (!empty($settings['honeypot']['enabled'])): ?>

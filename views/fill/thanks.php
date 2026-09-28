@@ -15,7 +15,7 @@ foreach (($form['fields'] ?? []) as $ff) {
 }
 
 // P9 — i18n reducido (idioma del formulario + catálogo es/en).
-$locale = \App\Core\I18n::resolve($settings);
+$locale = \App\Core\I18n::forRequest($settings);
 $t = static fn (string $key, array $params = []): string => \App\Core\I18n::t($key, $locale, $params);
 
 // P8 — Quiz: explicación de la puntuación para el bloque de resultados.

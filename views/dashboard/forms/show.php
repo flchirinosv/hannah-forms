@@ -88,7 +88,7 @@ use App\Core\View;
                     <?php if ($form['status'] === 'published'): ?>
                         <div class="input-group mb-2">
                             <input type="text" class="form-control form-control-sm app-share-input" id="shareUrl" value="<?= View::escape($shareUrl) ?>" readonly>
-                            <button class="btn btn-outline-secondary btn-sm js-copy-url" type="button" title="Copiar enlace"><i class="fa-solid fa-copy"></i></button>
+                            <button class="btn btn-outline-secondary btn-sm btn-copy-link" type="button" data-url="<?= View::escape($shareUrl) ?>" title="Copiar enlace"><i class="fa-solid fa-copy"></i></button>
                         </div>
                         <a href="<?= View::escape($shareUrl) ?>" target="_blank" class="btn btn-outline-info btn-sm w-100"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir en nueva pestaña</a>
 
@@ -138,3 +138,4 @@ use App\Core\View;
         </div>
     </div>
 </div>
+<script src="<?= View::asset('js/dashboard.js') ?>" defer></script>

@@ -6,6 +6,18 @@
     'use strict';
 
     const grid = document.getElementById('dashGrid');
+
+    /* Copiar enlace: delegado a nivel documento para que funcione también en el
+     * detalle del formulario (views/dashboard/forms/show.php), que no tiene
+     * #dashGrid. Común a index y forms/show. */
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-role="copy"], .btn-copy-link, .js-copy-url');
+        if (btn) {
+            e.preventDefault();
+            copyLink(btn.dataset.url || '');
+        }
+    });
+
     if (!grid) {
         return;
     }
@@ -147,14 +159,6 @@
                 render();
             });
         }
-
-        grid.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-role="copy"], .btn-copy-link');
-            if (btn) {
-                e.preventDefault();
-                copyLink(btn.dataset.url || '');
-            }
-        });
 
         document.addEventListener('keydown', (e) => {
             const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable;

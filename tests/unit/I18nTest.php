@@ -21,6 +21,15 @@ class I18nTest
         if (!class_exists(\App\Core\Config::class)) {
             require dirname(__DIR__, 2) . '/config/bootstrap.php';
         }
+        // Q6 — estado limpio del request (el runner CLI no lo inyecta). Se
+        // borran solo las claves: $_GET/$_POST deben seguir siendo arrays para
+        // Request::all().
+        unset($_GET['lang'], $_POST['lang'], $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+    }
+
+    public function tearDown(): void
+    {
+        unset($_GET['lang'], $_POST['lang'], $_SERVER['HTTP_ACCEPT_LANGUAGE']);
     }
 
     public function testIdiomasSoportadosSonEsEn(): void
@@ -46,6 +55,56 @@ class I18nTest
     {
         assertSame(\App\Core\Config::get('app.locale', 'es'), I18n::resolve());
         assertSame(\App\Core\Config::get('app.locale', 'es'), I18n::resolve([]));
+    }
+
+    // ----- Q6 · override ?lang= + navegante -----
+
+    public function testResolvePriorizaLangDelRequest(): void
+    {
+        // El override explícito gana incluso a settings.locale del formulario.
+        assertSame('en', I18n::resolve(['locale' => ['code' => 'es']], 'en'));
+        assertSame('es', I18n::resolve(['locale' => ['code' => 'en']], 'es'));
+    }
+
+    public function testResolveIgnoraLangNoSoportado(): void
+    {
+        // Un ?lang=xx no debe tumbar la selección del formulario.
+        assertSame('en', I18n::resolve(['locale' => ['code' => 'en']], 'fr'));
+        assertSame(\App\Core\Config::get('app.locale', 'es'), I18n::resolve([], 'xx'));
+    }
+
+    public function testResolveUsaNaveganteSoloSinLocaleDeFormulario(): void
+    {
+        $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US,en;q=0.9,es;q=0.8';
+        // Sin idioma explícito del form → el navegante manda.
+        assertSame('en', I18n::resolve([], null, true));
+        // Con locale explícito del form, el navegante NO lo pisa.
+        assertSame('es', I18n::resolve(['locale' => ['code' => 'es']], null, true));
+        // Idiomas no soportados del navegante caen a app.locale.
+        $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'fr-FR,fr;q=0.9';
+        assertSame(\App\Core\Config::get('app.locale', 'es'), I18n::resolve([], null, true));
+        // Sin header: igual.
+        unset($_SERVER['HTTP_ACCEPT_LANGUAGE']);
+        assertSame(\App\Core\Config::get('app.locale', 'es'), I18n::resolve([], null, true));
+    }
+
+    public function testForRequestLeeLangGetYPostYElNavegante(): void
+    {
+        // POST (submit normal del fill): el campo oculto `lang` del form.
+        $_POST['lang'] = 'en';
+        assertSame('en', I18n::forRequest(['locale' => ['code' => 'es']]));
+        unset($_POST['lang']);
+
+        // GET con ?lang= (enlace compartido).
+        $_GET['lang'] = 'en';
+        assertSame('en', I18n::forRequest([]));
+        unset($_GET['lang']);
+
+        // Sin override → navegante.
+        $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-GB,en;q=0.8';
+        assertSame('en', I18n::forRequest([]));
+        // ... pero SOLO si el formulario no fija idioma.
+        assertSame('es', I18n::forRequest(['locale' => ['code' => 'es']]));
     }
 
     public function testTranslateEsYEn(): void
