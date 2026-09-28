@@ -13,7 +13,7 @@ VanillaForms es un sistema de formularios web self-hosted construido con PHP 8.2
 
 **Objetivo principal:** Sistema auto-hospedado de creacion y gestion de formularios con control total sobre datos y privacidad.
 
-**Estado actual:** Funcional con suite de tests (79) en verde y auditoría de seguridad (2026-09-25) con remediaciones aplicadas.
+**Estado actual:** Funcional con suite de tests (442) en verde y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Documento reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5).
 
 ---
 
@@ -241,14 +241,14 @@ Response: text/csv attachment (respeta el filtro de fechas)
 ## 7. Plan de Pruebas
 
 ### Estado actual
-- Runner propio creado en `scripts/test.php` (sin dependencias, no usa Composer/PHPUnit)
-- Suite: `tests/unit/*.php` — **243 tests en verde** (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`). El detalle de fases vive en `docs/roadmap-encuesta.md`.
+- Runner propio creado en `scripts/test.php` (sin dependencias, no usa Composer/PHPUnit). Filtros con espacio: `--filter <substring del MÉTODO>`, `--path <directorio>` (un filtro que no casa con nada ejecuta 0 tests y sale verde — comprobar el contador).
+- Suite: `tests/unit/*.php` — **442 tests en verde** (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`). El detalle de fases vive en `docs/roadmap-encuesta.md`.
 
 ### Ejecucion
 ```bash
 php scripts/test.php                # todos los tests
-php scripts/test.php --filter=Auth  # filtrar por nombre
-php scripts/test.php --path=tests/unit
+php scripts/test.php --filter Auth  # filtrar por nombre de método (espacio, NO `=`)
+php scripts/test.php --path tests/unit
 ```
 
 ### Cobertura objetivo
@@ -267,7 +267,8 @@ php scripts/test.php --path=tests/unit
 - ✅ Middleware de auth y roles (auth, guest, admin, editor, csrf, csrf-header)
 - ✅ Rate limiting en login (por IP y por email), register y envío de respuestas
 - ✅ Escape sistemático de salida (View::escape)
-- ✅ Redirects solo relativos (anti open-redirect)
+- ✅ Redirects internos solo relativos (anti open-redirect); `thanks.redirect_url` externa pasa por la allowlist de servidor `APP_REDIRECT_ALLOWLIST` (vacía = bloqueada por defecto, F5.1)
+- ✅ Rate limit del dashboard por usuario (crear/exportar, F5.3): `DASH_CREATE_PER_HOUR`/`DASH_EXPORT_PER_HOUR`, 429 con `views/errors/429.php`
 - ✅ Límite de tamaño de cuerpo JSON y 405 para métodos no permitidos
 - ✅ CSP y X-Frame-Options configurables por `.env` (CSP activa por defecto desde 2026-09-25; datos de servidor vía `data-*`, handlers JS externalizados)
 - ✅ Uploads (P10): storage en `storage/uploads/` (fuera de `public/`) con nombre aleatorio y `.htaccess` defensivo; MIME detectado con `finfo` (nunca `$_FILES['type']`); lista negra de extensiones ejecutables (php, html, svg, exe…); el campo solo puede **restringir** formatos/tamaño/cantidad, nunca ampliarlos
@@ -307,6 +308,9 @@ php scripts/test.php --path=tests/unit
 | 5 | Paginación dashboard / admin / analítica (client-side) | ✅ |
 | 6 | Remediaciones de auditoría 2026-09-25 | ✅ |
 | P1–P10 | Roadmap del producto (multi-paso, correos, honeypot/embed/QR, quiz+salta-pagina+aleatoriedad, plantillas/export/impresion/i18n, uploads de archivos) | ✅ (ver `docs/roadmap-encuesta.md`) |
+| — | Zona horaria (fase 3 · D6): BD y PHP en UTC, conversión solo al pintar (Clock/View) | ✅ (2026-09-28) |
+| — | Analítica agregada (fase 3 · D8): `FieldAggregator` en 2 queries + métricas derivadas en PHP | ✅ (2026-09-28) |
+| — | Seguridad/quality (fase 4): smoke de todas las rutas, allowlist de redirect (F5.1), editor pendiente de RBAC (F5.2), límite dashboard por usuario (F5.3), thumbs, scale, limpieza de código muerto y assets | ✅ (2026-09-28) |
 | — | Logging de eventos de seguridad | Pendiente |
 | — | Paginación server-side a escala | Futuro |
 

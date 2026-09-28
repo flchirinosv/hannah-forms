@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\DashboardLimit;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
@@ -20,9 +21,11 @@ class AnalyticsController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         $from = Request::query('from', '');
@@ -83,9 +86,17 @@ class AnalyticsController
         $form = Form::find($id);
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
+        }
+
+        // F5.3 — exportaciones por usuario por hora (barrer el almacén).
+        if (!DashboardLimit::exportAllowed()) {
+            Response::abort(429, 'Demasiadas exportaciones. Intenta más tarde.');
+            return;
         }
 
         // M5: aplicar el mismo filtro de fechas que en la pantalla de analítica
@@ -109,8 +120,12 @@ class AnalyticsController
             $fieldById[(int) $field['id']] = $field['label'];
         }
 
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . self::safeFile($form['slug']) . '.csv"');
+        // Headers y exit solo fuera de CLI (en el runner los controllers se
+        // invocan sin matar el proceso; en web la respuesta termina aquí).
+        if (PHP_SAPI !== 'cli') {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . self::safeFile($form['slug']) . '.csv"');
+        }
 
         $out = fopen('php://output', 'w');
         fputcsv($out, $headers, ',', '"', '\\');
@@ -152,7 +167,9 @@ class AnalyticsController
         }
 
         fclose($out);
-        exit;
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
     }
 
     private static function safeFile(string $name): string

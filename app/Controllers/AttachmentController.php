@@ -33,15 +33,18 @@ class AttachmentController
         $row = Answer::findWithContext($id);
         if ($row === null) {
             Response::notFound();
+            return;
         }
 
         if (!$this->canAccess((int) $row['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         $metas = Uploader::decode((string) ($row['value'] ?? ''));
         if ($metas === null || !isset($metas[$index])) {
             Response::notFound();
+            return;
         }
 
         $meta  = $metas[$index];
@@ -53,6 +56,7 @@ class AttachmentController
         }
         if ($path === null || !is_file($path)) {
             Response::notFound();
+            return;
         }
 
         $name = Uploader::sanitizeName((string) ($meta['name'] ?? 'archivo'));
@@ -60,6 +64,28 @@ class AttachmentController
             $name = pathinfo($name, PATHINFO_FILENAME) . '-thumb.webp';
         }
         $size = (int) filesize($path);
+
+        if ($thumb) {
+            // Vista previa (webp generada en la subida): se sirve INLINE, como
+            // imagen, no como descarga. El resto de headers de seguridad se
+            // conservan; `nosniff` + `image/webp` hacen que el navegador la
+            // pinte dentro de un <img> en vez de bajarla.
+            if (PHP_SAPI !== 'cli') {
+                header('Content-Type: image/webp');
+                header('Content-Length: ' . $size);
+                header('Content-Disposition: inline; filename="' . self::asciiName($name) . '"');
+                header('X-Content-Type-Options: nosniff');
+                header('Cache-Control: private, no-store');
+                header('Content-Security-Policy: default-src \'none\'; sandbox');
+
+                while (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+                readfile($path);
+                exit;
+            }
+            return;
+        }
 
         if (PHP_SAPI !== 'cli') {
             // octet-stream + attachment + nosniff: aunque el archivo sea un

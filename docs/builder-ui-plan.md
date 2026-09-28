@@ -49,7 +49,7 @@ paradigma base estilo Paperform/Fillout. Debilidades detectadas en
   (`?v=filemtime`), y `config/bootstrap.php` manda `Cache-Control: no-store`
   en el HTML → los cambios se ven con recarga normal.
 - Consola: `console.log('[builder] vYYYY-MM-DD…')` para verificar versión.
-- Tests: `php scripts/test.php` (243 tests actualmente) — correr al final.
+- Tests: `php scripts/test.php` (`--filter <método>` con espacio; suite actual 442) — correr al final.
 - UI en español. `declare(strict_types=1)` solo aplica a PHP, no al JS.
 
 ---
@@ -261,7 +261,8 @@ nueva.
 
 ## Verificación
 
-- `php -l` en los PHP tocados; `php scripts/test.php` (253 en verde: 6 de
+- `php -l` en los PHP tocados; `php scripts/test.php` (442 en verde tras la
+  revisión 2026-09-28: el original daba 253 con 6 de
   `initialVisibility` y 10 de `BuilderLogicErrorsTest`). Los cuatro mensajes de
   error de condición se comprobaron además sobre HTTP real (422 con el texto
   esperado en cada caso).

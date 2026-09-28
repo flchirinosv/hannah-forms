@@ -48,6 +48,26 @@ return [
         'webhook' => [
             'allow_private_hosts' => (bool) App\Core\Env::get('WEBHOOK_ALLOW_PRIVATE_HOSTS', false),
         ],
+        // F5.1 — Allowlist de hosts para `thanks.redirect_url` (post-submit).
+        //
+        // Vacía por defecto = NINGUNA URL externa se sigue tras el envío: el
+        // thanks interno se muestra con un aviso. Quien opera la instancia la
+        // habilita con APP_REDIRECT_ALLOWLIST=host1,host2 (lista separada por
+        // comas). Es un opt-in SERVIDOR: un formulario solo puede declarar una
+        // URL, nunca ampliar esta lista, o era un redirect abierto usable como
+        // trampolín de phishing hacia cualquier dominio.
+        'redirect_allowlist' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) App\Core\Env::get('APP_REDIRECT_ALLOWLIST', ''))
+        ))),
+        // F5.3 — Límites del dashboard por USUARIO (crear formularios /
+        // exportar datos): evita que una cuenta sirva para spamear formularios
+        // o barrer el almacén con exportaciones. Ventana de 1 h (la más larga
+        // de la app: véase `RateLimiter::MAX_WINDOW`, que se subió por esto).
+        'limits' => [
+            'create_per_hour' => (int) App\Core\Env::get('DASH_CREATE_PER_HOUR', 30),
+            'export_per_hour' => (int) App\Core\Env::get('DASH_EXPORT_PER_HOUR', 120),
+        ],
         // Idioma por defecto de la app (P9, i18n reducido): es | en.
         // Un formulario puede sobrescribirlo con settings.locale.code.
         'locale' => (string) App\Core\Env::get('APP_LOCALE', 'es'),

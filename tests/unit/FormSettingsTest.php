@@ -180,8 +180,7 @@ class FormSettingsTest
         assertSame(FormSettings::defaults(), $s, 'sin settings persistidos debe dar defaults');
     }
 
-    /** @after */
-    public function cleanup(): void
+    public function tearDown(): void
     {
         if ($this->userId !== null) {
             Database::getInstance(Config::db())->execute('DELETE FROM users WHERE id = :id', ['id' => $this->userId]);

@@ -133,16 +133,6 @@ final class Clock
     }
 
     /**
-     * Desplaza una fecha `Y-m-d` un número de días, en la zona de presentación.
-     */
-    public static function addDays(string $day, int $days): string
-    {
-        $dt = new DateTimeImmutable($day . ' 00:00:00', self::displayZone());
-
-        return $dt->modify(($days >= 0 ? '+' : '-') . abs($days) . ' days')->format('Y-m-d');
-    }
-
-    /**
      * El string `day . ' HH:MM:SS'` que se le pasa a MariaDB para comparar (o
      * agrupar por) en la zona de presentación, y el desplazamiento fijo que
      * necesita `CONVERT_TZ`.

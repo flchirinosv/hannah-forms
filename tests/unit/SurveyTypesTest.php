@@ -127,6 +127,18 @@ class SurveyTypesTest
         assertTrue(is_string($this->invoke('validateField', $field, '0')));
     }
 
+    public function testValidateScaleRango(): void
+    {
+        $field = $this->scaleField();
+        assertTrue($this->invoke('validateField', $field, '1') === true);
+        assertTrue($this->invoke('validateField', $field, '5') === true);
+        $out = $this->invoke('validateField', $field, '6');
+        assertTrue(is_string($out) && str_contains($out, 'entre 1 y 5'), 'por encima del máximo poblado a mano');
+        assertTrue(is_string($this->invoke('validateField', $field, '0')));
+        assertTrue(is_string($this->invoke('validateField', $field, '3.5')), 'los radios solo emiten enteros');
+        assertTrue(is_string($this->invoke('validateField', $field, 'abc')), 'no-numérico no puede persistirse');
+    }
+
     /* ---------- Normalización (FillController::normalizeFieldValue) ---------- */
 
     public function testNormalizeMatrixConstruyeMapaPorEtiqueta(): void
@@ -248,6 +260,11 @@ class SurveyTypesTest
     private function starField(): array
     {
         return ['type' => 'star', 'label' => 'S', 'is_required' => false, 'options' => [], 'validations' => ['max' => 5]];
+    }
+
+    private function scaleField(): array
+    {
+        return ['type' => 'scale', 'label' => 'Escala', 'is_required' => false, 'options' => [], 'validations' => ['max' => 5]];
     }
 
     private function invoke(string $method, ...$args)

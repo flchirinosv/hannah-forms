@@ -19,9 +19,6 @@ namespace App\Core;
  */
 class Env
 {
-    /** @var bool Indica si ya se cargo el archivo */
-    private static bool $loaded = false;
-
     /**
      * Carga el archivo .env desde una ruta.
      *
@@ -68,8 +65,6 @@ class Env
             $loaded[$key] = $typedValue;
         }
 
-        self::$loaded = true;
-
         return $loaded;
     }
 
@@ -87,14 +82,6 @@ class Env
             return $default;
         }
         return self::cast($value);
-    }
-
-    /**
-     * Verifica si el archivo .env fue cargado.
-     */
-    public static function isLoaded(): bool
-    {
-        return self::$loaded;
     }
 
     /**

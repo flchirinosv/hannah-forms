@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Controllers\FillController;
 use App\Core\Config;
 use App\Core\Database;
+use App\Core\RateLimiter;
 use App\Models\Field;
 use App\Models\Form;
 use App\Models\Submission;
@@ -92,11 +93,24 @@ class P10UploadsTest
         self::$baseStored = count(self::$baseFiles);
         self::$baseSubs   = self::$formId > 0 ? Form::submissionCount(self::$formId) : 0;
 
+        // El scope de rate limit del submit es por formulario (submit:{id}); la
+        // suite reutiliza el MISMO form en todos los tests de la clase, así que
+        // sin reset, a partir del décimo envío el guard de submit responde 429 y
+        // (ahora que el `return;` es honesto) el envío se corta de verdad. Este
+        // test no cubre el rate limiter (lo cubre RateLimiterTest): se aísla.
+        if (self::$formId > 0) {
+            RateLimiter::reset('submit:' . self::$formId, \App\Core\Request::ip());
+        }
+
         if (self::$userId === null) {
             self::cleanupResiduals();
             $suffix = bin2hex(random_bytes(4));
             self::$userId = User::create('Test P10', 'p10-' . $suffix . '@test.local', 'password');
             self::$formId = Form::create((int) self::$userId, 'Form P10 ' . $suffix);
+            // `Form::create` deja el form en borrador y el submit público solo
+            // acepta forms publicados; estos tests cubren UPLOADS, no la máquina
+            // de estados, así que se publica explícitamente.
+            Form::setStatus(self::$formId, 'published');
             $form = Form::find(self::$formId);
             self::$slug = (string) ($form['slug'] ?? '');
         }
@@ -427,6 +441,7 @@ class P10UploadsTest
         assertSame(1, count($files));
         assertSame('descarga.pdf', $files[0]['name']);
         assertSame(0, $files[0]['index']);
+        assertFalse($files[0]['has_thumb'], 'un PDF no genera vista previa');
         @unlink($tmp);
     }
 
@@ -447,6 +462,34 @@ class P10UploadsTest
         assertSame(0, self::storedDelta());
         @unlink($a);
         @unlink($b);
+    }
+
+    public function testImagenGeneraVistaPreviaWebp(): void
+    {
+        $fieldId = self::fileField('Foto', false, []);
+        // PNG válido 1x1 (decodificable por GD para generar el webp).
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', true);
+        $tmp = self::tmpFile($png, 'foto.png');
+        $res = Uploader::storeMany(self::filesFor($tmp, 'foto.png'));
+
+        assertTrue($res['ok'], 'una imagen válida debe aceptarse');
+        $meta = $res['value'];
+        assertSame('image/png', $meta['mime']);
+        assertSame(1, preg_match('#^\d{4}/\d{2}/[a-f0-9]{16,}-thumb\.webp$#', (string) $meta['thumb']), 'la subida genera un webp de vista previa');
+        $thumbAbs = Uploader::absolutePath((string) $meta['thumb']);
+        assertNotNull($thumbAbs, 'el thumb existe en disco');
+        assertSame('image/webp', (string) finfo_file(finfo_open(FILEINFO_MIME_TYPE), $thumbAbs));
+
+        $sid = self::crearSubmissionCon($fieldId, (string) Uploader::encode($meta));
+        $files = \App\Models\Answer::attachmentsBySubmission($sid);
+        assertSame(1, count($files));
+        assertTrue($files[0]['has_thumb'], 'la superficie de la vista previa expone que hay thumb');
+        assertSame('image/png', $files[0]['mime']);
+
+        // La purga se lleva el original Y el thumb (archivos + metadatos).
+        assertSame(2, Uploader::purgeSubmission($sid));
+        assertSame(0, self::storedDelta());
+        @unlink($tmp);
     }
 
     public function testPurgePorFormularioBorraTodo(): void

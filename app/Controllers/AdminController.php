@@ -30,6 +30,7 @@ class AdminController
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin');
+            return;
         }
 
         $userId = (int) Request::post('user_id', 0);
@@ -39,22 +40,26 @@ class AdminController
         if ($target === null) {
             Session::flash('error', 'Usuario no encontrado.');
             Response::redirect('/admin');
+            return;
         }
 
         // No permitir degradar al propio admin
         if ((int) \App\Core\Auth::id() === $userId && $roleId !== 1) {
             Session::flash('error', 'No puedes cambiar tu propio rol de administrador.');
             Response::redirect('/admin');
+            return;
         }
 
         if (!in_array($roleId, array_column(Role::all(), 'id'), true)) {
             Session::flash('error', 'Rol inválido.');
             Response::redirect('/admin');
+            return;
         }
 
         User::updateRole($userId, $roleId);
         Session::flash('success', 'Rol actualizado.');
         Response::redirect('/admin');
+        return;
     }
 
     public function toggleActive(): void
@@ -62,6 +67,7 @@ class AdminController
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin');
+            return;
         }
 
         $userId = (int) Request::post('user_id', 0);
@@ -70,16 +76,19 @@ class AdminController
         if ($target === null) {
             Session::flash('error', 'Usuario no encontrado.');
             Response::redirect('/admin');
+            return;
         }
 
         if ((int) \App\Core\Auth::id() === $userId) {
             Session::flash('error', 'No puedes desactivar tu propia cuenta.');
             Response::redirect('/admin');
+            return;
         }
 
         User::toggleActive($userId);
         Session::flash('success', 'Estado de usuario actualizado.');
         Response::redirect('/admin');
+        return;
     }
 
     public function allForms(): void

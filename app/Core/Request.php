@@ -13,6 +13,12 @@ class Request
      */
     private static ?bool $jsonTooLarge = null;
 
+    /** Cuerpo JSON inyectable en tests (php://input no es legible en CLI puro). */
+    private static ?string $testRequestBody = null;
+
+    /** Seam de tests para ip(): null = leer la config (TRUST_PROXY). */
+    private static ?bool $trustProxyForTesting = null;
+
     public static function method(): string
     {
         return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -21,13 +27,6 @@ class Request
     public static function isPost(): bool
     {
         return self::method() === 'POST';
-    }
-
-    public static function uri(): string
-    {
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
-        $uri = parse_url($uri, PHP_URL_PATH) ?: '/';
-        return '/' . trim($uri, '/');
     }
 
     public static function get(string $key, $default = null)
@@ -63,7 +62,7 @@ class Request
             return [];
         }
 
-        $raw = file_get_contents('php://input');
+        $raw = self::$testRequestBody ?? file_get_contents('php://input');
         if ($raw === false || $raw === '') {
             return [];
         }
@@ -144,6 +143,26 @@ class Request
         self::$jsonTooLarge = null;
     }
 
+    /**
+     * Seam para tests: fija (o limpia con null) el cuerpo JSON que leerá json(),
+     * porque php://input no es legible bajo el runner CLI puro.
+     */
+    public static function setRequestBodyForTests(?string $body): void
+    {
+        self::$testRequestBody = $body;
+        self::$jsonTooLarge = null;
+    }
+
+    /**
+     * Seam para tests: fija el valor de trust_proxy sin tocar la config
+     * (Config no tiene setter). null = se lee de la config; los tests que lo
+     * usen deben devolverlo a null en setUp/tearDown.
+     */
+    public static function setTrustProxyForTesting(?bool $value): void
+    {
+        self::$trustProxyForTesting = $value;
+    }
+
     public static function clean(string $value): string
     {
         return trim($value);
@@ -168,7 +187,7 @@ class Request
         // confianza (config.trust_proxy). En caso contrario, cualquier
         // cliente podría falsificarlos (bypass de rate limiting, IPs falsas).
         $appCfg = Config::get('app', []);
-        $trustProxy = (bool) ($appCfg['trust_proxy'] ?? false);
+        $trustProxy = self::$trustProxyForTesting ?? (bool) ($appCfg['trust_proxy'] ?? false);
 
         if ($trustProxy) {
             $headers = [

@@ -17,9 +17,10 @@ use ReflectionClass;
  * scope/identificador dejaba una fila para siempre, así que crecía sin tope en
  * una tabla que nadie lee más que para contar. Estos tests fijan las tres
  * propiedades del cleanup —qué se borra, qué NO se borra y que sea idempotente
- * y acotado— y el umbral de 600 s, que es el máximo de ventana que admite el
- * limitador: si se limpiaran solo las caducadas de la ventana actual, con una
- * ventana de 1 h las de 1 h seguirían ahí para siempre.
+ * y acotado— y el umbral de 3600 s, que es el máximo de ventana que admite el
+ * limitador (la tasa del dashboard, DashboardLimit::WINDOW; login/register/
+ * submit usan 600 s). Si se limpiara con un umbral menor que la ventana más
+ * larga, sus filas quedarían para siempre.
  *
  * Requiere la BD real. Cada test usa filas propias y las borra en tearDown.
  */
@@ -77,16 +78,16 @@ class RateLimitsCleanupTest
 
     public function testLaVentanaMaximaAcotaLoQueSeLimpia(): void
     {
-        // El límite: 600 s es la ventana más larga que acepta el limitador
-        // (MAX_WINDOW). Con MAX_WINDOW, una fila de hace 900 s (más alla de
-        // cualquier ventana posible) se va; una de hace 300 s, no. Si el
-        // umbral fuera más pequeño que la ventana más larga, sus filas nunca se
-        // borrarían.
-        assertTrue(RateLimiter::MAX_WINDOW === 600, 'la ventana máxima de limpieza debe coincidir con la del limitador');
+        // El límite: 3600 s es la ventana más larga que acepta el limitador
+        // (MAX_WINDOW, subido cuando apareció la tasa del dashboard, que es de
+        // 1 h). Con MAX_WINDOW, una fila de hace 3800 s (más allá de cualquier
+        // ventana posible) se va; una de hace 300 s, no. Si el umbral fuera más
+        // pequeño que la ventana más larga, sus filas nunca se borrarían.
+        assertEquals(3600, RateLimiter::MAX_WINDOW, 'la ventana máxima de limpieza debe coincidir con la del limitador');
 
         $scope = self::crearScope();
         self::db()->execute(
-            'INSERT INTO rate_limits (scope, identifier, attempts, window_start) VALUES (:a, :i, 1, NOW() - INTERVAL 900 SECOND)',
+            'INSERT INTO rate_limits (scope, identifier, attempts, window_start) VALUES (:a, :i, 1, NOW() - INTERVAL 3800 SECOND)',
             ['a' => $scope, 'i' => 'pasado']
         );
         RateLimiter::cleanExpired(RateLimiter::MAX_WINDOW);
@@ -94,7 +95,7 @@ class RateLimitsCleanupTest
             'SELECT COUNT(*) AS c FROM rate_limits WHERE scope = :a AND identifier = :i',
             ['a' => $scope, 'i' => 'pasado']
         );
-        assertEquals(0, (int) ($quedan['c'] ?? -1), 'una fila de 900 s está fuera de toda ventana posible y debe borrarse');
+        assertEquals(0, (int) ($quedan['c'] ?? -1), 'una fila de 3800 s está fuera de toda ventana posible y debe borrarse');
     }
 
     public function testLaLimpiezaEsIdempotente(): void

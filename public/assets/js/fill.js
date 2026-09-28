@@ -27,25 +27,28 @@
         'ui.anterior': 'Anterior',
         'ui.siguiente': 'Siguiente',
         'ui.enviar': 'Enviar',
-        'ui.enviando': t('ui.enviando'),
-        'val.required': t('val.required'),
-        'val.email': t('val.email'),
-        'val.url': t('val.url'),
-        'val.tel': t('val.tel'),
-        'val.number': t('val.number'),
+        'ui.enviando': 'Enviando…',
+        'val.required': 'Esta pregunta es obligatoria.',
+        'val.email': 'Ingresa un correo válido.',
+        'val.url': 'Ingresa una URL válida.',
+        'val.tel': 'Ingresa un teléfono válido.',
+        'val.number': 'Ingresa un número válido.',
         'val.min_gte': 'Debe ser mayor o igual a {min}.',
         'val.max_lte': 'Debe ser menor o igual a {max}.',
         'val.min_len': 'Debe tener al menos {n} caracteres.',
         'val.max_len': 'Debe tener como máximo {n} caracteres.',
         'val.nps_range': 'Debe estar entre 0 y 10.',
-        'val.matrix_all': t('val.matrix_all'),
-        'val.ranking_all': t('val.ranking_all'),
+        'val.scale_range': 'Debe elegir un valor entre 1 y {max}.',
+        'val.matrix_all': 'Debes responder todas las filas.',
+        'val.ranking_all': 'Debes ordenar todas las opciones.',
         'val.ranking_range': 'Los órdenes deben estar entre 1 y {max}.',
-        'val.ranking_unique': t('val.ranking_unique'),
+        'val.ranking_unique': 'Los órdenes no pueden repetirse.',
         'val.star_min': 'Debe elegir al menos 1 estrella.',
         'val.star_max': 'Debe elegir como máximo {max} estrellas.',
-        'js.saved': t('js.saved'),
-        'js.restored': t('js.restored'),
+        'val.file_too_big': 'El archivo supera el tamaño máximo permitido ({max} MB).',
+        'val.file_count': 'Puedes adjuntar como máximo {max} archivo(s).',
+        'js.saved': 'Progreso guardado',
+        'js.restored': 'Restauramos tu progreso anterior.',
     };
     function t(key, params) {
         let s = I18N[key] !== undefined ? I18N[key] : (FALLBACK_I18N[key] || key);
@@ -606,19 +609,25 @@
             }
         }
 
-        if (type === 'number' || type === 'range' || type === 'nps' || type === 'star') {
+        if (type === 'number' || type === 'range' || type === 'nps' || type === 'star' || type === 'scale') {
             const num = Number(value);
             if (value !== '' && isNaN(num)) {
                 errors.push(t('val.number'));
             }
             if (!isNaN(num)) {
-                const min = type === 'star' ? 1 : parseFloat(card.dataset.vfMin);
+                const min = (type === 'star' || type === 'scale') ? 1 : parseFloat(card.dataset.vfMin);
                 const max = parseFloat(card.dataset.vfMax);
-                if (!isNaN(min) && num < min) {
-                    errors.push(type === 'star' ? t('val.star_min') : t('val.min_gte', { min: min }));
-                }
-                if (!isNaN(max) && num > max) {
-                    errors.push(type === 'star' ? t('val.star_max', { max: max }) : (type === 'nps' ? t('val.nps_range') : t('val.max_lte', { max: max })));
+                if (type === 'scale') {
+                    if (max && !isNaN(max) && (num < 1 || num > max)) {
+                        errors.push(t('val.scale_range', { max: max }));
+                    }
+                } else {
+                    if (!isNaN(min) && num < min) {
+                        errors.push(type === 'star' ? t('val.star_min') : t('val.min_gte', { min: min }));
+                    }
+                    if (!isNaN(max) && num > max) {
+                        errors.push(type === 'star' ? t('val.star_max', { max: max }) : (type === 'nps' ? t('val.nps_range') : t('val.max_lte', { max: max })));
+                    }
                 }
             }
         }

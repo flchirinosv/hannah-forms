@@ -23,7 +23,8 @@ namespace App\Core;
 class RateLimiter
 {
     /**
-     * Ventana más larga en uso en la app: la de `register` y `submit` (600 s).
+     * Ventana más larga en uso en la app: 3600 s de las tasas del dashboard
+     * (`DashboardLimit::WINDOW`); las de login/register/submit son de 600 s.
      *
      * Es el techo que necesita `cleanExpired()`: una fila más nueva que esto
      * puede pertenecer a una ventana activa, y borrarla abriría el límite
@@ -32,9 +33,10 @@ class RateLimiter
      * borrar sin mirar el scope.
      *
      * Si algún día se añade un límite con ventana mayor, hay que subir esto en
-     * el mismo commit: si no, el cleanup borraría filas de un limitador vivo.
+     * el mismo commit: si no, el cleanup borraría filas de un limitador vivo
+     * (ocurrió al introducir DashboardLimit::WINDOW = 3600).
      */
-    public const MAX_WINDOW = 600;
+    public const MAX_WINDOW = 3600;
 
     /**
      * Verifica si la acción puede ejecutarse (no excede el límite).

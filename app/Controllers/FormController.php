@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Csrf;
+use App\Core\DashboardLimit;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -62,6 +63,13 @@ class FormController
             return;
         }
 
+        // F5.3 — techo de creaciones por usuario por hora (spam de formularios).
+        if (!DashboardLimit::createAllowed()) {
+            Session::flash('error', 'Llegaste al límite de formularios por hora. Intenta más tarde.');
+            Response::redirect('/dashboard');
+            return;
+        }
+
         $formId = Form::create(Auth::id(), $title, $description);
 
         if ($template !== null) {
@@ -72,13 +80,16 @@ class FormController
                 Form::delete($formId);
                 Session::flash('error', 'No se pudo crear el formulario desde la plantilla: ' . $error);
                 Response::redirect('/dashboard');
+                return;
             }
             Session::flash('success', 'Formulario creado desde la plantilla «' . (string) ($template['name'] ?? $templateKey) . '». Revísalo en el builder.');
             Response::redirect('/forms/' . $formId . '/builder');
+            return;
         }
 
         Session::flash('success', 'Formulario creado. Ahora puedes agregar campos.');
         Response::redirect('/forms/' . $formId . '/builder');
+        return;
     }
 
     /**
@@ -105,13 +116,16 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
 
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
 
         $settings = Form::settings($id);
@@ -135,16 +149,20 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token inválido.');
             Response::redirect('/forms/' . $id);
+            return;
         }
 
         $title = trim(Request::post('title', ''));
@@ -153,16 +171,19 @@ class FormController
         if ($title === '') {
             Session::flash('error', 'El título no puede estar vacío.');
             Response::redirect('/forms/' . $id);
+            return;
         }
 
         if (mb_strlen($title) > 190) {
             Session::flash('error', 'El título no puede superar los 190 caracteres.');
             Response::redirect('/forms/' . $id);
+            return;
         }
 
         Form::update($id, $title, $description, $form['status']);
         Session::flash('success', 'Formulario actualizado.');
         Response::redirect('/forms/' . $id);
+        return;
     }
 
     public function delete(int $id): void
@@ -172,16 +193,20 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canDelete($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token inválido.');
             Response::redirect('/dashboard');
+            return;
         }
 
         // P10/F1.1: dos fases. Primero se RECOLECTAN las rutas (mientras las
@@ -205,6 +230,7 @@ class FormController
 
         Session::flash('success', 'Formulario eliminado.');
         Response::redirect('/dashboard');
+        return;
     }
 
     public function publish(int $id): void
@@ -214,17 +240,21 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
 
         Form::setStatus($id, 'published');
         Session::flash('success', 'Formulario publicado. Ya puedes compartir el enlace.');
         Response::redirect('/forms/' . $id);
+        return;
     }
 
     public function close(int $id): void
@@ -234,17 +264,21 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
 
         Form::setStatus($id, 'closed');
         Session::flash('success', 'Formulario cerrado. Ya no acepta respuestas.');
         Response::redirect('/forms/' . $id);
+        return;
     }
 
     public function duplicate(int $id): void
@@ -254,21 +288,33 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token inválido.');
             Response::redirect('/forms/' . $id);
+            return;
+        }
+
+        // F5.3 — duplicar también crea un formulario: mismo techo por usuario.
+        if (!DashboardLimit::createAllowed()) {
+            Session::flash('error', 'Llegaste al límite de formularios por hora. Intenta más tarde.');
+            Response::redirect('/forms/' . $id);
+            return;
         }
 
         $newId = Form::duplicate($id);
         Session::flash('success', 'Formulario duplicado. La copia está en borrador.');
         Response::redirect('/forms/' . $newId);
+        return;
     }
 
     /**
@@ -283,19 +329,25 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
 
         $url = rtrim((string) \App\Core\Config::get('app.url', ''), '/')
             . '/f/' . rawurlencode((string) $form['slug']);
 
-        header('Content-Type: image/svg+xml; charset=utf-8');
-        header('Cache-Control: private, max-age=3600');
+        // Headers solo fuera de CLI (en el runner la salida ya va a un buffer).
+        if (PHP_SAPI !== 'cli') {
+            header('Content-Type: image/svg+xml; charset=utf-8');
+            header('Cache-Control: private, max-age=3600');
+        }
         echo \App\Services\QrCode::svg($url);
     }
 
@@ -310,12 +362,15 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
         }
 
         // Los settings salen de la fila que ya trajo `find()`: `Form::settings($id)`
@@ -339,12 +394,21 @@ class FormController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
+        }
+
+        // F5.3 — exportaciones por usuario por hora (barrer el almacén).
+        if (!DashboardLimit::exportAllowed()) {
+            Response::abort(429, 'Demasiadas exportaciones. Intenta más tarde.');
+            return;
         }
 
         // Igual que en printForm: sin consulta de más.

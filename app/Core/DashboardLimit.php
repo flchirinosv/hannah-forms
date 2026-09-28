@@ -1,0 +1,62 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core;
+
+/**
+ * F5.3 — Límites del dashboard por USUARIO (crear formularios / exportar datos).
+ *
+ * El identificador es el id de usuario autenticado, NO la IP: un office detrás
+ * de una NAT comparte IP, y estos límites protegen a la CUENTA de abusos
+ * (barrer el almacén con exportaciones o spamear formularios), no al servidor
+ * de una sola dirección. El middleware `auth` garantiza que llegamos aquí con
+ * sesión; aún así, un `Auth::id()` nulo se deja pasar (en el flujo real la
+ * ruta no se alcanza sin sesión, y no queremos compartir un contador "" entre
+ * peticiones anónimas de tests).
+ *
+ * Límites en `config/config.php` (`app.limits`), override por .env:
+ * `DASH_CREATE_PER_HOUR` (default 30) y `DASH_EXPORT_PER_HOUR` (default 120).
+ *
+ * OJO: la ventana es de 3600 s (1 h), MÁS larga que `RateLimiter::MAX_WINDOW`
+ * (600 s). `cleanExpired()` y `scripts/clean-rate-limits.php` borran filas más
+ * viejas que la ventana más larga de la app, así que `MAX_WINDOW` se subió a
+ * 3600 en el MISMO cambio que añadió estos límites: no bajes ese techo ni
+ * añadas aquí una ventana mayor sin subirlo en el mismo commit.
+ */
+final class DashboardLimit
+{
+    public const WINDOW = 3600;
+
+    public static function createAllowed(): bool
+    {
+        return self::isAllowed('dash:create', 'create_per_hour', 30);
+    }
+
+    public static function exportAllowed(): bool
+    {
+        return self::isAllowed('dash:export', 'export_per_hour', 120);
+    }
+
+    private static function isAllowed(string $scope, string $configKey, int $fallback): bool
+    {
+        $userId = Auth::id();
+        if ($userId === null) {
+            // Sin sesión la ruta no debería alcanzarse (middleware `auth`).
+            // Si un test la invoca directo así, que no comparta el contador "".
+            return true;
+        }
+
+        $limits = Config::get('app.limits', []);
+        $max = (int) ($limits[$configKey] ?? $fallback);
+        $identifier = (string) $userId;
+
+        $allowed = RateLimiter::isAllowed($scope, $identifier, $max, self::WINDOW);
+        if ($allowed) {
+            // Un intento de creación cuenta aunque luego falle la plantilla: la
+            // ventana es un techo de trabajo, no una contabilidad transaccional.
+            RateLimiter::recordHit($scope, $identifier, self::WINDOW);
+        }
+        return $allowed;
+    }
+}

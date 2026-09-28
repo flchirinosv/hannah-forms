@@ -257,6 +257,11 @@ class Answer
                     'size'      => (int) ($meta['size'] ?? 0),
                     'mime'      => (string) ($meta['mime'] ?? ''),
                     'stored'    => (string) ($meta['stored'] ?? ''),
+                    // La vista previa solo existe si se generó el webp en la
+                    // subida (imagenes rasterizadas). El download usa el MISMO
+                    // criterio en `meta['thumb']`, así que nunca pintamos un
+                    // <img> que vaya a responder 404.
+                    'has_thumb' => !empty($meta['thumb']),
                 ];
             }
         }
@@ -275,15 +280,6 @@ class Answer
              WHERE field_id = :fid AND value LIKE '%\"stored\"%'",
             ['fid' => $fieldId]
         );
-    }
-
-    public static function valuesByField(int $fieldId): array
-    {
-        $rows = self::db()->fetchAll(
-            'SELECT a.value FROM answers a WHERE a.field_id = :fid ORDER BY a.id',
-            ['fid' => $fieldId]
-        );
-        return array_column($rows, 'value');
     }
 
     /**

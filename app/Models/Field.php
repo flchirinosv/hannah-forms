@@ -180,9 +180,4 @@ class Field
     {
         self::db()->execute('DELETE FROM fields WHERE id = :id', ['id' => $id]);
     }
-
-    public static function deleteByForm(int $formId): void
-    {
-        self::db()->execute('DELETE FROM fields WHERE form_id = :form_id', ['form_id' => $formId]);
-    }
 }

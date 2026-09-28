@@ -106,8 +106,7 @@ class AuthTest
         assertSame('admin', Auth::role());
     }
 
-    /** @after */
-    public function cleanup(): void
+    public function tearDown(): void
     {
         if (self::$userId !== null) {
             \App\Core\Database::getInstance(\App\Core\Config::db())->execute(

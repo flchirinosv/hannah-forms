@@ -74,7 +74,12 @@ class Form
         return $text !== '' ? $text : 'form-' . substr(bin2hex(random_bytes(4)), 0, 6);
     }
 
-    public static function find(int $id): ?array
+    /**
+     * @param bool $withFields cargar también los campos (Field::byForm); las
+     *                         rutas que solo leen el contenedor (owner/permisos)
+     *                         lo apagan para ahorrarse una query.
+     */
+    public static function find(int $id, bool $withFields = true): ?array
     {
         $form = self::db()->fetch(
             'SELECT f.*, u.name AS owner_name FROM forms f JOIN users u ON u.id = f.user_id WHERE f.id = :id',
@@ -83,7 +88,7 @@ class Form
         if ($form === null) {
             return null;
         }
-        $form['fields'] = Field::byForm($id);
+        $form['fields'] = $withFields ? Field::byForm($id) : [];
         return $form;
     }
 
@@ -173,7 +178,12 @@ class Form
                     'description' => (string) ($form['description'] ?? ''),
                     'slug'        => $slug,
                     'status'      => 'draft',
-                    'settings'    => (string) ($form['settings'] ?? ''),
+                    // La copia sale normalizada: `settingsFrom()` devuelve
+                    // siempre un JSON DECLARATIVO válido (defaults si la fila
+                    // original tiene NULL/vacío), y la columna tiene CHECK de
+                    // JSON_VALID — copiar el string crudo reventaba con 4025
+                    // al duplicar un form que nunca guardó settings.
+                    'settings'    => json_encode(self::settingsFrom($form), JSON_UNESCAPED_UNICODE),
                 ]
             );
             $newId = (int) $db->lastInsertId();

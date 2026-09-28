@@ -36,6 +36,16 @@ class MailerTest
         Mailer::setConfigOverride($this->cfg);
     }
 
+    public function tearDown(): void
+    {
+        // Sin esto, el transporte estático y el override de configuración se
+        // filtran a los tests que vienen después: las notificaciones reales del
+        // submit acabarían "enviándose" (correctamente, sin red) al closure de
+        // prueba y la config de SMTP del test quedaría activa para el resto.
+        Mailer::setTransport(null);
+        Mailer::setConfigOverride(null);
+    }
+
     public function testIsConfiguredFalseConHostVacio(): void
     {
         Mailer::setTransport(null);

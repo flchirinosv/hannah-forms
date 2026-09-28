@@ -103,12 +103,6 @@ class Submission
         );
     }
 
-    public static function countByForm(int $formId): int
-    {
-        $row = self::db()->fetch('SELECT COUNT(*) AS c FROM submissions WHERE form_id = :form_id', ['form_id' => $formId]);
-        return (int) ($row['c'] ?? 0);
-    }
-
     /**
      * Submissions de un formulario con paginación server-side (M2).
      *

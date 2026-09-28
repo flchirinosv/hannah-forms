@@ -155,7 +155,22 @@ el archivo siguen ahí.
   datos ya en memoria; `Form::find()` carga `fields` que el listado de respuestas
   no usa.
 
-## Fase 4 — Calidad y verdad documental (otra sesión)
+## Fase 4 — Calidad y verdad documental (CERRADA 2026-09-28)
+
+> Estado al cerrar: `git` con historial por fase; `ControllerActionsTest` recorre
+> TODAS las rutas con el Router real (destapó y arregló `header()/exit`
+> incondicionales en `exportJson`/`exportCsv`/`qrSvg` y el `Form::duplicate` con
+> `settings` crudo → 4025 JSON_VALID); tests que no probaban reescritos con asserts
+> reales (Response/Request vía seams `setRecordHalt`/`setRequestBodyForTests`,
+> `@after`→`tearDown`); `Request::ip()` con contrato fijado por `RequestIpTest`;
+> eliminados los 6 `data-vf-*` sin consumidor, el FontAwesome muerto (~510 KB) y 7
+> métodos sin call site (`Clock::addDays`, `Env::isLoaded`+`$loaded`,
+> `Request::uri`, `Answer::valuesByField`, `Submission::countByForm`,
+> `Field::deleteByForm`); `scripts/clean-uploads.php` +
+> `Uploader::pruneEmptyMonths()`; `Form::find(id, withFields)`; thumbs webp ya
+> mostrados; `scale` validado server-side; fallback i18n de fill.js sin
+> auto-referencias; docs reconciliados (AGENTS.md, technical-document.md,
+> docblock de `scripts/test.php`). Suite **442/0/0**.
 
 - **`git init` + commit inicial.** Hoy no hay control de versiones: sin historial,
   sin diff, sin reversión. Es el riesgo operativo mayor y el más barato de cerrar.
@@ -185,14 +200,20 @@ el archivo siguen ahí.
   `mode` del alta sin efecto sin JS; `scale`/`star` con límites solo en cliente;
   5 `data-vf-*` emitidos sin consumidor; fallback i18n divergente en `fill.js:40`.
 
-## Fase 5 — Decisiones de producto (pendientes del autor)
+## Fase 5 — Decisiones de producto (CERRADA 2026-09-28)
 
-- `thanks.redirect_url` acepta cualquier host http/https (phishing post-envío):
-  allowlist de dominios o aviso al autor.
-- El rol `editor` accede a **todos** los formularios y respuestas de todos los
-  dueños: documentarlo en el modelo de amenazas o acotarlo.
-- Límite de ritmo en la API autenticada (crear cientos de formularios, exportar en bucle).
-- ~~**D1**: aprobar o no el reanidado de `12706`–`12709` bajo `12705`.~~ **Hecho** (ver abajo).
+- `thanks.redirect_url` → **allowlist de servidor** (F5.1, `APP_REDIRECT_ALLOWLIST`,
+  vacía = bloqueada): `App\Services\RedirectGuard` + seam de tests; gracias con aviso
+  si el host no está listado.
+- El rol `editor` → **decisión: se deja como está** (F5.2), pendiente de un sistema
+  de roles/grupos (RBAC). No acotarlo ahora; cuando exista RBAC hay que revisar cada
+  `canAccess()`/`canEdit()` a la vez que se decide qué puede ver `editor`. El
+  middleware `editor` sigue declarado en el Router pero **no** se aplica a ninguna
+  ruta de `config/routes.php`.
+- Límite de ritmo en la API autenticada → **F5.3 implementado**: `DashboardLimit`
+  por usuario, scopes `dash:create`/`dash:export` con `RateLimiter` (ventana
+  `MAX_WINDOW`=3600 s), config `app.limits`, 429 con `views/errors/429.php`.
+- **~~D1~~** reanidado de `12706`–`12709`: aprobado (ver abajo).
 
 ## Fase 3 · D1 (hecho) — reanudar `12706`–`12709` bajo la sección `12705`
 

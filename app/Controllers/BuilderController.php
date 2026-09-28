@@ -23,12 +23,15 @@ class BuilderController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if ($user === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         View::render('builder/index', [
@@ -44,25 +47,31 @@ class BuilderController
         $form = Form::find($id);
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (Auth::user() === null) {
             Response::redirect('/login');
+            return;
         }
         if (!$this->canEdit((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         // C1: Verificar CSRF (el cliente envia el token via header X-CSRF-Token)
         if (!Csrf::verifyHeader()) {
             Response::json(['ok' => false, 'error' => 'Token de seguridad inválido. Recarga la página e intenta de nuevo.'], 419);
+            return;
         }
 
         $body = Request::json();
         if (Request::jsonTooLarge()) {
             Response::json(['ok' => false, 'error' => 'La estructura excede el tamaño máximo permitido.'], 413);
+            return;
         }
         if (!is_array($body) || !isset($body['fields']) || !is_array($body['fields'])) {
             Response::json(['ok' => false, 'error' => 'Estructura inválida'], 422);
+            return;
         }
 
         // C4: Lista de tipos de campo permitidos (whitelist) - debe coincidir con typeInfo en builder.js
@@ -111,6 +120,7 @@ class BuilderController
                 if (!is_array($item) || !isset($item['_uid'])) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => 'Estructura inválida: falta identificador de campo.'], 422);
+                    return;
                 }
                 $payloadByUid[(string) $item['_uid']] = $item + ['_index' => $idx];
             }
@@ -130,6 +140,7 @@ class BuilderController
                         'ok'    => false,
                         'error' => 'Tipo de campo no permitido: ' . $type,
                     ], 422);
+                    return;
                 }
 
                 // Resolver sección contenedora (parent_id llega como _uid o null).
@@ -144,21 +155,25 @@ class BuilderController
                         Response::json(['ok' => false, 'error' => ($type === 'page'
                             ? 'Los saltos de página no pueden estar dentro de una sección.'
                             : 'Las secciones no pueden estar dentro de otra sección.')], 422);
+                        return;
                     }
                 } elseif ($rawParent !== null && $rawParent !== '') {
                     $pu = (string) $rawParent;
                     if ($pu === $uid || !isset($payloadByUid[$pu])) {
                         $db->rollBack();
                         Response::json(['ok' => false, 'error' => 'La pregunta hace referencia a una sección inválida.'], 422);
+                        return;
                     }
                     if (($payloadByUid[$pu]['type'] ?? '') !== 'section') {
                         $db->rollBack();
                         Response::json(['ok' => false, 'error' => 'Las preguntas solo pueden anidarse dentro de una sección.'], 422);
+                        return;
                     }
                     if (!isset($uidToId[$pu])) {
                         // La sección debe aparecer ANTES en el orden de lectura.
                         $db->rollBack();
                         Response::json(['ok' => false, 'error' => 'La sección contenedora debe ir antes que sus preguntas.'], 422);
+                        return;
                     }
                     $parentIdResolved = $uidToId[$pu];
                 }
@@ -181,6 +196,7 @@ class BuilderController
                 if (mb_strlen($label) > 190 || mb_strlen($placeholder) > 190 || mb_strlen($helpText) > 255) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => 'Alguna etiqueta o texto de ayuda excede el máximo permitido.'], 422);
+                    return;
                 }
 
                 $counterKey = $parentUid[$uid] ?? '__root__';
@@ -236,6 +252,7 @@ class BuilderController
                         'ok'    => false,
                         'error' => $this->logicErrorMessage($resolved['error'], (string) ($payloadByUid[$uid]['label'] ?? '')),
                     ], 422);
+                    return;
                 }
                 $resolvedLogicByUid[$uid] = $resolved['logic'];
             }
@@ -257,6 +274,7 @@ class BuilderController
             if ($validationError !== null) {
                 $db->rollBack();
                 Response::json(['ok' => false, 'error' => $validationError], 422);
+                return;
             }
 
             // PASO 3 — Persistir lógica resuelta.
@@ -281,6 +299,7 @@ class BuilderController
                 if (mb_strlen($title) > 190) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => 'El título no puede superar los 190 caracteres.'], 422);
+                    return;
                 }
                 Form::update(
                     (int) $form['id'],
@@ -297,11 +316,13 @@ class BuilderController
                 if (!is_array($rawSettings)) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => 'Configuración inválida.'], 422);
+                    return;
                 }
                 $settingsError = \App\Services\FormSettings::validate($rawSettings);
                 if ($settingsError !== null) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => $settingsError], 422);
+                    return;
                 }
                 Form::saveSettings((int) $form['id'], $rawSettings);
             }
@@ -321,12 +342,14 @@ class BuilderController
             }
 
             Response::json(['ok' => true, 'message' => 'Estructura guardada']);
+            return;
         } catch (\Throwable $e) {
             $db->rollBack();
 
             // C3: No exponer detalles internos al cliente; registrar en log
             error_log('[BuilderController] Error al guardar formulario ' . $id . ': ' . $e->getMessage());
             Response::json(['ok' => false, 'error' => 'Ocurrió un error al guardar. Intenta de nuevo.'], 500);
+            return;
         }
     }
 

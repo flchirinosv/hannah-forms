@@ -51,13 +51,24 @@ $files = is_array($files ?? null) ? $files : [];
                     <div class="flex-grow-1">
                         <?php if ($files): ?>
                             <?php foreach ($files as $f): ?>
-                                <a class="d-inline-flex align-items-center gap-2 text-decoration-none vf-attachment-link"
-                                   href="/attachments/<?= (int) $f['answer_id'] ?>?i=<?= (int) $f['index'] ?>"
-                                   title="<?= View::escape($f['name']) ?>">
-                                    <i class="fa-solid fa-paperclip"></i>
-                                    <span class="fw-semibold"><?= View::escape($f['name']) ?></span>
-                                    <span class="badge text-bg-light border"><?= View::escape(\App\Services\Uploader::humanSize((int) $f['size'])) ?></span>
-                                </a>
+                                <?php
+                                $isImage = $f['mime'] !== '' && str_starts_with($f['mime'], 'image/');
+                                $thumbUrl = '/attachments/' . (int) $f['answer_id'] . '?i=' . (int) $f['index'] . '&thumb=1';
+                                ?>
+                                <div class="d-flex align-items-center gap-3 py-1 flex-wrap">
+                                    <?php if ($isImage && $f['has_thumb']): ?>
+                                        <a href="<?= $thumbUrl ?>" title="Ver imagen" target="_blank" rel="noopener">
+                                            <img src="<?= $thumbUrl ?>" alt="" class="vf-attachment-thumb" loading="lazy">
+                                        </a>
+                                    <?php endif; ?>
+                                    <a class="d-inline-flex align-items-center gap-2 text-decoration-none vf-attachment-link"
+                                       href="/attachments/<?= (int) $f['answer_id'] ?>?i=<?= (int) $f['index'] ?>"
+                                       title="<?= View::escape($f['name']) ?>">
+                                        <i class="fa-solid fa-paperclip"></i>
+                                        <span class="fw-semibold"><?= View::escape($f['name']) ?></span>
+                                        <span class="badge text-bg-light border"><?= View::escape(\App\Services\Uploader::humanSize((int) $f['size'])) ?></span>
+                                    </a>
+                                </div>
                             <?php endforeach; ?>
                         <?php elseif ($display !== ''): ?>
                             <?= View::escape($display) ?>

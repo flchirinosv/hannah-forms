@@ -8,16 +8,20 @@ declare(strict_types=1);
  * Sustituye a PHPUnit (que requiere Composer). Sin dependencias externas.
  *
  * Uso:
- *   php scripts/test.php                 # ejecuta todos los tests en tests/
- *   php scripts/test.php --filter=Auth   # filtra por nombre
- *   php scripts/test.php --path=tests/unit  # carpeta especifica
+ *   php scripts/test.php                    # ejecuta todos los tests en tests/
+ *   php scripts/test.php --filter Auth      # filtra por NOMBRE DE MÉTODO (espacio, no `=`)
+ *   php scripts/test.php --path tests/unit  # carpeta específica (solo directorios)
  *
- * Convenciones para tests en tests/:
- *   - Clases con sufijo Test, metodos publicos que devuelven void
- *   - Metodo estatico setUp() opcional (se llama antes de cada test)
- *   - Metodo tearDown() opcional (se llama despues de cada test, incluso
- *     si falla: util para limpiar archivos/datos creados por el test)
- *   - Asserts disponibles: assertTrue, assertFalse, assertEquals, assertNull,
+ * Convenciones para tests en tests/ (archivos con sufijo Test.php):
+ *   - Métodos públicos NO estáticos cuyo nombre empiece por `test`
+ *     (el filtro casa por substring SINSENSIBLE a mayúsculas sobre el nombre
+ *     del método, no de la clase; un filtro que no casa con nada ejecuta 0
+ *     tests y sale verde — comprobar siempre el contador).
+ *   - setUp() de instancia opcional (antes de CADA test, la clase se instancia
+ *     UNA vez por test: el estado compartido va en `static`).
+ *   - tearDown() de instancia opcional (después de CADA test, pase lo que
+ *     pase, incluso si falló: se usa para limpiar filas/archivos creados).
+ *   - Asserts globales: assertTrue, assertFalse, assertEquals, assertNull,
  *     assertNotNull, assertSame, assertInstanceOf, assertArrayHasKey, fail
  */
 

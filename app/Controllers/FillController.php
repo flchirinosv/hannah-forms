@@ -12,6 +12,7 @@ use App\Core\I18n;
 use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Session;
 use App\Core\View;
 use App\Models\Answer;
 use App\Models\Form;
@@ -19,6 +20,7 @@ use App\Models\Submission;
 use App\Services\LogicEvaluator;
 use App\Services\Notifier;
 use App\Services\QuizScore;
+use App\Services\RedirectGuard;
 use App\Services\Uploader;
 use App\Services\Webhook;
 
@@ -30,6 +32,7 @@ class FillController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
 
         if ($form['status'] === 'closed') {
@@ -75,11 +78,13 @@ class FillController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
 
         $settings = Form::settings((int) $form['id']);
         if (empty($settings['embed']['enabled'])) {
             Response::abort(403, 'Este formulario no permite ser embebido.');
+            return;
         }
 
         if ($form['status'] === 'closed') {
@@ -274,6 +279,7 @@ class FillController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
 
         $settings = Form::settings((int) $form['id']);
@@ -281,6 +287,7 @@ class FillController
 
         if ($form['status'] !== 'published') {
             Response::abort(403, I18n::t('err.not_accepting', $locale));
+            return;
         }
 
         // P10 — Si el POST excede post_max_size, PHP vacía $_POST/$_FILES: el
@@ -289,10 +296,12 @@ class FillController
             Response::abort(413, I18n::t('err.upload_too_big_global', $locale, [
                 'max' => Uploader::maxSizeMb(),
             ]));
+            return;
         }
 
         if (!Csrf::verifyRequest()) {
             Response::abort(419, 'Token de seguridad inválido. Recarga la página.');
+            return;
         }
 
         // P6 — Re-chequear disponibilidad (calendario/cupo) en el servidor,
@@ -300,12 +309,15 @@ class FillController
         $state = self::scheduleState($settings);
         if ($state === 'closed') {
             Response::abort(403, I18n::t('err.closed', $locale));
+            return;
         }
         if ($state === 'not_open') {
             Response::abort(403, I18n::t('err.not_open', $locale));
+            return;
         }
         if (self::quotaExceeded($form)) {
             Response::abort(403, I18n::t('err.quota', $locale));
+            return;
         }
 
         // P7 — Honeypot: si el campo trampa viene rellenado, es un bot. Se finge
@@ -320,6 +332,7 @@ class FillController
         $ip = Request::ip();
         if (!RateLimiter::isAllowed($scope, $ip, 10, 600)) {
             Response::abort(429, I18n::t('err.too_many', $locale));
+            return;
         }
         // Contar este envío dentro de la ventana
         RateLimiter::recordHit($scope, $ip, 600);
@@ -519,6 +532,7 @@ class FillController
             Uploader::rollback($storedFiles);
             error_log('Error al guardar la respuesta: ' . $e->getMessage());
             Response::abort(500, I18n::t('err.failed_save', $locale));
+            return;
         }
 
         // FASE 3 — Fuera de transacción, a prueba de fallos: notificaciones
@@ -585,8 +599,14 @@ class FillController
 
     /**
      * PRG compartido (P6/P7): a `$path` (thanks) o a una URL externa
-     * http/https válida si settings.thanks.redirect_url está configurada.
-     * También usado por el honeypot para fingir éxito.
+     * http/https válida si settings.thanks.redirect_url está configurada y el
+     * host está en la allowlist del servidor. También usado por el honeypot
+     * para fingir éxito.
+     *
+     * F5.1 — Una redirect_url externa cuyo host NO está en la allowlist no se
+     * sigue: se muestra el thanks interno con un aviso (flash) en su lugar.
+     * La allowlist la pone quien opera la instancia (APP_REDIRECT_ALLOWLIST),
+     * nunca el dueño del formulario.
      *
      * @param string $path Ruta interna de gracias (permite querystring con ?sid)
      */
@@ -594,12 +614,17 @@ class FillController
     {
         $redirectUrl = trim((string) ($settings['thanks']['redirect_url'] ?? ''));
         if ($redirectUrl !== '' && self::isHttpUrl($redirectUrl)) {
-            Response::redirectExternal($redirectUrl);
+            if (RedirectGuard::hostAllowed($redirectUrl)) {
+                Response::redirectExternal($redirectUrl);
+                return;
+            }
+            Session::flash('redirect_blocked', RedirectGuard::hostOf($redirectUrl));
         }
         if ($path === '') {
             $path = '/f/' . rawurlencode((string) $form['slug']) . '/thanks';
         }
         Response::redirect($path);
+        return;
     }
 
     /**
@@ -612,6 +637,7 @@ class FillController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
 
         $settings = Form::settings((int) $form['id']);
@@ -651,10 +677,15 @@ class FillController
             $this->allowEmbedHeaders();
         }
 
+        // F5.1 — Aviso de redirect externo bloqueado (lo fija redirectToThanks
+        // vía flash si settings.thanks.redirect_url no está en la allowlist).
+        $redirectBlocked = Session::getFlash('redirect_blocked', '');
+
         View::render('fill/thanks', [
-            'form'     => $form,
-            'settings' => $settings,
-            'quiz'     => $quiz,
+            'form'            => $form,
+            'settings'        => $settings,
+            'quiz'            => $quiz,
+            'redirect_blocked' => $redirectBlocked,
         ], null);
     }
 
@@ -1029,6 +1060,21 @@ class FillController
             if (isset($validations['max']) && (float) $value > (float) $validations['max']) {
                 return I18n::t('val.max_lte', $locale, ['max' => $validations['max']]);
             }
+        }
+
+        // Escala Likert (1..max): los radios solo emiten enteros del rango,
+        // pero un POST a mano puede mandar 99 o "abc" y corromper la
+        // analítica numérica (promedios/min/max/NPS se derivan de este valor).
+        if ($type === 'scale') {
+            if (!is_numeric($value)) {
+                return I18n::t('val.number', $locale);
+            }
+            $max = (int) ($validations['max'] ?? 5);
+            $n = (int) $value;
+            if ((string) $value !== (string) $n || $n < 1 || $n > $max) {
+                return I18n::t('val.scale_range', $locale, ['max' => $max]);
+            }
+            return true;
         }
 
         if (in_array($type, ['text', 'textarea'], true) && is_string($value)) {

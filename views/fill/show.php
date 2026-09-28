@@ -96,14 +96,25 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
     $fileAccept = $isFile ? \App\Services\Uploader::acceptAttr($validations) : '';
     $hasMaxLen = !empty($validations['max_length']);
     $summary = $condSummary($field);
+    // data-vf-min/max: el cliente replica las cotas antes de enviar (UX); el
+    // servidor las vuelve a validar. `scale` siempre mide 1..max aunque el
+    // validador no haya persistido `min`.
+    $vfMin = $vfMax = null;
+    if ($type === 'scale') {
+        $vfMin = 1;
+        $vfMax = (int) ($validations['max'] ?? 5);
+    } elseif (in_array($type, ['number', 'range', 'nps', 'star'], true)) {
+        $vfMin = isset($validations['min']) ? (float) $validations['min'] : null;
+        $vfMax = isset($validations['max']) ? (float) $validations['max'] : null;
+    }
     ?>
             <section class="vf-field-card flip-in<?= $hiddenAttr($field) ?>" data-vf-key="<?= View::escape($fieldKey) ?>"
                      data-vf-field-id="<?= (int) $field['id'] ?>"
                      data-vf-type="<?= View::escape($type) ?>"
                      data-vf-required="<?= $required ? '1' : '0' ?>"
                      <?= $logicAttr($field) ?>
-                     <?= isset($validations['min']) && in_array($type, ['number', 'range', 'nps', 'star'], true) ? 'data-vf-min="' . (float) $validations['min'] . '"' : '' ?>
-                     <?= isset($validations['max']) && in_array($type, ['number', 'range', 'nps', 'star'], true) ? 'data-vf-max="' . (float) $validations['max'] . '"' : '' ?>
+                     <?= $vfMin !== null ? 'data-vf-min="' . $vfMin . '"' : '' ?>
+                     <?= $vfMax !== null ? 'data-vf-max="' . $vfMax . '"' : '' ?>
                      <?= isset($validations['min_length']) ? 'data-vf-min-len="' . (int) $validations['min_length'] . '"' : '' ?>
                      <?= isset($validations['max_length']) ? 'data-vf-max-len="' . (int) $validations['max_length'] . '"' : '' ?>
                      <?= $isFile ? 'data-vf-file-max-size="' . ($fileMaxMb * 1024 * 1024) . '"' : '' ?>
@@ -148,8 +159,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                         <?php if ($field['help_text']): ?>
                             <div class="vf-help"><?= View::escape($field['help_text']) ?></div>
                         <?php endif; ?>
-                        <div class="vf-matrix-table-wrap table-responsive" data-vf-matrix
-                             data-vf-rows="<?= count($matrixRows) ?>" <?= $required ? 'data-required="1"' : '' ?>>
+                        <div class="vf-matrix-table-wrap table-responsive" <?= $required ? 'data-required="1"' : '' ?>>
                             <table class="table table-sm mb-0 vf-matrix-table">
                                 <thead>
                                     <tr>
@@ -459,9 +469,8 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
         $emitPageHeader = static function (?array $pageField) use (&$pageBlockIdx, &$blockOpen, $t): void {
             $pageBlockIdx++;
             $blockOpen = true;
-            $blockAttrs = ' data-vf-page data-vf-step="' . ($pageBlockIdx - 1) . '"';
+            $blockAttrs = '';
             if ($pageField !== null) {
-                $blockAttrs .= ' data-vf-page-id="' . (int) $pageField['id'] . '"';
                 $pageLogic = $pageField['logic'] ?? null;
                 if (is_array($pageLogic) && !empty($pageLogic['rules'])) {
                     $blockAttrs .= ' data-vf-page-logic="' . View::escape(json_encode($pageLogic, JSON_UNESCAPED_UNICODE)) . '"';

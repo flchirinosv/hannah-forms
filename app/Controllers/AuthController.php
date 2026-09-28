@@ -52,6 +52,7 @@ class AuthController
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
             Response::redirect('/login');
+            return;
         }
 
         $email = trim(Request::post('email', ''));
@@ -60,6 +61,7 @@ class AuthController
         if ($email === '' || $password === '') {
             Session::flash('error', 'Ingresa email y contraseña.');
             Response::redirect('/login');
+            return;
         }
 
         // Rate limiting: 5 intentos por IP cada 5 minutos
@@ -67,6 +69,7 @@ class AuthController
         if (!RateLimiter::isAllowed('login', $ip, 5, 300)) {
             Session::flash('error', 'Demasiados intentos de inicio de sesión. Intenta de nuevo en unos minutos.');
             Response::redirect('/login');
+            return;
         }
 
         // A2: además, límite por email (identificador hasheado para no
@@ -76,6 +79,7 @@ class AuthController
         if (!RateLimiter::isAllowed('login_email', $emailKey, 10, 300)) {
             Session::flash('error', 'Demasiados intentos para esta cuenta. Intenta de nuevo en unos minutos.');
             Response::redirect('/login');
+            return;
         }
 
         $user = User::findByEmail($email);
@@ -93,11 +97,13 @@ class AuthController
             RateLimiter::recordHit('login_email', $emailKey, 300);
             Session::flash('error', 'Credenciales incorrectas.');
             Response::redirect('/login');
+            return;
         }
 
         if ((int) $user['is_active'] !== 1) {
             Session::flash('error', 'La cuenta está desactivada. Contacta al administrador.');
             Response::redirect('/login');
+            return;
         }
 
         // Éxito: resetear los contadores de este origen
@@ -118,6 +124,7 @@ class AuthController
         Auth::login((int) $user['id']);
         Session::flash('success', 'Bienvenido, ' . $user['name'] . '!');
         Response::redirect('/dashboard');
+        return;
     }
 
     public function showRegister(): void
@@ -130,6 +137,7 @@ class AuthController
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
             Response::redirect('/register');
+            return;
         }
 
         // Rate limiting: máx. 10 registros por IP cada 10 minutos
@@ -137,6 +145,7 @@ class AuthController
         if (!RateLimiter::isAllowed('register', $ip, 10, 600)) {
             Session::flash('error', 'Demasiados intentos de registro. Intenta de nuevo en unos minutos.');
             Response::redirect('/register');
+            return;
         }
 
         $name = trim(Request::post('name', ''));
@@ -147,11 +156,13 @@ class AuthController
         if ($name === '' || $email === '' || $password === '') {
             Session::flash('error', 'Todos los campos son obligatorios.');
             Response::redirect('/register');
+            return;
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             Session::flash('error', 'Email no válido.');
             Response::redirect('/register');
+            return;
         }
 
         // M3: validar longitudes para evitar errores 500 silenciosos de la BD
@@ -159,27 +170,32 @@ class AuthController
         if (mb_strlen($name) > 100) {
             Session::flash('error', 'El nombre no puede superar los 100 caracteres.');
             Response::redirect('/register');
+            return;
         }
 
         if (mb_strlen($email) > 190) {
             Session::flash('error', 'El email no puede superar los 190 caracteres.');
             Response::redirect('/register');
+            return;
         }
 
         if (strlen($password) < self::PASSWORD_MIN) {
             Session::flash('error', 'La contraseña debe tener al menos ' . self::PASSWORD_MIN . ' caracteres.');
             Response::redirect('/register');
+            return;
         }
 
         if ($password !== $passwordConfirm) {
             Session::flash('error', 'Las contraseñas no coinciden.');
             Response::redirect('/register');
+            return;
         }
 
         if (User::findByEmail($email) !== null) {
             RateLimiter::recordHit('register', $ip, 600);
             Session::flash('error', 'No se pudo completar el registro. Verifica los datos e intenta de nuevo.');
             Response::redirect('/register');
+            return;
         }
 
         $userId = User::create($name, $email, $password, 2);
@@ -190,11 +206,13 @@ class AuthController
         Auth::login($userId);
         Session::flash('success', 'Cuenta creada correctamente.');
         Response::redirect('/dashboard');
+        return;
     }
 
     public function logout(): void
     {
         Auth::logout();
         Response::redirect('/login');
+        return;
     }
 }

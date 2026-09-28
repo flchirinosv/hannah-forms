@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Csrf;
+use App\Core\DashboardLimit;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -23,13 +24,16 @@ class ResponsesController
 
     public function index(int $id): void
     {
-        $form = Form::find($id);
+        // F3: el listado y el borrado no pintan los campos; solo el contenedor.
+        $form = Form::find($id, false);
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         $page = max(1, (int) Request::query('page', '1'));
@@ -48,14 +52,17 @@ class ResponsesController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
 
         $data = Submission::findWithAnswers($sid);
         if ($data === null || (int) $data['submission']['form_id'] !== (int) $form['id']) {
             Response::notFound();
+            return;
         }
 
         View::render('responses/show', [
@@ -70,22 +77,26 @@ class ResponsesController
 
     public function delete(int $id, int $sid): void
     {
-        $form = Form::find($id);
+        $form = Form::find($id, false);
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
         }
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
             Response::redirect('/forms/' . $id . '/responses');
+            return;
         }
 
         $data = Submission::findWithAnswers($sid);
         if ($data === null || (int) $data['submission']['form_id'] !== (int) $form['id']) {
             Response::notFound();
+            return;
         }
 
         // P10/F1.1: dos fases, y el orden importa en las dos (ver el bloque
@@ -106,6 +117,7 @@ class ResponsesController
 
         Session::flash('success', 'Respuesta eliminada.');
         Response::redirect('/forms/' . $id . '/responses');
+        return;
     }
 
     public function exportJson(int $id): void
@@ -114,9 +126,17 @@ class ResponsesController
 
         if ($form === null) {
             Response::notFound();
+            return;
         }
         if (!$this->canAccess((int) $form['user_id'])) {
             Response::forbidden();
+            return;
+        }
+
+        // F5.3 — exportaciones por usuario por hora (barrer el almacén).
+        if (!DashboardLimit::exportAllowed()) {
+            Response::abort(429, 'Demasiadas exportaciones. Intenta más tarde.');
+            return;
         }
 
         // Mismo criterio de filtro de fechas que el CSV y la analítica (M5).
@@ -133,14 +153,18 @@ class ResponsesController
         $bySubmission = Submission::withAnswersByIds($submissionIds);
         $payload = Submission::exportPayload($form, $bySubmission, count($submissions));
 
-        header('Content-Type: application/json; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . self::safeFile((string) $form['slug']) . '.responses.json"');
+        if (PHP_SAPI !== 'cli') {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . self::safeFile((string) $form['slug']) . '.responses.json"');
+        }
         echo json_encode(
             $payload,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
         );
-        exit;
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
     }
 
     private function canAccess(int $ownerId): bool

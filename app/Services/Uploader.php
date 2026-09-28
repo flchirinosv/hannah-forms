@@ -599,6 +599,58 @@ final class Uploader
         return self::purgePaths(self::pendingForField($fieldId));
     }
 
+    /**
+     * Barrer los directorios de mes que quedaron vacíos tras las purgas.
+     *
+     * El storage vive en `baseDir()/YYYY/MM/<hex>.<ext>` (Uploader::absolutePath),
+     * así que año y mes son solo dígitos. Cuando una purga de dos fases vacía un
+     * mes, la carpeta queda huérfana para siempre: este barrido la borra y, si el
+     * año queda sin meses, también la del año. Nunca toca directorios que no
+     * sigan el patrón estricto `YYYY/MM` (una carpeta extraña se deja intacta).
+     *
+     * @param string|null $root   raíz de trabajo (tests); por defecto baseDir().
+     * @param bool        $dryRun cuenta sin borrar (modo «qué haría»).
+     */
+    public static function pruneEmptyMonths(?string $root = null, bool $dryRun = false): int
+    {
+        $root = $root ?? self::baseDir();
+        if (!is_dir($root)) {
+            return 0;
+        }
+        $removed = 0;
+        $years = @scandir($root) ?: [];
+        foreach ($years as $year) {
+            if ($year === '.' || $year === '..' || !preg_match('/^\d{4}$/', $year)) {
+                continue;
+            }
+            $yearDir = $root . '/' . $year;
+            $months = @scandir($yearDir) ?: [];
+            foreach ($months as $month) {
+                if ($month === '.' || $month === '..' || !preg_match('/^\d{2}$/', $month)) {
+                    continue;
+                }
+                $monthDir = $yearDir . '/' . $month;
+                if (!is_dir($monthDir) || self::isEmptyDir($monthDir) === false) {
+                    continue;
+                }
+                if ($dryRun || @rmdir($monthDir)) {
+                    $removed++;
+                }
+            }
+            if (@is_dir($yearDir) && self::isEmptyDir($yearDir) && ($dryRun || @rmdir($yearDir))) {
+                $removed++;
+            }
+        }
+        return $removed;
+    }
+
+    /** ¿El directorio solo tiene las entradas «.» y «..»? */
+    private static function isEmptyDir(string $dir): bool
+    {
+        $entries = @scandir($dir);
+        return $entries !== false && count($entries) === 2;
+    }
+
     private static function purgeValue(string $value): int
     {
         $metas = self::decode($value);

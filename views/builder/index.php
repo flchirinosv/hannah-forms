@@ -472,7 +472,7 @@ $fieldTypes = [
                 </div>
 
                 <h6 class="app-type-grid-title"><i class="fa-solid fa-list-check me-1"></i>Tipos de pregunta</h6>
-                <div class="app-type-grid" data-vf-group="questions">
+                <div class="app-type-grid">
                     <?php foreach ($fieldTypes as $type => $info): if (in_array($type, ['section', 'page'], true)) continue; ?>
                     <button type="button" class="app-type-tile" data-type="<?= View::escape($type) ?>">
                         <span class="app-palette-icon"><i class="fa-solid <?= View::escape($info['icon']) ?>"></i></span>

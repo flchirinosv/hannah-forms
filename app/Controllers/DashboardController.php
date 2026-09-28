@@ -18,6 +18,7 @@ class DashboardController
         if ($user === null) {
             Session::flash('error', 'Debes iniciar sesión.');
             \App\Core\Response::redirect('/login');
+            return;
         }
 
         $stats = [

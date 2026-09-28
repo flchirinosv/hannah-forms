@@ -52,6 +52,14 @@ $quizTypeLabel = static function (string $type) use ($locale): string {
             <p class="text-muted mb-4"><?= str_replace('{title}', View::escape($form['title']), $t('thanks.body')) ?></p>
             <?php endif; ?>
 
+            <?php // F5.1 — La redirect_url externa no estaba en la allowlist del servidor (el envío igual se guardó). ?>
+            <?php if (($redirect_blocked ?? '') !== ''): ?>
+            <div class="alert alert-warning text-start small mb-4 mt-2" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                <?= $t('thanks.redirect_blocked', ['host' => View::escape($redirect_blocked)]) ?>
+            </div>
+            <?php endif; ?>
+
             <?php if ($quiz !== null && ($settings['quiz']['enabled'] ?? false)): ?>
             <?php
             $okPct = $quiz['max'] > 0 ? (int) round(($quiz['points'] / $quiz['max']) * 100) : 0;

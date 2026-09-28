@@ -109,8 +109,7 @@ class FormTest
         assertSame(2, count($updated['logic']['rules']));
     }
 
-    /** @after */
-    public function cleanup(): void
+    public function tearDown(): void
     {
         if ($this->userId !== null) {
             Database::getInstance(Config::db())->execute('DELETE FROM users WHERE id = :id', ['id' => $this->userId]);

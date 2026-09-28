@@ -1400,6 +1400,16 @@ body {
 .vf-attachment-link:hover { text-decoration: underline; }
 .vf-attachment-link .fa-paperclip { font-size: .85em; }
 
+/* P10 — Vista previa (webp) de imágenes adjuntas en el panel de respuesta */
+.vf-attachment-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: .375rem;
+    border: 1px solid rgba(0, 0, 0, .1);
+    background: #f1f5f9;
+}
+
 .app-stat-matrix th, .app-stat-matrix td { text-align: center; }
 .app-stat-matrix th:first-child { text-align: left; }
 
