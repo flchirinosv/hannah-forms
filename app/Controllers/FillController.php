@@ -1,0 +1,1200 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Config;
+use App\Core\Csrf;
+use App\Core\Database;
+use App\Core\I18n;
+use App\Core\RateLimiter;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\View;
+use App\Models\Answer;
+use App\Models\Form;
+use App\Models\Submission;
+use App\Services\LogicEvaluator;
+use App\Services\Notifier;
+use App\Services\QuizScore;
+use App\Services\Uploader;
+use App\Services\Webhook;
+
+class FillController
+{
+    public function show(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+        }
+
+        if ($form['status'] === 'closed') {
+            $locale = I18n::resolve(Form::settings((int) $form['id']));
+            View::render('fill/closed', [
+                'form' => $form,
+                'locale' => $locale,
+                'heading' => I18n::t('status.closed_title', $locale),
+                'note' => I18n::t('status.closed_note', $locale),
+            ], null);
+            return;
+        }
+
+        if ($form['status'] === 'draft') {
+            $locale = I18n::resolve(Form::settings((int) $form['id']));
+            View::render('fill/draft', ['form' => $form, 'locale' => $locale], null);
+            return;
+        }
+
+        $settings = Form::settings((int) $form['id']);
+
+        // P6 — Disponibilidad por calendario/cupo antes de mostrar el formulario.
+        if ($this->renderAvailabilityGate($form, $settings)) {
+            return;
+        }
+
+        // P8 — Randomización solo en GET (ver/embed): barajar unidades por
+        // página y, por campo, las opciones. En el re-render del POST con
+        // errores NO se baraja (los campos no se reordenan bajo los dedos).
+        $form['fields'] = self::randomizeFields($form['fields'], $settings);
+
+        $this->renderFill($form, $settings);
+    }
+
+    /**
+     * Página embebible (P7): mismo formulario que /f/{slug} pero solo si
+     * settings.embed.enabled. Relaja X-Frame-Options y frame-ancestors para
+     * poder estar en un iframe del mismo origen (SAMEORIGIN).
+     */
+    public function embed(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        if (empty($settings['embed']['enabled'])) {
+            Response::abort(403, 'Este formulario no permite ser embebido.');
+        }
+
+        if ($form['status'] === 'closed') {
+            View::render('fill/closed', ['form' => $form], null);
+            return;
+        }
+        if ($form['status'] === 'draft') {
+            View::render('fill/draft', ['form' => $form], null);
+            return;
+        }
+        if ($this->renderAvailabilityGate($form, $settings)) {
+            return;
+        }
+
+        $this->allowEmbedHeaders();
+
+        // P8 — Barajar también en el embed (mismo comportamiento que show).
+        $form['fields'] = self::randomizeFields($form['fields'], $settings);
+        $this->renderFill($form, $settings);
+    }
+
+    /**
+     * Render del formulario compartido por show() y embed(). El head aplica el
+     * tema (themeCss) y el form incluye el honeypot cuando el setting lo exige.
+     */
+    private function renderFill(array $form, array $settings, array $old = []): void
+    {
+        View::render('fill/show', [
+            'form'     => $form,
+            'fields'   => $form['fields'],
+            'csrf'     => Csrf::token(),
+            'settings' => $settings,
+            'old'      => $old,
+            // Gap sin JS: el render ya sale con la visibilidad resuelta.
+            'hidden'   => self::initialVisibility($form['fields'], $old),
+        ], null);
+    }
+
+    /**
+     * P8 — Randomización SÓLO de render (nunca del submit). Dos niveles:
+     *
+     *  1. settings.randomize.questions → baraja las UNIDADES de preguntas
+     *     (una avanzada con su sección y descendientes, o una pregunta suelta)
+     *     dentro de cada segmento delimitado por los campos «page», sin cruzar
+     *     los saltos de paso. Las secciones se mueven con sus hijos.
+     *  2. validations.randomize (por campo) → baraja las OPCIONES de
+     *     select/radio/checkbox conservando cada par value/label.
+     *
+     * Las respuestas se guardan por field_id, así que el orden de render no
+     * afecta al persistir ni a las condiciones.
+     *
+     * @param array $fields Lista de campos (Field::byForm).
+     * @return array Misma lista, reordenada/barajada a la vista.
+     */
+    public static function randomizeFields(array $fields, array $settings): array
+    {
+        $out = $fields;
+
+        if (!empty($settings['randomize']['questions'])) {
+            $out = self::shuffleQuestionUnits($out);
+        }
+
+        foreach ($out as $i => $f) {
+            $id = (int) ($f['id'] ?? 0);
+            if ($id <= 0 || !is_array($f['validations'] ?? null)) {
+                continue;
+            }
+            if (in_array(($f['type'] ?? ''), ['select', 'radio', 'checkbox'], true)
+                && !empty($f['validations']['randomize'])
+                && is_array($f['options'] ?? null)
+                && count($f['options']) > 1) {
+                $out[$i]['options'] = self::shufflePairs($f['options']);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Baraja las unidades top-level dentro de cada segmento de página
+     * (el segmento implícito inicial + uno por cada campo «page»).
+     *
+     * @return array la lista de campos reordenada (mismo total y mismos ids)
+     */
+    private static function shuffleQuestionUnits(array $fields): array
+    {
+        $fieldIds = [];
+        foreach ($fields as $f) {
+            $id = (int) ($f['id'] ?? 0);
+            if ($id > 0) {
+                $fieldIds[$id] = true;
+            }
+        }
+
+        // Segmentos: [0] = campos previos al primer «page», luego uno por cada
+        // «page» (que lo abre y lo ancla). Misma pertenencia que pagePlan().
+        $segments = [[]];
+        foreach ($fields as $f) {
+            if (($f['type'] ?? '') === 'page') {
+                $segments[] = [];
+            }
+            $segments[count($segments) - 1][] = $f;
+        }
+
+        $out = [];
+        foreach ($segments as $segment) {
+            // Unidades: un campo raíz (sin padre dentro del form) y su subtree.
+            $units = [];
+            foreach ($segment as $f) {
+                $pid = (int) ($f['parent_id'] ?? 0);
+                $isRoot = !($pid > 0 && isset($fieldIds[$pid]));
+                if ($isRoot) {
+                    $units[] = [$f];
+                    continue;
+                }
+                // Hijo: se agrega a la última unidad (su padre le precede).
+                $units[count($units) - 1][] = $f;
+            }
+
+            // Barajar las unidades; el «page» que abre el segmento queda fijo en
+            // primera posición (el orden de los pasos no cambia).
+            $units = array_values($units);
+            $anchor = null;
+            if (count($units) > 1 && ($units[0][0]['type'] ?? '') === 'page') {
+                $anchor = array_shift($units);
+            }
+            shuffle($units);
+            if ($anchor !== null) {
+                array_unshift($units, $anchor);
+            }
+
+            foreach ($units as $unit) {
+                foreach ($unit as $f) {
+                    $out[] = $f;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Baraja un array de opciones conservando el par value/label de cada una
+     * (sin reindexar claves numéricas).
+     */
+    private static function shufflePairs(array $options): array
+    {
+        if (count($options) < 2) {
+            return $options;
+        }
+        $keys = array_keys($options);
+        shuffle($keys);
+        $out = [];
+        foreach ($keys as $k) {
+            $out[$k] = $options[$k];
+        }
+        return $out;
+    }
+
+    private function renderAvailabilityGate(array $form, array $settings): bool
+    {
+        $locale = I18n::resolve($settings);
+        $state = self::scheduleState($settings);
+        if ($state === 'closed') {
+            View::render('fill/closed', [
+                'form' => $form,
+                'locale' => $locale,
+                'heading' => I18n::t('status.closed_title', $locale),
+                'note' => I18n::t('status.closed_note', $locale),
+            ], null);
+            return true;
+        }
+        if ($state === 'not_open') {
+            View::render('fill/closed', [
+                'form' => $form,
+                'locale' => $locale,
+                'heading' => I18n::t('status.not_open_title', $locale),
+                'note' => I18n::t('status.not_open_note', $locale),
+            ], null);
+            return true;
+        }
+        if (self::quotaExceeded($form)) {
+            View::render('fill/full', ['form' => $form, 'locale' => $locale], null);
+            return true;
+        }
+        return false;
+    }
+
+    public function submit(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        $locale = I18n::resolve($settings);
+
+        if ($form['status'] !== 'published') {
+            Response::abort(403, I18n::t('err.not_accepting', $locale));
+        }
+
+        // P10 — Si el POST excede post_max_size, PHP vacía $_POST/$_FILES: el
+        // chequeo de CSRF fallaría con un 419 confuso. Se reporta 413 claro.
+        if (self::postOverflowed()) {
+            Response::abort(413, I18n::t('err.upload_too_big_global', $locale, [
+                'max' => Uploader::maxSizeMb(),
+            ]));
+        }
+
+        if (!Csrf::verifyRequest()) {
+            Response::abort(419, 'Token de seguridad inválido. Recarga la página.');
+        }
+
+        // P6 — Re-chequear disponibilidad (calendario/cupo) en el servidor,
+        // aunque el GET /f/{slug} ya la haya mostrado (el GET pudo quedar viejo).
+        $state = self::scheduleState($settings);
+        if ($state === 'closed') {
+            Response::abort(403, I18n::t('err.closed', $locale));
+        }
+        if ($state === 'not_open') {
+            Response::abort(403, I18n::t('err.not_open', $locale));
+        }
+        if (self::quotaExceeded($form)) {
+            Response::abort(403, I18n::t('err.quota', $locale));
+        }
+
+        // P7 — Honeypot: si el campo trampa viene rellenado, es un bot. Se finge
+        // el flujo normal (PRG a gracias) sin persistir, validar ni notificar.
+        if (self::honeypotTriggered($settings)) {
+            $this->redirectToThanks($form, $settings);
+            return;
+        }
+
+        // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos
+        $scope = 'submit:' . (int) $form['id'];
+        $ip = Request::ip();
+        if (!RateLimiter::isAllowed($scope, $ip, 10, 600)) {
+            Response::abort(429, I18n::t('err.too_many', $locale));
+        }
+        // Contar este envío dentro de la ventana
+        RateLimiter::recordHit($scope, $ip, 600);
+
+        // FASE 1 — Validación sin persistir: recolectar los datos ya validados.
+        // (A10) La submission NO se crea hasta que todos los campos son válidos;
+        // así se evitan registros huérfanos al descartar respuestas inválidas.
+        //
+        // Lógica condicional: los campos se evalúan en ORDEN TOPOLÓGICO
+        // (dependencias de secciones y reglas), de modo que una condición puede
+        // referirse a cualquier pregunta (anterior o posterior). Un campo que no
+        // cumple su condición se considera OCULTO: no se valida ni se persiste,
+        // y sus respuestas no cuentan como fuente (valor nulo). El cliente solo
+        // oculta visualmente; aquí se decide de forma autoritativa.
+        $fields = $form['fields'];
+        $plan = self::pagePlan($fields);
+
+        // P8 — Salta-página: cada pregunta depende del campo «page» que abre su
+        // bloque. Así, en el orden topológico la página se procesa ANTES que sus
+        // preguntas y su condición ya está resuelta cuando se valida el bloque.
+        $extraDeps = [];
+        foreach ($fields as $f) {
+            $fid = (int) ($f['id'] ?? 0);
+            if ($fid <= 0 || ($f['type'] ?? '') === 'page') {
+                continue;
+            }
+            $blockPage = $plan['blocks'][$plan['pageOf'][$fid]] ?? null;
+            if ($blockPage !== null && $blockPage !== $fid) {
+                $extraDeps[$fid][] = $blockPage;
+            }
+        }
+        $order = LogicEvaluator::dependencyOrder($fields, $extraDeps);
+        if ($order === null) {
+            // Ciclo (formulario que no debería poder guardarse): orden natural.
+            $order = array_map(static fn (array $f): int => (int) ($f['id'] ?? 0), $fields);
+        }
+
+        $byId = [];
+        foreach ($fields as $f) {
+            $byId[(int) $f['id']] = $f;
+        }
+
+        $errors = [];
+        $validated = [];
+        $answers = [];    // id => valor de fuente (null si oculto)
+        $visible = [];    // id => bool
+        $skippedPages = [];
+        $storedFiles = []; // P10: metas ya escritas en disco (para rollback)
+
+        foreach ($order as $fieldId) {
+            $field = $byId[$fieldId] ?? null;
+            if ($field === null) {
+                continue;
+            }
+
+            if ($field['type'] === 'page') {
+                // P8 — Condición de omisión de página. Sus fuentes ya están
+                // resueltas (orden topológico); si se cumple, TODO el bloque de
+                // esta página cuenta como oculto en el resto del recorrido.
+                $logic = $field['logic'] ?? null;
+                if (is_array($logic) && !empty($logic['rules']) && LogicEvaluator::evaluate($logic, $answers)) {
+                    $skippedPages[$fieldId] = true;
+                }
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            if (!isset($visible[$fieldId])) {
+                $visible[$fieldId] = self::isFieldVisible($field, $visible, $answers, array_keys($byId));
+            }
+
+            if (!$visible[$fieldId]) {
+                // Campo o sección oculta: no se valida ni persiste; tampoco es fuente.
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            // Las secciones no se responden; su "respuesta" nunca es fuente.
+            if ($field['type'] === 'section') {
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            // P8 — Bloque de página omitido (salta-página): el campo no se
+            // valida ni persiste aunque el cliente hubiera enviado un valor.
+            $blockPage = $plan['blocks'][$plan['pageOf'][$fieldId]] ?? null;
+            if ($blockPage !== null && isset($skippedPages[$blockPage])) {
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            // P10 — Campo de archivo: se valida/guarda FUERA del flujo de
+            // $_POST (los binarios llegan en $_FILES). El valor persistido es
+            // la metadata JSON; como fuente de lógica se usa el nombre.
+            if ($field['type'] === 'file') {
+                $upload = Uploader::storeMany(
+                    $_FILES['field_' . (int) $field['id']] ?? [],
+                    is_array($field['validations'] ?? null) ? $field['validations'] : [],
+                    $locale
+                );
+
+                if (!$upload['ok']) {
+                    $errors[] = I18n::t('val.' . (string) $upload['error'], $locale, (array) $upload['params']);
+                    $answers[$fieldId] = null;
+                    continue;
+                }
+
+                $metas = Uploader::decode(Uploader::encode($upload['value']));
+                if ($metas === null || $metas === []) {
+                    if ((bool) $field['is_required']) {
+                        $errors[] = I18n::t('val.required', $locale);
+                    }
+                    $answers[$fieldId] = null;
+                    continue;
+                }
+
+                foreach ($metas as $meta) {
+                    $storedFiles[] = $meta;
+                }
+                $validated[(int) $field['id']] = (string) Uploader::encode($upload['value']);
+                $answers[$fieldId] = implode('; ', array_map(
+                    static fn(array $m): string => (string) ($m['name'] ?? ''),
+                    $metas
+                ));
+                continue;
+            }
+
+            $value = $this->getFieldValue($field);
+
+            if ($this->isEmpty($value)) {
+                if ((bool) $field['is_required']) {
+                    $errors[] = I18n::t('val.required', $locale);
+                }
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            // Los tipos compuestos (matriz, ranking) llegan como arrays crudos
+            // indexados por posición; se normalizan a mapas clave=>valor antes de
+            // validar y persistir, preservando las etiquetas de filas/opciones.
+            $value = self::normalizeFieldValue($field, $value);
+
+            $validation = $this->validate($field, $value, $locale);
+            if ($validation !== true) {
+                $errors[] = $validation;
+                $answers[$fieldId] = null;
+                continue;
+            }
+
+            $validated[(int) $field['id']] = $this->stringify($value);
+            // Para evaluar condiciones de OTROS campos se usa el valor crudo
+            // (los checkbox son arrays en la evaluación, no el JSON stringificado).
+            $answers[$fieldId] = $value;
+        }
+
+        if (!empty($errors)) {
+            // P10: los archivos ya subidos en este intento no deben quedar
+            // huérfanos en disco si el resto del envío es inválido.
+            Uploader::rollback($storedFiles);
+
+            $old = Request::all();
+            View::render('fill/show', [
+                'form' => $form,
+                'fields' => $form['fields'],
+                'csrf' => Csrf::token(),
+                'errors' => $errors,
+                'old' => $old,
+                // Con las respuestas ya enviadas como fuentes: así el
+                // re-render muestra lo mismo que vería el participante.
+                'hidden' => self::initialVisibility($form['fields'], $old),
+            ], null);
+            return;
+        }
+
+        // FASE 2 — Persistencia atómica: crear submission + answers en una
+        // transacción para que un fallo no deje la submission sin respuestas.
+        // El token de capacidad se genera ANTES para poder pasarlo al INSERT: es
+        // lo único que abre la página pública de gracias (nunca el id).
+        $publicToken = Submission::newToken();
+        $db = Database::getInstance(Config::db());
+        $db->beginTransaction();
+        try {
+            $submissionId = Submission::create(
+                (int) $form['id'],
+                $ip,
+                Request::userAgent(),
+                $publicToken
+            );
+
+            foreach ($validated as $fieldId => $value) {
+                Answer::create($submissionId, $fieldId, $value);
+            }
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            Uploader::rollback($storedFiles);
+            error_log('Error al guardar la respuesta: ' . $e->getMessage());
+            Response::abort(500, I18n::t('err.failed_save', $locale));
+        }
+
+        // FASE 3 — Fuera de transacción, a prueba de fallos: notificaciones
+        // (P5) y webhook. Un fallo aquí NUNCA rompe la respuesta guardada.
+        try {
+            $submittedAt = date('Y-m-d H:i:s');
+
+            Notifier::afterSubmit($form, $settings, (int) $submissionId, $validated, $submittedAt);
+
+            if (!empty($settings['webhook']['url'])) {
+                Webhook::fire($settings, self::webhookPayload($form, (int) $submissionId, $ip, $submittedAt, $validated));
+            }
+        } catch (\Throwable $e) {
+            error_log('[FillController] FASE 3 (notificaciones/webhook): ' . $e->getMessage());
+        }
+
+        // FASE 4 — Gracias (PRG, P6): redirección externa opt-in o thanks GET.
+        // P8 — Quiz: se pasa el token de capacidad, NO el id de la submission.
+        // El id es un AUTO_INCREMENT correlativo y el thanks es público: con
+        // `?sid=` bastaba recorrer enteros para leer las respuestas ajenas de
+        // ese mismo formulario (la vista muestra la respuesta literal de la
+        // persona más la correcta). El token son 128 bits, y solo lo conoce la
+        // sesión que acaba de enviar.
+        $thanksPath = '/f/' . rawurlencode((string) $form['slug']) . '/thanks';
+        if (!empty($settings['quiz']['enabled'])) {
+            $thanksPath .= '?t=' . rawurlencode($publicToken);
+        }
+        $this->redirectToThanks($form, $settings, $thanksPath);
+    }
+
+    /**
+     * Asigna cada campo al bloque de página al que pertenece (P8):
+     *  - blocks:  índice de bloque => id del campo «page» que lo abre (null si
+     *    es el bloque implícito anterior al primer salto).
+     *  - pageOf:  id de campo => índice de bloque.
+     * La pertenencia la dicta el ORDEN de lectura (Field::byForm), igual que el
+     * render: un campo cae en el bloque cuya página le precedió.
+     *
+     * @return array{blocks: array<int, int|null>, pageOf: array<int, int>}
+     */
+    public static function pagePlan(array $fields): array
+    {
+        $blocks = [0 => null];
+        $pageOf = [];
+        $current = 0;
+        foreach ($fields as $f) {
+            $id = (int) ($f['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            if (($f['type'] ?? '') === 'page') {
+                $current = count($blocks);
+                $blocks[$current] = $id;
+            }
+            $pageOf[$id] = $current;
+        }
+        return ['blocks' => $blocks, 'pageOf' => $pageOf];
+    }
+
+    /**
+     * PRG compartido (P6/P7): a `$path` (thanks) o a una URL externa
+     * http/https válida si settings.thanks.redirect_url está configurada.
+     * También usado por el honeypot para fingir éxito.
+     *
+     * @param string $path Ruta interna de gracias (permite querystring con ?sid)
+     */
+    private function redirectToThanks(array $form, array $settings, string $path = ''): void
+    {
+        $redirectUrl = trim((string) ($settings['thanks']['redirect_url'] ?? ''));
+        if ($redirectUrl !== '' && self::isHttpUrl($redirectUrl)) {
+            Response::redirectExternal($redirectUrl);
+        }
+        if ($path === '') {
+            $path = '/f/' . rawurlencode((string) $form['slug']) . '/thanks';
+        }
+        Response::redirect($path);
+    }
+
+    /**
+     * Página de gracias (GET, PRG). Muestra el mensaje personalizado si el
+     * formulario tiene settings.thanks.message.
+     */
+    public function thanks(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+        }
+
+        $settings = Form::settings((int) $form['id']);
+
+        // P8 — Quiz: con settings.quiz.enabled y un token de capacidad (query
+        // `t`) que resuelva a una submission de ESTE formulario se muestra la
+        // puntuación calculada sobre las respuestas persistidas. Cálculo
+        // stateless: no hay columna de score.
+        //
+        // OJO — el identificador del thanks NUNCA es el id de la submission. El
+        // id es un AUTO_INCREMENT correlativo y esta página es pública y sin
+        // sesión, así que `?sid=1..N` dejaba leer las respuestas de todos los
+        // que Contestaron el formulario (la vista enseña la respuesta ajena y la
+        // correcta). `t` son 128 bits de aleatoriedad: solo la sesión que envió
+        // lo tiene. Un token desconocido —o ausente, como en las submissions
+        // antiguas sin backfill— solo muestra el mensaje de gracias.
+        $quiz = null;
+        if (!empty($settings['quiz']['enabled'])) {
+            $token = trim((string) Request::get('t', ''));
+            if ($token !== '' && Submission::isWellFormedToken($token)) {
+                $record = Submission::findWithToken($token);
+                if ($record !== null && (int) $record['submission']['form_id'] === (int) $form['id']) {
+                    $quiz = self::quizPayload($form, $record['answers']);
+                }
+            }
+        }
+
+        // El token es una credencial: que no se cuele en el Referer si la página
+        // llega a enlazar o cargar recursos de otro origen.
+        if (PHP_SAPI !== 'cli') {
+            header('Referrer-Policy: no-referrer');
+        }
+
+        // Si el formulario es embebible, permitir el thanks dentro del iframe
+        // (mismo origen) tras el PRG del envío desde el embed.
+        if (!empty($settings['embed']['enabled'])) {
+            $this->allowEmbedHeaders();
+        }
+
+        View::render('fill/thanks', [
+            'form'     => $form,
+            'settings' => $settings,
+            'quiz'     => $quiz,
+        ], null);
+    }
+
+    /**
+     * Respuestas para el quiz decodificadas (los arrays —checkbox— llegan como
+     * JSON string) y puntuación (P8).
+     */
+    private static function quizPayload(array $form, array $answersById): ?array
+    {
+        $decoded = [];
+        foreach ($answersById as $fid => $value) {
+            $s = ltrim((string) $value);
+            if ($s !== '' && $s[0] === '[') {
+                $arr = json_decode((string) $value, true);
+                $decoded[$fid] = is_array($arr) ? $arr : $value;
+            } else {
+                $decoded[$fid] = $value;
+            }
+        }
+        return QuizScore::score($form['fields'], $decoded);
+    }
+
+    /**
+     * Relaja X-Frame-Options y frame-ancestors a 'self' (P7). Solo afecta a la
+     * respuesta HTTP real; en CLI (runner de tests) no se emiten headers.
+     */
+    private function allowEmbedHeaders(): void
+    {
+        if (PHP_SAPI === 'cli') {
+            return;
+        }
+        header('X-Frame-Options: SAMEORIGIN');
+        $csp = (string) Config::get('app.csp_policy', '');
+        if ($csp !== '') {
+            $relaxed = preg_replace("/frame-ancestors\s+'none'/", "frame-ancestors 'self'", $csp);
+            header('Content-Security-Policy: ' . ($relaxed ?? $csp));
+        }
+    }
+
+    /**
+     * True si el honeypot capturó un bot (P7): el campo trampa llega rellenado
+     * mientras que los humanos no lo ven ni pueden enfocarlo.
+     */
+    private static function honeypotTriggered(array $settings): bool
+    {
+        if (empty($settings['honeypot']['enabled'])) {
+            return false;
+        }
+        return trim((string) Request::post('_vf_hp', '')) !== '';
+    }
+
+    /**
+     * Estado del calendario del formulario (P6): 'open' | 'not_open' | 'closed'.
+     * Las fechas se guardan como 'YYYY-MM-DD HH:MM' (hora local de la app).
+     */
+    private static function scheduleState(array $settings): string
+    {
+        $now = time();
+        $openAt = self::parseScheduleDate((string) ($settings['schedule']['open_at'] ?? ''));
+        $closeAt = self::parseScheduleDate((string) ($settings['schedule']['close_at'] ?? ''));
+
+        if ($openAt !== null && $now < $openAt) {
+            return 'not_open';
+        }
+        if ($closeAt !== null && $now >= $closeAt) {
+            return 'closed';
+        }
+        return 'open';
+    }
+
+    private static function parseScheduleDate(string $value): ?int
+    {
+        if (trim($value) === '') {
+            return null;
+        }
+        $ts = strtotime($value);
+        return $ts === false ? null : $ts;
+    }
+
+    /**
+     * True si el cupo configurado está cubierto (P6). Cupo deshabilitado o
+     * max <= 0 = sin límite. La cuenta es por submission persistida.
+     */
+    private static function quotaExceeded(array $form): bool
+    {
+        $settings = Form::settings((int) $form['id']);
+        $quota = $settings['quota'] ?? [];
+        if (empty($quota['enabled']) || (int) ($quota['max'] ?? 0) <= 0) {
+            return false;
+        }
+        return Form::submissionCount((int) $form['id']) >= (int) $quota['max'];
+    }
+
+    private static function isHttpUrl(string $url): bool
+    {
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        return in_array($scheme, ['http', 'https'], true);
+    }
+
+    /**
+     * Payload JSON para el webhook (P5): metadatos del formulario y de la
+     * respuesta + respuestas decodificadas (listas/mapas como arreglos).
+     */
+    private static function webhookPayload(array $form, int $submissionId, string $ip, string $submittedAt, array $validated): array
+    {
+        $answers = [];
+        foreach ($validated as $fieldId => $value) {
+            // P10: los adjuntos viajan al webhook como texto legible; la
+            // metadata interna (ruta de storage, sha) no sale del servidor.
+            if (Uploader::isAttachmentJson((string) $value)) {
+                $answers[(string) $fieldId] = Uploader::displayValue((string) $value);
+                continue;
+            }
+            $decoded = json_decode((string) $value, true);
+            $answers[(string) $fieldId] = (is_array($decoded) && json_last_error() === JSON_ERROR_NONE)
+                ? $decoded
+                : $value;
+        }
+
+        $fields = [];
+        foreach ((array) ($form['fields'] ?? []) as $field) {
+            $fields[] = [
+                'id'    => $field['id'],
+                'label' => (string) ($field['label'] ?? ''),
+            ];
+        }
+
+        return [
+            'form' => [
+                'id'    => (int) $form['id'],
+                'slug'  => (string) ($form['slug'] ?? ''),
+                'title' => (string) ($form['title'] ?? ''),
+            ],
+            'submission' => [
+                'id'          => $submissionId,
+                'finished_at' => $submittedAt,
+                'ip'          => $ip,
+            ],
+            'fields'  => $fields,
+            'answers' => $answers,
+        ];
+    }
+
+    private function getFieldValue(array $field)
+    {
+        $key = 'field_' . $field['id'];
+        return Request::post($key, null);
+    }
+
+    /**
+     * P10 — ¿El cuerpo del POST excede post_max_size? Cuando ocurre, PHP vacía
+     * $_POST y $_FILES por completo (y avisa por log), así que se detecta por
+     * la ausencia de datos con un Content-Length grande.
+     */
+    /**
+     * P10 — El POST superó `post_max_size`. Defense in depth: el middleware
+     * `post-max` ya responde 413 antes del CSRF, pero el controller se invoca
+     * directo en tests, así que aquí también se corta.
+     */
+    private static function postOverflowed(): bool
+    {
+        return Request::bodyTooLarge();
+    }
+
+    /**
+     * Determina si un campo debe mostrarse.
+     *
+     * Visible si: su sección contenedora está visible y su propia condición se
+     * cumple. `$answers` (fuentes en orden topológico) permite reglas referidas
+     * a CUALQUIER pregunta; un campo oculto aporta valor nulo (semántica de
+     * "vacío"). Fail-open + log: si una regla apunta a un campo que no existe
+     * en el formulario (configuración inválida que no debería poder guardarse),
+     * se descarta esa referencia y se loguea, evitando ocultar preguntas
+     * obligatorias por un error de configuración.
+     */
+    /**
+     * Visibilidad inicial para el RENDER (cierra el gap sin JavaScript).
+     *
+     * El GET rendereaba todos los campos y delegaba el ocultado a `fill.js`:
+     * sin JS se veían preguntas cuya condición era falsa, y preguntas de un
+     * bloque de página que el servidor luego descarta. Aquí se resuelve la
+     * visibilidad en el servidor y la vista la marca con `vf-hidden`.
+     *
+     * Reutiliza exactamente las reglas del submit (`isFieldVisible` y
+     * `pagePlan`), así que no hay una tercera semántica que mantener: la
+     * única diferencia es que el submit falla abierto y este render no.
+     *
+     * Fuentes: en un GET en fresco no hay respuestas (una "afirmación" con
+     * fuente vacía es FALSE, una "negación" TRUE — la semántica documentada
+     * en LogicEvaluator); en el re-render de errores se usan las ya
+     * enviadas, de modo que el participante ve lo mismo que vería con JS.
+     *
+     * @param array $fields Lista plana en orden de lectura.
+     * @param array $old    Respuestas por `field_<id>` (re-render de errores).
+     * @return array<int, bool> id => visible
+     */
+    public static function initialVisibility(array $fields, array $old = []): array
+    {
+        $plan = self::pagePlan($fields);
+        $knownIds = [];
+        foreach ($fields as $f) {
+            $id = (int) ($f['id'] ?? 0);
+            if ($id > 0) {
+                $knownIds[] = $id;
+            }
+        }
+
+        $answers = [];
+        foreach ($old as $k => $v) {
+            if (is_string($k) && preg_match('/^field_(\d+)$/', $k, $m)) {
+                $answers[(int) $m[1]] = $v;
+            }
+        }
+
+        // P8 — un bloque de página se omite cuando su condición se cumple
+        // (semántica invertida respecto a la visibilidad: aquí TRUE = saltar).
+        $skipped = [];
+        foreach ($fields as $f) {
+            if (($f['type'] ?? '') !== 'page') {
+                continue;
+            }
+            $pid = (int) ($f['id'] ?? 0);
+            $blockId = array_search($pid, $plan['blocks'], true);
+            $logic = $f['logic'] ?? null;
+            if ($blockId !== false && is_array($logic) && !empty($logic['rules'])
+                && LogicEvaluator::evaluate($logic, $answers)) {
+                $skipped[(int) $blockId] = true;
+            }
+        }
+
+        // Orden de lectura: la sección precede siempre a sus hijas (el
+        // guardado lo garantiza), así que un solo paso basta para el AND
+        // de contenedor que hace isFieldVisible().
+        $visible = [];
+        foreach ($fields as $f) {
+            $id = (int) ($f['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            if (($f['type'] ?? '') === 'page') {
+                $visible[$id] = true;
+                continue;
+            }
+            $v = self::isFieldVisible($f, $visible, $answers, $knownIds);
+            $blockId = $plan['pageOf'][$id] ?? 0;
+            if ($v && isset($skipped[(int) $blockId])) {
+                $v = false;
+            }
+            $visible[$id] = $v;
+        }
+
+        return $visible;
+    }
+
+    private static function isFieldVisible(array $field, array $visible, array $answers, array $knownIds): bool
+    {
+        if (!empty($field['parent_id'])) {
+            $pid = (int) $field['parent_id'];
+            if (isset($visible[$pid]) && $visible[$pid] === false) {
+                return false;
+            }
+        }
+
+        $logic = $field['logic'] ?? null;
+        if ($logic === null || empty($logic['rules']) || !is_array($logic['rules'])) {
+            return true;
+        }
+
+        $sanitizedRules = [];
+        foreach ($logic['rules'] as $rule) {
+            if (!is_array($rule)) {
+                continue;
+            }
+            $target = (int) ($rule['field_id'] ?? 0);
+            if ($target > 0 && !in_array($target, $knownIds, true)) {
+                error_log('[FillController] Condición con referencia a campo inexistente (' . $target . '); se ignora la regla.');
+                continue;
+            }
+            $sanitizedRules[] = $rule;
+        }
+
+        if ($sanitizedRules === []) {
+            return true;
+        }
+        $sanitized = ['operator' => $logic['operator'] ?? 'all', 'rules' => $sanitizedRules];
+        return LogicEvaluator::evaluate($sanitized, $answers);
+    }
+
+    private function isEmpty($value): bool
+    {
+        if (is_array($value)) {
+            return count(array_filter($value, static fn($v) => $v !== '' && $v !== null)) === 0;
+        }
+        return $value === null || trim((string) $value) === '';
+    }
+
+    private function validate(array $field, $value, string $locale = 'es')
+    {
+        return self::validateField($field, $value, $locale);
+    }
+
+    private static function validateField(array $field, $value, string $locale = 'es')
+    {
+        $type = $field['type'];
+        $validations = $field['validations'] ?? [];
+
+        // F1.3: primero el techo de almacenamiento.Va antes que cualquier otra
+        // regla para que una respuesta enorme devuelva un error de validación
+        // legible (y que el submit siga su camino normal, con Uploader::rollback
+        // de los adjuntos ya subidos) en lugar de un 500 a mitad de transacción.
+        if (self::exceedsStorageLimit($value)) {
+            return is_array($value)
+                ? I18n::t('val.too_long', $locale)
+                : I18n::t('val.max_len', $locale, ['n' => self::MAX_VALUE_CHARS]);
+        }
+
+        if ($type === 'email' && is_string($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            return I18n::t('val.email', $locale);
+        }
+
+        if ($type === 'url' && is_string($value) && !filter_var($value, FILTER_VALIDATE_URL)) {
+            return I18n::t('val.url', $locale);
+        }
+
+        if ($type === 'tel' && is_string($value)) {
+            $digitsOnly = preg_replace('/\D/', '', $value);
+            if (preg_match('/[^0-9+().\-\s\/]/', $value) || strlen((string) $digitsOnly) < 6) {
+                return I18n::t('val.tel', $locale);
+            }
+        }
+
+        if (in_array($type, ['number', 'range'], true) && is_string($value) && !is_numeric($value)) {
+            return I18n::t('val.number', $locale);
+        }
+
+        if (in_array($type, ['number', 'range'], true) && is_string($value) && $value !== '') {
+            if (isset($validations['min']) && (float) $value < (float) $validations['min']) {
+                return I18n::t('val.min_gte', $locale, ['min' => $validations['min']]);
+            }
+            if (isset($validations['max']) && (float) $value > (float) $validations['max']) {
+                return I18n::t('val.max_lte', $locale, ['max' => $validations['max']]);
+            }
+        }
+
+        if (in_array($type, ['text', 'textarea'], true) && is_string($value)) {
+            if (isset($validations['min_length']) && mb_strlen($value) < (int) $validations['min_length']) {
+                return I18n::t('val.min_len', $locale, ['n' => $validations['min_length']]);
+            }
+            if (isset($validations['max_length']) && mb_strlen($value) > (int) $validations['max_length']) {
+                return I18n::t('val.max_len', $locale, ['n' => $validations['max_length']]);
+            }
+        }
+
+        // Validar opciones permitidas
+        if (in_array($type, ['select', 'radio'], true) && is_string($value)) {
+            $allowed = array_column($field['options'] ?? [], 'value');
+            if (!empty($allowed) && !in_array($value, $allowed, true)) {
+                return I18n::t('val.invalid_selection', $locale);
+            }
+        }
+
+        if ($type === 'checkbox' && is_array($value)) {
+            $allowed = array_column($field['options'] ?? [], 'value');
+            if (!empty($allowed)) {
+                $invalid = array_diff($value, $allowed);
+                if ($invalid !== []) {
+                    return I18n::t('val.invalid_selection', $locale);
+                }
+            }
+        }
+
+        // Matriz / Likert: el valor llega normalizado como {fila => columna}.
+        if ($type === 'matrix' && is_array($value)) {
+            $cols = array_map(static fn($o) => (string) $o['value'], self::matrixCols($field));
+            $allFilled = true;
+            foreach ($value as $rowLabel => $col) {
+                if ($col === '') {
+                    $allFilled = false;
+                    continue;
+                }
+                if ($cols !== [] && !in_array($col, $cols, true)) {
+                    return I18n::t('val.matrix_row', $locale, ['row' => $rowLabel]);
+                }
+            }
+            if (((bool) ($field['is_required'] ?? false)) && !$allFilled) {
+                return I18n::t('val.matrix_all', $locale);
+            }
+            return true;
+        }
+
+        // Ranking: {opción => orden(1..N)}; si hay alguna ordenada, todas deben
+        // estarlo; los valores deben ser únicos y estar dentro de 1..N.
+        if ($type === 'ranking' && is_array($value)) {
+            $required = (bool) ($field['is_required'] ?? false);
+            $filled = [];
+            foreach ($value as $v) {
+                if ($v !== '') {
+                    $filled[] = $v;
+                }
+            }
+            $total = count($value);
+            if (count($filled) > 0 || $required) {
+                if (count($filled) !== $total) {
+                    return I18n::t('val.ranking_all', $locale);
+                }
+                foreach ($filled as $v) {
+                    if (!is_numeric($v)) {
+                        return I18n::t('val.ranking_numbers', $locale);
+                    }
+                    $n = (int) $v;
+                    if ($n < 1 || $n > $total) {
+                        return I18n::t('val.ranking_range', $locale, ['max' => $total]);
+                    }
+                }
+                if (count(array_unique($filled)) !== $total) {
+                    return I18n::t('val.ranking_unique', $locale);
+                }
+            }
+            return true;
+        }
+
+        if ($type === 'nps') {
+            if (!is_numeric($value)) {
+                return I18n::t('val.nps_range', $locale);
+            }
+            $n = (int) $value;
+            if ($n < 0 || $n > 10) {
+                return I18n::t('val.nps_range', $locale);
+            }
+            return true;
+        }
+
+        if ($type === 'star') {
+            $max = (int) ($validations['max'] ?? 5);
+            if (!is_numeric($value)) {
+                return I18n::t('val.number', $locale);
+            }
+            $n = (int) $value;
+            if ($n < 1 || $n > $max) {
+                return I18n::t('val.star_range', $locale, ['max' => $max]);
+            }
+            return true;
+        }
+
+        return true;
+    }
+
+    private static function matrixRows(array $field): array
+    {
+        return array_values(array_filter(
+            $field['options'] ?? [],
+            static fn($o) => is_array($o) && ($o['group'] ?? '') === 'rows'
+        ));
+    }
+
+    private static function matrixCols(array $field): array
+    {
+        return array_values(array_filter(
+            $field['options'] ?? [],
+            static fn($o) => is_array($o) && ($o['group'] ?? '') === 'cols'
+        ));
+    }
+
+    private static function rankingItems(array $field): array
+    {
+        return array_values(array_filter(
+            $field['options'] ?? [],
+            static fn($o) => is_array($o)
+        ));
+    }
+
+    /**
+     * Convierte el valor crudo de un campo compuesto en un mapa clave=>valor
+     * con las etiquetas reales (filas de matriz, opciones de ranking). Para el
+     * resto de tipos devuelve el valor sin cambios.
+     */
+    private static function normalizeFieldValue(array $field, $value)
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        if ($field['type'] === 'matrix') {
+            $rows = array_map(static fn($o) => (string) $o['value'], self::matrixRows($field));
+            $out = [];
+            foreach ($rows as $i => $rowLabel) {
+                $raw = $value[$i] ?? '';
+                $out[$rowLabel] = is_string($raw) ? trim($raw) : '';
+            }
+            return $out;
+        }
+
+        if ($field['type'] === 'ranking') {
+            $items = array_map(static fn($o) => (string) $o['value'], self::rankingItems($field));
+            $out = [];
+            foreach ($items as $i => $optLabel) {
+                $raw = $value[$i] ?? '';
+                $out[$optLabel] = is_string($raw) ? trim($raw) : '';
+            }
+            return $out;
+        }
+
+        return $value;
+    }
+
+    /**
+     * F1.3 — Tope absoluto del valor de una respuesta.
+     *
+     * `answers.value` es TEXT (65 535 bytes) en utf8mb4, y el tamaño solo lo
+     * acotaba `validations.max_length`, que es OPCIONAL: 3 plantillas lo
+     * declaraban y las otras no. Un textarea de 70 KB reventaba con
+     * `ERROR 1406 Data too long`, y como el INSERT es lo último del submit, el
+     * catch hacía `rollBack()` y `Uploader::rollback()`: devolvía un 500
+     * indistinguible de un error del participante y ADEMÁS borraba los adjuntos
+     * que ya había subido en ese intento.
+     *
+     * 16 000 caracteres × 4 bytes (emoji) = 64 000 < 65 535: cabe siempre.
+     * Los arrays (checkbox, matriz, ranking) se miden en bytes ya codificados,
+     * porque en matriz y ranking las CLAVES las manda el cliente sin validar
+     * contra las filas del autor, así que un array enorme es alcanzable sin
+     * tocar ningún campo de texto.
+     */
+    private const MAX_VALUE_CHARS = 16000;
+    private const MAX_VALUE_BYTES = 60000;
+
+    private static function stringify($value): string
+    {
+        if (is_array($value)) {
+            if (array_is_list($value)) {
+                return json_encode(array_values($value), JSON_UNESCAPED_UNICODE);
+            }
+            // Mapas (matriz/ranking) preservan las claves (etiquetas).
+            return json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
+        return (string) $value;
+    }
+
+    /** ¿El valor a persistir no cabe en `answers.value`? */
+    private static function exceedsStorageLimit($value): bool
+    {
+        if (is_array($value)) {
+            return strlen(self::stringify($value)) > self::MAX_VALUE_BYTES;
+        }
+        return mb_strlen((string) $value) > self::MAX_VALUE_CHARS;
+    }
+}

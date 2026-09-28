@@ -1,0 +1,126 @@
+{
+    "key": "feedback-curso",
+    "name": "Feedback de curso (multi-paso)",
+    "description": "Tres pasos con salto de página: si no-asistió se omite el bloque de material.",
+    "settings": {
+        "locale": { "code": "es" },
+        "honeypot": { "enabled": true },
+        "quota": { "enabled": true, "max": 500 },
+        "thanks": { "message": "¡Gracias! El equipo de formación revisará tu feedback." }
+    },
+    "fields": [
+        {
+            "ref": 1,
+            "type": "page",
+            "label": "Paso 1 · Sobre el curso",
+            "help_text": "Empezamos por lo esencial."
+        },
+        {
+            "ref": 2,
+            "type": "section",
+            "label": "Datos del curso"
+        },
+        {
+            "ref": 3,
+            "type": "text",
+            "label": "¿Qué curso tomaste?",
+            "placeholder": "Nombre del curso",
+            "is_required": true,
+            "parent": 2
+        },
+        {
+            "ref": 4,
+            "type": "radio",
+            "label": "¿Asististe a más de la mitad de las sesiones?",
+            "is_required": true,
+            "parent": 2,
+            "options": ["Sí, asistí a todas", "Asistí a la mayoría", "Asistí a pocas", "No asistí"]
+        },
+        {
+            "ref": 5,
+            "type": "date",
+            "label": "¿En qué mes lo terminaste?",
+            "parent": 2,
+            "validations": { "min": "2000-01-01" }
+        },
+        {
+            "ref": 6,
+            "type": "page",
+            "label": "Paso 2 · El material",
+            "help_text": "Solo si asististe al menos a la mitad."
+        },
+        {
+            "ref": 7,
+            "type": "section",
+            "label": "Material y organización"
+        },
+        {
+            "ref": 8,
+            "type": "scale",
+            "label": "¿Qué tan claros fueron los materiales?",
+            "is_required": true,
+            "parent": 7,
+            "validations": { "min": 1, "max": 5 }
+        },
+        {
+            "ref": 9,
+            "type": "checkbox",
+            "label": "¿Qué materiales usaste?",
+            "parent": 7,
+            "options": ["Diapositivas", "PDF descargable", "Vídeos", "Ejercicios", "Bibliografía"]
+        },
+        {
+            "ref": 10,
+            "type": "textarea",
+            "label": "¿Qué cambiarías de los materiales?",
+            "is_required": true,
+            "parent": 7,
+            "validations": { "min_length": 10, "max_length": 500 },
+            "logic": {
+                "operator": "all",
+                "rules": [
+                    { "field_id": 8, "op": "lte", "value": "3" }
+                ]
+            }
+        },
+        {
+            "ref": 11,
+            "type": "page",
+            "label": "Paso 3 · Docentes y cierre"
+        },
+        {
+            "ref": 12,
+            "type": "section",
+            "label": "Docentes y seguimiento"
+        },
+        {
+            "ref": 13,
+            "type": "star",
+            "label": "Valoración global del curso",
+            "is_required": true,
+            "parent": 12,
+            "validations": { "max": 5 }
+        },
+        {
+            "ref": 14,
+            "type": "email",
+            "label": "Correo para recibir el certificado",
+            "placeholder": "nombre@ejemplo.com",
+            "parent": 12
+        },
+        {
+            "ref": 15,
+            "type": "radio",
+            "label": "¿Nos recomiendas este curso?",
+            "is_required": true,
+            "parent": 12,
+            "options": ["Sí", "Tal vez", "No"],
+            "logic": {
+                "operator": "all",
+                "rules": [
+                    { "field_id": 13, "op": "lte", "value": "2" }
+                ]
+            }
+        }
+    ]
+}

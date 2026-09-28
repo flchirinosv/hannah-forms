@@ -1,0 +1,23 @@
+# Variables de entorno (nunca commitear secretos)
+.env
+
+# Dependencias
+/vendor/
+
+# Cache y logs
+/storage/*.log
+/storage/cache/
+
+# Adjuntos subidos (P10): se guardan fuera de public/ y nunca se versionan.
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+# Tests temporales
+/tests/output/
+
+# Toolkit externo de "levantamiento de información" (genera
+# recommendations/coverage). No es código de la app: no entra en el repo.
+# Decidido por el autor el 2026-09-28, al hacer el `git init` inicial.
+/freddy/
+/freddy.zip
+/pub.jar

@@ -1,0 +1,53 @@
+{
+    "key": "quiz-conocimiento",
+    "name": "Quiz de conocimiento",
+    "description": "Cuatro preguntas con respuesta correcta y puntuación al final.",
+    "settings": {
+        "locale": { "code": "es" },
+        "quiz": { "enabled": true },
+        "honeypot": { "enabled": true },
+        "thanks": { "message": "¡Gracias por participar en el quiz! Revisa tu resultado arriba." }
+    },
+    "fields": [
+        {
+            "ref": 1,
+            "type": "section",
+            "label": "Comprueba lo que aprendiste"
+        },
+        {
+            "ref": 2,
+            "type": "radio",
+            "label": "¿Cuál es la capital de Bolivia?",
+            "is_required": true,
+            "parent": 1,
+            "options": ["Sucre", "La Paz", "Santa Cruz", "Cochabamba"],
+            "validations": { "correct": "Sucre" }
+        },
+        {
+            "ref": 3,
+            "type": "radio",
+            "label": "HTTP 404 significa:",
+            "is_required": true,
+            "parent": 1,
+            "options": ["Recurso no encontrado", "Servidor caído", "Acceso denegado", "Demasiadas peticiones"],
+            "validations": { "correct": "Recurso no encontrado" }
+        },
+        {
+            "ref": 4,
+            "type": "checkbox",
+            "label": "Marca los métodos que son seguros (se pueden repetir sin efecto secundario)",
+            "is_required": true,
+            "parent": 1,
+            "options": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "validations": { "correct": "GET" }
+        },
+        {
+            "ref": 5,
+            "type": "number",
+            "label": "¿Cuántos bits tiene un byte?",
+            "is_required": true,
+            "parent": 1,
+            "validations": { "min": 8, "max": 8, "correct": "8" }
+        }
+    ]
+}

@@ -1,0 +1,72 @@
+{
+    "key": "control-asistencia",
+    "name": "Control de asistencia",
+    "description": "Lista rápida de asistencia por sesión, con motivo y observaciones.",
+    "settings": {
+        "locale": { "code": "es" },
+        "honeypot": { "enabled": true },
+        "thanks": { "message": "Asistencia registrada." }
+    },
+    "fields": [
+        {
+            "ref": 1,
+            "type": "text",
+            "label": "Nombre del asistente",
+            "placeholder": "Nombre completo",
+            "is_required": true,
+            "validations": { "min_length": 3, "max_length": 120 }
+        },
+        {
+            "ref": 2,
+            "type": "text",
+            "label": "Matrícula o folio",
+            "is_required": true,
+            "validations": { "min_length": 2, "max_length": 40 }
+        },
+        {
+            "ref": 3,
+            "type": "select",
+            "label": "Sesión",
+            "is_required": true,
+            "options": ["Sesión 1", "Sesión 2", "Sesión 3", "Sesión 4"]
+        },
+        {
+            "ref": 4,
+            "type": "radio",
+            "label": "Asistencia",
+            "is_required": true,
+            "options": ["Presente", "Presente (tarde)", "Ausente", "Justificada"]
+        },
+        {
+            "ref": 5,
+            "type": "time",
+            "label": "Hora de llegada (opcional)",
+            "parent": null,
+            "logic": {
+                "operator": "all",
+                "rules": [
+                    { "field_id": 4, "op": "eq", "value": "Presente (tarde)" }
+                ]
+            }
+        },
+        {
+            "ref": 6,
+            "type": "textarea",
+            "label": "Motivo de la ausencia",
+            "is_required": true,
+            "validations": { "max_length": 300 },
+            "logic": {
+                "operator": "any",
+                "rules": [
+                    { "field_id": 4, "op": "eq", "value": "Ausente" }
+                ]
+            }
+        },
+        {
+            "ref": 7,
+            "type": "email",
+            "label": "Correo para enviarle el material",
+            "placeholder": "nombre@ejemplo.com"
+        }
+    ]
+}

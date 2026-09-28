@@ -1,0 +1,161 @@
+{
+  "key": "evento-inscripcion",
+  "name": "Inscripción a evento",
+  "description": "Datos de contacto, taller elegido y confirmación de asistencia.",
+  "settings": {
+    "locale": {
+      "code": "es"
+    },
+    "honeypot": {
+      "enabled": true
+    },
+    "quota": {
+      "enabled": true,
+      "max": 150
+    },
+    "randomize": {
+      "questions": false
+    },
+    "thanks": {
+      "message": "¡Inscripción recibida! Te enviamos la confirmación por correo."
+    }
+  },
+  "fields": [
+    {
+      "ref": 1,
+      "type": "section",
+      "label": "Quién asiste"
+    },
+    {
+      "ref": 2,
+      "type": "text",
+      "label": "Nombre completo",
+      "placeholder": "Nombre y apellidos",
+      "is_required": true,
+      "parent": 1,
+      "validations": {
+        "min_length": 3,
+        "max_length": 120
+      }
+    },
+    {
+      "ref": 3,
+      "type": "email",
+      "label": "Correo electrónico",
+      "placeholder": "nombre@ejemplo.com",
+      "is_required": true,
+      "parent": 1
+    },
+    {
+      "ref": 4,
+      "type": "tel",
+      "label": "Teléfono (opcional)",
+      "placeholder": "55 1234 5678",
+      "parent": 1
+    },
+    {
+      "ref": 5,
+      "type": "text",
+      "label": "Empresa u organización",
+      "parent": 1
+    },
+    {
+      "ref": 6,
+      "type": "section",
+      "label": "Qué te interesa del evento"
+    },
+    {
+      "ref": 7,
+      "type": "select",
+      "label": "Taller en el que te gustaría inscribirte",
+      "is_required": true,
+      "parent": 6,
+      "options": [
+        "Taller de diseño",
+        "Taller de datos",
+        "Mesa redonda",
+        "Networking"
+      ]
+    },
+    {
+      "ref": 8,
+      "type": "checkbox",
+      "label": "¿A qué sesiones asistirás?",
+      "is_required": true,
+      "parent": 6,
+      "options": [
+        "Mañana",
+        "Tarde",
+        "Noche"
+      ]
+    },
+    {
+      "ref": 9,
+      "type": "radio",
+      "label": "¿Necesitas asiento reservado o acceso sin escalones?",
+      "is_required": true,
+      "parent": 6,
+      "options": [
+        "No",
+        "Sí, necesito accesibilidad"
+      ]
+    },
+    {
+      "ref": 10,
+      "type": "number",
+      "label": "Número de acompañantes",
+      "parent": 6,
+      "validations": {
+        "min": 0,
+        "max": 3
+      },
+      "logic": {
+        "operator": "any",
+        "rules": [
+          {
+            "field_id": 9,
+            "op": "eq",
+            "value": "Sí, necesito accesibilidad"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 11,
+      "type": "url",
+      "label": "Enlace a tu perfil (LinkedIn o sitio)",
+      "placeholder": "https://…",
+      "parent": 6
+    },
+    {
+      "ref": 12,
+      "type": "section",
+      "label": "Consentimiento"
+    },
+    {
+      "ref": 13,
+      "type": "radio",
+      "label": "Autorizo el uso de mis datos para gestionar la inscripción",
+      "is_required": true,
+      "parent": 12,
+      "options": [
+        "Sí, autorizo",
+        "No autorizo"
+      ]
+    },
+    {
+      "ref": 14,
+      "type": "file",
+      "label": "Comprobante de pago (PDF o imagen)",
+      "is_required": false,
+      "parent": 12,
+      "help_text": "Opcional. Hasta 2 archivos de 5 MB cada uno.",
+      "validations": {
+        "accept": "pdf, png, jpg, jpeg",
+        "max_size_mb": 5,
+        "max_files": 2,
+        "multiple": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+    "key": "encuesta-satisfaccion",
+    "name": "Encuesta de satisfacción",
+    "description": "NPS, valoración con estrellas, matriz de facets y ranking de mejoras.",
+    "settings": {
+        "locale": { "code": "es" },
+        "honeypot": { "enabled": true },
+        "thanks": { "message": "¡Gracias por tu opinión! Revisaremos tus comentarios esta misma semana." }
+    },
+    "fields": [
+        {
+            "ref": 1,
+            "type": "section",
+            "label": "Tu experiencia con nosotros",
+            "help_text": "Responde con calma; son unos minutos."
+        },
+        {
+            "ref": 2,
+            "type": "nps",
+            "label": "¿Qué tan probable es que recomiendes nuestro servicio a un amigo o familiar?",
+            "is_required": true,
+            "parent": 1
+        },
+        {
+            "ref": 3,
+            "type": "star",
+            "label": "¿Qué tan satisfecho quedaste con la atención recibida?",
+            "is_required": true,
+            "parent": 1,
+            "validations": { "max": 5 }
+        },
+        {
+            "ref": 4,
+            "type": "matrix",
+            "label": "Califica cada aspecto del servicio",
+            "is_required": true,
+            "parent": 1,
+            "options": [
+                { "value": "Tiempo de respuesta", "group": "rows" },
+                { "value": "Amabilidad", "group": "rows" },
+                { "value": "Claridad de la información", "group": "rows" },
+                { "value": "Precio/valor", "group": "rows" },
+                { "value": "Malo", "group": "cols" },
+                { "value": "Regular", "group": "cols" },
+                { "value": "Bueno", "group": "cols" },
+                { "value": "Excelente", "group": "cols" }
+            ]
+        },
+        {
+            "ref": 5,
+            "type": "ranking",
+            "label": "Ordena de 1 (más importante) a 4 en qué deberíamos mejorar",
+            "is_required": true,
+            "parent": 1,
+            "options": ["Atención más rápida", "Más canales de contacto", "Mejorar la web", "Precios más accesibles"]
+        },
+        {
+            "ref": 6,
+            "type": "textarea",
+            "label": "¿Qué podríamos hacer mejor?",
+            "placeholder": "Cuéntanos con detalle…",
+            "is_required": true,
+            "parent": 1,
+            "validations": { "min_length": 20, "max_length": 800 },
+            "logic": {
+                "operator": "all",
+                "rules": [
+                    { "field_id": 3, "op": "lte", "value": "3" }
+                ]
+            }
+        },
+        {
+            "ref": 7,
+            "type": "radio",
+            "label": "¿Nos recomiendas volver a contratar?",
+            "is_required": true,
+            "parent": 1,
+            "options": ["Sí, sin duda", "Probablemente sí", "No estoy seguro", "No"],
+            "logic": {
+                "operator": "any",
+                "rules": [
+                    { "field_id": 3, "op": "lte", "value": "3" },
+                    { "field_id": 2, "op": "lte", "value": "6" }
+                ]
+            }
+        }
+    ]
+}

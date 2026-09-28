@@ -1,0 +1,146 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * English catalog (P9, reduced i18n).
+ * Scope: public fill, thanks, status pages and emails.
+ * Mirror keys of app/lang/es.php (must stay 1:1).
+ */
+
+return [
+    // General form UI
+    'ui.avance'        => 'Progress',
+    'ui.paso'          => 'Step',
+    'ui.de'            => 'of',
+    'ui.anterior'      => 'Back',
+    'ui.siguiente'     => 'Next',
+    'ui.enviar'        => 'Submit',
+    'ui.enviando'      => 'Sending…',
+    'ui.corrige_errores' => 'Please fix the following errors:',
+    'ui.select_option'   => '-- Select an option --',
+    'ui.ranking_hint'    => 'Rank the options from 1 (most important) to {max}.',
+    'ui.file_hint'         => 'Attach up to {count} file(s), {size} MB each. Accepted: {types}.',
+    'ui.file_types_all'    => 'the ones allowed by the server',
+    'ui.nada_probable'   => 'Not at all likely',
+    'ui.muy_probable'    => 'Extremely likely',
+    'ui.shown_if'        => 'Shown if: ',
+    'ui.unknown_field'   => 'unknown field',
+    'ui.and_join'        => 'and',
+    'ui.or_join'         => 'or',
+    'ui.page_title'      => 'Step {n}',
+    'ui.leave_empty'     => 'Leave this field empty',
+    'ui.form'            => 'The form',
+
+    // Condition operator labels
+    'op.contains'     => 'contains',
+    'op.not_contains' => 'does not contain',
+    'op.filled'       => 'has a value',
+    'op.empty'        => 'is empty',
+    'op.matches'      => 'matches',
+
+    // Validation (server + fill client, same copy)
+    'val.required'          => 'This field is required.',
+    'val.email'             => 'Enter a valid email.',
+    'val.url'               => 'Enter a valid URL.',
+    'val.tel'               => 'Enter a valid phone number.',
+    'val.number'            => 'Enter a number.',
+    'val.min_gte'           => 'Value must be at least {min}.',
+    'val.max_lte'           => 'Value must be at most {max}.',
+    'val.min_len'           => 'Must be at least {n} characters.',
+    'val.max_len'           => 'Must be at most {n} characters.',
+    'val.too_long'          => 'This answer is too long.',
+    'val.invalid_selection' => 'Invalid selection.',
+    'val.matrix_all'        => 'Answer all matrix rows.',
+    'val.matrix_row'        => 'Invalid selection in row "{row}".',
+    'val.ranking_all'       => 'Assign a rank to every option.',
+    'val.ranking_numbers'   => 'Ranks must be numbers.',
+    'val.ranking_range'     => 'Ranks must be between 1 and {max}.',
+    'val.ranking_unique'    => 'Ranks cannot repeat.',
+    'val.nps_range'         => 'Choose a value from 0 to 10.',
+    'val.star_min'          => 'Select at least 1 star.',
+    'val.star_range'        => 'Select between 1 and {max} stars.',
+    'val.star_max'          => 'Select at most {max} stars.',
+    'val.file_too_big'     => 'The file exceeds the maximum allowed size ({max} MB).',
+    'val.file_count'       => 'You can attach at most {max} file(s).',
+    'val.file_type'        => 'That file type is not allowed.',
+    'val.blocked_extension' => 'That file type is blocked for security reasons.',
+    'val.no_file'          => 'No file was received.',
+    'val.upload_partial'   => 'The upload was interrupted; please try again.',
+    'val.upload_too_big'   => 'The file exceeds the maximum size allowed by the server.',
+    'val.server_error'     => 'The file could not be saved. Please try again.',
+
+    // Draft messages (JS only)
+    'js.saved'    => 'Draft saved',
+    'js.restored' => 'Draft restored automatically',
+
+    // Availability statuses
+    'status.closed_title'   => 'Form closed',
+    'status.not_open_title' => 'Not open yet',
+    'status.closed_note'    => 'no longer accepts responses.',
+    'status.not_open_note'  => 'does not accept responses yet. Check back later.',
+    'status.full_title'     => 'Capacity reached',
+    'status.full_note'      => 'has reached the maximum number of responses.',
+    'status.draft_title'    => 'In preparation',
+    'status.draft_note'     => 'This form has not been published yet.',
+
+    // Thanks + quiz
+    'thanks.custom_title'   => 'Thanks for your response!',
+    'thanks.title'          => 'Response submitted!',
+    'thanks.body'           => 'Thanks for completing <strong>{title}</strong>.',
+    'thanks.again'          => 'Submit another response',
+    'quiz.question'         => 'Question #{n}',
+    'quiz.result'           => '{points} of {max} correct',
+    'quiz.perfect'          => 'Perfect! You nailed it.',
+    'quiz.review'           => 'Review the highlighted questions.',
+    'quiz.correct'          => 'Correct',
+    'quiz.your_answer'      => 'Your answer:',
+    'quiz.correct_answer'   => 'Correct answer:',
+
+    // Field type labels for quiz detail
+    'type.text'         => 'Text',
+    'type.textarea'     => 'Text',
+    'type.email'        => 'Field',
+    'type.url'          => 'Field',
+    'type.tel'          => 'Field',
+    'type.number'       => 'Number',
+    'type.nps'          => 'NPS',
+    'type.star'         => 'Stars',
+    'type.scale'        => 'Scale',
+    'type.range'        => 'Range',
+    'type.select'       => 'Selection',
+    'type.radio'        => 'Single choice',
+    'type.checkbox'     => 'Multiple choice',
+    'type.matrix'       => 'Matrix',
+    'type.ranking'      => 'Ranking',
+    'type.section'      => 'Section',
+    'type.page'         => 'Page',
+
+    // Emails (Notifier + mail/* templates)
+    'mail.notif_subject' => 'New response',
+    'mail.notif_title'   => 'New response received',
+    'mail.notif_intro'   => 'A new response was received for form <strong>{title}</strong>.',
+    'mail.response_id'   => 'Response ID',
+    'mail.date'          => 'Date',
+    'mail.alt_line1'     => 'A new response was received',
+    'mail.alt_in'        => ' for "{t}".',
+    'mail.alt_dot'       => '.',
+    'mail.response_id_line' => 'Response ID: {id}',
+    'mail.date_line'        => 'Date: {date}',
+    'mail.conf_subject'     => 'Thanks for your response',
+    'mail.conf_title'       => 'Thanks for your response',
+    'mail.conf_body'        => 'We received your response for form "{title}".',
+    'mail.conf_alt_base'    => 'Thanks for your response',
+    'mail.conf_alt_in'      => ' for the form "{t}".',
+    'mail.conf_dot'         => '.',
+
+    // Submit errors (FillController)
+    'err.too_many'      => 'Too many submissions. Try again in a few minutes.',
+    'err.closed'        => 'This form no longer accepts responses.',
+    'err.not_open'      => 'This form is not open yet.',
+    'err.quota'         => 'This form has reached its response limit.',
+    'err.failed_save'   => 'Something went wrong saving your response. Try again.',
+    'err.not_accepting' => 'This form is not accepting responses right now.',
+    'err.upload_too_big_global' => 'The submission exceeds the maximum size allowed by the server ({max} MB). Try smaller files.',
+    'err.not_embeddable' => 'This form cannot be embedded.',
+];

@@ -1,0 +1,43 @@
+{
+    "key": "sondeo-rapido",
+    "name": "Sondeo rápido",
+    "description": "Tres preguntas cortas, ideal para medir en un clic. Cupo de 200 respuestas.",
+    "settings": {
+        "locale": { "code": "es" },
+        "honeypot": { "enabled": true },
+        "quota": { "enabled": true, "max": 200 },
+        "randomize": { "questions": true },
+        "embed": { "enabled": false },
+        "thanks": { "message": "¡Gracias! Tu respuesta ya está registrada." }
+    },
+    "fields": [
+        {
+            "ref": 1,
+            "type": "radio",
+            "label": "¿Nos has usado en los últimos 3 meses?",
+            "is_required": true,
+            "options": ["Sí, varias veces", "Una vez", "No todavía"]
+        },
+        {
+            "ref": 2,
+            "type": "star",
+            "label": "Del 1 al 5, ¿qué tan fácil fue empezar?",
+            "is_required": true,
+            "validations": { "max": 5 }
+        },
+        {
+            "ref": 3,
+            "type": "textarea",
+            "label": "Una cosa que mejorarías",
+            "placeholder": "Con una frase basta",
+            "is_required": true,
+            "validations": { "min_length": 5, "max_length": 240 },
+            "logic": {
+                "operator": "all",
+                "rules": [
+                    { "field_id": 2, "op": "lte", "value": "2" }
+                ]
+            }
+        }
+    ]
+}
