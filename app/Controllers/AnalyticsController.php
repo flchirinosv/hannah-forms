@@ -8,9 +8,9 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
-use App\Models\Answer;
 use App\Models\Form;
 use App\Models\Submission;
+use App\Services\FieldAggregator;
 
 class AnalyticsController
 {
@@ -38,40 +38,26 @@ class AnalyticsController
         }
 
         $formId = (int) $form['id'];
-
         // Migrado a Models (antes SQL crudo en el controller)
         $submissions = Submission::byFormFiltered($formId, (string) $from, (string) $to);
         $total = count($submissions);
 
-        // Respuestas por campo (migrado a Models)
-        $fieldStats = [];
-        foreach ($form['fields'] as $field) {
-            // Las secciones informativas no generan respuestas
-            if (($field['type'] ?? '') === 'section') {
-                continue;
-            }
-            $fieldId = (int) $field['id'];
-            $values = match ($field['type']) {
-                'select', 'radio' => Answer::countByFieldInForm($formId, $fieldId, (string) $from, (string) $to),
-                'checkbox'        => Answer::countsCheckboxInForm($formId, $fieldId, (string) $from, (string) $to),
-                'number', 'scale', 'range', 'nps', 'star' => Answer::numberStatsInForm($formId, $fieldId, (string) $from, (string) $to)
-                    ?? ['answer_count' => 0, 'avg_value' => null, 'min_value' => null, 'max_value' => null],
-                'matrix'          => Answer::matrixStatsInForm($formId, $fieldId, self::groupValues($field['options'] ?? [], 'rows'), self::groupValues($field['options'] ?? [], 'cols'), (string) $from, (string) $to),
-                'ranking'         => Answer::rankingStatsInForm($formId, $fieldId, self::plainValues($field['options'] ?? []), (string) $from, (string) $to),
-                default           => [],
-            };
-            $fieldStats[$fieldId] = [
-                'field' => $field,
-                'values' => $values,
-                'count'  => $total,
-                'non_empty' => Answer::nonEmptyInForm($formId, $fieldId, (string) $from, (string) $to),
-            ];
-
-            // NPS: score complementario (promotores/detractores) para la tarjeta.
-            if (($field['type'] ?? '') === 'nps') {
-                $fieldStats[$fieldId]['nps'] = Answer::npsStatsInForm($formId, $fieldId, (string) $from, (string) $to);
-            }
-        }
+        // Fase 3: respuestas por campo en DOS consultas fijas, no 2 por
+        // pregunta. Antes este bucle hacía 2 SELECT por campo (3 si era NPS):
+        // 16 con 11 preguntas, ~103 con 50, ~403 con 200. La forma del
+        // resultado es idéntica, así que la vista no cambia.
+        $campos = array_values(array_filter(
+            $form['fields'],
+            static fn($f) => ($f['type'] ?? '') !== 'section'
+        ));
+        $fieldStats = FieldAggregator::forForm(
+            $formId,
+            $campos,
+            array_map(static fn($f) => (int) $f['id'], $campos),
+            $total,
+            (string) $from,
+            (string) $to
+        );
 
         // Progreso diario (migrado a Models)
         $daily = Submission::dailyStats($formId, (string) $from, (string) $to);
@@ -202,30 +188,16 @@ class AnalyticsController
     }
 
     /**
-     * Extrae los valores de las opciones con un grupo dado (matriz: rows/cols).
+     * Un `from`/`to` solo se acepta si es un día real de verdad.
+     *
+     * Se delega en `FieldAggregator::validDay()` (y no en un
+     * `createFromFormat` a pelo) por dos razones: `2026-02-31` no es una fecha
+     * y `createFromFormat` la "corrige" a marzo sin avisar, y la validación
+     * tiene que ser la MISMA que usa el agregador de la fase 3, o la analítica
+     * y el CSV podrían recortar periodos distintos con el mismo filtro.
      */
-    private static function groupValues(array $options, string $group): array
-    {
-        return array_values(array_map(
-            static fn($o) => (string) $o['value'],
-            array_filter($options, static fn($o) => is_array($o) && ($o['group'] ?? '') === $group)
-        ));
-    }
-
-    /**
-     * Extrae el valor de cada opción (ranking y genérico).
-     */
-    private static function plainValues(array $options): array
-    {
-        return array_values(array_map(static fn($o) => (string) $o['value'], $options));
-    }
-
     private static function validarFecha(string $fecha): string
     {
-        $fecha = trim($fecha);
-        if ($fecha === '' || DateTime::createFromFormat('Y-m-d', $fecha) === false) {
-            return '';
-        }
-        return $fecha;
+        return FieldAggregator::validDay($fecha);
     }
 }

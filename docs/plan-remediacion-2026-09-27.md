@@ -143,10 +143,14 @@ el archivo siguen ahí.
   presentación. Arregla las 6 h de desfase más las 2 h de zona equivocada, y los
   filtros `from`/`to` que hoy caen en el día incorrecto entre 18:00 y 24:00.
   **Requiere migrar las filas ya escritas**, interpretándolas en UTC.
-- **Analítica y exports:** `AnalyticsController.php:48-74` hace 46–108 consultas
-  por visita según el número de preguntas; `Submission::withAnswersByIds` genera
-  un `IN (?,?,…)` sin lotear contra el techo de 65 535 placeholders de MariaDB, y
-  `byFormFiltered` no pagina. Loteo de 5 000 ids y una sola pasada de agregación.
+- **Analítica y exports:** `AnalyticsController::show()` hacía 2 consultas por
+  pregunta (recuento + distribución) más una de NPS, o sea 3·N consultas de
+  agregación por visita; `Submission::withAnswersByIds` generaba un
+  `IN (?,?,…)` **sin lotear** contra el techo de 65 535 placeholders de MariaDB
+  (un formulario de 70 000 respuestas reventaba con un `HY093`), y
+  `byFormFiltered` no pagina. Loteo de 5 000 ids y una sola pasada de
+  agregación. **HECHO** — ver "Fase 3 · D8" abajo. La paginación sigue abierta
+  porque es un cambio de interfaz, no de capa de datos.
 - **Queries redundantes:** `Form::settings()` se ejecuta 2 veces por render con
   datos ya en memoria; `Form::find()` carga `fields` que el listado de respuestas
   no usa.
@@ -236,7 +240,7 @@ Verificado:
 | 0 | Regresiones del 2026-09-27 | HECHO |
 | 1 | Pérdida de datos | HECHO |
 | 2 | Seguridad | HECHO (los 8 ítems cerrados, 362 tests) |
-| 3 | Capa de datos | EN CURSO (índice/FK, limpieza de `rate_limits` y contrato horario hechos; faltan analítica y queries) |
+| 3 | Capa de datos | EN CURSO (índice/FK, limpieza de `rate_limits`, contrato horario y analítica/loteo hechos; falta cerrar queries redundantes) |
 | 4 | Calidad y docs | Pendiente |
 | 5 | Decisiones de producto | Pendiente |
 
@@ -849,10 +853,65 @@ igual por las dos puertas. En `FillController` **no** había redundancia: sus tr
 llamadas a `Form::settings()` están en ramas excluyentes (cerrado / borrador /
 resto), nunca se ejecutan dos en la misma petición.
 
+### D8 · La analítica: 3 consultas por pregunta y un `IN` que revienta
+
+**Diagnóstico.** `AnalyticsController::show()` pedía, **por cada pregunta**, un
+recuento de no vacías (`Answer::nonEmptyInForm`) y una distribución de valores
+(`countByField` / `countsCheckbox` / `matrixStats` / `rankingStats` / …), más
+una de NPS si había un campo de ese tipo. Sobre el formulario `4623`
+(11 preguntas) eso son 16 consultas de agregación por visita; el rango del plan
+(46–108) era la cota teórica, no la medida. Y `Submission::withAnswersByIds()`
+metía **todos** los ids en un solo `IN (?,?,…)`: con 70 000 respuestas eso son
+70 000 placeholders y MariaDB responde `HY093` — un formulario con respuestas de
+masía no abría su propia analítica.
+
+**Arreglo.**
+- `App\Services\FieldAggregator::forForm()` hace **2 consultas fijas** para todas
+  las preguntas a la vez: una de recuentos (`Answer::nonEmptyCountsInForm()`,
+  que ya no trae `a.value`, así que los `TEXT` largos no se arrastran a memoria)
+  y una de distribuciones (`Answer::valueCountsInForm()`). Los derivados
+  (promedios, min/max, NPS, matriz, ranking) se calculan en PHP sobre esas dos
+  tablas ya en memoria. La forma del array es idéntica a la que devolvían los
+  métodos por campo, así que `views/analytics/show.php` no cambió ni una línea.
+- `Submission::withAnswersByIds()` trocea en tandas de 5 000 ids
+  (`ID_BATCH`), y **reordena el resultado globalmente** al final
+  (`finished_at DESC, id DESC`): concatenar las tandas tal cual devolvería las
+  respuestas en orden de tanda, no de fecha.
+- `AnalyticsController::validarFecha()` delega en `FieldAggregator::validDay()`
+  para que el CSV y la pantalla rechacen los mismos días imposibles.
+
+**Lo que destapó: `MIN`/`MAX` comparaban como texto.** `answers.value` es TEXT,
+así que `MIN(a.value)`/`MAX(a.value)` de `numberStatsInForm()` comparaban
+**lexicográficamente**: con 10, 9 y 7 devolvían `min_value = 10` y
+`max_value = 9`, o sea un rango al revés, en pantalla. La agregación en PHP
+compara float y salía bien, lo que dejaba a los dos caminos en desacuerdo y
+delataba que el viejo mentía. Arreglado en el SQL con `MIN(a.value + 0)`.
+
+**Lo que también faltaba: el filtro de la analítica no recortaba por día local.**
+`Answer::queryField()` concatenaba `$from . ' 00:00:00'` sobre la columna UTC.
+Con el filtro `from=2026-03-09` (Caracas) eso es `[2026-03-09 00:00, ...] UTC`
+y una respuesta de las 02:00 UTC del día 10 —que en Caracas son las 22:00 del
+día 9— se caía del día 9. Ahora usa los mismos límites UTC de
+`Submission::dateBounds()` vía `Clock::dayStartUtc()` / `Clock::dayEndUtc()`,
+con el final **exclusivo**, igual que el resto de la app. La agregación es
+global sobre todas las submissions filtradas; paginar la tabla es otra cosa
+(ver "Lo que queda abierto").
+
+**Verificación.** `tests/unit/AnalyticsAggregationTest.php` compara la
+agregación nueva contra los métodos por campo campo a campo, con respuestas
+duplicadas, fechas imposibles, filtro de un día y la frontera de día local;
+`tests/unit/SubmissionBatchTest.php` cubre el orden global entre tandas, el
+`IN ()` vacío, la normalización de ids y una lista de **70 001** ids (por
+encima del techo real de 65 535). Contra-tests: quitar un `* c` de los
+promedios, quitar el `usort()` o el troceo de tandas pone los tests rojos.
+
+Suite completa: **401 tests, 0 fallos, 0 errores**.
+
 ### Dos puntos del plan que, al mirarlos, ya estaban hechos
 
-- **`Submission::withAnswersByIds()` ya está en lote**: son 2 consultas
-  (submissions + answers con `IN (...)`), no un N+1. No había nada que arreglar.
+- **`Submission::withAnswersByIds()` ya estaba en lote**: son 2 consultas
+  (submissions + answers con `IN (...)`), no un N+1. Lo que no tenía era
+  **trocear** ese `IN` (ver D8).
 - **`rate_limits` sin call site**: tampoco era "nunca se limpia", era "nadie la
   ha llamado nunca" — cubierto en D3.
 

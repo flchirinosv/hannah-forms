@@ -10,6 +10,38 @@ use App\Core\Database;
 
 class Submission
 {
+    /**
+     * Ids por tanda en las consultas con `IN (...)` (fase 3).
+     *
+     * MariaDB admite como mucho 65 535 placeholders por sentencia preparada.
+     * 5 000 deja cada `IN` muy por debajo de ese techo; el número exacto es
+     * un compromiso entre nº de consultas y tamaño de cada una.
+     */
+    private const ID_BATCH = 5000;
+
+    /**
+     * Tamaño de tanda en uso. `null` = el de producción (`ID_BATCH`).
+     *
+     * Es un seam para tests: verificar que el orden global se restablece
+     * DESPUÉS de los lotes exige cruzar la frontera de una tanda, y con el
+     * valor real (5 000) eso son 5 001 filas de verdad por test. Con un tamaño
+     * de 2, cuatro submissions bastan y el fallo sigue siendo el mismo. Sin
+     * esto, quitar el `usort()` final NO rompe ningún test (con una sola tanda
+     * el `ORDER BY` de SQL ya da el orden correcto), o sea que la invariante
+     * parecería estar cubierta cuando no lo está.
+     */
+    private static ?int $idBatch = null;
+
+    public static function setIdBatchForTesting(?int $size): void
+    {
+        self::$idBatch = $size !== null && $size > 0 ? $size : null;
+    }
+
+    private static function idBatch(): int
+    {
+        return self::$idBatch ?? self::ID_BATCH;
+    }
+
     private static function db(): Database
     {
         return Database::getInstance(Config::db());
@@ -375,27 +407,57 @@ class Submission
         if (empty($submissionIds)) {
             return [];
         }
-        $ids = array_map('intval', array_unique($submissionIds));
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $submissions = self::db()->fetchAll(
-            "SELECT id, finished_at, ip_address, user_agent
-             FROM submissions WHERE id IN ($placeholders) ORDER BY finished_at DESC",
-            $ids
-        );
-
-        // Cargar todas las answers de una sola consulta
-        $answers = self::db()->fetchAll(
-            "SELECT a.submission_id, a.field_id, a.value
-             FROM answers a
-             WHERE a.submission_id IN ($placeholders)",
-            $ids
-        );
-
-        $bySubmission = [];
-        foreach ($answers as $a) {
-            $sid = (int) $a['submission_id'];
-            $bySubmission[$sid][(int) $a['field_id']] = $a['value'];
+        // Fase 3: loteo. MariaDB tiene un techo de 65 535 placeholders por
+        // sentencia preparada, y un formulario por encima de eso (el test usa
+        // 70 001 ids) lo reventaba con un error del driver (no un "cero
+        // resultados"), o sea que la analítica y el CSV morían justo en los
+        // formularios grandes. 5 000 deja el `IN` muy por debajo del techo.
+        $ids = [];
+        foreach ($submissionIds as $id) {
+            $sanitized = (int) $id;
+            if ($sanitized > 0) {
+                $ids[$sanitized] = true;
+            }
         }
+        $ids = array_keys($ids);
+        if ($ids === []) {
+            return [];
+        }
+        $submissions = [];
+        $bySubmission = [];
+        foreach (array_chunk($ids, self::idBatch()) as $lote) {
+            $placeholders = implode(',', array_fill(0, count($lote), '?'));
+
+            $filas = self::db()->fetchAll(
+                "SELECT id, finished_at, ip_address, user_agent
+                 FROM submissions WHERE id IN ($placeholders) ORDER BY finished_at DESC",
+                $lote
+            );
+            foreach ($filas as $f) {
+                $submissions[] = $f;
+            }
+
+            // Cargar todas las answers de una sola consulta
+            $answers = self::db()->fetchAll(
+                "SELECT a.submission_id, a.field_id, a.value
+                 FROM answers a
+                 WHERE a.submission_id IN ($placeholders)",
+                $lote
+            );
+            foreach ($answers as $a) {
+                $sid = (int) $a['submission_id'];
+                $bySubmission[$sid][(int) $a['field_id']] = $a['value'];
+            }
+        }
+
+        // El orden global se restablece DESPUÉS de los lotes: cada tanda viene
+        // en su propio `ORDER BY finished_at DESC`, así que concatenarlas sin
+        // reordenar dejaría el histórico mezclado a trozos en cuanto hay más
+        // de una tanda.
+        usort($submissions, static function (array $a, array $b): int {
+            $c = strcmp((string) $b['finished_at'], (string) $a['finished_at']);
+            return $c !== 0 ? $c : ((int) $b['id'] <=> (int) $a['id']);
+        });
 
         $result = [];
         foreach ($submissions as $s) {

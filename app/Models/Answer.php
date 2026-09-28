@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Database;
 
@@ -12,6 +13,150 @@ class Answer
     private static function db(): Database
     {
         return Database::getInstance(Config::db());
+    }
+
+    /**
+     * Fase 3: conteo de respuestas NO vacías de varios campos en UNA consulta.
+     *
+     * Antes `AnalyticsController` llamaba a `nonEmptyInForm()` una vez por
+     * pregunta, así que una visita costaba 2 consultas por campo. Aquí se
+     * agrupa por `field_id` y se devuelve el mapa `[fieldId => int]`.
+     *
+     * No se trae `a.value`: los campos de texto libre guardan párrafos enteros
+     * y agrupar por un TEXT de ese tamaño fuerza una tabla temporal enorme
+     * para un dato que aquí no se usa.
+     *
+     * @param int[] $fieldIds
+     * @return array<int, int> `[fieldId => respuestas no vacías]`
+     */
+    public static function nonEmptyCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = ''): array
+    {
+        $ids = self::normalizarIds($fieldIds);
+        if ($ids === []) {
+            return [];
+        }
+
+        [$where, $params] = self::whereFormulario($formId, $from, $to);
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $params = array_merge($params, $ids);
+
+        $rows = self::db()->fetchAll(
+            "SELECT a.field_id, COUNT(*) AS c
+             FROM answers a
+             JOIN submissions s ON s.id = a.submission_id
+             $where
+               AND a.value IS NOT NULL AND a.value <> ''
+               AND a.field_id IN ($ph)
+             GROUP BY a.field_id",
+            $params
+        );
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['field_id']] = (int) $row['c'];
+        }
+        return $out;
+    }
+
+    /**
+     * Fase 3: distribución de valores de varios campos en UNA consulta.
+     *
+     * Devuelve `[fieldId => [['value' => mixed, 'c' => int], ...]]`, con las
+     * filas de cada campo ordenadas por conteo descendente — el mismo orden que
+     * daba `countByFieldInForm()` con su `ORDER BY c DESC`.
+     *
+     * Agrupar por `(field_id, value)` en vez de traer cada fila sirve para las
+     * dos cosas a la vez: comprime los duplicados (10 000 respuestas de "Sí"
+     * son una fila) y cada agregación posterior multiplica por `c` en lugar de
+     * contar fila a fila. Es la consulta que sustituye a
+     * `countByFieldInForm`, `numberStatsInForm`, `matrixStatsInForm`,
+     * `rankingStatsInForm` y `npsStatsInForm` en la analítica.
+     *
+     * @param int[] $fieldIds
+     * @return array<int, array<int, array{value: mixed, c: int}>>
+     */
+    public static function valueCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = ''): array
+    {
+        $ids = self::normalizarIds($fieldIds);
+        if ($ids === []) {
+            return [];
+        }
+
+        [$where, $params] = self::whereFormulario($formId, $from, $to);
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $params = array_merge($params, $ids);
+
+        $rows = self::db()->fetchAll(
+            "SELECT a.field_id, a.value, COUNT(*) AS c
+             FROM answers a
+             JOIN submissions s ON s.id = a.submission_id
+             $where
+               AND a.field_id IN ($ph)
+             GROUP BY a.field_id, a.value
+             ORDER BY a.field_id, c DESC",
+            $params
+        );
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['field_id']][] = [
+                'value' => $row['value'],
+                'c'     => (int) $row['c'],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Ids enteros, únicos y positivos. Cierra el `IN ()` vacío (que es error de
+     * sintaxis en MariaDB) y evita loteos por debajo de 1.
+     *
+     * @return int[]
+     */
+    private static function normalizarIds(array $ids): array
+    {
+        $out = [];
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $out[$id] = $id;
+            }
+        }
+        return array_values($out);
+    }
+
+    /**
+     * Filtro de formulario + fechas para las consultas de `answers` unidas a
+     * `submissions`, con los MISMOS límites que usa `Submission::dateBounds()`.
+     *
+     * OJO: los límites salen de `Clock::dayStartUtc()`/`dayEndUtc()`, no de
+     * concatenar `' 00:00:00'`. Los TIMESTAMP viven en UTC y el filtro `from`/
+     * `to` es un día de la zona de quien mira: para Caracas (UTC-4) el día
+     * empieza a las 04:00 UTC, así que con el patrón ingenuo las respuestas
+     * mandadas de 00:00 a 04:00 UTC (la NOCHE del día anterior en Caracas)
+     * caían en el día equivocado. Además el final es EXCLUSIVO (`<`), que es
+     * lo que permite escribir `>= desde AND < hasta` sin bordes que dominar.
+     *
+     * El día se valida con `Submission::isValidDay()`: `2026-02-31` no es una
+     * fecha y `createFromFormat` la "corrige" a marzo sin avisar.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private static function whereFormulario(int $formId, string $from, string $to): array
+    {
+        $where = 'WHERE s.form_id = ?';
+        $params = [$formId];
+
+        if (Submission::isValidDay($from)) {
+            $where .= ' AND s.finished_at >= ?';
+            $params[] = Clock::dayStartUtc(trim($from));
+        }
+        if (Submission::isValidDay($to)) {
+            $where .= ' AND s.finished_at < ?';
+            $params[] = Clock::dayEndUtc(trim($to));
+        }
+
+        return [$where, $params];
     }
 
     public static function create(int $submissionId, int $fieldId, string $value): void
@@ -194,6 +339,11 @@ class Answer
 
     /**
      * Estadísticas numéricas (count, avg, min, max) para un campo numérico.
+     *
+     * OJO: `a.value` es TEXT, así que `MIN(a.value)`/`MAX(a.value)` comparan
+     * como CADENA y dan la respuesta equivocada: con 10, 9 y 7 devolvían
+     * min=10 y max=9. Hay que castear a número (equivalente a lo que hace la
+     * agregación de la fase 3 en PHP).
      */
     public static function numberStatsInForm(int $formId, int $fieldId, string $from = '', string $to = ''): ?array
     {
@@ -203,7 +353,7 @@ class Answer
             $fieldId,
             $from,
             $to,
-            'COUNT(*) AS answer_count, AVG(a.value) AS avg_value, MIN(a.value) AS min_value, MAX(a.value) AS max_value',
+            'COUNT(*) AS answer_count, AVG(a.value) AS avg_value, MIN(a.value + 0) AS min_value, MAX(a.value + 0) AS max_value',
             $conds,
             false
         );
@@ -355,25 +505,20 @@ class Answer
 
     /**
      * Helper que construye una consulta de answers unida a submissions
-     * con el filtro de formulario y fechas.
+     * con el filtro de formulario y fechas (los métodos por campo).
      *
-     * @param string $select  columnas a seleccionar
-     * @param string $extra   condiciones SQL adicionales y/o agrupación
-     * @param bool   $many    true para fetchAll, false para fetch (una fila)
+     * @param string $select columnas a seleccionar
+     * @param string $extra  condiciones SQL adicionales y/o agrupación
+     * @param bool   $many   true para fetchAll, false para fetch (una fila)
      * @return array|null|array[]
      */
     private static function queryField(int $formId, int $fieldId, string $from, string $to, string $select, string $extra, bool $many)
     {
-        $params = ['form_id' => $formId, 'field_id' => $fieldId];
-        $where = 'WHERE s.form_id = :form_id AND a.field_id = :field_id';
-        if ($from !== '') {
-            $where .= ' AND s.finished_at >= :from';
-            $params['from'] = $from . ' 00:00:00';
-        }
-        if ($to !== '') {
-            $where .= ' AND s.finished_at <= :to';
-            $params['to'] = $to . ' 23:59:59';
-        }
+        // Fase 3: los límites de día salen de Clock (UTC/local), no de
+        // concatenar ' 00:00:00' / ' 23:59:59'. Ver whereFormulario().
+        [$where, $params] = self::whereFormulario($formId, $from, $to);
+        $where .= ' AND a.field_id = ?';
+        $params[] = $fieldId;
 
         $sql = "SELECT $select
                 FROM answers a
