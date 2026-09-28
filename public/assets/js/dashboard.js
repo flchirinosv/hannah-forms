@@ -181,25 +181,41 @@
     'use strict';
 
     const picker = document.getElementById('templatePicker');
-    const select = document.getElementById('template');
-    if (!picker || !select) {
+    // V6 — Las plantillas son tarjetas de radio, ya no un <select>.
+    const templateInputs = picker
+        ? Array.prototype.slice.call(picker.querySelectorAll('input[name="template"]'))
+        : [];
+    if (!picker || templateInputs.length === 0) {
         return;
     }
 
     const radios = Array.prototype.slice.call(document.querySelectorAll('input[name="mode"]'));
+    const modeTemplate = radios.find((r) => r.value === 'template');
     const title = document.getElementById('title');
 
     function apply() {
         const useTemplate = radios.some((r) => r.checked && r.value === 'template');
         picker.hidden = !useTemplate;
-        // En modo «en blanco» no debe viajar una plantilla antigua.
-        select.disabled = !useTemplate;
+        // En modo «en blanco» no debe viajar una plantilla antigua: las
+        // tarjetas deshabilitadas no se serializan en el submit.
+        templateInputs.forEach((r) => {
+            r.disabled = !useTemplate;
+        });
+        picker.classList.toggle('app-tpl-off', !useTemplate);
         // Con plantilla el título puede quedar vacío (el servidor usa el de la
         // plantilla); en blanco sigue siendo obligatorio.
         if (title) {
             title.required = !useTemplate;
         }
     }
+
+    // Elegir una tarjeta activa el modo «Desde una plantilla».
+    templateInputs.forEach((r) => r.addEventListener('change', () => {
+        if (r.checked && modeTemplate && !modeTemplate.disabled) {
+            modeTemplate.checked = true;
+            apply();
+        }
+    }));
 
     radios.forEach((r) => r.addEventListener('change', apply));
     apply();

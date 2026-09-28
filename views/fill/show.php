@@ -435,7 +435,18 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             </div>
         <?php endif; ?>
 
-        <div class="vf-progress-wrap" id="vfProgressWrap">
+        <?php
+        // V1 — Multi-paso: los marcadores de página se resuelven antes que el
+        // wrap de progreso para que la barra sea sticky solo en modo multi-paso.
+        $pageMarkersV1 = 0;
+        foreach ($fields as $fld) {
+            if ($fld['type'] === 'page') {
+                $pageMarkersV1++;
+            }
+        }
+        $hasPages = $pageMarkersV1 > 0;
+        ?>
+        <div class="vf-progress-wrap<?= $hasPages ? ' vf-sticky' : '' ?>" id="vfProgressWrap">
             <div class="vf-progress-meta">
                 <span><i class="fa-solid fa-circle-half-stroke me-1"></i><?= $t('ui.avance') ?></span>
                 <span id="vfProgressLabel" aria-live="polite">0%</span>
@@ -475,20 +486,13 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
         <?php endif; ?>
 
         <?php
-        // P4 — Multi-paso: cada campo «page» inicia un paso nuevo. El contenido
-        // previo al primer salto queda en el paso 1 (bloque implícito).
-        $pageMarkers = 0;
-        foreach ($fields as $fld) {
-            if ($fld['type'] === 'page') {
-                $pageMarkers++;
-            }
-        }
-        $hasPages = $pageMarkers > 0;
+        // P4 — Multi-paso (resto de la factoría; $hasPages ya se calculó antes
+        // del wrap de progreso para la clase sticky).
         $firstField = $fields[0] ?? null;
         $hasImplicitFirst = $hasPages && $firstField !== null && $firstField['type'] !== 'page';
         // Bloques de página: implícito (si hay contenido previo) + 1 por cada page.
         $pageBlockIdx = 0;
-        $totalBlockCount = $pageMarkers + ($hasImplicitFirst ? 1 : 0);
+        $totalBlockCount = $pageMarkersV1 + ($hasImplicitFirst ? 1 : 0);
         $blockOpen = false;
 
         $emitPageHeader = static function (?array $pageField) use (&$pageBlockIdx, &$blockOpen, $t): void {

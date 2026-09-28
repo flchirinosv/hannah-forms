@@ -75,6 +75,7 @@ final class TemplateService
             $fields = is_array($data['fields'] ?? null) ? $data['fields'] : [];
             $sections = 0;
             $questions = 0;
+            $types = [];
             foreach ($fields as $f) {
                 if (!is_array($f)) {
                     continue;
@@ -83,6 +84,11 @@ final class TemplateService
                     $sections++;
                 } else {
                     $questions++;
+                    // V6 — mini-preview de la galería: primeros tipos únicos.
+                    $type = (string) ($f['type'] ?? '');
+                    if ($type !== '' && !in_array($type, $types, true) && count($types) < 6) {
+                        $types[] = $type;
+                    }
                 }
             }
             $out[] = [
@@ -91,6 +97,7 @@ final class TemplateService
                 'description' => (string) ($data['description'] ?? ''),
                 'questions'   => $questions,
                 'sections'    => $sections,
+                'types'       => $types,
             ];
         }
         usort($out, static fn($a, $b): int => strcmp($a['name'], $b['name']));

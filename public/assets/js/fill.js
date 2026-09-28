@@ -713,14 +713,31 @@
 
     /* ---------- progreso ---------- */
 
+    /* V1 — Progreso de completitud real: si hay preguntas obligatorias
+     * visibles, el % mide cuántas de ellas están respondidas (el resto son
+     * opcionales, no bloquean el envío). Sin obligatorias, cae al % de campos
+     * respondidos del conjunto visible (como antes). */
     function countAnswered() {
         const visible = visibleFieldCards();
         let done = 0;
+        let reqDone = 0;
+        let reqTotal = 0;
         visible.forEach((card) => {
-            if (!isEmptyValue(getFieldValue(card))) {
+            const req = card.dataset.vfRequired === '1';
+            const filled = !isEmptyValue(getFieldValue(card));
+            if (filled) {
                 done += 1;
             }
+            if (req) {
+                reqTotal += 1;
+                if (filled) {
+                    reqDone += 1;
+                }
+            }
         });
+        if (reqTotal > 0) {
+            return Math.round((reqDone / reqTotal) * 100);
+        }
         return visible.length ? Math.round((done / visible.length) * 100) : 0;
     }
 

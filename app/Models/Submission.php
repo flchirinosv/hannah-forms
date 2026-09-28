@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Database;
+use DateTimeImmutable;
+use DateTimeZone;
 
 class Submission
 {
@@ -376,6 +378,75 @@ class Submission
              GROUP BY day ORDER BY day",
             $params + ['form_id' => $formId, 'desfase' => $desfase]
         );
+    }
+
+    /**
+     * V5 — Sparkline del dashboard: totales por día LOCAL (mismo `CONVERT_TZ`
+     * que `dailyStats`) para todos los formularios de la página, en UNA
+     * consulta. La serie de los últimos `$days` días se cierra en PHP con
+     * huecos a 0, de modo que la vista no resuelve fechas ni zonas.
+     *
+     * @param array<int> $formIds
+     * @return array{labels: string[], forms: array<int, int[]>, max: int}
+     *         `forms[form_id]` = conteos alineados a `labels` (día más viejo
+     *         primero); `max` = tope global para escalar el gráfico.
+     */
+    public static function activityByForms(array $formIds, int $days = 14): array
+    {
+        $ids = array_values(array_filter(
+            array_map(static fn ($id): int => (int) $id, $formIds),
+            static fn (int $id): bool => $id > 0
+        ));
+        if ($ids === [] || $days < 1) {
+            return ['labels' => [], 'forms' => [], 'max' => 0];
+        }
+
+        $n = min(31, $days);
+        $desfase = Clock::localSqlOffsetFor();
+        // PDO no mezcla `?` con `:nombrado` en una misma sentencia (HY093):
+        // los ids van como placeholders nombrados.
+        $names = [];
+        $params = [];
+        foreach ($ids as $i => $id) {
+            $key = 'fid' . $i;
+            $names[] = ':' . $key;
+            $params[$key] = $id;
+        }
+        $placeholders = implode(',', $names);
+        $params['desfase'] = $desfase;
+        $rows = self::db()->fetchAll(
+            "SELECT s.form_id AS fid,
+                    DATE(CONVERT_TZ(s.finished_at, '+00:00', :desfase)) AS day,
+                    COUNT(*) AS c
+             FROM submissions s
+             WHERE s.form_id IN ($placeholders)
+             GROUP BY fid, day",
+            $params
+        );
+
+        $byDay = [];
+        foreach ($rows as $r) {
+            $byDay[(int) $r['fid']][(string) $r['day']] = (int) $r['c'];
+        }
+
+        $today = new DateTimeImmutable('now', Clock::displayZone());
+        $labels = [];
+        $zero = array_fill(0, $n, 0);
+        $forms = array_fill_keys($ids, $zero);
+        $max = 0;
+        for ($i = $n - 1; $i >= 0; $i--) {
+            $label = $today->modify('-' . $i . ' days')->format('Y-m-d');
+            $labels[] = $label;
+            foreach ($ids as $fid) {
+                $c = (int) ($byDay[$fid][$label] ?? 0);
+                $forms[$fid][$n - 1 - $i] = $c;
+                if ($c > $max) {
+                    $max = $c;
+                }
+            }
+        }
+
+        return ['labels' => $labels, 'forms' => $forms, 'max' => $max];
     }
 
     /**

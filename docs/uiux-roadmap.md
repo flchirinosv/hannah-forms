@@ -36,12 +36,12 @@ Composer, CSP `script-src 'self'`, tests siempre verdes).
 
 | # | Ítem | Archivos | Notas |
 |---|---|---|---|
-| V1 | Progreso real de completitud (% de obligatorios respondidos) en todos los modos + barra sticky en multi-paso | `fill.js`, `app.css` | El wrap de progreso ya existe para `#vfProgressWrap` |
-| V2 | Radios/checks como tarjetas táctiles (hit area ≥44px, selección en toda la tarjeta) | `views/fill/show.php`, `fill.js`, `app.css` | Gana en móvil y en campos largos |
-| V3 | Vista previa en vivo en el builder (panel/modal renderizado desde el estado, read-only, con lógica) | `builder.js`, `app.css` | Reutiliza el render de tarjetas del lienzo |
-| V4 | Undo/redo en el builder (stack de snapshots del payload, debounce, Ctrl+Z/Y) | `builder.js` | Estado en memoria; no carga extra al servidor |
-| V5 | Sparkline de respuestas/día por formulario en el dashboard | query agregada (`Form`/`Submission`), `dashboard.js` | Chart.js ya vendered; con test del agregado |
-| V6 | Galería de plantillas con mini-preview en el modal | `dashboard.js`, `views/dashboard/index.php` | Render declarativo desde el JSON de plantilla |
+| V1 | Progreso real de completitud (% de obligatorios respondidos) en todos los modos + barra sticky en multi-paso | `fill.js`, `app.css` | HECHO | El wrap de progreso ya existe para `#vfProgressWrap` |
+| V2 | Radios/checks como tarjetas táctiles (hit area ≥44px, selección en toda la tarjeta) | `views/fill/show.php`, `fill.js`, `app.css` | HECHO (CSS puro) | Gana en móvil y en campos largos |
+| V3 | Vista previa en vivo en el builder (panel/modal renderizado desde el estado, read-only, con lógica) | `builder.js`, `app.css` | HECHO (ya existía) | Reutiliza el render de tarjetas del lienzo |
+| V4 | Undo/redo en el builder (stack de snapshots del payload, debounce, Ctrl+Z/Y) | `builder.js` | HECHO (ya existía) | Estado en memoria; no carga extra al servidor |
+| V5 | Sparkline de respuestas/día por formulario en el dashboard | query agregada (`Form`/`Submission`), `dashboard.js` | HECHO | SVG inline por card; `Submission::activityByForms()` con test |
+| V6 | Galería de plantillas con mini-preview en el modal | `dashboard.js`, `views/dashboard/index.php` | HECHO | Render declarativo desde el JSON de plantilla (`types`) |
 
 ## Tier 3 — Apuesta documentada (NO por defecto en la próxima ronda)
 
@@ -65,7 +65,7 @@ colaboración real-time, idiomas extra (pt/fr) e integraciones OAuth (Sheets/CRM
 
 ## Reglas transversales
 
-- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (469+).
+- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (473+).
 - Todo JS nuevo va en archivos externos; carga con `defer` salvo que sea crítico (CSP).
 - No se introducen dependencias externas (ni Composer, ni npm, ni CDN).
 - Commit por fase cerrada.

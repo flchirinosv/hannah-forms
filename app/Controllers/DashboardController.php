@@ -12,6 +12,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\Submission;
 
 class DashboardController
 {
@@ -63,6 +64,12 @@ class DashboardController
             'user'  => $user,
             'forms' => $forms,
             'stats' => $stats,
+            // V5 — Serie de actividad para el sparkline de cada tarjeta (días
+            // locales, consulta única para todos los forms de la página).
+            'activity' => Submission::activityByForms(array_map(
+                static fn (array $f): int => (int) ($f['id'] ?? 0),
+                $forms
+            )),
             // P9 — Plantillas de arranque (database/templates) para el modal.
             'templates' => \App\Services\TemplateService::list(),
         ]);

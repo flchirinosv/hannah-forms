@@ -145,6 +145,30 @@ $relativeTs = static function (string $timestamp): string {
                         <div class="app-dash-meta small text-muted mb-3">
                             <span><i class="fa-regular fa-clock me-1"></i>Últ. respuesta: <?= View::escape($lastText) ?></span>
                         </div>
+                        <?php
+                        // V5 — Sparkline de actividad (últimos días, por día local).
+                        $sparkCounts = $activity['forms'][(int) $form['id']] ?? null;
+                        if (is_array($sparkCounts) && count($sparkCounts) > 0):
+                            $sparkMax = max(1, (int) ($activity['max'] ?? 0));
+                            $sparkW = 150;
+                            $sparkH = 24;
+                            $sparkN = count($sparkCounts);
+                            $barW = $sparkW / $sparkN;
+                        ?>
+                        <div class="app-spark mb-3" title="Actividad: respuestas en los últimos <?= $sparkN ?> días" aria-label="Actividad: respuestas en los últimos <?= $sparkN ?> días">
+                            <svg class="app-spark-svg" viewBox="0 0 <?= $sparkW ?> <?= $sparkH ?>" preserveAspectRatio="none" role="img">
+                                <?php foreach ($sparkCounts as $sparkI => $sparkV): ?>
+                                    <?php
+                                        $sparkV = (int) $sparkV;
+                                        $h = $sparkV > 0 ? max(2, (int) round(($sparkV / $sparkMax) * ($sparkH - 3))) : 1;
+                                        $x = round($sparkI * $barW);
+                                        $barWd = max(2, (int) round($barW) - 1);
+                                    ?>
+                                    <rect class="<?= $sparkI === $sparkN - 1 ? 'app-spark-last' : 'app-spark-bar' ?>" x="<?= $x ?>" y="<?= $sparkH - $h ?>" width="<?= $barWd ?>" height="<?= $h ?>" rx="1"></rect>
+                                <?php endforeach; ?>
+                            </svg>
+                        </div>
+                        <?php endif; ?>
                         <div class="d-flex gap-2">
                             <a href="/forms/<?= (int) $form['id'] ?>" class="btn btn-sm btn-outline-secondary app-btn-icon" title="Ver detalles"><i class="fa-solid fa-eye"></i></a>
                             <a href="/forms/<?= (int) $form['id'] ?>/builder" class="btn btn-sm btn-outline-primary app-btn-icon" title="Editar campos"><i class="fa-solid fa-pen"></i></a>
@@ -198,14 +222,47 @@ $relativeTs = static function (string $timestamp): string {
                         </div>
                     </div>
                     <div class="mb-3" id="templatePicker" hidden>
-                        <label for="template" class="form-label">Plantilla</label>
-                        <select class="form-select" id="template" name="template">
-                            <?php foreach (($templates ?? []) as $tpl): ?>
-                            <option value="<?= View::escape($tpl['key']) ?>"><?= View::escape($tpl['name']) ?> — <?= (int) $tpl['questions'] ?> preguntas</option>
-                            <?php endforeach; ?>
-                        </select>
+                        <span class="form-label d-block">Elige una plantilla</span>
                         <?php if (empty($templates)): ?>
-                        <div class="form-text">No hay plantillas instaladas en database/templates.</div>
+                            <div class="form-text">No hay plantillas instaladas en database/templates.</div>
+                        <?php else: ?>
+                            <?php
+                            // V6 — Mini-preview declarativa desde el JSON de la
+                            // plantilla (TemplateService::list → `types`).
+                            $vfTypeLabel = [
+                                'text' => 'Texto', 'textarea' => 'Texto largo', 'email' => 'Email',
+                                'number' => 'Número', 'date' => 'Fecha', 'time' => 'Hora',
+                                'datetime-local' => 'Fecha y hora', 'select' => 'Desplegable',
+                                'radio' => 'Opción única', 'checkbox' => 'Multiopción',
+                                'url' => 'URL', 'tel' => 'Teléfono', 'scale' => 'Escala',
+                                'range' => 'Rango', 'nps' => 'NPS', 'star' => 'Estrellas',
+                                'matrix' => 'Matriz', 'ranking' => 'Ranking', 'file' => 'Archivo',
+                            ];
+                            ?>
+                            <div class="row g-2">
+                                <?php foreach ($templates as $tplIdx => $tpl): ?>
+                                <div class="col-sm-6">
+                                    <label class="app-tpl-card<?= $tplIdx === 0 ? ' app-tpl-checked' : '' ?>">
+                                        <input class="form-check-input d-none" type="radio" name="template"
+                                               value="<?= View::escape((string) $tpl['key']) ?>"<?= $tplIdx === 0 ? ' checked' : '' ?>>
+                                        <span class="app-tpl-body">
+                                            <span class="app-tpl-name"><?= View::escape((string) $tpl['name']) ?></span>
+                                            <?php if (!empty($tpl['description'])): ?>
+                                                <span class="app-tpl-desc"><?= View::escape((string) $tpl['description']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($tpl['types'])): ?>
+                                                <span class="app-tpl-chips">
+                                                    <?php foreach ($tpl['types'] as $tfType): ?>
+                                                        <span class="app-tpl-chip" title="<?= View::escape((string) $tfType) ?>"><?= View::escape($vfTypeLabel[(string) $tfType] ?? (string) $tfType) ?></span>
+                                                    <?php endforeach; ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <span class="app-tpl-q small text-muted"><?= (int) $tpl['questions'] ?> preguntas<?= (int) $tpl['sections'] > 0 ? ' · ' . (int) $tpl['sections'] . ' secciones' : '' ?></span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
                     <div class="mb-3">
