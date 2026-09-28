@@ -2,6 +2,8 @@
 use App\Core\View;
 ?>
 <div class="container-fluid px-lg-4">
+    <?= View::partial('admin/_nav', ['active' => 'forms']) ?>
+
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Todos los formularios</h2>

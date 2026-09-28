@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Access;
 use App\Core\Auth;
 use App\Core\DashboardLimit;
 use App\Core\Request;
@@ -41,9 +42,14 @@ class AnalyticsController
         }
 
         $formId = (int) $form['id'];
-        // Migrado a Models (antes SQL crudo en el controller)
-        $submissions = Submission::byFormFiltered($formId, (string) $from, (string) $to);
-        $total = count($submissions);
+        // P1 (2026-09-28): la tabla de detalle se pagina EN EL SERVIDOR (15 por
+        // página, lazy-load con fetch). Los agregados siguen siendo globales:
+        // es la tabla la que acota, no las métricas. La respuesta de la página
+        // 1 se renderiza server-side (sin parpadeo JS) y el pager la refresca.
+        $detail = Submission::byFormFilteredPaginated($formId, (string) $from, (string) $to, 1, 15);
+        $submissions = $detail['items'];
+        $total = $detail['total'];
+        $detailPage = $detail['page'];
 
         // Fase 3: respuestas por campo en DOS consultas fijas, no 2 por
         // pregunta. Antes este bucle hacía 2 SELECT por campo (3 si era NPS):
@@ -65,7 +71,8 @@ class AnalyticsController
         // Progreso diario (migrado a Models)
         $daily = Submission::dailyStats($formId, (string) $from, (string) $to);
 
-        // Respuestas de la tabla (N+1 resuelto: una sola consulta)
+        // Respuestas de la tabla (N+1 resuelto: una sola consulta; y SOLO de
+        // la página actual, no de todas las submissions del formulario).
         $submissionIds = array_column($submissions, 'id');
         $answersBySubmission = Submission::withAnswersByIds($submissionIds);
 
@@ -78,6 +85,57 @@ class AnalyticsController
             'daily'       => $daily,
             'from'        => $from,
             'to'          => $to,
+            'detail'      => $detail,
+        ]);
+    }
+
+    /**
+     * P1 (2026-09-28) — Fragmento de la página N de la tabla de detalle.
+     *
+     * Devuelve JSON con el <tr> de cada respuesta + el paginador nuevo, para
+     * que el cliente lo inyecte sin recargar la página (lazy loading). Un solo
+     * contrato {html, pagination, page, pages, total}: `html` va al tbody y
+     * `pagination` al contenedor del pager.
+     */
+    public function rows(int $id): void
+    {
+        $form = Form::find($id);
+        if ($form === null) {
+            Response::json(['ok' => false, 'error' => 'Formulario no encontrado.'], 404);
+            return;
+        }
+        if (!$this->canAccess((int) $form['user_id'])) {
+            Response::json(['ok' => false, 'error' => 'Sin permiso.'], 403);
+            return;
+        }
+
+        $from = self::validarFecha((string) Request::query('from', ''));
+        $to = self::validarFecha((string) Request::query('to', ''));
+        $page = max(1, (int) Request::query('page', '1'));
+
+        $detail = Submission::byFormFilteredPaginated((int) $form['id'], $from, $to, $page, 15);
+
+        $campos = array_values(array_filter(
+            (array) ($form['fields'] ?? []),
+            static fn($f) => ($f['type'] ?? '') !== 'section'
+        ));
+        $ids = array_column($detail['items'], 'id');
+        $answers = $ids === [] ? [] : Submission::withAnswersByIds($ids);
+
+        $html = View::partial('analytics/_rows', [
+            'submissions'      => $detail['items'],
+            'answers'          => $answers,
+            'answerableFields' => $campos,
+            'offset'           => 15 * ((int) $detail['page'] - 1),
+        ]);
+
+        Response::json([
+            'ok'         => true,
+            'html'       => $html,
+            'pagination' => View::partial('analytics/_pagination', $detail),
+            'page'       => $detail['page'],
+            'pages'      => $detail['pages'],
+            'total'      => $detail['total'],
         ]);
     }
 
@@ -88,7 +146,7 @@ class AnalyticsController
             Response::notFound();
             return;
         }
-        if (!$this->canAccess((int) $form['user_id'])) {
+        if (!$this->canExport((int) $form['user_id'])) {
             Response::forbidden();
             return;
         }
@@ -201,7 +259,12 @@ class AnalyticsController
 
     private function canAccess(int $ownerId): bool
     {
-        return (int) Auth::id() === $ownerId || Auth::isAdmin() || Auth::role() === 'editor';
+        return Access::canReadOwn($ownerId, 'analytics.view_own');
+    }
+
+    private function canExport(int $ownerId): bool
+    {
+        return Access::canExport($ownerId);
     }
 
     /**

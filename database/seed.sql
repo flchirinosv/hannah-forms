@@ -18,3 +18,40 @@ INSERT INTO roles (name, description) VALUES
     ('user',   'Crea y gestiona sus propios formularios'),
     ('editor', 'Puede editar formularios pero no eliminarlos')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+-- ===========================================================================
+-- Permisos (RBAC, 2026-09-28) — COPIA de config/permissions.php.
+-- La migración 0005 siembra la MISMA lista para bases existentes; aquí va la
+-- copia para instalaciones limpias (schema.sql + seed.sql). SIEMPRE que cambie
+-- config/permissions.php hay que actualizar este bloque; lo comprueba
+-- PermissionSeedParityTest (que lee este archivo y compara claves y roles).
+-- ===========================================================================
+
+INSERT INTO permissions (`key`, description) VALUES
+    ('admin.access',  'Entrar al panel de administración'),
+    ('admin.users',   'Gestionar usuarios (rol y estado)'),
+    ('admin.groups',  'Gestionar grupos de roles'),
+    ('admin.roles',   'Editar la matriz de permisos de los roles'),
+    ('logs.view',     'Ver el registro de eventos de seguridad'),
+    ('forms.manage_all', 'Ver y operar los formularios de cualquier usuario'),
+    ('forms.create',  'Crear formularios (y duplicarlos)'),
+    ('forms.edit_own','Editar, publicar, cerrar y configurar formularios propios'),
+    ('forms.delete_own', 'Eliminar formularios propios'),
+    ('forms.export_own', 'Exportar datos de formularios propios'),
+    ('analytics.view_own', 'Ver la analítica de formularios propios'),
+    ('responses.view_own', 'Ver y eliminar respuestas de formularios propios'),
+    ('attachments.download_own', 'Descargar adjuntos de formularios propios'),
+    ('dashboard.view','Entrar al dashboard')
+ON DUPLICATE KEY UPDATE description = VALUES(description);
+
+-- Asignación por defecto de permisos a roles (admin: todo; user: operación de
+-- formularios propios; editor: igual que user pero sin eliminar).
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON (
+    (r.name = 'admin')
+    OR (r.name = 'user'  AND p.`key` IN ('forms.create','forms.edit_own','forms.delete_own','forms.export_own','analytics.view_own','responses.view_own','attachments.download_own','dashboard.view'))
+    OR (r.name = 'editor' AND p.`key` IN ('forms.create','forms.edit_own','forms.export_own','analytics.view_own','responses.view_own','attachments.download_own','dashboard.view'))
+)
+ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);

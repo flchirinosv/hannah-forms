@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Access;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\DashboardLimit;
@@ -27,6 +28,12 @@ class FormController
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
             Response::redirect('/dashboard');
+            return;
+        }
+
+        // RBAC: sin permiso de creación no hay nada que hacer aquí.
+        if (!Auth::can('forms.create')) {
+            Response::forbidden();
             return;
         }
 
@@ -228,6 +235,7 @@ class FormController
             error_log('[FormController] purgeForm(' . $id . '): ' . $e->getMessage());
         }
 
+        \App\Core\SecurityLog::record('form.delete', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
         Session::flash('success', 'Formulario eliminado.');
         Response::redirect('/dashboard');
         return;
@@ -304,7 +312,11 @@ class FormController
             return;
         }
 
-        // F5.3 — duplicar también crea un formulario: mismo techo por usuario.
+        // RBAC (duplicar = crear) + F5.3 (techo de formularios por hora).
+        if (!Auth::can('forms.create')) {
+            Response::forbidden();
+            return;
+        }
         if (!DashboardLimit::createAllowed()) {
             Session::flash('error', 'Llegaste al límite de formularios por hora. Intenta más tarde.');
             Response::redirect('/forms/' . $id);
@@ -312,6 +324,7 @@ class FormController
         }
 
         $newId = Form::duplicate($id);
+        \App\Core\SecurityLog::record('form.duplicate', 'copia de #' . $id . ' creada como #' . $newId);
         Session::flash('success', 'Formulario duplicado. La copia está en borrador.');
         Response::redirect('/forms/' . $newId);
         return;
@@ -433,16 +446,16 @@ class FormController
 
     private function canAccess(array $form, int $userId): bool
     {
-        return (int) $form['user_id'] === $userId || Auth::isAdmin();
+        return Access::canView((int) $form['user_id']);
     }
 
     private function canEdit(array $form, int $userId): bool
     {
-        return $this->canAccess($form, $userId) || Auth::role() === 'editor';
+        return Access::canEdit((int) $form['user_id']);
     }
 
     private function canDelete(array $form, int $userId): bool
     {
-        return (int) $form['user_id'] === $userId || Auth::isAdmin();
+        return Access::canDelete((int) $form['user_id']);
     }
 }

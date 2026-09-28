@@ -145,4 +145,61 @@
     } else {
         setTimeout(initCharts, 100);
     }
+
+    // -------------------------------------------------------------
+    // P1 (2026-09-28) — Tabla de detalle con paginación server-side.
+    // La página 1 llega renderizada del servidor; los botones del pager piden
+    // el fragmento a `GET /forms/{id}/analytics/rows` y lo inyectan. El HTML
+    // que se inyecta lo ESCAPA el servidor (View::escape), nunca se construye
+    // desde datos del cliente.
+    // -------------------------------------------------------------
+    function initDetailPager() {
+        var tbody = document.getElementById('analyticsRows');
+        if (!tbody) return;
+
+        var formId = tbody.getAttribute('data-form') || '';
+        var from = tbody.getAttribute('data-from') || '';
+        var to = tbody.getAttribute('data-to') || '';
+
+        function fetchPage(page) {
+            var url = '/forms/' + encodeURIComponent(formId) + '/analytics/rows'
+                + '?page=' + encodeURIComponent(page)
+                + (from ? '&from=' + encodeURIComponent(from) : '')
+                + (to ? '&to=' + encodeURIComponent(to) : '');
+
+            tbody.classList.add('vf-loading');
+
+            fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (!data.ok || typeof data.html !== 'string') throw new Error('respuesta inválida');
+                    tbody.innerHTML = data.html;
+                    var pager = document.querySelector('.analytics-pager');
+                    if (pager && typeof data.pagination === 'string' && data.pagination !== '') {
+                        pager.outerHTML = data.pagination;
+                    }
+                    initDetailPager(); // re-engancha los botones nuevos
+                })
+                .catch(function () {
+                    tbody.classList.remove('vf-loading');
+                });
+        }
+
+        document.querySelectorAll('.analytics-pager [data-paginate-page]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (btn.disabled || btn.classList.contains('page-disabled')) return;
+                fetchPage(btn.getAttribute('data-paginate-page'));
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDetailPager);
+    } else {
+        initDetailPager();
+    }
 })();

@@ -92,7 +92,12 @@ class Submission
                 'token'   => $publicToken ?? self::newToken(),
             ]
         );
-        return self::db()->lastInsertId();
+        $id = self::db()->lastInsertId();
+        try {
+            \App\Core\Cache::forgetLike('dash:');
+        } catch (\Throwable $e) {
+        }
+        return $id;
     }
 
     public static function byForm(int $formId): array
@@ -276,6 +281,10 @@ class Submission
     public static function delete(int $id): void
     {
         self::db()->execute('DELETE FROM submissions WHERE id = :id', ['id' => $id]);
+        try {
+            \App\Core\Cache::forgetLike('dash:');
+        } catch (\Throwable $e) {
+        }
     }
 
     /**
@@ -294,6 +303,50 @@ class Submission
             "SELECT s.id, s.finished_at FROM submissions s WHERE s.form_id = :form_id$where ORDER BY s.finished_at DESC",
             $params + ['form_id' => $formId]
         );
+    }
+
+    /**
+     * `byFormFiltered` + paginación server-side (P1, análisis de respuestas).
+     *
+     * El agregado de analítica sigue siendo global; esta consulta solo acota la
+     * TABLA de respuestas renderizada. La forma del envelope es la misma que
+     * `byFormPaginated` para que el cliente use un solo contrato. `finished_at`
+     * viene como string crudo de la BD (UTC): la pantalla lo pinta con
+     * `View::datetime()` como toda la UI.
+     *
+     * @return array{items: array, total: int, page: int, per_page: int, pages: int}
+     */
+    public static function byFormFilteredPaginated(int $formId, string $from = '', string $to = '', int $page = 1, int $perPage = 15): array
+    {
+        [$where, $params] = self::dateBounds($from, $to, 's.');
+        $perPage = max(1, min(100, $perPage));
+        $page = max(1, $page);
+
+        $row = self::db()->fetch(
+            "SELECT COUNT(*) AS c FROM submissions s WHERE s.form_id = :form_id$where",
+            $params + ['form_id' => $formId]
+        );
+        $total = (int) ($row['c'] ?? 0);
+        $pages = (int) max(1, (int) ceil($total / $perPage));
+        $page = min($page, $pages);
+
+        $limit = $perPage;
+        $offset = ($page - 1) * $perPage;
+        $items = self::db()->fetchAll(
+            "SELECT s.id, s.finished_at FROM submissions s
+             WHERE s.form_id = :form_id$where
+             ORDER BY s.finished_at DESC, s.id DESC
+             LIMIT $limit OFFSET $offset",
+            $params + ['form_id' => $formId]
+        );
+
+        return [
+            'items'    => $items,
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $perPage,
+            'pages'    => $pages,
+        ];
     }
 
     /**

@@ -35,6 +35,22 @@ class View
         }
     }
 
+    /**
+     * Renderiza una vista SIN layout y DEVUELVE el string (para montar HTML en
+     * respuestas JSON, p. ej. la fila de una tabla paginada por fetch).
+     */
+    public static function partial(string $template, array $data = []): string
+    {
+        $templatePath = self::resolve($template);
+        if (!is_readable($templatePath)) {
+            return '';
+        }
+        extract($data, EXTR_SKIP);
+        ob_start();
+        include $templatePath;
+        return (string) ob_get_clean();
+    }
+
     private static function resolve(string $template): string
     {
         // B3: impedir traversal de path ('..') en el nombre del template.

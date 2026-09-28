@@ -331,6 +331,7 @@ class FillController
         $scope = 'submit:' . (int) $form['id'];
         $ip = Request::ip();
         if (!RateLimiter::isAllowed($scope, $ip, 10, 600)) {
+            \App\Core\SecurityLog::record('rate_limit.fill', 'bloqueo por IP al enviar /f/' . (string) $form['slug']);
             Response::abort(429, I18n::t('err.too_many', $locale));
             return;
         }

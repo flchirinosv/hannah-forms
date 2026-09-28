@@ -211,6 +211,7 @@ final class Uploader
             $clientName = self::baseName((string) ($f['name'] ?? 'archivo'));
             $clientExt  = strtolower((string) pathinfo($clientName, PATHINFO_EXTENSION));
             if (in_array($clientExt, self::DENY_EXT, true)) {
+                \App\Core\SecurityLog::record('upload.denied_ext', 'extensión prohibida: .' . $clientExt . ' (' . $clientName . ')');
                 $res = self::fail('blocked_extension', [], $locale);
                 self::rollback($stored);
                 return $res;

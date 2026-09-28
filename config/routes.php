@@ -52,6 +52,7 @@ $router->post('/f/{slug}', [FillController::class, 'submit'], ['post-max', 'csrf
 
 // Analítica
 $router->get('/forms/{id}/analytics', [AnalyticsController::class, 'show'], ['auth']);
+$router->get('/forms/{id}/analytics/rows', [AnalyticsController::class, 'rows'], ['auth']);
 $router->get('/forms/{id}/export.csv', [AnalyticsController::class, 'exportCsv'], ['auth']);
 
 // Respuestas (P3)
@@ -68,3 +69,11 @@ $router->get('/admin', [AdminController::class, 'index'], ['auth', 'admin']);
 $router->post('/admin/users/role', [AdminController::class, 'updateRole'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
+// RBAC (2026-09-28)
+$router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);
+$router->post('/admin/groups/create', [AdminController::class, 'groupCreate'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/groups/update', [AdminController::class, 'groupUpdate'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/groups/delete', [AdminController::class, 'groupDelete'], ['auth', 'admin', 'csrf']);
+$router->get('/admin/roles', [AdminController::class, 'roles'], ['auth', 'admin']);
+$router->post('/admin/roles/save', [AdminController::class, 'updateRoleMatrix'], ['auth', 'admin', 'csrf']);
+$router->get('/admin/security-log', [AdminController::class, 'securityLog'], ['auth', 'admin']);

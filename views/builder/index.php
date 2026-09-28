@@ -498,5 +498,5 @@ $fieldTypes = [
     <i class="fa-solid fa-keyboard me-1"></i>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Supr</kbd> eliminar · <kbd>Esc</kbd> cerrar selección · autoguardado activo
 </p>
 
-<script src="<?= View::asset('js/sortable.min.js') ?>"></script>
-<script src="<?= View::asset('js/builder.js') ?>"></script>
+<script src="<?= View::asset('js/sortable.min.js') ?>" defer></script>
+<script src="<?= View::asset('js/builder.js') ?>" defer></script>

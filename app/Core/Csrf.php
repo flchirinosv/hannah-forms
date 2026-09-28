@@ -31,7 +31,11 @@ class Csrf
     public static function verifyRequest(): bool
     {
         $token = Request::post('_token');
-        return self::verify(is_string($token) ? $token : null);
+        $ok = self::verify(is_string($token) ? $token : null);
+        if (!$ok) {
+            SecurityLog::record('csrf.invalid', 'token ausente o inválido en POST');
+        }
+        return $ok;
     }
 
     /**
@@ -41,6 +45,10 @@ class Csrf
     public static function verifyHeader(): bool
     {
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-        return self::verify(is_string($token) ? $token : null);
+        $ok = self::verify(is_string($token) ? $token : null);
+        if (!$ok) {
+            SecurityLog::record('csrf.invalid', 'token ausente o inválido en X-CSRF-Token');
+        }
+        return $ok;
     }
 }

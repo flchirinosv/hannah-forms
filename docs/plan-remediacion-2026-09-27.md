@@ -945,3 +945,138 @@ paginación es el arreglo, pero es un cambio de **interfaz** (contador, enlaces 
 qué agregados se calculan sobre la página o sobre el total), no una limpieza de
 datos: se decide aparte a propósito, para no meter un cambio de producto
 disfrazado de Fix de capa de datos.
+
+---
+
+# Fase 6 — RBAC, log de seguridad y rendimiento (2026-09-28)
+
+Cierre del ciclo pendiente de la fase 5: **controles de acceso por permisos**,
+**registro de eventos de seguridad** y **rendimiento del dashboard** (caché) +
+**paginación server-side** de la tabla de analítica. Los tres eran los
+pendientes que apuntaba el documento de fase 5 y los "Próximos Pasos" del
+technical-document.
+
+## D10 — RBAC: de "nombres mágicos" a permisos
+
+**Antes.** El acceso se decidía con `role_name`: `Auth::isAdmin()`, el
+middleware `admin` igualando el nombre del rol, y los `canAccess/canEdit` de los
+controladores comiendo migas "dueño || rol mágico". `editor` tenía acceso de
+dueño a TODO (F5.2 quedó pendiente a propósito), cualquiera con rol editado o
+una nueva consulta SQL de `roles` cambiaba la semántica sin test que se diera
+cuenta, y no existía forma de dar una capacidad a un equipo sin subirle el rol.
+
+**Después.**
+
+- Catálogo de permisos en `config/permissions.php` (`clave => [desc, roles]`),
+  sembrado en **dos copias** por la misma convención de siempre: la migración
+  0005 (bases existentes, que lee el catálogo en runtime) y `database/seed.sql`
+  (instalaciones limpias, bloque estático). `PermissionSeedParityTest` lee
+  seed.sql y compara claves y roles por defecto contra el catálogo: sin él las
+  dos copias divergirían sin ruido.
+- Tablas: `permissions`, `role_permissions`, `role_groups`,
+  `role_group_roles`, `role_group_users` (migración 0005 + `schema.sql`).
+- `Auth::can()/permissions()` como ÚNICA puerta de negocio: permisos efectivos =
+  rol propio + roles de los grupos a los que pertenece cada usuario
+  (`Role::effectivePermissionKeys`). La caché de permisos por request se
+  refresca con `Auth::forgetCache()` (mismo patrón que el usuario cacheado).
+- `App\Core\Access` unifica el alcance del dueño: `ownWith(owner, '*_own')`
+  && dueño, o `forms.manage_all` a secas. Ese permiso abre el alcance global
+  (seed: solo admin; un grupo no-admin puede otorgarlo, que es la vía diseñada
+  para "equipo que opera formularios de todos" sin escalar rol).
+- Los controladores del panel vuelven a comprobar el permiso con `Auth::can()`
+  (el middleware `admin` solo controla la puerta de `/admin`; cada vista suya
+  rellena el menú según `admin.*`).
+
+**Bug real destapado en el smoke.** `ControllerActionsTest` (que recorre TODAS
+las rutas con CSRF válido) postea `{}` a `/admin/roles/save`: `$_POST['perms']`
+inexistente se interpretaba como "desmarcar todo" y la matriz quedaba así —
+admin con solo `admin.access`, user/editor sin nada — y a partir de ahí toda la
+suite caía (las puertas `forms.create` cerradas por el nuevo RBAC). La guarda:
+un POST sin la estructura `perms[<role_id>][]` se rechaza sin persistir. Añadido
+además el invariante de que el rol `admin` conserva siempre `admin.access` para
+que el panel no pueda auto-encarcelar al único recurso que lo arregla.
+
+**Efecto colateral de la matriz rota.** La suite completa se llevó una cascada
+de 100+ errores que no tenían que ver con RBAC: `Role::permissionKeys(2)` vacío
+→ `Auth::can('forms.create')=false` → `FormController::create` responde 403 →
+los tests que creaban formularios (DashboardLimit, P9Templates, FillController,
+P10Uploads, …) se descoyuntaban. Re-sembrada la matriz, la cascada desapareció;
+el test de paridad ahora evita que vuelva a romperse en silencio.
+
+## D11 — `security_log`: auditoría que nunca rompe el request
+
+**Antes.** No existía registro de eventos de seguridad: los intentos fallidos de
+login, CSRF inválido, rate limits alcanzados, hosts privados de webhook
+rechazados y subidas fallidas se perdían o vivían solo en `error_log`.
+
+**Después.** Tabla `security_log` (evento, detalle, ip, user_id, created_at) +
+página `/admin/security-log` con filtro por evento y paginación server-side
+(`SecurityLog::recent`). Contrato fijado:
+
+- `record()` **nunca rompe el flujo**: todo está en try/catch y ante cualquier
+  fallo el evento se pierde pero la petición sigue (auditoría ≠ componente de
+  negocio).
+- El evento se valida (`^[a-z0-9_.]{2,60}$`) y el detalle se recorta a 500.
+- **FK a salvo**: heredar `user_id` de `Auth::id()` a pelo reventaba con 1452
+  cuando la sesión apuntaba a un usuario inexistente (tests con id ficticio o
+  usuario borrado a mitad de request): ahora hay un `EXISTS` sobre `users`
+  antes del INSERT y, si el usuario no existe, la fila se guarda con NULL. La
+  auditoría no puede depender de la coherencia de la sesión.
+- Hooks emitidos (todos con su evento en `knownEvents()`): login ok/fail,
+  register/logout, CSRF inválido (al fallar `verifyRequest`/`verifyHeader`),
+  rate limits (login/fill/dash_create/dash_export), hosts privados de webhook
+  rechazados, extensiones denegadas en uploads, borrado/duplicado de
+  formularios y acciones admin (crear/borrar grupo, matriz de roles).
+
+## D12 — Caché del dashboard e `LAST_INSERT_ID` (el bug gordo)
+
+`DashboardController` recalcula el layout en cada request (formularios + conteos
+por usuario, o global con `forms.manage_all`). Con `Cache::remember('dash:...',
+60, ...)` se sirve durante 60 s, y las mutaciones de forms/submissions invalidan
+el prefijo `dash:%` (`bumpDashboardCache`). La caché nunca rompe el request: si
+la tabla falla o la fila está corrupta, se recalcula en vivo.
+
+**El bug que costó una cascada de 102 errores en la suite.** `bumpDashboardCache`
+(que hace `DELETE FROM cache WHERE cache_key LIKE 'dash:%'`) estaba
+**entre** el `INSERT` y el `lastInsertId()` de `Form::create` y
+`Submission::create`. En MariaDB un `DELETE` en medio resetea
+`LAST_INSERT_ID()` a **0**: todos los formularios se creaban (el row existía)
+pero los tests recibían `id = 0` → "el ID debe ser mayor a 0" o FK 1452 en
+`fields.form_id` en cadena. Lección, registrada en AGENTS.md: si la pérdida de
+caché convive con un `lastInsertId()`, capturar el id ANTES de invalidar.
+
+Nota: el orden importa SOLO en el insert; en `update/delete/setStatus/
+saveSettings` la invalidación se hace al final sin problema (no depende de
+`LAST_INSERT_ID`).
+
+## D13 — Paginación server-side de la tabla de analítica
+
+El "queda abierto" del final de la fase 3 se cierra ahora como cambio de
+interfaz: la tabla de detalle se pagina en el servidor (15/página), los
+agregados siguen globales, y la página 1 se renderiza server-side (sin
+parpadeo). `GET /forms/{id}/analytics/rows` devuelve `{ok, html, pagination,
+page, pages, total}` y `analytics.js` aprovecha `data-paginate-page` para
+refrescar el tbody + el pager vía fetch. `SubmissionPaginationTest` pinza el
+envelope, el clamp de páginas fuera de rango y el 403 sin permiso de dueño.
+(El contrato es idéntico al de `byFormPaginated`, así el cliente usa uno.)
+
+## Verificación
+
+- Tests nuevos: `PermissionSeedParityTest` (paridad catalog/seed.sql),
+  `RbacAccessTest` (can/editor sin delete/permisos efectivos vía grupos),
+  `CacheDashboardTest` (remember una sola vez, forgetLike, invalidación por
+  create de form y submission), `SubmissionPaginationTest` (envelope + rows),
+  `SecurityLogTest` (formato, user_id NULL vs real, filtro knownEvents, purga).
+- Suite completa: **465 tests, 0 fallos, 0 errores**.
+
+## Abierto
+
+- Lazy loading del bundle del builder (`builder.js` + `sortable` se cargan con
+  `defer` pero siempre se descargan; cargarlos solo al entrar al builder).
+- La matriz de permisos de una instalación con grupos personalizados no se
+  migra automáticamente (el seed solo toca los roles por defecto): es una
+  decisión de producto para cuando exista RBAC de "grupos que ve".
+
+---
+
+**Suite final de la fase: `465 tests | 0 fallos | 0 errores`.**

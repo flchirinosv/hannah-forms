@@ -242,13 +242,19 @@ final class Webhook
             return null;
         }
 
+        $blocked = false;
         foreach ($ips as $ip) {
             if (self::isBlockedIp($ip)) {
                 if (!$allowPrivate) {
-                    self::log('Webhook: destino bloqueado (IP privada/reservada ' . $ip . ')');
-                    return null;
+                    $blocked = true;
+                    break;
                 }
             }
+        }
+        if ($blocked) {
+            \App\Core\SecurityLog::record('webhook.private_host', 'destino privado/reservado: ' . $host . ' (' . $ip . '), url=' . $url);
+            self::log('Webhook: destino bloqueado (IP privada/reservada ' . $ip . ')');
+            return null;
         }
 
         return [

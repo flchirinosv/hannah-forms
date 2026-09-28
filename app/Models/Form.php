@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Core\Cache;
 use App\Core\Config;
 use App\Core\Database;
 use App\Services\FormSettings;
@@ -13,6 +14,20 @@ class Form
     private static function db(): Database
     {
         return Database::getInstance(Config::db());
+    }
+
+    /**
+     * El dashboard se cachea (fase 5, rendimiento): cualquier mutación de un
+     * formulario (alta, título, estado, borrado, duplicado, settings) o de sus
+     * submissions invalida la caché entera de dashboards. Incluso si la
+     * invalidación fallara, el TTL (60 s) se comería el error: no propaga.
+     */
+    private static function bumpDashboardCache(): void
+    {
+        try {
+            Cache::forgetLike('dash:');
+        } catch (\Throwable $e) {
+        }
     }
 
     public static function create(int $userId, string $title, string $description = ''): int
@@ -39,7 +54,9 @@ class Form
                     ]
                 );
 
-                return self::db()->lastInsertId();
+                $id = self::db()->lastInsertId();
+                self::bumpDashboardCache();
+                return $id;
             } catch (\PDOException $e) {
                 if (str_contains($e->getMessage(), 'slug') && $attempt < 2) {
                     $attempt++;
@@ -138,11 +155,13 @@ class Form
             'UPDATE forms SET title = :title, description = :description, status = :status WHERE id = :id',
             ['id' => $id, 'title' => $title, 'description' => $description, 'status' => $status]
         );
+        self::bumpDashboardCache();
     }
 
     public static function delete(int $id): void
     {
         self::db()->execute('DELETE FROM forms WHERE id = :id', ['id' => $id]);
+        self::bumpDashboardCache();
     }
 
     /**
@@ -212,12 +231,14 @@ class Form
             throw $e;
         }
 
+        self::bumpDashboardCache();
         return $newId;
     }
 
     public static function setStatus(int $id, string $status): void
     {
         self::db()->execute('UPDATE forms SET status = :status WHERE id = :id', ['id' => $id, 'status' => $status]);
+        self::bumpDashboardCache();
     }
 
     public static function submissionCount(int $formId): int
@@ -270,5 +291,6 @@ class Form
             'UPDATE forms SET settings = :settings, updated_at = NOW() WHERE id = :id',
             ['id' => $id, 'settings' => json_encode($normalized, JSON_UNESCAPED_UNICODE)]
         );
+        self::bumpDashboardCache();
     }
 }

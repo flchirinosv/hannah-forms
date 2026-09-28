@@ -142,3 +142,80 @@ CREATE TABLE IF NOT EXISTS migrations (
     name        VARCHAR(190) NOT NULL UNIQUE,
     applied_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- ===========================================================================
+-- RBAC (migración 0005) — permisos, roles, grupos de roles
+-- ===========================================================================
+
+-- Catálogo de permisos a nivel de acción. La semántica vive en
+-- config/permissions.php y este esquema SOLO declara las tablas: las filas las
+-- siembran database/seed.sql (instalación limpia) y la migración 0005 (BD
+-- existente), que para este seed las dos son una copia del mismo catálogo.
+CREATE TABLE IF NOT EXISTS permissions (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `key`       VARCHAR(80) NOT NULL UNIQUE,
+    description VARCHAR(255) DEFAULT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    role_id       INT UNSIGNED NOT NULL,
+    permission_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
+    CONSTRAINT fk_rp_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rp_perm FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Grupo de ROLES: agrupa roles y usuarios. Un usuario hereda los permisos de
+-- su propio rol + los de los roles de sus grupos (Auth::permissions()).
+CREATE TABLE IF NOT EXISTS role_groups (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(80) NOT NULL UNIQUE,
+    description VARCHAR(255) DEFAULT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS role_group_roles (
+    group_id INT UNSIGNED NOT NULL,
+    role_id  INT UNSIGNED NOT NULL,
+    PRIMARY KEY (group_id, role_id),
+    CONSTRAINT fk_rgr_group FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rgr_role  FOREIGN KEY (role_id)  REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS role_group_users (
+    group_id INT UNSIGNED NOT NULL,
+    user_id  INT UNSIGNED NOT NULL,
+    PRIMARY KEY (group_id, user_id),
+    CONSTRAINT fk_rgu_group FOREIGN KEY (group_id) REFERENCES role_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rgu_user  FOREIGN KEY (user_id)  REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ===========================================================================
+-- Log de eventos de seguridad (migración 0005)
+-- ===========================================================================
+CREATE TABLE IF NOT EXISTS security_log (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    event      VARCHAR(60) NOT NULL,
+    detail     VARCHAR(500) DEFAULT NULL,
+    ip         VARCHAR(45) DEFAULT NULL,
+    user_id    INT UNSIGNED DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sl_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_security_log_created ON security_log (created_at);
+CREATE INDEX idx_security_log_event ON security_log (event, created_at);
+
+-- ===========================================================================
+-- Caché de consultas frecuentes (dashboard, migración 0005)
+-- ===========================================================================
+CREATE TABLE IF NOT EXISTS cache (
+    cache_key  VARCHAR(190) NOT NULL PRIMARY KEY,
+    value      MEDIUMTEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_cache_expires ON cache (expires_at);
+CREATE INDEX idx_cache_key_like ON cache (cache_key);

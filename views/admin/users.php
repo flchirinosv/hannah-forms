@@ -2,10 +2,12 @@
 use App\Core\View;
 ?>
 <div class="container-fluid px-lg-4">
+    <?= View::partial('admin/_nav', ['active' => 'users']) ?>
+
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-user-gear me-2 text-primary"></i>Usuarios</h2>
-            <p class="text-muted small mb-0">Gestiona roles y estado de las cuentas.</p>
+            <p class="text-muted small mb-0">Gestiona roles, grupos y estado de las cuentas.</p>
         </div>
         <a href="/admin/forms" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>
     </div>
@@ -20,6 +22,7 @@ use App\Core\View;
                             <th class="small text-muted">Nombre</th>
                             <th class="small text-muted">Email</th>
                             <th class="small text-muted">Rol</th>
+                            <th class="small text-muted">Grupos</th>
                             <th class="small text-muted">Estado</th>
                             <th class="small text-muted">Registro</th>
                             <th class="text-end px-4 small text-muted">Acciones</th>
@@ -41,6 +44,17 @@ use App\Core\View;
                                         <?php endforeach; ?>
                                     </select>
                                 </form>
+                            </td>
+                            <td>
+                                <?php
+                                $userGroups = \App\Models\User::groups((int) $user['id']);
+                                if ($userGroups === []): ?>
+                                    <span class="text-muted small">—</span>
+                                <?php else: ?>
+                                    <?php foreach ($userGroups as $g): ?>
+                                        <span class="badge text-bg-light border"><?= View::escape($g['name']) ?></span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="app-status <?= (int) $user['is_active'] === 1 ? 'app-status-published' : 'app-status-closed' ?>">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Access;
 use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
@@ -108,7 +109,7 @@ class AttachmentController
 
     private function canAccess(int $ownerId): bool
     {
-        return (int) Auth::id() === $ownerId || Auth::isAdmin() || Auth::role() === 'editor';
+        return Access::canReadOwn($ownerId, 'attachments.download_own');
     }
 
     /** Fallback ASCII para clientes HTTP viejos que no soportan filename*. */

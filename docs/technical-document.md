@@ -269,6 +269,8 @@ php scripts/test.php --path tests/unit
 - ✅ Escape sistemático de salida (View::escape)
 - ✅ Redirects internos solo relativos (anti open-redirect); `thanks.redirect_url` externa pasa por la allowlist de servidor `APP_REDIRECT_ALLOWLIST` (vacía = bloqueada por defecto, F5.1)
 - ✅ Rate limit del dashboard por usuario (crear/exportar, F5.3): `DASH_CREATE_PER_HOUR`/`DASH_EXPORT_PER_HOUR`, 429 con `views/errors/429.php`
+- ✅ RBAC (2026-09-28, fase 6): catálogo de permisos en `config/permissions.php` + matriz en `role_permissions`; `Auth::can()` como única puerta de negocio y permisos efectivos = rol propio + roles de sus grupos (`role_groups*`); `App\Core\Access` para el alcance del dueño (`*_own` && dueño || `forms.manage_all`); middleware `admin` = `Auth::can('admin.access')`
+- ✅ Log de eventos de seguridad (2026-09-28, fase 6): tabla `security_log` + `/admin/security-log` (`SecurityLog::record` nunca rompe el request, valida el formato del evento, `user_id` NULL si la sesión apunta a un usuario inexistente, purga por `purgeOlderThan()`)
 - ✅ Límite de tamaño de cuerpo JSON y 405 para métodos no permitidos
 - ✅ CSP y X-Frame-Options configurables por `.env` (CSP activa por defecto desde 2026-09-25; datos de servidor vía `data-*`, handlers JS externalizados)
 - ✅ Uploads (P10): storage en `storage/uploads/` (fuera de `public/`) con nombre aleatorio y `.htaccess` defensivo; MIME detectado con `finfo` (nunca `$_FILES['type']`); lista negra de extensiones ejecutables (php, html, svg, exe…); el campo solo puede **restringir** formatos/tamaño/cantidad, nunca ampliarlos
@@ -284,6 +286,9 @@ php scripts/test.php --path tests/unit
 - PDO con `EMULATE_PREPARES=false`
 - N+1 resuelto en analytics (submissions + answers en una consulta)
 - Paginación client-side en dashboard, admin y tabla de analítica
+- Caché del dashboard (2026-09-28, fase 6): `Cache::remember('dash:...', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
+- Tabla de analítica paginada EN EL SERVIDOR (2026-09-28): `Submission::byFormFilteredPaginated` + `GET /forms/{id}/analytics/rows` (15/página, lazy-load por fetch); los agregados siguen globales
+- `defer` en scripts no críticos (dashboard.js, sortable+builder, chart+analytics), preservando el orden de dependencias
 
 **Despliegue (uploads):**
 - `php.ini`: `upload_max_filesize` y `post_max_size` deben admitir el tamaño máximo anunciado (por defecto la app anuncia 10 MB, pero el servidor lo recorta al valor real de PHP)
@@ -291,9 +296,7 @@ php scripts/test.php --path tests/unit
 - El usuario del web server necesita permiso de escritura en `storage/uploads/`; ese directorio **no** debe servirse por el web server
 
 **Pendiente:**
-- Paginación server-side si el volumen crece
-- Caché de dashboard (query de formularios frecuente)
-- Lazy loading del builder JS
+- Lazy loading del builder JS (cargar el bundle solo al entrar al builder)
 
 ---
 
@@ -311,11 +314,12 @@ php scripts/test.php --path tests/unit
 | — | Zona horaria (fase 3 · D6): BD y PHP en UTC, conversión solo al pintar (Clock/View) | ✅ (2026-09-28) |
 | — | Analítica agregada (fase 3 · D8): `FieldAggregator` en 2 queries + métricas derivadas en PHP | ✅ (2026-09-28) |
 | — | Seguridad/quality (fase 4): smoke de todas las rutas, allowlist de redirect (F5.1), editor pendiente de RBAC (F5.2), límite dashboard por usuario (F5.3), thumbs, scale, limpieza de código muerto y assets | ✅ (2026-09-28) |
-| — | Logging de eventos de seguridad | Pendiente |
-| — | Paginación server-side a escala | Futuro |
+| — | RBAC completo (fase 6, 2026-09-28): catálogo de permisos, matriz de roles editable, grupos de roles, `Auth::can()`/`Access` como puertas, middleware `admin` por permiso | ✅ (2026-09-28) |
+| — | Log de eventos de seguridad (fase 6, 2026-09-28): `security_log` + `/admin/security-log` + hooks en auth/CSRF/rate-limit/webhook/uploads/admin | ✅ (2026-09-28) |
+| — | Rendimiento (fase 6, 2026-09-28): caché del dashboard (`Cache::remember`, invalidación por prefijo) + tabla de analítica paginada EN EL SERVIDOR (`/analytics/rows`) + `defer` en scripts no críticos | ✅ (2026-09-28) |
 
 ## Proximos Pasos
 
-1. Revisar hallazgos restantes de `docs/recommendations.md` (Logging de seguridad)
-2. Verificación visual de la paginación client-side en navegador
+1. Lazy loading del builder JS (cargar `builder.js`/`sortable` solo al entrar al builder)
+2. Verificación visual de la paginación server-side de analítica y de la matriz de roles en navegador
 3. Re-evaluar con el orquestador

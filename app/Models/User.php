@@ -101,4 +101,39 @@ class User
     {
         self::db()->execute('DELETE FROM users WHERE id = :id', ['id' => $id]);
     }
+
+    /**
+     * Ids de los grupos de roles a los que pertenece el usuario (RBAC).
+     *
+     * @return array<int>
+     */
+    public static function groupIds(int $id): array
+    {
+        return array_map(
+            'intval',
+            array_column(
+                self::db()->fetchAll(
+                    'SELECT group_id FROM role_group_users WHERE user_id = :u ORDER BY group_id',
+                    ['u' => $id]
+                ),
+                'group_id'
+            )
+        );
+    }
+
+    /**
+     * Grupos de un usuario (con nombre), para la columna de la UI de admin.
+     *
+     * @return array<int,array>
+     */
+    public static function groups(int $id): array
+    {
+        return self::db()->fetchAll(
+            'SELECT g.id, g.name FROM role_groups g
+             JOIN role_group_users u ON u.group_id = g.id
+             WHERE u.user_id = :u
+             ORDER BY g.name',
+            ['u' => $id]
+        );
+    }
 }

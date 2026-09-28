@@ -37,7 +37,7 @@ abstract class Middleware
                 }
             },
             'admin'  => static function (): void {
-                if (!Auth::check() || !Auth::isAdmin()) {
+                if (!Auth::check() || !Auth::can('admin.access')) {
                     Response::forbidden();
                 }
             },

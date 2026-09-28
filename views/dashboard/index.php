@@ -227,4 +227,4 @@ $relativeTs = static function (string $timestamp): string {
     </div>
 </div>
 
-<script src="<?= View::asset('js/dashboard.js') ?>"></script>
+<script src="<?= View::asset('js/dashboard.js') ?>" defer></script>

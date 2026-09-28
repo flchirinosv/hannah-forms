@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Access;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\DashboardLimit;
@@ -169,7 +170,7 @@ class ResponsesController
 
     private function canAccess(int $ownerId): bool
     {
-        return (int) Auth::id() === $ownerId || Auth::isAdmin() || Auth::role() === 'editor';
+        return Access::canReadOwn($ownerId, 'responses.view_own');
     }
 
     /**

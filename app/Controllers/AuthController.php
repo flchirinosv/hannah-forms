@@ -9,6 +9,7 @@ use App\Core\Csrf;
 use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\SecurityLog;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\User;
@@ -67,6 +68,7 @@ class AuthController
         // Rate limiting: 5 intentos por IP cada 5 minutos
         $ip = Request::ip();
         if (!RateLimiter::isAllowed('login', $ip, 5, 300)) {
+            SecurityLog::record('rate_limit.login', 'bloqueo por IP (5 intentos / 5 min)');
             Session::flash('error', 'Demasiados intentos de inicio de sesión. Intenta de nuevo en unos minutos.');
             Response::redirect('/login');
             return;
@@ -95,6 +97,7 @@ class AuthController
         if (!$ok) {
             RateLimiter::recordHit('login', $ip, 300);
             RateLimiter::recordHit('login_email', $emailKey, 300);
+            SecurityLog::record('auth.login_fail', strtolower($email));
             Session::flash('error', 'Credenciales incorrectas.');
             Response::redirect('/login');
             return;
@@ -122,6 +125,7 @@ class AuthController
         }
 
         Auth::login((int) $user['id']);
+        SecurityLog::record('auth.login_ok', strtolower($email));
         Session::flash('success', 'Bienvenido, ' . $user['name'] . '!');
         Response::redirect('/dashboard');
         return;
@@ -204,6 +208,7 @@ class AuthController
         RateLimiter::reset('register', $ip);
 
         Auth::login($userId);
+        SecurityLog::record('auth.register', strtolower($email));
         Session::flash('success', 'Cuenta creada correctamente.');
         Response::redirect('/dashboard');
         return;
@@ -211,6 +216,7 @@ class AuthController
 
     public function logout(): void
     {
+        SecurityLog::record('auth.logout', 'sesión cerrada por el usuario');
         Auth::logout();
         Response::redirect('/login');
         return;

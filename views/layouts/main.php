@@ -34,7 +34,7 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link <?= $currentPath === '/dashboard' || $currentPath === '/' ? 'active' : '' ?>" href="/dashboard"><i class="fa-solid fa-gauge me-1"></i>Dashboard</a></li>
-                <?php if ($currentUser && $currentUser['role_name'] === 'admin'): ?>
+                <?php if ($currentUser && \App\Core\Auth::can('admin.access')): ?>
                 <li class="nav-item"><a class="nav-link <?= str_starts_with($currentPath, '/admin') ? 'active' : '' ?>" href="/admin"><i class="fa-solid fa-user-gear me-1"></i>Administración</a></li>
                 <?php endif; ?>
             </ul>

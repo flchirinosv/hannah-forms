@@ -18,8 +18,8 @@ namespace App\Core;
  * Límites en `config/config.php` (`app.limits`), override por .env:
  * `DASH_CREATE_PER_HOUR` (default 30) y `DASH_EXPORT_PER_HOUR` (default 120).
  *
- * OJO: la ventana es de 3600 s (1 h), MÁS larga que `RateLimiter::MAX_WINDOW`
- * (600 s). `cleanExpired()` y `scripts/clean-rate-limits.php` borran filas más
+ * OJO: la ventana es de 3600 s (1 h), igual que `RateLimiter::MAX_WINDOW`.
+ * `cleanExpired()` y `scripts/clean-rate-limits.php` borran filas más
  * viejas que la ventana más larga de la app, así que `MAX_WINDOW` se subió a
  * 3600 en el MISMO cambio que añadió estos límites: no bajes ese techo ni
  * añadas aquí una ventana mayor sin subirlo en el mismo commit.
@@ -56,6 +56,11 @@ final class DashboardLimit
             // Un intento de creación cuenta aunque luego falle la plantilla: la
             // ventana es un techo de trabajo, no una contabilidad transaccional.
             RateLimiter::recordHit($scope, $identifier, self::WINDOW);
+        } else {
+            SecurityLog::record(
+                'rate_limit.dash_' . ($scope === 'dash:create' ? 'create' : 'export'),
+                'techo alcanzado (usuario ' . $identifier . ', ' . $max . '/h)'
+            );
         }
         return $allowed;
     }

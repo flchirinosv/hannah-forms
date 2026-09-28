@@ -202,7 +202,7 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                         <h3 class="h6 fw-bold m-0">Detalle de respuestas <?= $total > 0 ? '(' . $total . ')' : '' ?></h3>
                         <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $from !== '' || $to !== '' ? '?from=' . urlencode($from) . '&to=' . urlencode($to) : '' ?>" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-download me-1"></i>Descargar CSV</a>
                     </div>
-                    <?php if (empty($submissions)): ?>
+                    <?php if ($total === 0): ?>
                         <div class="text-center py-5 text-muted">
                             <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
                             <span>Sin respuestas para este filtro.</span>
@@ -219,47 +219,22 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                                         <th class="small text-muted">Fecha</th>
                                     </tr>
                                 </thead>
-                                <tbody data-paginate data-rows="15">
-                                    <?php $idx = 1; foreach ($submissions as $submission): ?>
-                                        <?php $row = $answers[$submission['id']]['answers'] ?? []; ?>
-                                        <tr class="paginate-item">
-                                            <td class="text-muted" data-label="#"><?= $idx++ ?></td>
-                                            <?php foreach ($answerableFields as $field): ?>
-                                                <td class="app-answer-cell" data-label="<?= View::escape($field['label']) ?>">
-                                                    <?php
-                                                    $val = $row[(int) $field['id']] ?? '';
-                                                    // P10: los adjuntos se muestran como "nombre (tamaño)".
-                                                    if (is_string($val) && \App\Services\Uploader::isAttachmentJson($val)) {
-                                                        $val = \App\Services\Uploader::displayValue($val);
-                                                    } elseif (is_string($val) && str_starts_with($val, '[')) {
-                                                        $decoded = json_decode($val, true);
-                                                        if (is_array($decoded) && $decoded !== []) {
-                                                            $val = implode('; ', array_map('strval', $decoded));
-                                                        } elseif ($val === '[]' || $val === '') {
-                                                            $val = '';
-                                                        }
-                                                    } elseif (is_string($val) && str_starts_with($val, '{')) {
-                                                        $decoded = json_decode($val, true);
-                                                        if (is_array($decoded) && $decoded !== []) {
-                                                            $parts = [];
-                                                            foreach ($decoded as $k => $v) {
-                                                                $parts[] = $k . ': ' . $v;
-                                                            }
-                                                            $val = implode('; ', $parts);
-                                                        } else {
-                                                            $val = '';
-                                                        }
-                                                    }
-                                                    echo $val !== '' ? View::escape($val) : '<span class="text-muted">—</span>';
-                                                    ?>
-                                                </td>
-                                            <?php endforeach; ?>
-                                            <td class="small text-muted" data-label="Fecha"><?= View::datetime($submission['finished_at']) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
+                                <tbody id="analyticsRows" data-form="<?= (int) $form['id'] ?>" data-from="<?= View::escape($from) ?>" data-to="<?= View::escape($to) ?>">
+                                    <?= View::partial('analytics/_rows', [
+                                        'submissions'      => $submissions,
+                                        'answers'          => $answers,
+                                        'answerableFields' => $answerableFields,
+                                        'offset'           => (int) ($detail['per_page'] ?? 15) * (int) (($detail['page'] ?? 1) - 1),
+                                    ]) ?>
                                 </tbody>
                             </table>
                         </div>
+                        <?= View::partial('analytics/_pagination', [
+                            'total'   => $total,
+                            'page'    => $detail['page'] ?? 1,
+                            'pages'   => $detail['pages'] ?? 1,
+                            'perPage' => $detail['per_page'] ?? 15,
+                        ]) ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -267,5 +242,5 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
     </div>
 </div>
 
-<script src="<?= View::asset('js/chart.umd.min.js') ?>"></script>
-<script src="<?= View::asset('js/analytics.js') ?>"></script>
+<script src="<?= View::asset('js/chart.umd.min.js') ?>" defer></script>
+<script src="<?= View::asset('js/analytics.js') ?>" defer></script>
