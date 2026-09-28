@@ -115,7 +115,11 @@ $conditionText = static function (array $f) use ($byId): string {
             <?php endif; ?>
             <p class="small text-muted mb-0">
                 <strong><?= count($questions) ?></strong> preguntas ·
-                Impreso el <?= date('d/m/Y H:i') ?> ·
+                <!-- `View::now()` y no `date()`: PHP corre en UTC (ver config/bootstrap.php),
+                     así que `date()` imprimiría la hora de Greenwich en una hoja que lee
+                     alguien en Caracas. No hay ningún instante de la BD que convertir
+                     aquí, pero la conversión a la zona del lector sigue siendo la misma. -->
+                Impreso el <?= View::now('d/m/Y H:i') ?> ·
                 Estado: <?= View::escape($form['status'] ?? '') ?>
             </p>
         </header>

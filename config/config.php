@@ -51,6 +51,20 @@ return [
         // Idioma por defecto de la app (P9, i18n reducido): es | en.
         // Un formulario puede sobrescribirlo con settings.locale.code.
         'locale' => (string) App\Core\Env::get('APP_LOCALE', 'es'),
+        // Zona horaria de PRESENTACIÓN (fase 3, zona horaria canónica).
+        //
+        // El contrato de datos es UTC en las dos puntas: la sesión de MariaDB
+        // hace `SET time_zone = '+00:00'` (ver App\Core\Database) y PHP corre
+        // con `date_default_timezone_set('UTC')`, o sea que lo que sale de la
+        // BD se interpreta como UTC, que es lo que la BD escribió. Esta clave
+        // es la única que convierte a la zona en la que se LEE.
+        //
+        // Antes: PHP corría en America/Mexico_City e imprimía el string de la
+        // BD tal cual, así que un texto con la hora guardada se veía bien y
+        // cualquier aritmética sobre él (un "hace 2 horas", un filtro de día, un
+        // `DATE()`) iba 6 h desviado. Caracas es UTC-4 y Mexico City UTC-6, así
+        // que además la hora mostrada era 2 h incorrecta para el lector local.
+        'timezone' => (string) App\Core\Env::get('APP_TIMEZONE', 'America/Caracas'),
         // P10 — Uploads de archivos (límites globales; un campo solo puede
         // restringirlos, nunca ampliarlos). Ver app/Services/Uploader.php.
         'uploads' => [

@@ -1,24 +1,15 @@
 <?php
 use App\Core\View;
 
+// El texto relativo y los data-*epoch se resuelven con los helpers de View:
+// antes esta vista hacía `time() - strtotime($timestamp)`, que con PHP fuera de
+// UTC iba desviado (y con PHP en Mexico City, dos horas más). Ver
+// App\Core\View::relative() y View::timestamp().
 $relativeTs = static function (string $timestamp): string {
     if ($timestamp === '') {
         return 'Sin respuestas aún';
     }
-    $diff = time() - strtotime($timestamp);
-    if ($diff < 60) {
-        return 'hace unos segundos';
-    }
-    if ($diff < 3600) {
-        return 'hace ' . floor($diff / 60) . ' min';
-    }
-    if ($diff < 86400) {
-        return 'hace ' . floor($diff / 3600) . ' h';
-    }
-    if ($diff < 604800) {
-        return 'hace ' . floor($diff / 86400) . ' días';
-    }
-    return date('d/m/Y', strtotime($timestamp));
+    return View::relative($timestamp);
 };
 ?>
 <div class="container-fluid px-lg-4">
@@ -101,8 +92,8 @@ $relativeTs = static function (string $timestamp): string {
                  data-status="<?= View::escape($form['status']) ?>"
                  data-title="<?= View::escape(mb_strtolower($form['title'] . ' ' . $form['description'])) ?>"
                  data-subs="<?= $subCount ?>"
-                 data-updated="<?= strtotime($form['updated_at']) ?>"
-                 data-activity="<?= $lastAt === '' ? 0 : strtotime($lastAt) ?>">
+                 data-updated="<?= View::timestamp($form['updated_at']) ?>"
+                 data-activity="<?= $lastAt === '' ? 0 : View::timestamp($lastAt) ?>">
                 <div class="card border-0 shadow-sm app-form-card h-100 app-dash-card">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between mb-2">

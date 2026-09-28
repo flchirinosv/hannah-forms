@@ -64,9 +64,22 @@ CREATE TABLE IF NOT EXISTS fields (
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_fields_form_position ON fields (form_id, position);
+-- Índice explícito de la FK `fk_fields_parent`. MariaDB crearía uno automático
+-- con el nombre de la restricción, pero declararlo aquí deja el esquema de una
+-- instalación limpia idéntico al que deja la migración 0004 (y con el mismo
+-- nombre, que es como lo consulta el resto del código).
+-- Importa además por el significado de la columna: `parent_id` es NULL para un
+-- campo suelto, y 0 nunca puede ser una sección real (AUTO_INCREMENT), así que
+-- la FK convierte el descuido de escribir un 0 en un error de integridad en vez
+ * de un "campo sin sección" silencioso.
+CREATE INDEX idx_fields_parent ON fields (parent_id);
 
--- Índice para consultas frecuentes de dashboard: forms por usuario
-CREATE INDEX idx_forms_user ON forms (user_id);
+-- Índice para consultas frecuentes de dashboard: forms por usuario, con y sin
+-- estado. Es UNO solo a propósito: un `idx_forms_user (user_id)` aparte sería
+-- redundante, porque el prefijo izquierdo de este compuesto ya sirve cualquier
+-- `WHERE user_id = ?` (y es el índice que necesita la FK `fk_forms_user`).
+-- Una BD creada con las migraciones no tiene ese índice suelto, y con él cada
+-- INSERT de formulario escribía un índice de más.
 CREATE INDEX idx_forms_user_status ON forms (user_id, status);
 
 -- Submissions
@@ -100,6 +113,11 @@ CREATE TABLE IF NOT EXISTS answers (
 
 CREATE INDEX idx_answers_submission ON answers (submission_id);
 CREATE INDEX idx_answers_field ON answers (field_id);
+-- Compuesto: es el que usa Submission::withAnswers() (ORDER BY field_id sobre
+-- las respuestas de una submission), así que los dos de una columna sueltos no
+-- lo cubren. Lo crea la migración 0004; aquí se declara para que una
+-- instalación limpia quede igual que una migrada.
+CREATE INDEX idx_answers_submission_field ON answers (submission_id, field_id);
 
 -- Rate limiting (prevención de fuerza bruta y abuso)
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -113,6 +131,10 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_rate_identifier ON rate_limits (identifier, window_start);
+-- Soporta el DELETE de la limpieza (`window_start < NOW() - INTERVAL ...`).
+-- Sin él, cada escritura que se lleva su pasada de limpieza (RateLimiter::recordHit)
+-- haría un recorrido completo de la tabla. Lo crea la migración 0004.
+CREATE INDEX idx_rate_window ON rate_limits (window_start);
 
 -- Migrations (registro de migraciones aplicadas para el script database/migrate.php)
 CREATE TABLE IF NOT EXISTS migrations (

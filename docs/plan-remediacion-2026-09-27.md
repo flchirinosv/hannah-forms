@@ -235,8 +235,8 @@ Verificado:
 |---|---|---|
 | 0 | Regresiones del 2026-09-27 | HECHO |
 | 1 | Pérdida de datos | HECHO |
-| 2 | Seguridad | EN CURSO (parámetros de ruta + IDOR de thanks + SSRF hechos) |
-| 3 | Capa de datos | Pendiente |
+| 2 | Seguridad | HECHO (los 8 ítems cerrados, 362 tests) |
+| 3 | Capa de datos | EN CURSO (índice/FK, limpieza de `rate_limits` y contrato horario hechos; faltan analítica y queries) |
 | 4 | Calidad y docs | Pendiente |
 | 5 | Decisiones de producto | Pendiente |
 
@@ -735,3 +735,133 @@ contra-tests: lista blanca que acepta todo, `themeCss` sin filtrar, y `validate(
 mirando el valor normalizado.
 
 Suite completa: **362 tests, 0 fallos, 0 errores**.
+
+## Fase 3 · Capa de datos
+
+### D5 · `fk_fields_parent` e índices que el esquema promete y la BD no tiene
+
+**Diagnóstico.** `database/schema.sql` declara la FK `fk_fields_parent`
+(`ON DELETE CASCADE`) y varios índices, pero una base creada con las migraciones
+0001-0003 se queda sin ellos, y nada avisa: el INSERT sigue funcionando, el
+dashboard sigue funcionando, y **al borrar una sección sus preguntas quedan
+colgando como raíces**, que es el síntoma del bug D1 pero por el camino de los
+datos.
+
+**Arreglo.** Migración `0004_schema_index_drift.php`, idempotente, que crea
+`idx_forms_user_status`, `idx_fields_parent`, `fk_fields_parent`,
+`idx_answers_submission_field` e `idx_rate_window`. Antes de añadir la FK
+comprueba que no haya filas colgando.
+
+**Lo que destapó.** La app escribía `parent_id = 0` para "campo suelto" cuando
+la columna está declarada `INT UNSIGNED DEFAULT NULL` y la FK no admite el 0
+(¡un AUTO_INCREMENT no puede tener id 0!). Guardar la estructura de un
+formulario con preguntas sueltas reventaba con un 1452. Ahora la normalización
+vive en un solo sitio, `Field::normalizeParentId()`, y 0 → NULL.
+
+**Verificación.** FK y CASCADE probados con fixtures temporales; contra-test que
+revierte la normalización y reproduce el 1452.
+
+### D3 · `rate_limits`: 493 filas con IPs de respondientes, creciendo sin freno
+
+**Diagnóstico.** `RateLimiter::cleanExpired()` **no tenía ningún call site**.
+Cada combinación scope/identificador dejaba una fila para siempre; el suite de
+tests lo hacía evidente (+9 filas por ejecución, todas `submit:*`).
+
+**Arreglo.**
+- `RateLimiter::recordHit()` se lleva una limpieza oportunista (1 % de las
+  escrituras, máximo una por petición) → la tabla se mantiene acotada sin cron.
+- `RateLimiter::MAX_WINDOW = 600 s` acota qué se considera caducado. Si el umbral
+  fuera menor que la ventana más larga que admite el limitador (1 h), esas filas
+  nunca se borrarían.
+- `scripts/clean-rate-limits.php` para mantenimiento explícito y cron.
+- `maybeCleanExpired()` devuelve `?int`: `null` = no se ejecutó, entero = filas
+  borradas. Devolver siempre 0 hacía imposible distinguir "no limpió" de "no
+  había nada que limpiar", que es justo lo que hace que un test de este cleanup
+  pase sin probar nada.
+
+### D6 · El contrato horario: la BD en UTC, PHP en America/Mexico_City
+
+**Diagnóstico.** Tres cosas estaban rotas a la vez, y por eso nadie lo veía:
+
+1. Las columnas de fecha son `TIMESTAMP` y la sesión de MariaDB usaba
+   `SYSTEM`, o sea heredaba la zona del host (aquí UTC, por casualidad).
+2. `config/bootstrap.php` ponía PHP en `America/Mexico_City`, así que
+   `strtotime()` de un string de la BD lo colocaba 6 h más tarde de su instante
+   real. **Imprimir el string en crudo lo disimulaba**: la fecha se veía bien y
+   solo fallaba la aritmética (los "hace X", los filtros por día, los `DATE()`).
+3. `America/Mexico_City` está 2 h por delante de la zona canónica (Caracas).
+
+Medido sobre los 8 datos reales: **5 de 8 submissions caían en el día equivocado**
+en el agrupamiento diario, y el filtro `from`/`to` comparaba días UTC ingenuos
+contra la columna. El calendario del formulario (P6) leía `open_at`/`close_at`
+—que salen de un `datetime-local`, o sea muros de reloj en la zona de quien
+administra— en la zona del proceso: un formulario con `open_at = 09:00` se
+abría a las 05:00.
+
+**Arreglo.** El contrato en tres puntos, y que no se puede romper en uno solo:
+- `Database::__construct()` hace `SET time_zone = '+00:00'` → la BD habla UTC
+  aunque el host esté en otro sitio. PDO no tiene parámetro de DSN para la zona
+  y `init_command` es de mysqlnd, no de PDO, así que la vía portable es un `SET`
+  tras conectar.
+- `config/bootstrap.php` pone PHP en **UTC**.
+- `App\Core\Clock` convierte a la zona de presentación (`APP_TIMEZONE`,
+  `America/Caracas` por defecto) **solo en el punto de pintar**:
+  `View::date()`, `View::datetime()`, `View::relative()`, `View::now()`,
+  `View::timestamp()`.
+
+Y donde el día importa de verdad, la conversión va al SQL:
+- `Submission::dateBounds()` traduce el filtro de la interfaz a límites UTC
+  (día local = `[04:00, 04:00)` en Caracas), con el final **exclusivo** para que
+  el filtro y el agrupamiento no puedan discrepar en un segundo.
+- `Submission::dailyStats()` agrupa por día local. Pasa el desplazamiento
+  **numérico** a `CONVERT_TZ` y no el nombre de la zona, porque el nombre exige
+  que el servidor tenga las tablas de zonas horarias cargadas y, si no las
+  tiene, devuelve `NULL` en silencio (agrupamiento vacío y ninguna pista).
+- `FillController::parseScheduleDate()` interpreta los muros de reloj en
+  `app.timezone`, respetando la zona si el string trae una explícita.
+- `isValidDay()` rechaza fechas imposibles: `createFromFormat` "corrige"
+  `2026-02-31` a marzo sin avisar.
+
+**Lo que NO se hizo: migrar los datos.** El plan original pedía desplazar las
+filas existentes. Se verificó que no hace falta y que habría sido
+**corromperlas**: `strtotime($valor . ' UTC') === UNIX_TIMESTAMP($columna)` en las
+8 submissions. Los datos ya eran instantes UTC correctos; lo único que estaba mal
+era quién los leía. No hay ni una columna escrita desde `date()` de PHP, así que
+tampoco hay nada que future-proof que actualizar.
+
+**Verificación.** `tests/unit/TimezoneTest.php` (18 tests) más cinco
+contra-tests: quitar el `SET time_zone`, volver a concatenar la fecha cruda en
+el filtro, dejar `parent_id = 0`, poner un `date()` crudo en una vista y bajar
+`MAX_WINDOW` — los cinco se ponen rojos.
+
+### D7 · Dos consultas de más en la vista imprimible y el export de estructura
+
+`Form::find()` hace `SELECT f.*`, o sea que **ya trae** la columna `settings`, y
+en `printForm()` y `exportStructure()` se pedía otra vez con
+`Form::settings($id)`: una consulta repetida por petición y un segundo
+`FormSettings::normalize()` (que recorta y pasa por lista blanca un puñado de
+bloques, no es trivial).
+
+`Form::settingsFrom($form)` normaliza los settings de una fila ya cargada, y
+`Form::settings($id)` delega en ella: la normalización queda en un solo sitio, así
+que una fila guardada antes de que existiera un ajuste de la whitelist sale
+igual por las dos puertas. En `FillController` **no** había redundancia: sus tres
+llamadas a `Form::settings()` están en ramas excluyentes (cerrado / borrador /
+resto), nunca se ejecutan dos en la misma petición.
+
+### Dos puntos del plan que, al mirarlos, ya estaban hechos
+
+- **`Submission::withAnswersByIds()` ya está en lote**: son 2 consultas
+  (submissions + answers con `IN (...)`), no un N+1. No había nada que arreglar.
+- **`rate_limits` sin call site**: tampoco era "nunca se limpia", era "nadie la
+  ha llamado nunca" — cubierto en D3.
+
+### Lo que queda abierto (y no es de la capa de datos)
+
+`AnalyticsController` carga **todas** las submissions del formulario
+(`byFormFiltered()` no tiene `LIMIT`) y la vista las pinta una a una. Con un
+formulario de miles de respuestas esa página se come la memoria y el render. La
+paginación es el arreglo, pero es un cambio de **interfaz** (contador, enlaces y
+qué agregados se calculan sobre la página o sobre el total), no una limpieza de
+datos: se decide aparte a propósito, para no meter un cambio de producto
+disfrazado de Fix de capa de datos.

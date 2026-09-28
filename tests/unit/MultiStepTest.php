@@ -191,8 +191,19 @@ class MultiStepTest
         if (!self::$envLoaded) {
             \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
             self::$envLoaded = true;
+            // Un cleanup de salida NO puede matar el proceso. Este hook corre
+            // al terminar, cuando puede que ningún test haya llegado a conectar
+            // (por ejemplo con un --filter que no toca la BD): entonces
+            // `Config::db()` todavía no tiene credenciales, `getInstance()`
+            // lanza PDOException y el shutdown se lleva por delante el informe
+            // entero del runner, que es justo cuando más falta hace. Se traga
+            // el fallo a propósito: si no se pudo limpiar, se limpia a mano.
             register_shutdown_function(static function () {
-                self::cleanupResiduals();
+                try {
+                    self::cleanupResiduals();
+                } catch (\Throwable $e) {
+                    // Sin conexión no hay residuales que borrar.
+                }
             });
         }
     }

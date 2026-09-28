@@ -67,7 +67,7 @@ if ($window !== []) {
                             ?>
                             <tr>
                                 <td class="text-muted"><?= $num ?></td>
-                                <td><?= date('d/m/Y H:i', strtotime($r['finished_at'])) ?></td>
+                                <td><?= View::datetime($r['finished_at']) ?></td>
                                 <td class="small"><?= $r['ip_address'] !== null && $r['ip_address'] !== '' ? View::escape($r['ip_address']) : '—' ?></td>
                                 <td class="text-end">
                                     <a href="/forms/<?= (int) $form['id'] ?>/responses/<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-eye me-1"></i>Ver</a>

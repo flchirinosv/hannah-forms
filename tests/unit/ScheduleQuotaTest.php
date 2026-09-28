@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Controllers\FillController;
+use App\Core\Clock;
 use App\Models\Form;
 use App\Models\Submission;
 use App\Models\User;
@@ -43,6 +44,25 @@ class ScheduleQuotaTest
         self::$slug = (string) ($form['slug'] ?? '');
     }
 
+    /**
+     * Un instante escrito como lo escribiría el dueño en el `datetime-local`:
+     * una pared de reloj en su zona, sin offset.
+     *
+     * Importa porque `schedule.open_at`/`close_at` NO son instantes sino muros de
+     * reloj locales, y la app los interpreta en `app.timezone`. Con
+     * `date('Y-m-d H:i:s', time() - 3600)` (que pinta la hora UTC) el valor
+     * llegaba 4 h al futuro en Caracas, así que la ventana salía invertida:
+     * el test de "cerrado" veía un formulario todavía abierto. Antes pasaba
+     * porque PHP y el test compartían zona (America/Mexico_City) y el error se
+     * anulaba solo; con PHP en UTC deja de verse.
+     */
+    private static function relojLocal(int $ts): string
+    {
+        return (new \DateTimeImmutable('@' . $ts))
+            ->setTimezone(Clock::displayZone())
+            ->format('Y-m-d H:i:s');
+    }
+
     /* ---------- Lógica de calendario (pura) ---------- */
 
     public function testSinHorarioSiempreAbierto(): void
@@ -53,13 +73,13 @@ class ScheduleQuotaTest
 
     public function testAperturaFuturaNoAbierto(): void
     {
-        $settings = ['schedule' => ['open_at' => date('Y-m-d H:i:s', time() + 3600), 'close_at' => null]];
+        $settings = ['schedule' => ['open_at' => self::relojLocal(time() + 3600), 'close_at' => null]];
         assertSame('not_open', self::invokeStatic('scheduleState', [$settings]));
     }
 
     public function testCierrePasadoCerrado(): void
     {
-        $settings = ['schedule' => ['open_at' => null, 'close_at' => date('Y-m-d H:i:s', time() - 3600)]];
+        $settings = ['schedule' => ['open_at' => null, 'close_at' => self::relojLocal(time() - 3600)]];
         assertSame('closed', self::invokeStatic('scheduleState', [$settings]));
     }
 
@@ -67,8 +87,8 @@ class ScheduleQuotaTest
     {
         $settings = [
             'schedule' => [
-                'open_at'  => date('Y-m-d H:i:s', time() - 3600),
-                'close_at' => date('Y-m-d H:i:s', time() + 3600),
+                'open_at'  => self::relojLocal(time() - 3600),
+                'close_at' => self::relojLocal(time() + 3600),
             ],
         ];
         assertSame('open', self::invokeStatic('scheduleState', [$settings]));
@@ -131,7 +151,7 @@ class ScheduleQuotaTest
     {
         Form::update(self::$formId, 'Form P6', '', 'published');
         Form::saveSettings(self::$formId, [
-            'schedule' => ['open_at' => null, 'close_at' => date('Y-m-d H:i:s', time() - 3600)],
+            'schedule' => ['open_at' => null, 'close_at' => self::relojLocal(time() - 3600)],
         ]);
         $html = self::renderShow();
         assertTrue(str_contains($html, 'Formulario cerrado'));
@@ -142,7 +162,7 @@ class ScheduleQuotaTest
     {
         Form::update(self::$formId, 'Form P6', '', 'published');
         Form::saveSettings(self::$formId, [
-            'schedule' => ['open_at' => date('Y-m-d H:i:s', time() + 3600), 'close_at' => null],
+            'schedule' => ['open_at' => self::relojLocal(time() + 3600), 'close_at' => null],
         ]);
         $html = self::renderShow();
         assertTrue(str_contains($html, 'Aún no está abierto'));
@@ -220,8 +240,19 @@ class ScheduleQuotaTest
         if (!self::$envLoaded) {
             \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
             self::$envLoaded = true;
+            // Un cleanup de salida NO puede matar el proceso. Este hook corre
+            // al terminar, cuando puede que ningún test haya llegado a conectar
+            // (por ejemplo con un --filter que no toca la BD): entonces
+            // `Config::db()` todavía no tiene credenciales, `getInstance()`
+            // lanza PDOException y el shutdown se lleva por delante el informe
+            // entero del runner, que es justo cuando más falta hace. Se traga
+            // el fallo a propósito: si no se pudo limpiar, se limpia a mano.
             register_shutdown_function(static function () {
-                self::cleanupResiduals();
+                try {
+                    self::cleanupResiduals();
+                } catch (\Throwable $e) {
+                    // Sin conexión no hay residuales que borrar.
+                }
             });
         }
     }

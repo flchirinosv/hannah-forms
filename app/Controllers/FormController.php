@@ -318,10 +318,12 @@ class FormController
             Response::forbidden();
         }
 
+        // Los settings salen de la fila que ya trajo `find()`: `Form::settings($id)`
+        // volvería a consultar la misma tabla para leer lo que ya está en memoria.
         View::render('dashboard/forms/print', [
             'form'     => $form,
             'user'     => $user,
-            'settings' => Form::settings($id),
+            'settings' => Form::settingsFrom($form),
         ], null);
     }
 
@@ -345,7 +347,8 @@ class FormController
             Response::forbidden();
         }
 
-        $payload = TemplateService::exportPayload($form, Form::settings($id));
+        // Igual que en printForm: sin consulta de más.
+        $payload = TemplateService::exportPayload($form, Form::settingsFrom($form));
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $json = $json === false ? '{}' : $json;
         $file = ((string) ($form['slug'] ?? 'formulario')) . '.template.json';

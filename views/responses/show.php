@@ -15,7 +15,7 @@ $files = is_array($files ?? null) ? $files : [];
             <div class="row g-3 small text-muted">
                 <div class="col-sm-3">
                     <div class="text-uppercase mb-1">Fecha</div>
-                    <div class="text-dark"><?= date('d/m/Y H:i', strtotime($submission['finished_at'])) ?></div>
+                    <div class="text-dark"><?= View::datetime($submission['finished_at']) ?></div>
                 </div>
                 <div class="col-sm-3">
                     <div class="text-uppercase mb-1">IP</div>

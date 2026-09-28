@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Database;
 
@@ -261,43 +262,105 @@ class Submission
      */
     public static function byFormFiltered(int $formId, string $from = '', string $to = ''): array
     {
-        $params = ['form_id' => $formId];
-        $where = ' WHERE s.form_id = :form_id';
-        if ($from !== '') {
-            $where .= ' AND s.finished_at >= :from';
-            $params['from'] = $from . ' 00:00:00';
-        }
-        if ($to !== '') {
-            $where .= ' AND s.finished_at <= :to';
-            $params['to'] = $to . ' 23:59:59';
-        }
+        [$where, $params] = self::dateBounds($from, $to, 's.');
+
         return self::db()->fetchAll(
-            "SELECT s.id, s.finished_at FROM submissions s$where ORDER BY s.finished_at DESC",
-            $params
+            "SELECT s.id, s.finished_at FROM submissions s WHERE s.form_id = :form_id$where ORDER BY s.finished_at DESC",
+            $params + ['form_id' => $formId]
         );
     }
 
     /**
      * Total de respuestas agrupadas por día para un formulario (con filtro de fecha).
+     *
+     * Los buckets son DÍAS LOCALES, no días UTC: `DATE(s.finished_at)` agrupaba
+     * por el día UTC, que para Caracas (UTC-4) empieza a las 20:00 del día
+     * anterior. El resumen de "respuestas por día" no cuadraba con la fecha que
+     * el dueño veía en la tabla de respuestas: las 4 h de la tarde iban al día
+     * siguiente y las 4 h de la noche al anterior.
+     *
+     * El desplazamiento se calcula en PHP y se pasa a `CONVERT_TZ` con un
+     * número, no con el nombre de la zona: el nombre exige que el servidor
+     * tenga las tablas de zonas horarias cargadas y, si no las tiene, devuelve
+     * NULL en silencio (agrupamiento vacío y ninguna pista de por qué). Ver
+     * `Clock::localSqlOffsetFor()` y su limitación con los cambios de hora.
      */
     public static function dailyStats(int $formId, string $from = '', string $to = ''): array
     {
-        $params = ['form_id' => $formId];
-        $where = ' WHERE s.form_id = :form_id';
-        if ($from !== '') {
-            $where .= ' AND s.finished_at >= :from';
-            $params['from'] = $from . ' 00:00:00';
-        }
-        if ($to !== '') {
-            $where .= ' AND s.finished_at <= :to';
-            $params['to'] = $to . ' 23:59:59';
-        }
+        [$where, $params] = self::dateBounds($from, $to, 's.');
+
+        $desfase = Clock::localSqlOffsetFor();
+
         return self::db()->fetchAll(
-            "SELECT DATE(s.finished_at) AS day, COUNT(*) AS c
-             FROM submissions s$where
-             GROUP BY DATE(s.finished_at) ORDER BY day",
-            $params
+            "SELECT DATE(CONVERT_TZ(s.finished_at, '+00:00', :desfase)) AS day, COUNT(*) AS c
+             FROM submissions s WHERE s.form_id = :form_id$where
+             GROUP BY day ORDER BY day",
+            $params + ['form_id' => $formId, 'desfase' => $desfase]
         );
+    }
+
+    /**
+     * Traduce un filtro de fechas de la INTERFAZ (días en la zona de
+     * presentación) a la cláusula SQL que compara contra la columna TIMESTAMP.
+     *
+     * Lo que no se puede hacer es lo que se hacía: concatenar el texto
+     * `$from . ' 00:00:00'` y compararlo contra la columna. MariaDB lo
+     * interpretaría en la zona de la sesión (UTC), así que el filtro "28 de
+     * septiembre" significaba el día en UTC y no el día del usuario: en Caracas
+     * el día empieza a las 04:00 UTC, de modo que las respuestas de la noche
+     * del día anterior (00:00-04:00 UTC) caían en el día equivocado y las de la
+     * mañana del propio día (00:00-04:00 UTC del 28) se asignaban al 28 cuando
+     * para quien las envió era todavía el 27. Cuatro horas de respuestas mal contabilizadas cada día.
+     *
+     * El límite superior es EXCLUSIVO (`<` del día siguiente a las 00:00) en vez
+     * de `23:59:59`: no hay un segundo que se escape por el redondeo y las dos
+     * condiciones que comparten los límites (el filtro y el agrupamiento) no
+     * pueden discrepar en un instante.
+     *
+     * @param string $prefijo prefijo de tabla/alias de la columna ('s.' o '')
+     * @return array{0: string, 1: array} [cláusula WHERE adicional, parámetros]
+     */
+    private static function dateBounds(string $from, string $to, string $prefijo): array
+    {
+        $where = '';
+        $params = [];
+
+        $col = $prefijo . 'finished_at';
+
+        if (self::isValidDay($from)) {
+            $where .= " AND {$col} >= :desde";
+            $params['desde'] = Clock::dayStartUtc($from);
+        }
+        if (self::isValidDay($to)) {
+            $where .= " AND {$col} < :hasta";
+            $params['hasta'] = Clock::dayEndUtc($to);
+        }
+
+        return [$where, $params];
+    }
+
+    /**
+     * Un `Y-m-d` real y dentro de un rango con sentido. `createFromFormat`
+     * acepta cosas como `2026-02-31` (que PHP "corrige" a marzo) y acepta
+     * cualquier junk con avisos, así que se compara el resultado con la entrada
+     * en vez de confiar en que no fallen.
+     */
+    public static function isValidDay(string $day): bool
+    {
+        $day = trim($day);
+        if ($day === '') {
+            return false;
+        }
+        $dt = \DateTimeImmutable::createFromFormat('!Y-m-d', $day);
+        if ($dt === false) {
+            return false;
+        }
+        $errores = \DateTimeImmutable::getLastErrors();
+        if (is_array($errores) && ($errores['warning_count'] > 0 || $errores['error_count'] > 0)) {
+            return false;
+        }
+
+        return $dt->format('Y-m-d') === $day;
     }
 
     /**

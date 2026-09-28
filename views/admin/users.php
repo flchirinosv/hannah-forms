@@ -47,7 +47,7 @@ use App\Core\View;
                                     <?= (int) $user['is_active'] === 1 ? 'Activo' : 'Inactivo' ?>
                                 </span>
                             </td>
-                            <td class="small text-muted"><?= date('d/m/Y', strtotime($user['created_at'])) ?></td>
+                            <td class="small text-muted"><?= View::date($user['created_at']) ?></td>
                             <td class="text-end px-4">
                                 <?php if ((int) $user['id'] !== (int) \App\Core\Auth::id()): ?>
                                 <form method="post" action="/admin/users/toggle" class="d-inline" data-confirm="¿Cambiar el estado de este usuario?">

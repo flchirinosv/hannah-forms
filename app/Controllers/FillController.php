@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Config;
+use App\Core\Clock;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\I18n;
@@ -523,7 +524,12 @@ class FillController
         // FASE 3 — Fuera de transacción, a prueba de fallos: notificaciones
         // (P5) y webhook. Un fallo aquí NUNCA rompe la respuesta guardada.
         try {
-            $submittedAt = date('Y-m-d H:i:s');
+            // UTC explícito en vez de `date()` a pelo: el valor viaja al
+            // webhook como `submission.finished_at` y a los correos, así que
+            // no puede depender de la zona por defecto del proceso (que es UTC,
+            // pero si alguien la cambiara, el contrato del webhook cambiaría
+            // sin que se rompiera ninguna prueba).
+            $submittedAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 
             Notifier::afterSubmit($form, $settings, (int) $submissionId, $validated, $submittedAt);
 
@@ -719,13 +725,42 @@ class FillController
         return 'open';
     }
 
+    /**
+     * Interpreta `schedule.open_at` / `close_at` (P6) como instante.
+     *
+     * Estos valores salen de un `<input type="datetime-local">`, o sea que son
+     * una pared de reloj SIN zona: "el 28 a las 09:00" en la zona de quien
+     * administera el formulario, no en UTC ni en la del servidor. `strtotime()`
+     * a pelo las leía en la zona por defecto de PHP, así que el formulario se
+     * abría y se cerraba con el desfase de esa zona: 4 h antes en Caracas (que
+     * es lo que corresponde a leerlas en UTC) y 2 h antes cuando PHP corría en
+     * America/Mexico_City. Un formulario con `open_at = 09:00` empezaba a
+     * aceptar respuestas a las 05:00.
+     *
+     * Si el string trae zona explícita (ISO-8601 con `Z` o `±HH:MM`, que es lo
+     * que devuelve un round-trip por el editor si algún día se serializa así)
+     * se respeta tal cual: ahí sí hay una zona que manda y no hay que suponer
+     * ninguna.
+     */
     private static function parseScheduleDate(string $value): ?int
     {
         if (trim($value) === '') {
             return null;
         }
-        $ts = strtotime($value);
-        return $ts === false ? null : $ts;
+
+        $valor = trim($value);
+
+        $conZona = (bool) preg_match('/(Z|[+-]\d{2}:?\d{2})$/i', $valor);
+
+        try {
+            $dt = $conZona
+                ? new \DateTimeImmutable($valor)
+                : new \DateTimeImmutable($valor, Clock::displayZone());
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        return $dt->getTimestamp();
     }
 
     /**

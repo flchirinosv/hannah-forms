@@ -44,7 +44,7 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
     $answerableFields = array_values(array_filter($form['fields'], static fn($f) => ($f['type'] ?? '') !== 'section'));
     $cards = [
         ['label' => 'Respuestas', 'value' => $total, 'icon' => 'fa-file-lines', 'color' => 'primary'],
-        ['label' => 'Última respuesta', 'value' => !empty($submissions) ? date('d/m/Y H:i', strtotime($submissions[0]['finished_at'])) : '—', 'icon' => 'fa-clock', 'color' => 'info'],
+        ['label' => 'Última respuesta', 'value' => !empty($submissions) ? View::datetime($submissions[0]['finished_at']) : '—', 'icon' => 'fa-clock', 'color' => 'info'],
         ['label' => 'Preguntas', 'value' => count($answerableFields), 'icon' => 'fa-question', 'color' => 'warning'],
     ];
     ?>
@@ -254,7 +254,7 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                                                     ?>
                                                 </td>
                                             <?php endforeach; ?>
-                                            <td class="small text-muted" data-label="Fecha"><?= date('d/m/Y H:i', strtotime($submission['finished_at'])) ?></td>
+                                            <td class="small text-muted" data-label="Fecha"><?= View::datetime($submission['finished_at']) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

@@ -17,7 +17,19 @@ $config = Config::all();
 error_reporting(E_ALL);
 ini_set('display_errors', $config['app']['env'] === 'development' ? '1' : '0');
 
-date_default_timezone_set('America/Mexico_City');
+// PHP trabaja en UTC, no en la zona de presentación.
+//
+// El string que devuelve la BD para una columna TIMESTAMP es UTC (porque la
+// sesión fija `SET time_zone = '+00:00'`, ver App\Core\Database). Si PHP no
+// está en UTC, `strtotime('2026-09-28 01:33:35')` coloca ese instante 6 h más
+// tarde de lo que es (con America/Mexico_City) y todo lo que aritmétique con
+// esa fecha queda desviado: los "hace X", los límites de los filtros por día y
+// los `DATE()` de los agrupamientos. Imprimir el string en crudo no lo
+// delata, que es justo por lo que llevaba tiempo escondido.
+//
+// La conversión a la zona que ve el usuario la hace App\Core\Clock (que usa
+// `app.timezone`, por defecto America/Caracas) en el punto de presentación.
+date_default_timezone_set('UTC');
 
 try {
     Database::getInstance($config['database']);

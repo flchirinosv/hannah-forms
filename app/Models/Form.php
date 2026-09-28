@@ -225,7 +225,28 @@ class Form
         if ($row === null) {
             return FormSettings::defaults();
         }
-        $raw = json_decode((string) ($row['settings'] ?? ''), true);
+
+        return self::settingsFrom($row);
+    }
+
+    /**
+     * Normaliza los settings de una fila YA cargada (la de `find()`,
+     * `findBySlug()`, etc.), sin volver a consultar.
+     *
+     * Existe porque `find()` hace `SELECT f.*`, o sea que ya trae la columna
+     * `settings`: pedirla otra vez con `settings($id)` es una consulta de más
+     * por petición, y encima vuelve a pagar el `FormSettings::normalize()`,
+     * que no es trivial (recorta y pasa por lista blanca un puñado de bloques).
+     *
+     * La normalización vive en un solo sitio para que el "settings ya
+     * normalizado" sea el mismo venga de donde venga: una fila guardada antes
+     * de que existiera un ajuste de la whitelist tiene que salir igual por
+     * aquí que por `settings($id)`.
+     */
+    public static function settingsFrom(array $form): array
+    {
+        $raw = json_decode((string) ($form['settings'] ?? ''), true);
+
         return FormSettings::normalize(is_array($raw) ? $raw : []);
     }
 

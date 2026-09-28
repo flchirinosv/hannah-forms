@@ -34,6 +34,20 @@ class Database
             error_log('Error de conexión a BD: ' . $e->getMessage());
             throw new PDOException('No se pudo conectar a la base de datos.');
         }
+
+        // La sesión escribe y lee en UTC, SIEMPRE, sin depender de dónde esté
+        // el host. `@@session.time_zone` viene en SYSTEM por defecto, o sea que
+        // heredaba la zona del servidor: en esta máquina daba igual porque el
+        // contenedor está en UTC, pero en un host en America/Caracas la sesión
+        // habría pasado a -04:00 y las columnas TIMESTAMP se habrían leído
+        // como hora local, con PHP creyendo que ese string era UTC: 4 h de
+        // error en cada fecha, invisible salvo en comparaciones y en "hace X".
+        // Fijarlo aquí convierte en explícito el contrato "la BD habla UTC" en
+        // vez de dejarlo como casualidad del despliegue.
+        //
+        // PDO no tiene parámetro de DSN para la zona, y `init_command` es de
+        // mysqlnd, no de PDO: la vía portable es un SET justo tras conectar.
+        $this->pdo->exec("SET time_zone = '+00:00'");
     }
 
     public static function getInstance(array $config): self

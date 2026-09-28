@@ -28,8 +28,7 @@ class Field
             $field['validations'] = json_decode($field['validations'] ?? 'null', true) ?: [];
             $field['logic'] = json_decode($field['logic'] ?? 'null', true);
             $field['logic'] = is_array($field['logic']) ? $field['logic'] : null;
-            $field['parent_id'] = $field['parent_id'] !== null && $field['parent_id'] !== ''
-                ? (int) $field['parent_id'] : null;
+            $field['parent_id'] = self::normalizeParentId($field['parent_id']);
         }
         unset($field);
 
@@ -77,6 +76,29 @@ class Field
         return self::db()->fetch('SELECT * FROM fields WHERE id = :id', ['id' => $id]);
     }
 
+    /**
+     * Normaliza `parent_id` en la frontera de la columna.
+     *
+     * "Sin sección contenedora" es NULL, no 0: la columna está declarada
+     * `INT UNSIGNED DEFAULT NULL` y la migración 0004 le puso la FK
+     * `fk_fields_parent`. Con la FK activa, un `parent_id = 0` no es "campo
+     * suelto": es una violación de integridad, porque el id 0 no puede existir en
+     * un AUTO_INCREMENT. Y aun así la app lo escribía (`Field::create(..., 0)`
+     * desde el builder y los tests), así que guardar la estructura de un
+     * formulario con preguntas sueltas reventaba con un 1452.
+     *
+     * Un 0 nunca puede ser una sección real, así que mapearlo a NULL no pierde
+     * información: es el mismo significado con el que la columna lo describe.
+     */
+    private static function normalizeParentId($value): ?int
+    {
+        if ($value === null || $value === '' || (int) $value <= 0) {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
     public static function create(
         int $formId,
         string $type,
@@ -103,7 +125,7 @@ class Field
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,
-                'parent_id'   => $parentId,
+                'parent_id'   => self::normalizeParentId($parentId),
                 'logic'       => $logic !== null && $logic !== [] ? json_encode($logic) : null,
             ]
         );
@@ -140,7 +162,7 @@ class Field
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,
-                'parent_id'   => $parentId,
+                'parent_id'   => self::normalizeParentId($parentId),
                 'logic'       => $logic !== null && $logic !== [] ? json_encode($logic) : null,
             ]
         );
