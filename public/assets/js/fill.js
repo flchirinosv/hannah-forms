@@ -184,10 +184,19 @@
             const rank = vis.indexOf(i);
             const show = rank >= 0;
             pb.classList.toggle('vf-step-hidden', !(show && i === currentStep));
-            if (!show) {
-                // Paso omitido: los campos del bloque cuentan como ocultos
-                // (sus valores se limpian, igual que en el servidor).
-                stepCards(i).forEach((card) => setHidden(card, true));
+            if (show) {
+                // Visible de nuevo: se le quita el marcador de omitido para que
+                // applyCardVisibility() le devuelva la visibilidad a sus tarjetas
+                // (si no, un paso que deja de saltarse se quedaba invisible).
+                pb.removeAttribute('data-vf-skipped');
+            } else {
+                // P8 — Paso omitido por su condición: sus campos no cuentan
+                // (ni en el progreso ni en el envío) y el servidor tampoco los
+                // persiste. OJO: `.vf-step-hidden` es de MAQUETACIÓN (solo se
+                // ve un paso a la vez), así que por sí solo no puede decidir
+                // qué cuenta; el estado que significa «este paso no aplica» es
+                // este atributo.
+                pb.setAttribute('data-vf-skipped', '1');
                 return;
             }
             const foot = pb.querySelector('.vf-page-footer');
@@ -204,6 +213,10 @@
             }
             buildFooterControls(foot, rank, vis.length);
         });
+        // La visibilidad de las tarjetas depende de los marcadores de salto que
+        // se acaban de poner y quitar, y la barra depende de las tarjetas.
+        applyCardVisibility();
+        updateProgress();
         if (shouldScroll !== false) {
             const target = pageBlocks[currentStep];
             if (target) {
@@ -318,6 +331,29 @@
                 if (pb && pb.classList.contains('vf-step-hidden')) {
                     return false;
                 }
+            }
+            return true;
+        });
+    }
+
+    // Las tarjetas contra las que se mide el PROGRESO (V1). Deliberadamente es
+    // OTRO conjunto que visibleFieldCards(): aquella excluye el bloque de la
+    // página que no es la actual, y con eso el denominador de un formulario
+    // multipágina era solo la página a la vista, de modo que contestarla entera
+    // ponía la barra al 100% sin haber tocado el resto.
+    //
+    // `.vf-step-hidden` es de maquetación (se ve un paso a la vez), así que no
+    // puede decidir el progreso. El paso de verdad OMITIDO sí se excluye, y sin
+    // filtro propio: paintSteps() le pone data-vf-skipped y applyCardVisibility()
+    // deja sus tarjetas con vf-hidden, que es justo lo que esta lista filtra.
+    function progressFieldCards() {
+        return allFieldCards.filter((card) => {
+            if (card.classList.contains('vf-hidden')) {
+                return false;
+            }
+            const sec = card.closest('.vf-section-block');
+            if (sec && sec.classList.contains('vf-hidden')) {
+                return false;
             }
             return true;
         });
@@ -442,26 +478,55 @@
         }
     }
 
+    // ¿La tarjeta está en un bloque de página OMITIDO por su condición (P8)?
+    // Lo decide paintSteps() poniéndole data-vf-skipped al bloque, no la clase
+    // .vf-step-hidden (esa la llevan también el resto de páginas visibles).
+    function cardInSkippedStep(card) {
+        const pb = card.closest('.vf-page-block');
+        return !!(pb && pb.getAttribute('data-vf-skipped') === '1');
+    }
+
+    // Última decisión de visibilidad por campo, ya evaluada. `null` = todavía no
+    // se ha evaluado ninguna condición, y entonces manda lo que el servidor
+    // pintó (el gap sin JavaScript: el render de inicialización ya viene con
+    // las preguntas que no aplican en vf-hidden).
+    let ownVisible = null;
+
+    // Aplica la visibilidad a todas las tarjetas. Vive separada de
+    // evaluateConditions() porque paintSteps() también la necesita: el orden
+    // correcto es «evaluar condiciones -> marcar pasos omitidos -> aplicar», y
+    // antes el marcado iba dentro de paintSteps() (que ocultaba las tarjetas del
+    // paso saltado sin poder volver a enseñarlas nunca).
+    function applyCardVisibility() {
+        conditionalEls.forEach((c) => {
+            const sec = c.el.closest('.vf-section-block');
+            const own = ownVisible !== null && ownVisible[c.el.dataset.vfFieldId] === false;
+            const secHidden = !!(sec && sec !== c.el && ownVisible !== null && ownVisible[sec.dataset.vfFieldId] === false);
+            setHidden(c.el, own || secHidden || cardInSkippedStep(c.el));
+        });
+        // Sin condición propia: solo dependen de su sección y de su paso.
+        plainFieldCards.forEach((el) => {
+            const sec = el.closest('.vf-section-block');
+            const secHidden = !!sec && (
+                sec.classList.contains('vf-hidden')
+                || (ownVisible !== null && ownVisible[sec.dataset.vfFieldId] === false)
+            );
+            setHidden(el, secHidden || cardInSkippedStep(el));
+        });
+    }
+
     // Evalúa todas las condiciones en una sola pasada (dos fases: cálculo y
     // aplicación) para que sea independiente del orden del DOM. Una tarjeta se
-    // oculta si su propia condición falla o si su sección contenedora lo está.
+    // oculta si su propia condición falla, si su sección contenedora lo está o
+    // si su paso se está saltando.
     function evaluateConditions() {
         const values = currentValues();
         const own = {};
         conditionalEls.forEach((c) => {
             own[c.el.dataset.vfFieldId] = evalLogic(c.logic, values);
         });
-        conditionalEls.forEach((c) => {
-            const sec = c.el.closest('.vf-section-block');
-            const secHidden = !!(sec && sec !== c.el && own[sec.dataset.vfFieldId] === false);
-            setHidden(c.el, own[c.el.dataset.vfFieldId] === false || secHidden);
-        });
-        // Sin condición propia: solo depende de su sección. El paso lo gestiona
-        // paintSteps (un bloque omitido se oculta entero, no tarjeta a tarjeta).
-        plainFieldCards.forEach((el) => {
-            const sec = el.closest('.vf-section-block');
-            setHidden(el, !!(sec && sec.classList.contains('vf-hidden')));
-        });
+        ownVisible = own;
+        applyCardVisibility();
         // P8 — salta-página: repintar pasos visibles (puede cambiar con valores).
         paintSteps(false);
     }
@@ -713,18 +778,47 @@
 
     /* ---------- progreso ---------- */
 
+    // ¿Cuenta la tarjeta como respondida para la barra?
+    //
+    // En los tipos de respuesta compuesta es «completa o nada»: una matriz con
+    // una de sus cinco filas marcadas NO cuenta, igual que NO deja enviar
+    // (validateField exige todas las filas, val.matrix_all). Antes el progreso
+    // usaba isEmptyValue(getFieldValue()), que para una matriz devuelve «vacío»
+    // solo si están TODAS las filas vacías, así que con una sola fila contestada
+    // la barra se llenaba y el envío se rechazaba por el mismo dato.
+    function isCardAnswered(card) {
+        const type = card.dataset.vfType;
+
+        if (type === 'matrix') {
+            const rows = card.querySelectorAll('[data-vf-row]');
+            return rows.length > 0
+                && card.querySelectorAll('[data-vf-row] input[type=radio]:checked').length === rows.length;
+        }
+
+        if (type === 'ranking') {
+            const inputs = Array.prototype.map.call(
+                card.querySelectorAll('[data-vf-rank] input[type=number]'),
+                (i) => i.value
+            );
+            return inputs.length > 0 && inputs.every((v) => v !== '');
+        }
+
+        return !isEmptyValue(getFieldValue(card));
+    }
+
     /* V1 — Progreso de completitud real: si hay preguntas obligatorias
      * visibles, el % mide cuántas de ellas están respondidas (el resto son
      * opcionales, no bloquean el envío). Sin obligatorias, cae al % de campos
-     * respondidos del conjunto visible (como antes). */
+     * respondidos del conjunto visible (como antes). El denominador es
+     * progressFieldCards() — TODO el formulario, no el paso a la vista. */
     function countAnswered() {
-        const visible = visibleFieldCards();
+        const cards = progressFieldCards();
         let done = 0;
         let reqDone = 0;
         let reqTotal = 0;
-        visible.forEach((card) => {
+        cards.forEach((card) => {
             const req = card.dataset.vfRequired === '1';
-            const filled = !isEmptyValue(getFieldValue(card));
+            const filled = isCardAnswered(card);
             if (filled) {
                 done += 1;
             }
@@ -738,7 +832,7 @@
         if (reqTotal > 0) {
             return Math.round((reqDone / reqTotal) * 100);
         }
-        return visible.length ? Math.round((done / visible.length) * 100) : 0;
+        return cards.length ? Math.round((done / cards.length) * 100) : 0;
     }
 
     function updateProgress() {
@@ -750,6 +844,17 @@
         }
         if (label) {
             label.textContent = pct + '%';
+        }
+        // Si la barra se decide con el conjunto del progreso, se decide AQUÍ y
+        // no una sola vez al cargar: un formulario cuya lógica va revelando
+        // preguntas pasa de 1 a varias, y con el `add` de la versión anterior
+        // (evaluado una vez, al final de apply()) la barra se quedaba oculta
+        // para siempre justo en los formularios que más la necesitan.
+        // Con el conjunto del paso, además, un multipágina de una pregunta por
+        // página ocultaba siempre: solo se ve un paso a la vez.
+        const wrap = document.getElementById('vfProgressWrap');
+        if (wrap) {
+            wrap.classList.toggle('d-none', progressFieldCards().length < 2);
         }
     }
 
@@ -1091,11 +1196,6 @@
         restoreDraft();
         // Aplicar condiciones tras cualquier restauración (con o sin errores).
         evaluateConditions();
-
-        const progressWrap = document.getElementById('vfProgressWrap');
-        if (progressWrap && visibleFieldCards().length < 2) {
-            progressWrap.classList.add('d-none');
-        }
     }
 
     attach();

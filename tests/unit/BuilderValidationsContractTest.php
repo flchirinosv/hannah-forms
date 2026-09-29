@@ -63,6 +63,28 @@ class BuilderValidationsContractTest
     /** Tipos a los que el servidor aplica min_length/max_length (FillController.php:966). */
     private const LENGTH_TYPES = ['text', 'textarea'];
 
+    /**
+     * Validación => id del control del panel que la escribe.
+     *
+     * Es el puente que faltaba en el contrato: saber qué input produce qué
+     * clave permite exigir que ese input esté escuchando a `applySettings`.
+     * `max` aparece dos veces (valMax y fieldScaleMax) y por eso el valor es una
+     * lista; basta con que uno de los dos esté vivo para no perder el cap.
+     *
+     * @var array<string, string[]>
+     */
+    private const CONTROL_FOR_KEY = [
+        'min'         => ['valMin', 'fieldScaleMax'],
+        'max'         => ['valMax', 'fieldScaleMax'],
+        'min_length'  => ['valMinLen'],
+        'max_length'  => ['valMaxLen'],
+        'accept'      => ['valFileAccept'],
+        'max_size_mb' => ['valFileMaxSize'],
+        'multiple'    => ['valFileMultiple'],
+        'correct'     => ['quizAnswer'],
+        'randomize'   => ['fieldShuffleOps'],
+    ];
+
     /* ---------- el invariante central ---------- */
 
     public function testCadaClavePreservadaPorElPanelTieneUnControlQueLaEscriba(): void
@@ -114,6 +136,58 @@ class BuilderValidationsContractTest
         assertTrue(
             !preg_match('/const\s+v\s*=\s*\{\s*\};/', $body),
             'applySettings() volvió a inicializar `v` vacío: eso destruye min_length/max_length y max_files'
+        );
+    }
+
+    /* ---------- el mismo invariante, del lado del disparador ---------- */
+
+    /**
+     * El bug del quiz fue el MISMO descuido que este test de arriba, dos capas
+     * más abajo: `applySettings()` sí escribía `v.correct` (por eso el test de
+     * contenido pasaba), pero `#quizAnswer` no tenía NINGÚN listener. Nadie
+     * llamaba a `applySettings()`, así que el autosave seguía guardando la
+     * validación anterior y la respuesta correcta desaparecía al recargar.
+     *
+     * El servidor nunca estuvo en medio: `correct` viaja en `validations` y
+     * QuizScore la lee. Faltaba el evento.
+     *
+     * O sea: un control puede escribir la clave perfectamente y aun así no
+     * guardar nada. La condición necesaria es que además esté ESCUCHADO, y eso
+     * es lo que se mide aquí.
+     */
+    public function testCadaControlQueEscribeUnaValidacionEstaEscuchado(): void
+    {
+        $wired = $this->wiredControls();
+        $dead = [];
+
+        foreach (self::CONTROL_FOR_KEY as $key => $ids) {
+            $alive = array_values(array_filter($ids, static fn(string $id): bool => in_array($id, $wired, true)));
+            if ($alive === []) {
+                $dead[] = $key . ' (' . implode('/', $ids) . ')';
+            }
+        }
+
+        assertTrue(
+            $dead === [],
+            'estos controles escriben una validación en applySettings() pero no tienen listener: '
+                . implode(', ', $dead)
+                . '. El valor se ve en el input, no llega a f.validations y el autosave guarda la '
+                . 'validación anterior. Enlázalos con applySettings (\'input\' para texto, '
+                . '\'change\' para casillas).'
+        );
+    }
+    public function testNingunaValidacionSeEscribeSinUnControlDeclaradoAqui(): void
+    {
+        $body = $this->applySettingsBody();
+        preg_match_all('/\bv\.([a-z_]+)\s*[.=]/', $body, $m);
+        $written = array_values(array_unique($m[1]));
+
+        $unmapped = array_values(array_diff($written, array_keys(self::CONTROL_FOR_KEY)));
+        assertTrue(
+            $unmapped === [],
+            'applySettings() escribe estas validaciones sin control declarado en '
+                . 'CONTROL_FOR_KEY: ' . implode(', ', $unmapped)
+                . '. Declara el control (y su listener) o quítalo de MANAGED_VALIDATION_KEYS.'
         );
     }
 
@@ -207,6 +281,39 @@ class BuilderValidationsContractTest
     private function hasControl(string $body, string $key): bool
     {
         return preg_match('/\bv\.' . preg_quote($key, '/') . '\s*[.=]/', $body) === 1;
+    }
+
+    /**
+     * Ids de los controles que tienen un listener que acaba en `applySettings`.
+     *
+     * Se recogen las dos formas que usa el builder, porque el test no debe
+     * atarse a una: el enlace directo `el.quizAnswer.addEventListener('input',
+     * applySettings)` y el bucle sobre una lista
+     * (`['quizAnswer', ...].forEach(k => el[k].addEventListener(...))`). Para el
+     * bucle se toman los tokens entre comillas de la sentencia.
+     */
+    private function wiredControls(): array
+    {
+        $src = (string) file_get_contents($this->path(self::JS));
+        $wired = [];
+
+        foreach (preg_split('/;\s*\n/', $src) ?: [] as $stmt) {
+            if (!str_contains($stmt, 'addEventListener') || !str_contains($stmt, 'applySettings')) {
+                continue;
+            }
+            if (preg_match_all('/el\.([A-Za-z_][A-Za-z0-9_]*)\.addEventListener/', $stmt, $m) > 0) {
+                foreach ($m[1] as $id) {
+                    $wired[] = $id;
+                }
+            }
+            if (preg_match_all("/'([A-Za-z_][A-Za-z0-9_]*)'/", $stmt, $q) > 0) {
+                foreach ($q[1] as $id) {
+                    $wired[] = $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($wired));
     }
 
     /** Claves de MANAGED_VALIDATION_KEYS declaradas en builder.js. */

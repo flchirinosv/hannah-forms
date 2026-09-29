@@ -14,6 +14,14 @@ return [
     'app' => [
         'name' => App\Core\Env::get('APP_NAME', 'VanillaForms'),
         'url'  => App\Core\Env::get('APP_URL', 'http://127.0.0.1:8080'),
+        // URL pública para el enlace que se copia, el QR y el embed. VACÍO = se
+        // deduce de la petición actual (esquema + Host), que es lo correcto en
+        // una instalación self-hosted normal; fíjala (APP_PUBLIC_URL) cuando hay
+        // un proxy, varios dominios o cualquier cosa que el Host no refleje.
+        // Antes de esto, estos tres usos salían SIEMPRE de `app.url`, así que
+        // servir la app en otro host producía enlaces y QR apuntando a
+        // 127.0.0.1. Ver App\Core\PublicUrl.
+        'public_url' => App\Core\Env::get('APP_PUBLIC_URL', ''),
         'env'  => App\Core\Env::get('APP_ENV', 'development'),
         // Solo true si la app está detrás de un proxy de confianza que
         // sobrescribe X-Forwarded-For / X-Real-IP (nginx/haproxy).

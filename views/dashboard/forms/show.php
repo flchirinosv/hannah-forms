@@ -92,6 +92,15 @@ use App\Core\View;
                         </div>
                         <a href="<?= View::escape($shareUrl) ?>" target="_blank" class="btn btn-outline-info btn-sm w-100"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir en nueva pestaña</a>
 
+                        <?php // La URL se dedujo del host de la petición y salió local: el QR solo
+                              // abrirá desde esta red. Ver App\Core\PublicUrl. ?>
+                        <?php if (!empty($publicUrlIsLocal)): ?>
+                            <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small app-share-hint" role="alert">
+                                <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                                <span>Este enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define <code>APP_PUBLIC_URL</code> en el <code>.env</code>.</span>
+                            </div>
+                        <?php endif; ?>
+
                         <?php // P7 — QR del enlace público (SVG, sin GD). ?>
                         <img src="/forms/<?= (int) $form['id'] ?>/qr.svg" alt="Código QR del formulario" class="img-fluid mx-auto d-block my-3 app-qr-img" width="180" height="180">
 

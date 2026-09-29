@@ -79,6 +79,63 @@ class TurnstileFormTest
         assertTrue(str_contains($html, 'data-sitekey="site-key-123"'));
     }
 
+    /**
+     * El widget tiene que aparecer en el PIE del último paso, que es donde está
+     * el botón de enviar.
+     *
+     * Regresión real: `$emitPageFooter` usaba `$turnstile` sin meterlo en el
+     * `use` de la closure, así que leía una variable indefinida y `empty()` daba
+     * falso: en un formulario multipágina no se pintaba widget ninguno. Como el
+     * `submit` sí exigía el token, el formulario se rechazaba a sí mismo con un
+     * formulario anti-bot que no se veía por ninguna parte.
+     */
+    public function testEnUnFormularioMultipaginaElWidgetVaEnElPieDelUltimoPaso(): void
+    {
+        Turnstile::setKeysForTesting('site-key-123', 'secret');
+
+        $formId = Form::create((int) self::$userId, 'Form B2 multi ' . bin2hex(random_bytes(4)));
+        Form::update($formId, 'Form B2 multi', '', 'published');
+        Field::create($formId, 'text', 'Paso 1', '', '', true, [], [], 1);
+        $pageId = Field::create($formId, 'page', 'Paso 2', '', '', false, [], [], 2);
+        Field::create($formId, 'text', 'Paso 2', '', '', true, [], [], 3);
+        Form::saveSettings($formId, ['anti_bot' => ['enabled' => true]]);
+
+        $form = Form::find($formId);
+        $slug = (string) ($form['slug'] ?? '');
+        assertTrue($slug !== '', 'el formulario multi debe tener slug');
+
+        $html = '';
+        ob_start();
+        (new FillController())->show($slug);
+        $html = (string) ob_get_clean();
+
+        assertTrue(str_contains($html, 'vf-page-footer'), 'el formulario debe ser multipágina');
+
+        // El pie del ULTIMO paso es el que lleva el botón de enviar; el
+        // `strrpos` lo saca del primer bloque para no mirar el de un paso
+        // intermedio, que solo tiene el botón de «Siguiente».
+        $lastFooter = strrpos($html, 'vf-page-footer');
+        assertTrue($lastFooter !== false, 'no se encontró ningún pie de paso');
+        $footer = substr($html, (int) $lastFooter, 1200);
+        $end = strpos($footer, '</section>');
+        $footer = $end === false ? $footer : substr($footer, 0, (int) $end);
+        assertTrue(
+            str_contains($footer, 'vfSubmit'),
+            'el último pie tiene que llevar el botón de enviar. Pie: ' . $footer
+        );
+        assertTrue(
+            str_contains($footer, 'cf-turnstile'),
+            'el widget de Turnstile tiene que pintarse dentro del pie del último paso, '
+                . 'junto al botón de enviar. Pie: ' . $footer
+        );
+        assertTrue(
+            str_contains($html, 'data-sitekey="site-key-123"'),
+            'el widget del pie tiene que llevar la site key de la instancia'
+        );
+
+        Form::delete($formId);
+    }
+
     /* ---------- Submit ---------- */
 
     public function testSubmitSinTokenReRenderizaElErrorYNoPersiste(): void

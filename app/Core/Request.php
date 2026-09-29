@@ -181,13 +181,26 @@ class Request
         return $clean;
     }
 
+    /**
+     * ¿Hay un proxy de confianza delante (config `app.trust_proxy`)?
+     *
+     * Lo leen `ip()` (para los headers de reenvío) y `PublicUrl` (para el
+     * esquema de `X-Forwarded-Proto`), así que la decisión vive aquí y no
+     * duplicada: si divergieran, el rate limit y el enlace público estarían
+     * leyendo valores distintos del mismo interruptor.
+     */
+    public static function trustsProxy(): bool
+    {
+        $appCfg = Config::get('app', []);
+        return self::$trustProxyForTesting ?? (bool) ($appCfg['trust_proxy'] ?? false);
+    }
+
     public static function ip(): string
     {
         // Solo confiar en X-Forwarded-For/X-Real-IP si hay un proxy de
         // confianza (config.trust_proxy). En caso contrario, cualquier
         // cliente podría falsificarlos (bypass de rate limiting, IPs falsas).
-        $appCfg = Config::get('app', []);
-        $trustProxy = self::$trustProxyForTesting ?? (bool) ($appCfg['trust_proxy'] ?? false);
+        $trustProxy = self::trustsProxy();
 
         if ($trustProxy) {
             $headers = [

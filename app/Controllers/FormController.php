@@ -136,7 +136,6 @@ class FormController
         }
 
         $settings = Form::settings($id);
-        $publicBase = rtrim((string) \App\Core\Config::get('app.url', ''), '/');
 
         View::render('dashboard/forms/show', [
             'form'       => $form,
@@ -144,8 +143,11 @@ class FormController
             'csrf'       => Csrf::token(),
             'canDelete'  => $this->canDelete($form, (int) $user['id']),
             'settings'   => $settings,
-            'shareUrl'   => $publicBase . '/f/' . rawurlencode((string) $form['slug']),
-            'embedUrl'   => $publicBase . '/f/' . rawurlencode((string) $form['slug']) . '/embed',
+            'shareUrl'   => \App\Core\PublicUrl::fillUrl((string) $form['slug']),
+            'embedUrl'   => \App\Core\PublicUrl::embedUrl((string) $form['slug']),
+            // La URL se dedujo (o se resolvió a una dirección local): el enlace
+            // y el QR solo abrirán desde esta red. Ver App\Core\PublicUrl.
+            'publicUrlIsLocal' => \App\Core\PublicUrl::isLocalBase(),
         ]);
     }
 
@@ -353,8 +355,10 @@ class FormController
             return;
         }
 
-        $url = rtrim((string) \App\Core\Config::get('app.url', ''), '/')
-            . '/f/' . rawurlencode((string) $form['slug']);
+        // La URL se calcula aquí, nunca desde el cliente (P7): si el slug
+        // viniera de la request, un QR podría apuntar al formulario que el
+        // atacante quiera en vez del que se está viendo.
+        $url = \App\Core\PublicUrl::fillUrl((string) $form['slug']);
 
         // Headers solo fuera de CLI (en el runner la salida ya va a un buffer).
         if (PHP_SAPI !== 'cli') {

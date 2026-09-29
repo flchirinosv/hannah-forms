@@ -1894,6 +1894,23 @@
             if (e.target.classList.contains('option-input')) applySettings();
         });
 
+        // Controles que applySettings() LEE pero que nadie escuchaba: sin esto
+        // se escribían en el estado en memoria, sí, pero nada llamaba a
+        // applySettings() y por tanto el autosave seguía guardando la
+        // validación anterior. El síntoma era «no guarda la respuesta
+        // correcta» (y, con el mismo descuido, tampoco la aleatorización ni los
+        // límites de archivo): tecleabas, el input se veía bien y al recargar
+        // había desaparecido. El servidor nunca estuvo en medio — la clave sí
+        // viaja en validations; lo que faltaba era el disparador.
+        ['quizAnswer', 'valFileAccept', 'valFileMaxSize'].forEach((k) => {
+            if (el[k]) el[k].addEventListener('input', applySettings);
+        });
+        // Las casillas no relied en 'input' para el guardado: 'change' es el
+        // evento canónico del checkbox.
+        ['fieldShuffleOps', 'valFileMultiple'].forEach((k) => {
+            if (el[k]) el[k].addEventListener('change', applySettings);
+        });
+
         el.btnAddOption.addEventListener('click', () => {
             addOptionRow('', 'Opción ' + (el.optionsList.children.length + 1));
             applySettings();
@@ -2021,6 +2038,16 @@
                 collectSettingsFromModal();
                 const m = ensureSettingsModal();
                 if (m) m.hide();
+                // El panel de la pregunta se rellena al abrirlo, y la visibilidad
+                // del input de respuesta correcta depende de si el modo quiz está
+                // activo. Si el owner lo acaba de encender en ESTE modal y el
+                // panel de la pregunta sigue abierto detrás (F2 deja el mismo
+                // #settingsForm reubicado), sin esto el input seguiría oculto y
+                // el usuario vería un ajuste que no aparece.
+                if (settingsModalOpen) {
+                    const f = fields.find((x) => x._uid === selectedId);
+                    if (f) fillSettings(f);
+                }
                 markDirty();
                 showToast('Configuración aplicada. Se guardará en el siguiente guardado.', 'success');
             });
@@ -2038,5 +2065,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-09-27e (F0.2: las validaciones sobreviven a la edición — se dejan de borrar min_length/max_length/max_files, y los elementos estructurales se ocultan bien dentro de una sección)');
+    console.log('[builder] v2026-09-29a (F0.3: los controles que escriben una validación ya disparan applySettings — la respuesta correcta, la aleatorización y los límites de archivo se guardaban sin listener)');
 })();

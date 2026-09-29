@@ -523,7 +523,13 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             }
         };
 
-        $emitPageFooter = static function () use (&$pageBlockIdx, &$blockOpen, $totalBlockCount, $t): void {
+        // OJO: $turnstile tiene que estar en la lista `use`. Una closure solo ve
+        // las variables que declara: sin él, `!empty($turnstile['enabled'])` leía
+        // una variable INDEFINIDA, así que en un formulario multipágina el
+        // widget de Turnstile no se pintaba nunca en el pie del último paso y el
+        // token no llegaba al submit (que sí lo exigía) → el formulario se
+        // rechazaba a sí mismo sin control anti-bot visible.
+        $emitPageFooter = static function () use (&$pageBlockIdx, &$blockOpen, $totalBlockCount, $t, $turnstile): void {
             echo '<div class="vf-page-footer d-flex align-items-center justify-content-between gap-3 flip-in">';
             if ($pageBlockIdx > 1) {
                 echo '<button type="button" class="btn vf-nav-btn" data-vf-action="prev"><i class="fa-solid fa-arrow-left me-2"></i>' . $t('ui.anterior') . '</button>';
