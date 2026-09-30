@@ -196,8 +196,11 @@
     }
 
     // Pinta el estado de los pasos: oculta los no actuales y los saltados,
-    // renumera el badge y reconstruye los controles prev/siguiente/enviar según
-    // la posición del paso dentro de los visibles (P8).
+    // renumera el badge y ajusta los controles prev/siguiente/enviar según la
+    // posición del paso dentro de los visibles (P8). Los controles se
+    // CREAN una sola vez (ensureFooterControls) y aquí solo se les alterna
+    // `hidden`: reconstruir el pie en cada repintado borraba del DOM el botón
+    // que el usuario acababa de pulsar y el foco se caía a <body>.
     function paintSteps(shouldScroll) {
         if (!hasPages) {
             return;

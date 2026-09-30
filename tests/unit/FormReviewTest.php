@@ -167,7 +167,12 @@ class FormReviewTest
         assertNull($row['reviewed_at'], 'y no arrastra ninguna aprobación');
 
         $this->authAsReviewer();
-        assertFalse(self::pendingIds() !== [], 'precondición invertida: la bandeja está vacía');
+        // Se mira SOLO este formulario en la cola, no que la cola esté vacía:
+        // la bandeja es global y una instancia en uso puede tener formularios
+        // de verdad esperando revisión. Afirmar «no hay ninguna pendiente»
+        // hace que el test solo pase en una base recién sembrada.
+        $enCola = array_map('intval', self::pendingIds());
+        assertFalse(in_array((int) self::$formId, $enCola, true), 'sale de la cola: este formulario ya no está entre las pendientes');
     }
 
     public function testReenviarBorraLaAprobacionAnterior(): void
@@ -200,10 +205,18 @@ class FormReviewTest
             ['id' => $formReciente]
         );
 
-        $ids = self::pendingIds();
-        assertTrue(count($ids) >= 2, 'precondición: hay al menos dos en la cola');
-        assertSame((int) $formAntiguo, (int) $ids[0], 'el más antiguo va primero');
-        assertSame((int) $formReciente, (int) $ids[1], 'el más reciente va después');
+        // La cola es GLOBAL: si la instancia tiene otros formularios en
+        // revisión (uno de verdad, de otro test) sus fechas se cuelan entre
+        // estos dos y las posiciones 0 y 1 ya no son las de este test. Se
+        // filtra a los dos formularios propios y se comprueba que la cola los
+        // ordena por antigüedad, que es la propiedad que importa.
+        $ids = array_values(array_filter(
+            array_map('intval', self::pendingIds()),
+            static fn (int $id): bool => $id === (int) $formAntiguo || $id === (int) $formReciente
+        ));
+        assertSame(2, count($ids), 'precondición: los dos formularios están en la cola');
+        assertSame((int) $formAntiguo, $ids[0], 'el más antiguo va primero');
+        assertSame((int) $formReciente, $ids[1], 'el más reciente va después');
     }
 
     // ---- El fill: página informativa y POST cerrado ----

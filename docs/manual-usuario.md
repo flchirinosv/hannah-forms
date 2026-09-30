@@ -350,6 +350,10 @@ te dice que lo envíes a revisión, en lugar de un 403 que no sabrías
 interpretar. A partir de ahí el formulario solo se mueve con las tres acciones
 de la bandeja (enviar, aprobar, devolver a borrador).
 
+La bandeja de `/review` muestra **todos** los formularios de la instalación que
+están esperando, no solo los tuyos: es un punto de control común. Si revisas los
+formularios de otra gente, ponte de acuerdo con el orden antes de empezar.
+
 ### 8.2 Compartir
 
 Desde la ficha del formulario: **enlace**, **código QR** y **embed**. Los tres

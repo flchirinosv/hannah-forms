@@ -52,7 +52,7 @@ $fieldTypes = [
             <button class="btn btn-outline-secondary" type="button" id="btnLivePreview"><i class="fa-solid fa-eye me-1"></i>Vista previa en vivo</button>
             <button class="btn btn-outline-secondary" type="button" id="btnFormSettings"><i class="fa-solid fa-gear me-1"></i>Configuración</button>
             <button class="btn btn-outline-secondary d-none d-md-inline-flex" type="button" id="btnPreviewUrl"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir</button>
-            <button class="btn btn-success app-btn-primary" id="btnSaveStructure"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+            <button class="btn btn-success app-btn-primary" type="button" id="btnSaveStructure"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
         </div>
     </div>
 

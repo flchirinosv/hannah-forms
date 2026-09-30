@@ -95,7 +95,7 @@ use App\Core\View;
                         <?php endif; ?>
                         <?php if ($form['status'] === 'in_review' && $canReview): ?>
                             <div class="col">
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove">
+                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove" data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador.">
                                     <?= \App\Core\Csrf::field() ?>
                                     <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
                                 </form>

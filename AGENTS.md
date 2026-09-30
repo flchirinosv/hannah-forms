@@ -152,6 +152,15 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   panel es siempre y el correo es opt-in (`settings.review.notify_email`) y apunta
   al panel, nunca al enlace público. En tests, sus destinatarios se filtran por
   `@test.local` porque también salen los usuarios reales de la instancia.
+- **`Form::pendingReviews()` es global**: la bandeja no es «la de este test», es
+  la de la instalación, y en una instancia en uso hay formularios de verdad
+  esperando. Un test que afirme que la cola **está vacía**, o que sus dos
+  fixtures ocupan las posiciones 0 y 1, pasa solo en una base recién sembrada
+  y se rompe en cuanto alguien usa la app (`FormReviewTest` falló así con un
+  formulario real de `josangeles@gmail.com` en cola). Hay que **filtrar a los
+  ids propios** antes de comparar, igual que con los destinatarios y los
+  `rate_limits`: la propiedad a comprobar es la ordenación o la ausencia de
+  *tu* fila, no el contenido de la tabla.
 
 **Acceso por email (F4)**
 
