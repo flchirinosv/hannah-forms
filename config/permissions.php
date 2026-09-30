@@ -25,7 +25,7 @@ return [
     'admin.access'  => ['Entrar al panel de administración', ['admin']],
     'admin.users'   => ['Gestionar usuarios (rol y estado)', ['admin']],
     'admin.groups'  => ['Gestionar grupos de roles', ['admin']],
-    'admin.roles'   => ['Editar la matriz de permisos de los roles', ['admin']],
+    'admin.roles'   => ['Gestionar roles (alta y matriz de permisos)', ['admin']],
 
     // Registro de eventos de seguridad.
     'logs.view'     => ['Ver el registro de eventos de seguridad', ['admin']],

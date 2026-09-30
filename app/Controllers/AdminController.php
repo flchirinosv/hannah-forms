@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Csrf;
+use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\SecurityLog;
@@ -41,7 +43,8 @@ class AdminController
             'users'         => User::all(),
             'roles'         => Role::all(),
             'groups'        => RoleGroup::all(),
-            'groupMembers'  => self::groupMembers(),
+            'userGroups'    => User::groupsMap(),
+            'canEditGroups' => Auth::can('admin.groups'),
             'csrf'          => Csrf::token(),
         ]);
     }
@@ -84,6 +87,63 @@ class AdminController
         User::updateRole($userId, $roleId);
         SecurityLog::record('admin.role_change', 'usuario #' . $userId . ' -> rol #' . $roleId);
         Session::flash('success', 'Rol actualizado.');
+        Response::redirect('/admin');
+        return;
+    }
+
+    /**
+     * Grupos a los que pertenece un usuario, editados desde su fila.
+     *
+     * La pertenencia es una N:M, así que el POST es la lista COMPLETA: un
+     * `groups[]` sin el id de un grupo significa "sácalo de ahí", no "no lo
+     * he tocado". Por eso `postedIds()` devuelve `[]` de verdad cuando no
+     * viene nada, y quitar el último grupo es un POST vacío.
+     *
+     * El permiso es `admin.groups` y no `admin.users`: la operación mueve
+     * membresía de grupos, que es lo que `admin.groups` autoriza. Quien solo
+     * puede cambiar el rol de alguien no puede meterlo en grupos por aquí.
+     */
+    public function updateUserGroups(): void
+    {
+        if (!Auth::can('admin.groups')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        $userId = (int) Request::post('user_id', 0);
+        $target = User::find($userId);
+        if ($target === null) {
+            Session::flash('error', 'Usuario no encontrado.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        $existing = array_column(RoleGroup::all(), 'id', 'id');
+        $groupIds = self::postedIds('groups');
+        foreach ($groupIds as $groupId) {
+            if (!isset($existing[$groupId])) {
+                Session::flash('error', 'Grupo inválido.');
+                Response::redirect('/admin');
+                return;
+            }
+        }
+
+        User::setGroups($userId, $groupIds);
+        SecurityLog::record(
+            'admin.group_membership',
+            'usuario #' . $userId . ' -> grupos [' . implode(',', $groupIds) . ']'
+        );
+        Session::flash(
+            'success',
+            $groupIds === []
+                ? '«' . $target['name'] . '» ya no está en ningún grupo.'
+                : 'Grupos de «' . $target['name'] . '» actualizados.'
+        );
         Response::redirect('/admin');
         return;
     }
@@ -149,12 +209,25 @@ class AdminController
 
         View::render('admin/groups', [
             'groups'        => RoleGroup::all(),
-            'roles'         => Role::all(),
+            'roles'         => Role::allWithPermissions(),
             'users'         => User::all(),
             'groupRoles'    => self::groupRoles(),
             'groupMembers'  => self::groupMembers(),
+            'groupPerms'    => self::groupEffectivePermissionsMap(),
+            'catalog'       => self::catalog(),
             'csrf'          => Csrf::token(),
         ]);
+    }
+
+    /** Permisos efectivos por grupo, para la vista (ver groupEffectivePermissions). */
+    private static function groupEffectivePermissionsMap(): array
+    {
+        $roleMap = self::groupRoles();
+        $out = [];
+        foreach (RoleGroup::all() as $group) {
+            $out[(int) $group['id']] = self::groupEffectivePermissions($roleMap[(int) $group['id']] ?? []);
+        }
+        return $out;
     }
 
     public function groupCreate(): void
@@ -198,20 +271,43 @@ class AdminController
         }
 
         $groupId = (int) Request::post('group_id', 0);
-        if (RoleGroup::find($groupId) === null) {
+        $current = RoleGroup::find($groupId);
+        if ($current === null) {
             Session::flash('error', 'Grupo no encontrado.');
             Response::redirect('/admin/groups');
             return;
         }
 
-        $name = trim(Request::post('name', ''));
-        if ($name === '' || mb_strlen($name) > 80) {
-            Session::flash('error', 'El nombre del grupo es obligatorio (máx. 80 caracteres).');
-            Response::redirect('/admin/groups');
-            return;
+        // `name` ausente ≠ nombre vacío. Editar la pertenencia (roles y miembros)
+        // no tiene por qué mandar el nombre, y exigirlo hacía la función
+        // inusable: la UI no lo mandaba, así que guardar un grupo fallaba siempre
+        // con «El nombre del grupo es obligatorio» sin tocar absolutamente nada.
+        // Presente pero vacío sí es un error: un grupo no puede quedarse sin
+        // nombre a media edición.
+        $postedName = Request::post('name');
+        if ($postedName === null) {
+            $name = (string) $current['name'];
+        } else {
+            $name = trim((string) $postedName);
+            if ($name === '' || mb_strlen($name) > 80) {
+                Session::flash('error', 'El nombre del grupo es obligatorio (máx. 80 caracteres).');
+                Response::redirect('/admin/groups');
+                return;
+            }
         }
 
-        RoleGroup::update($groupId, $name, trim(Request::post('description', '')));
+        // La fila del grupo solo se toca si el nombre o la descripción cambian:
+        // `setRoles`/`setUsers` borran y reinsertan dentro de su propia
+        // transacción, y hacerlo en cada guardado daría una falsa sensación de
+        // cambio (y un `updated_at` que miente).
+        $postedDescription = Request::post('description');
+        $description = $postedDescription === null
+            ? (string) ($current['description'] ?? '')
+            : trim((string) $postedDescription);
+
+        if ($name !== (string) $current['name'] || $description !== (string) ($current['description'] ?? '')) {
+            RoleGroup::update($groupId, $name, $description);
+        }
         RoleGroup::setRoles($groupId, self::postedIds('roles'));
         RoleGroup::setUsers($groupId, self::postedIds('users'));
         SecurityLog::record('admin.group_create', 'grupo #' . $groupId . ' actualizado («' . $name . '»)');
@@ -263,6 +359,80 @@ class AdminController
             'permissions' => self::catalog(),
             'csrf'        => Csrf::token(),
         ]);
+    }
+
+    /**
+     * Permisos que otorga un grupo = unión de los de sus roles.
+     *
+     * La vista de grupos lo pinta para que se vea el EFECTO de marcar un rol y
+     * no solo el cableado: la pregunta de quien administra no es «¿qué roles
+     * tiene este grupo?» sino «¿qué pasa si saco a esta persona de aquí?».
+     */
+    private static function groupEffectivePermissions(array $roleIds): array
+    {
+        $roleIds = array_values(array_unique(array_filter(array_map('intval', $roleIds))));
+        if ($roleIds === []) {
+            return [];
+        }
+        $ph = implode(',', array_fill(0, count($roleIds), '?'));
+        return array_column(
+            Database::getInstance(Config::db())->fetchAll(
+                "SELECT DISTINCT p.`key`
+                 FROM permissions p
+                 JOIN role_permissions rp ON rp.permission_id = p.id
+                 WHERE rp.role_id IN ($ph)
+                 ORDER BY p.`key`",
+                $roleIds
+            ),
+            'key'
+        );
+    }
+
+    public function roleCreate(): void
+    {
+        if (!Auth::can('admin.roles')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        $raw = trim((string) Request::post('name', ''));
+        if ($raw === '' || mb_strlen($raw) > 50) {
+            Session::flash('error', 'El nombre del rol es obligatorio (máx. 50 caracteres).');
+            Response::redirect('/admin/roles');
+            return;
+        }
+        if (preg_match('/^[A-Za-z0-9._-]+$/', $raw) !== 1) {
+            Session::flash('error', 'El nombre solo admite letras, números, punto, guion y guion bajo.');
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        $description = trim((string) Request::post('description', ''));
+        $existing = Role::findByName(mb_strtolower($raw));
+        if ($existing !== null) {
+            Session::flash('error', 'Ya existe un rol llamado «' . mb_strtolower($raw) . '».');
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        // Nace sin permisos a propósito (ver Role::create()): se avisa de que
+        // hay que marcarlo en la matriz o no hace nada.
+        $roleId = Role::create($raw, $description);
+        if ($roleId === null) {
+            Session::flash('error', 'No se pudo crear el rol.');
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        SecurityLog::record('admin.role_create', 'rol «' . (string) (Role::find($roleId)['name'] ?? $raw) . '» creado.');
+        Session::flash('success', 'Rol creado sin permisos. Márcalos en la matriz de abajo.');
+        Response::redirect('/admin/roles');
+        return;
     }
 
     public function updateRoleMatrix(): void

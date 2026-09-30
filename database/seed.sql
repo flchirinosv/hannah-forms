@@ -31,7 +31,7 @@ INSERT INTO permissions (`key`, description) VALUES
     ('admin.access',  'Entrar al panel de administración'),
     ('admin.users',   'Gestionar usuarios (rol y estado)'),
     ('admin.groups',  'Gestionar grupos de roles'),
-    ('admin.roles',   'Editar la matriz de permisos de los roles'),
+    ('admin.roles',   'Gestionar roles (alta y matriz de permisos)'),
     ('logs.view',     'Ver el registro de eventos de seguridad'),
     ('forms.manage_all', 'Ver y operar los formularios de cualquier usuario'),
     ('forms.create',  'Crear formularios (y duplicarlos)'),

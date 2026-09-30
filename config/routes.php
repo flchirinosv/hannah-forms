@@ -105,6 +105,7 @@ $router->get('/attachments/{id}', [AttachmentController::class, 'download'], ['a
 // Admin
 $router->get('/admin', [AdminController::class, 'index'], ['auth', 'admin']);
 $router->post('/admin/users/role', [AdminController::class, 'updateRole'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/users/groups', [AdminController::class, 'updateUserGroups'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
@@ -113,5 +114,6 @@ $router->post('/admin/groups/create', [AdminController::class, 'groupCreate'], [
 $router->post('/admin/groups/update', [AdminController::class, 'groupUpdate'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/groups/delete', [AdminController::class, 'groupDelete'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/roles', [AdminController::class, 'roles'], ['auth', 'admin']);
+$router->post('/admin/roles/create', [AdminController::class, 'roleCreate'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/roles/save', [AdminController::class, 'updateRoleMatrix'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/security-log', [AdminController::class, 'securityLog'], ['auth', 'admin']);

@@ -29,6 +29,9 @@
        (duplicar + configurar + eliminar). Derivado del token del botón para
        que no se vuelva a desincronizar al cambiar --vf-icon-btn. */
     --vf-tools-w: calc(var(--vf-icon-btn) * 3 + .5rem);
+    /* Claves de permiso y cualquier valor que se lea como código (matriz de
+       roles, webhook, id de submission). */
+    --vf-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 body {
@@ -1514,3 +1517,100 @@ body {
     text-transform: lowercase;
 }
 #templatePicker .app-tpl-q { font-size: .78rem; color: var(--vf-text-muted, #64748b); }
+
+/* ============================================================
+   Roles y grupos (RBAC)
+   Los <select multiple> de la gestión de grupos obligaban a
+   mantener Ctrl para marcar más de una opción y no había nada en
+   pantalla que lo dijera: el componente nuevo es una lista de
+   casillas legible (rol o persona a la vez) y el grupo muestra el
+   efecto de lo marcado.
+   ============================================================ */
+
+/* Lista de casillas (roles / miembros). */
+.app-rbac-list {
+    max-height: 18rem;
+    overflow-y: auto;
+    border: 1px solid var(--vf-border, #e2e8f0);
+    border-radius: var(--vf-radius, 14px);
+    background: var(--vf-surface, #fff);
+}
+
+.app-rbac-item {
+    display: flex;
+    gap: .5rem;
+    align-items: flex-start;
+    margin: 0;
+    padding: .5rem .75rem;
+    border-bottom: 1px solid var(--vf-border, #e2e8f0);
+    cursor: pointer;
+    transition: background-color .12s ease;
+}
+
+.app-rbac-item:last-child { border-bottom: 0; }
+.app-rbac-item:hover { background: var(--vf-primary-light, #eef2ff); }
+.app-rbac-item:focus-within {
+    background: var(--vf-primary-light, #eef2ff);
+    box-shadow: inset var(--vf-focus-ring, 0 0 0 3px rgba(99, 102, 241, .18));
+}
+.app-rbac-item-name { display: block; font-size: .875rem; font-weight: 600; color: var(--vf-text, #1e293b); }
+.app-rbac-item-meta { display: block; font-size: var(--vf-hint-fs, .75rem); color: var(--vf-text-muted, #64748b); }
+
+/* Lo que otorga el grupo: la respuesta a «qué le doy a este grupo». */
+.app-rbac-effect {
+    padding: .75rem;
+    border: 1px dashed var(--vf-border, #e2e8f0);
+    border-radius: var(--vf-radius, 14px);
+    background: var(--vf-primary-light, #eef2ff);
+}
+
+.app-rbac-effect-title {
+    font-size: var(--vf-hint-fs, .75rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--vf-primary-dark, #4f46e5);
+    margin-bottom: .5rem;
+}
+
+.app-rbac-effect-row { display: flex; gap: .35rem; align-items: baseline; font-size: .78rem; }
+.app-rbac-effect-prefix { font-weight: 700; color: var(--vf-text-muted, #64748b); }
+.app-rbac-effect-keys { display: flex; flex-wrap: wrap; gap: .25rem; }
+.app-rbac-effect-keys code {
+    font-size: .72rem;
+    padding: .1rem .35rem;
+    border-radius: 999px;
+    background: var(--vf-surface, #fff);
+    color: var(--vf-primary-dark, #4f46e5);
+}
+
+/* Matriz de permisos: cabeceras de sección y conteo por rol. */
+.app-rbac-matrix .app-rbac-section th {
+    background: var(--vf-bg, #f4f5fb);
+    border-top: 1px solid var(--vf-border, #e2e8f0);
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--vf-text, #1e293b);
+    padding-block: .5rem;
+}
+
+.app-rbac-matrix .app-rbac-bulk { float: right; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.app-rbac-count { font-variant-numeric: tabular-nums; }
+.app-rbac-matrix .text-monospace { font-family: var(--vf-mono); }
+
+/* Selector de rol en la tabla de usuarios: auto-envía al cambiar, así que se
+   estrecha a lo que necesita y no ensancha la columna. */
+.app-rbac-select { width: auto; min-width: 9rem; }
+
+/* Botón que abre los grupos de un usuario: muestra las badges dentro, y al
+   no tener grupos dice "Sin grupos" en vez de parecer un control vacío. */
+.app-rbac-groups-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    max-width: 18rem;
+    flex-wrap: wrap;
+}
+.app-rbac-groups-btn .badge { font-weight: 500; }
+.app-rbac-groups-btn:focus-visible { box-shadow: var(--vf-focus-ring); }

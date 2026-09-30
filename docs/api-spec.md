@@ -155,13 +155,15 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 |--------|------|------------|-------------|
 | GET | `/admin` | auth, admin | Gestión de usuarios |
 | POST | `/admin/users/role` | auth, admin, csrf | Cambiar rol (no permite auto-degradar admin) |
+| POST | `/admin/users/groups` | auth, admin, csrf | Grupos de un usuario (`groups[]` = lista completa; vacíos lo sacan de todos) |
 | POST | `/admin/users/toggle` | auth, admin, csrf | Activar/desactivar usuario (no sobre sí mismo) |
 | GET | `/admin/forms` | auth, admin | Lista global de formularios |
 | GET | `/admin/groups` | auth, admin | Grupos de roles (RBAC) |
 | POST | `/admin/groups/create` | auth, admin, csrf | Crear grupo |
-| POST | `/admin/groups/update` | auth, admin, csrf | Renombrar grupo |
+| POST | `/admin/groups/update` | auth, admin, csrf | Roles y miembros del grupo; `name`/`description` ausentes se conservan |
 | POST | `/admin/groups/delete` | auth, admin, csrf | Borrar grupo |
 | GET | `/admin/roles` | auth, admin | Matriz de permisos por rol |
+| POST | `/admin/roles/create` | auth, admin, csrf | Crear rol (nace sin permisos) |
 | POST | `/admin/roles/save` | auth, admin, csrf | Guardar la matriz (`perms[<role>][]`; admin conserva `admin.access`) |
 | GET | `/admin/security-log` | auth, admin | Auditoría de eventos |
 

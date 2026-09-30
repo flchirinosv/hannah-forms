@@ -42,6 +42,61 @@
             if (form) form.submit();
         });
     });
+
+    /* ---------------------------------------------------------------
+     * Matriz de permisos: marcar una sección entera (admin.roles)
+     *
+     * Dar permisos a un rol nuevo son ~20 clics de casillas por sección,
+     * y la sección es la unidad que la persona piensa ("lo de
+     * formularios"), no la casilla. Un [data-vf-bulk-all="<prefijo>"]
+     * mueve todas las .js-perm de su sección.
+     *
+     * - Se saltan las casillas [disabled] (admin.access del rol admin no se
+     *   puede desmarcar: el servidor lo vuelve a poner igual).
+     * - Al tocar una casilla suelta, su "marcar toda" se recalcula, y queda
+     *   indeterminate a medias: es la única forma de ver que la sección está
+     *   a medio marcar sin contarlas a mano.
+     * --------------------------------------------------------------- */
+    function initPermissionBulkToggles() {
+        var permSel = '.js-perm[data-vf-section]';
+
+        document.querySelectorAll('[data-vf-bulk-all]').forEach(function (bulk) {
+            var section = bulk.getAttribute('data-vf-bulk-all');
+            var cells = function () {
+                return Array.prototype.filter.call(
+                    document.querySelectorAll(permSel),
+                    function (c) { return c.getAttribute('data-vf-section') === section; }
+                );
+            };
+
+            var sync = function () {
+                var all = cells().filter(function (c) { return !c.disabled; });
+                var on = all.filter(function (c) { return c.checked; }).length;
+                bulk.checked = all.length > 0 && on === all.length;
+                bulk.indeterminate = on > 0 && on < all.length;
+            };
+
+            bulk.addEventListener('change', function () {
+                cells().forEach(function (c) {
+                    if (!c.disabled) c.checked = bulk.checked;
+                });
+                sync();
+            });
+
+            document.querySelectorAll(permSel).forEach(function (cell) {
+                if (cell.getAttribute('data-vf-section') !== section) return;
+                cell.addEventListener('change', sync);
+            });
+
+            sync();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPermissionBulkToggles);
+    } else {
+        initPermissionBulkToggles();
+    }
 })();
 
 /* ---------------------------------------------------------------

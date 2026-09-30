@@ -46,6 +46,7 @@ era que tres tamaños de botón de icono convivían en pantalla.
 | `--vf-tile-min-h` | `72px` | Altura de tile en paleta y modal de cuadrícula |
 | `--vf-tile-icon` | `30px` (cuadrado) | Iconos de 36px (filas) y 30px (rejilla) |
 | `--vf-tools-w` | `calc(--vf-icon-btn * 3 + .5rem)` | `pe-5` (3rem) en la cabecera de la tarjeta |
+| `--vf-mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | Claves de permiso y todo lo que se lee como código (matriz de roles) |
 
 **Regla:** todo botón de icono es `width`/`height` = `--vf-icon-btn`,
 con `padding: 0` y `display: inline-flex` centrado. Si necesitas otro
@@ -144,6 +145,31 @@ el modal de alta:
 - Un campo con condición lleva chip de lógica en la tarjeta; una sección
   con condición debe marcar también a sus hijas como heredadas (F3,
   pendiente).
+
+### 3.6 Roles y grupos (`app-rbac-*`)
+
+Fuera del builder, pero con el mismo lenguaje visual.
+
+| Clase | Qué es |
+|---|---|
+| `.app-rbac-list` | Lista con scroll de casillas (roles o miembros de un grupo) |
+| `.app-rbac-item` | Una fila: checkbox + nombre + metadato; hover y `:focus-within` con `--vf-primary-light` |
+| `.app-rbac-effect` | «Lo que otorga este grupo»: la unión de permisos de sus roles |
+| `.app-rbac-effect-keys` | Las claves como chips `code` |
+| `.app-rbac-section` | Cabecera de sección de la matriz, con «marcar toda la sección» |
+| `.app-rbac-count` | Contador `n/total` de la columna de un rol |
+| `.app-rbac-select` | Select de rol de la tabla de usuarios (auto-envía al cambiar) |
+| `.app-rbac-groups-btn` | Botón que abre los grupos de un usuario |
+
+Dos reglas que nacen de no haber sido designed antes:
+
+- **Nada de `<select multiple>`** para elegir varias cosas: obliga a mantener
+  Ctrl pulsado y no hay nada en pantalla que lo diga. Casillas, una por rol
+  o por persona.
+- **Se enseña el efecto, no el cableado**: una columna «Grupos» con badges
+  solo responde «en qué grupos está», y la pregunta del día a día es qué
+  permisos le da a esa persona estar en ese grupo. Por eso el grupo pinta su
+  unión de permisos.
 
 ---
 

@@ -172,6 +172,17 @@ class ControllerActionsTest
             $post['role_id'] = '2';
         } elseif (str_contains($path, '/admin/users/toggle')) {
             $post['user_id'] = (string) (int) self::$otherId;
+        } elseif (str_contains($path, '/admin/users/groups')) {
+            // Sin `groups[]` el POST es la pertenencia COMPLETA (N:M), o sea
+            // "sácalo de todos los grupos": con un body vacío el smoke
+            // comprobaría el POST vacío y no el camino que de verdad usa la UI.
+            $post['user_id'] = (string) (int) self::$otherId;
+        } elseif (str_contains($path, '/admin/roles/create')) {
+            // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
+            // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol
+            // por ejecución se acumularía en la matriz de cada corrida.
+            $post['name'] = 'humo-rol-' . bin2hex(random_bytes(3));
+            $post['description'] = 'Rol creado por el smoke';
         } elseif (str_contains($path, '/login')) {
             $post['email'] = self::$adminEmail;
             $post['password'] = 'clave-smoke-123';
@@ -235,6 +246,10 @@ class ControllerActionsTest
         foreach ($users as $u) {
             $db->execute('DELETE FROM users WHERE id = :id', ['id' => (int) $u['id']]);
         }
+        // Los roles del smoke (nombre `humo-rol-*`) también son basura: `roles`
+        // no se autolimpia y cada corrida añadiría una columna más a la matriz.
+        // Los CASCADE de role_permissions/role_group_roles se llevan lo suyo.
+        $db->execute("DELETE FROM roles WHERE name LIKE 'humo-rol-%'");
         self::$adminId = null;
         self::$otherId = null;
         self::$formId = 0;

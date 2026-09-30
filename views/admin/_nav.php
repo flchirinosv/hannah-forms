@@ -10,7 +10,7 @@ $active = $active ?? '';
 $items = [
     'users'       => ['/admin', 'Usuarios', 'fa-users', 'admin.users'],
     'groups'      => ['/admin/groups', 'Grupos de roles', 'fa-layer-group', 'admin.groups'],
-    'roles'       => ['/admin/roles', 'Permisos', 'fa-key', 'admin.roles'],
+    'roles'       => ['/admin/roles', 'Roles y permisos', 'fa-key', 'admin.roles'],
     'security_log'=> ['/admin/security-log', 'Log de seguridad', 'fa-shield-halved', 'logs.view'],
     'forms'       => ['/admin/forms', 'Formularios', 'fa-clipboard-list', 'admin.access'],
 ];

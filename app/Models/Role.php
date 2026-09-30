@@ -61,6 +61,52 @@ class Role
     }
 
     /**
+     * Alta de un rol nuevo.
+     *
+     * Nace **sin permisos**: la matriz de `/admin/roles` es lo que decide qué
+     * puede hacer, y un rol con la lista ya puesta sería una puerta que el autor
+     * no eligió. Quien lo cree tiene que marcar sus permisos explícitamente.
+     *
+     * El nombre se guarda en minúsculas porque es lo que espera el resto del
+     * código (la matriz compara `admin` en minúsculas para conservar
+     * `admin.access`, y así se pinta en la UI). Ojo: la UNICIDAD no la aporta
+     * esto —`roles.name` es `utf8mb4_unicode_ci`, así que el índice único ya
+     * rechaza «Admin» junto a «admin» por ser case-insensitive— sino el
+     * `findByName()` previo, que devuelve el mismo nombre para ambas
+     * grafías.
+     *
+     * @return int|null id del rol nuevo, o null si el nombre ya existe o es inválido
+     */
+    public static function create(string $name, string $description = ''): ?int
+    {
+        $name = mb_strtolower(trim($name));
+        if ($name === '' || mb_strlen($name) > 50 || preg_match('/^[a-z0-9._-]+$/', $name) !== 1) {
+            return null;
+        }
+        if (self::findByName($name) !== null) {
+            return null;
+        }
+
+        self::db()->execute(
+            'INSERT INTO roles (name, description) VALUES (:name, :desc)',
+            ['name' => $name, 'desc' => trim($description)]
+        );
+        return (int) self::db()->lastInsertId();
+    }
+
+    /** Rol por id, o null. */
+    public static function find(int $id): ?array
+    {
+        return self::db()->fetch('SELECT * FROM roles WHERE id = :id', ['id' => $id]);
+    }
+
+    /** Rol por nombre exacto, o null. */
+    public static function findByName(string $name): ?array
+    {
+        return self::db()->fetch('SELECT * FROM roles WHERE name = :name', ['name' => $name]);
+    }
+
+    /**
      * Permisos efectivos de una persona: los del rol + los de los roles de los
      * grupos a los que pertenece (RBAC).
      *

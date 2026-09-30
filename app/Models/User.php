@@ -196,19 +196,61 @@ class User
         );
     }
 
-    /**
-     * Grupos de un usuario (con nombre), para la columna de la UI de admin.
+/**
+     * Pertenencia de TODOS los usuarios en una consulta: user_id => grupos.
      *
-     * @return array<int,array>
+     * Antes la columna «Grupos» de la vista de usuarios pintaba las badges
+     * llamando a un `groups()` por fila, o sea un viaje a la BD por cada
+     * usuario de la instalación (con 50 usuarios, 50 consultas para pintar una
+     * tabla). No hay un `groups()` de un solo usuario porque quien lo necesita
+     * es la tabla entera, y lo que se necesita al guardar es el inverso:
+     * `setGroups()`.
+     *
+     * @return array<int, list<array{id:int, name:string}>>
      */
-    public static function groups(int $id): array
+    public static function groupsMap(): array
     {
-        return self::db()->fetchAll(
-            'SELECT g.id, g.name FROM role_groups g
-             JOIN role_group_users u ON u.group_id = g.id
-             WHERE u.user_id = :u
-             ORDER BY g.name',
-            ['u' => $id]
+        $rows = self::db()->fetchAll(
+            'SELECT u.user_id, g.id, g.name
+             FROM role_group_users u
+             JOIN role_groups g ON g.id = u.group_id
+             ORDER BY g.name'
         );
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row['user_id']][] = ['id' => (int) $row['id'], 'name' => (string) $row['name']];
+        }
+        return $map;
+    }
+
+    /**
+     * Deja a un usuario en exactamente estos grupos (los vacíos se quitan).
+     *
+     * Es el inverso de `RoleGroup::setUsers()`: ese reescribe la pertenencia de
+     * un grupo entero, este la de una persona. Hace falta porque el panel
+     * gestiona los grupos desde la fila del usuario, y `role_group_users` es una
+     * N:M — si el checkbox no viene marcado es que se quita, no que "no se
+     * ha tocado".
+     */
+    public static function setGroups(int $userId, array $groupIds): void
+    {
+        $groupIds = array_values(array_unique(array_filter(array_map('intval', $groupIds))));
+        $db = self::db();
+        $db->beginTransaction();
+        try {
+            $db->execute('DELETE FROM role_group_users WHERE user_id = :u', ['u' => $userId]);
+            foreach ($groupIds as $groupId) {
+                if ($groupId > 0) {
+                    $db->execute(
+                        'INSERT INTO role_group_users (group_id, user_id) VALUES (:g, :u)',
+                        ['g' => $groupId, 'u' => $userId]
+                    );
+                }
+            }
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
     }
 }

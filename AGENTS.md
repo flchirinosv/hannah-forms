@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 64 archivos, 615 métodos, ~2.8 min;
+- Suite completa: `php scripts/test.php` → 67 archivos, 642 métodos, ~2.6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -83,7 +83,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **37 de los 64 archivos tocan la BD real** (los que llaman
+- **39 de los 67 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -253,6 +253,24 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `updateRoleMatrix()` **rechaza** un POST sin la estructura `perms[<role>][]`
   (un cuerpo vacío no significa "desmarcar todo") y el rol `admin` siempre conserva
   `admin.access`.
+- Un rol nuevo se crea con `Role::create()` y **nace sin permisos**: la matriz es lo
+  que decide qué puede hacer. El re-seed de las migraciones solo otorga a los roles
+  con nombre del catálogo, así que un rol invented no se lo lleva nadie por el camino.
+- `roles.name` es `utf8mb4_unicode_ci`: el WHERE y el índice único **no distinguen
+  mayúsculas ni acentos**. Por eso `Role::create()` valida el slug y devuelve `null`
+  ante un duplicado, y por eso un test de "no existe tal nombre" tiene que mirar el
+  **valor guardado**, no que el WHERE encuentre la fila (`LIKE '%é%'` casa con
+  cualquier `e`).
+- **La pertenencia es el POST completo**: `groups[]` / `users[]` vacíos significan
+  "sácale de todos", no "no lo he tocado" (`role_group_users` es N:M). La única
+  excepción, `name`/`description` de un grupo, trata el **ausente** y el vacío como
+  cosas distintas: el formulario de edición los manda, pero si un POST no los
+  incluye se conservan, y llegar a esa rama es lo que hace falta para cambiar roles y
+  miembros sin reescribir el nombre a mano.
+- La pertenencia de un usuario se edita desde su fila en `/admin` y la de un grupo
+  desde su tarjeta en `/admin/groups`: son las dos direcciones de la misma N:M, con
+  `User::setGroups()` y `RoleGroup::setRoles()/setUsers()` como inversos. La primera
+  exige `admin.groups` (mueve membresía), no `admin.users` (que mueve el rol).
 - El login verifica **siempre** una contraseña, exista el usuario o no, contra su
   hash o contra `AuthController::DUMMY_HASH`, que tiene que ser bcrypt al coste de
   `PASSWORD_DEFAULT`. `PASSWORD_MIN` (10) es una constante **pública** compartida
