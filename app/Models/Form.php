@@ -221,7 +221,12 @@ class Form
                     (array) ($field['validations'] ?? []),
                     (int) $field['position'],
                     $parentId,
-                    is_array($field['logic']) && $field['logic'] !== [] ? $field['logic'] : null
+                    is_array($field['logic']) && $field['logic'] !== [] ? $field['logic'] : null,
+                    // F1: la marca de PII se copia con el campo. Omitirla
+                    // desmascararía en silencio la copia: el dueño ve un
+                    // formulario "igual" pero que filtra IP, user-agent y
+                    // respuestas personales a todo el que tenga acceso a él.
+                    (int) ($field['is_pii'] ?? 0) === 1
                 );
             }
 

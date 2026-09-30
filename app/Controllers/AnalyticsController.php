@@ -170,6 +170,10 @@ class AnalyticsController
 
         $headers = ['#', 'Fecha'];
         $fieldById = [];
+        // F1: tipos de los campos marcados como personales, para enmascararlos en
+        // el CSV. El CSV no lleva IP ni user-agent (solo el JSON los lleva), así
+        // que aquí lo único que se puede filtrar es el valor de la respuesta.
+        $piiTypes = \App\Services\Pii::piiFieldTypes($form['fields'] ?? []);
         foreach ($form['fields'] as $field) {
             if (($field['type'] ?? '') === 'section') {
                 continue;
@@ -219,6 +223,21 @@ class AnalyticsController
                         $val = implode('; ', $parts);
                     }
                 }
+                // F1: se enmascara AQUÍ, dentro del bucle de campos y no en una
+                // pasada aparte sobre `$row`, por dos razones. La primera es
+                // que al final habría que volver a emparejar cada columna con su
+                // campo por posición (headers = 2 + nº de campos), que es un
+                // índice que se rompe en cuanto alguien añade una columna. La
+                // segunda es el orden: enmascarar antes de decodificar dejaría
+                // pasar la metadata del adjunto (el nombre del archivo es el
+                // dato) y un `[oculto]` empieza por `[`, igual que un JSON, así
+                // que el bloque de decodificación lo reinterpretaría.
+                if (isset($piiTypes[(int) $field['id']]) && $val !== '') {
+                    // El valor ya es texto legible (los adjuntos se aplanaron
+                    // arriba), así que el tipo basta para decidir el formato.
+                    $val = \App\Services\Pii::maskValue((string) $val, $piiTypes[(int) $field['id']]);
+                }
+
                 $row[] = self::csvSafe($val);
             }
             fputcsv($out, $row, ',', '"', '\\');

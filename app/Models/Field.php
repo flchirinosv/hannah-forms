@@ -29,6 +29,7 @@ class Field
             $field['logic'] = json_decode($field['logic'] ?? 'null', true);
             $field['logic'] = is_array($field['logic']) ? $field['logic'] : null;
             $field['parent_id'] = self::normalizeParentId($field['parent_id']);
+            $field['is_pii'] = (int) ($field['is_pii'] ?? 0) === 1 ? 1 : 0;
         }
         unset($field);
 
@@ -110,11 +111,12 @@ class Field
         array $validations = [],
         int $position = 0,
         ?int $parentId = null,
-        ?array $logic = null
+        ?array $logic = null,
+        bool $isPii = false
     ): int {
         self::db()->execute(
-            'INSERT INTO fields (form_id, type, label, placeholder, help_text, is_required, options, validations, position, parent_id, logic)
-             VALUES (:form_id, :type, :label, :placeholder, :help_text, :is_required, :options, :validations, :position, :parent_id, :logic)',
+            'INSERT INTO fields (form_id, type, label, placeholder, help_text, is_required, is_pii, options, validations, position, parent_id, logic)
+             VALUES (:form_id, :type, :label, :placeholder, :help_text, :is_required, :is_pii, :options, :validations, :position, :parent_id, :logic)',
             [
                 'form_id'     => $formId,
                 'type'        => $type,
@@ -122,6 +124,7 @@ class Field
                 'placeholder' => $placeholder,
                 'help_text'   => $helpText,
                 'is_required' => $required ? 1 : 0,
+                'is_pii'      => $isPii ? 1 : 0,
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,
@@ -144,12 +147,13 @@ class Field
         array $validations = [],
         int $position = 0,
         ?int $parentId = null,
-        ?array $logic = null
+        ?array $logic = null,
+        bool $isPii = false
     ): void {
         self::db()->execute(
             'UPDATE fields
              SET type = :type, label = :label, placeholder = :placeholder, help_text = :help_text,
-                 is_required = :is_required, options = :options, validations = :validations,
+                 is_required = :is_required, is_pii = :is_pii, options = :options, validations = :validations,
                  position = :position, parent_id = :parent_id, logic = :logic
              WHERE id = :id',
             [
@@ -159,6 +163,7 @@ class Field
                 'placeholder' => $placeholder,
                 'help_text'   => $helpText,
                 'is_required' => $required ? 1 : 0,
+                'is_pii'      => $isPii ? 1 : 0,
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,

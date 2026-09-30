@@ -219,6 +219,11 @@ $fieldTypes = [
                             <input class="form-check-input" type="checkbox" id="fieldRequired">
                             <label class="form-check-label small" for="fieldRequired">Campo obligatorio</label>
                         </div>
+                        <div class="form-check form-switch mb-3" id="fieldPiiWrap">
+                            <input class="form-check-input" type="checkbox" id="fieldPii">
+                            <label class="form-check-label small" for="fieldPii">Contiene datos personales</label>
+                            <div class="text-muted mt-1" style="font-size:.72rem">Las respuestas de este campo saldr&aacute; enmascaradas (IP, navegador y valor) para quien no tenga el permiso <code>responses.pii</code>. M&aacute;rcalo si pide un nombre, un tel&eacute;fono, un correo, un documento o una direcci&oacute;n.</div>
+                        </div>
                         </div>
                         <div class="tab-pane fade" id="tabLogic" role="tabpanel">
                         <div class="app-logic-wrap mb-3" id="logicWrap">

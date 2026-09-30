@@ -214,15 +214,23 @@ class Answer
      * de answers + la submission + el form dueño, de modo que el controller
      * pueda validar acceso en una sola consulta.
      */
+    /**
+     * F1: `fl.is_pii` viene en la misma consulta a propósito. El gate de
+     * descarga de un adjunto necesita saber si el CAMPO es personal, y ese dato
+     * está en la fila `fields`: pedirlo en una segunda consulta dejaría un
+     * `toctou` entre "comprobar que es personal" y "servir el archivo".
+     */
     public static function findWithContext(int $answerId): ?array
     {
         $row = self::db()->fetch(
             'SELECT a.id AS answer_id, a.field_id, a.value,
                     s.id AS submission_id, s.form_id,
+                    fl.is_pii AS field_is_pii,
                     f.user_id, f.slug, f.title
              FROM answers a
              INNER JOIN submissions s ON s.id = a.submission_id
              INNER JOIN forms f ON f.id = s.form_id
+             INNER JOIN fields fl ON fl.id = a.field_id
              WHERE a.id = :id',
             ['id' => $answerId]
         );

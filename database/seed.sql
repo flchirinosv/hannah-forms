@@ -41,6 +41,7 @@ INSERT INTO permissions (`key`, description) VALUES
     ('analytics.view_own', 'Ver la analítica de formularios propios'),
     ('responses.view_own', 'Ver y eliminar respuestas de formularios propios'),
     ('attachments.download_own', 'Descargar adjuntos de formularios propios'),
+    ('responses.pii', 'Ver datos personales sin enmascarar (IP, user-agent y campos marcados)'),
     ('dashboard.view','Entrar al dashboard')
 ON DUPLICATE KEY UPDATE description = VALUES(description);
 

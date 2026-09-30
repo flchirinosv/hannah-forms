@@ -26,6 +26,14 @@ $files = is_array($files ?? null) ? $files : [];
                     <div class="text-dark app-truncate-1" title="<?= View::escape($submission['user_agent'] ?? '') ?>"><?= View::escape($submission['user_agent'] ?? '—') ?></div>
                 </div>
             </div>
+
+            <?php if (!empty($pii_masked)): ?>
+                <div class="alert alert-warning py-2 px-3 small mt-3 mb-0" role="status">
+                    <i class="fa-solid fa-eye-slash me-1"></i>
+                    Los datos personales están <strong>enmascarados</strong> en esta respuesta: tu rol no incluye el permiso
+                    <code>responses.pii</code>. Un administrador puede verlos en su claro.
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

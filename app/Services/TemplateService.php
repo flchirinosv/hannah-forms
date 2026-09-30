@@ -217,6 +217,11 @@ final class TemplateService
                 'placeholder' => $placeholder,
                 'help_text'   => $helpText,
                 'is_required' => $isStructural ? false : (bool) ($field['is_required'] ?? false),
+                // F1: la marca viaja con la plantilla. Sin esto, importar una
+                // plantilla de RRHH produciría un formulario que filtra IP,
+                // user-agent y respuestas personales, y nadie se enteraría
+                // hasta que un dato se hubiera leakado.
+                'is_pii'      => $isStructural ? false : (bool) ($field['is_pii'] ?? false),
                 'options'     => self::normalizeOptions($field['options'] ?? []),
                 'validations' => $isStructural ? [] : self::normalizeValidations($field['validations'] ?? []),
                 'parent_id'   => $parents[$ref] === null ? null : self::uid((int) $parents[$ref]),
@@ -299,7 +304,8 @@ final class TemplateService
                     (array) ($item['validations'] ?? []),
                     $position,
                     $parentIdResolved,
-                    null
+                    null,
+                    (bool) ($item['is_pii'] ?? false)
                 );
                 $uidToId[$uid] = $id;
                 $idToUid[$id] = $uid;
@@ -385,6 +391,9 @@ final class TemplateService
             }
             if (!empty($f['is_required'])) {
                 $item['is_required'] = true;
+            }
+            if (!empty($f['is_pii'])) {
+                $item['is_pii'] = true;
             }
             $options = (array) ($f['options'] ?? []);
             if ($options !== []) {

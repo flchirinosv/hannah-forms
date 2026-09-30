@@ -55,7 +55,7 @@ if ($window !== []) {
                             <tr>
                                 <th class="small text-muted" style="width: 60px;">#</th>
                                 <th class="small text-muted">Fecha</th>
-                                <th class="small text-muted">IP</th>
+                                <th class="small text-muted">IP<?php if (!empty($pii_masked)): ?> <span class="text-muted" title="Tu rol no incluye el permiso responses.pii">(enmascarada)</span><?php endif; ?></th>
                                 <th class="small text-muted text-end" style="width: 170px;">Acciones</th>
                             </tr>
                         </thead>

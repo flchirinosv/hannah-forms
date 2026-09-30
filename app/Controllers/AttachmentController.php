@@ -42,6 +42,16 @@ class AttachmentController
             return;
         }
 
+        // F1: un adjunto de un campo marcado como personal ES el dato (un
+        // escaneo de cédula, un contrato firmado), y esto se comprueba aquí y
+        // no solo en la vista. Ocultar el nombre del archivo en el detalle no
+        // bastaría: `/attachments/{id}` sigue siendo una URL adivinable por
+        // quien sepa el id de la fila `answers`, y ese id es correlativo.
+        if ((int) ($row['field_is_pii'] ?? 0) === 1 && !\App\Services\Pii::canView()) {
+            Response::forbidden();
+            return;
+        }
+
         $metas = Uploader::decode((string) ($row['value'] ?? ''));
         if ($metas === null || !isset($metas[$index])) {
             Response::notFound();

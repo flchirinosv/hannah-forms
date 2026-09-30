@@ -40,9 +40,22 @@ class ResponsesController
         $page = max(1, (int) Request::query('page', '1'));
         $pagination = Submission::byFormPaginated((int) $form['id'], $page, self::PER_PAGE);
 
+        // F1: el listado pinta la IP de cada respuesta, así que la fila pasa por
+        // el enmascarado ANTES de llegar a la vista. Se hace aquí y no en la
+        // plantilla a propósito: si el valor ya viene enmascarado, no hay forma
+        // de que un `print` o un `echo` futuro lo salte por error.
+        $pagination['items'] = array_map(
+            [\App\Services\Pii::class, 'maybeMaskSubmission'],
+            $pagination['items']
+        );
+
         View::render('responses/index', [
             'form'       => $form,
             'pagination' => $pagination,
+            // La vista pinta "(enmascarada)" en la cabecera de la IP con esto. Va
+            // en el controlador, y no como una llamada a Pii desde la plantilla,
+            // para que ninguna vista tenga que decidir permisos.
+            'pii_masked' => !\App\Services\Pii::canView(),
             'csrf'       => Csrf::token(),
         ]);
     }
@@ -66,12 +79,21 @@ class ResponsesController
             return;
         }
 
+        // F1: sin el permiso `responses.pii` la IP y el user-agent salen
+        // truncados y los campos marcados como personales salen como `[oculto]`.
+        // Los adjuntos de un campo personal NO se listan (su nombre es el dato);
+        // la descarga además se bloquea en AttachmentController, porque si solo
+        // se ocultara el nombre, `/attachments/{id}` seguiría sirviendo el
+        // archivo a quien supiera el id de la fila `answers`.
+        $canSeePii = \App\Services\Pii::canView();
+        $files = $canSeePii ? self::filesByField($sid) : self::filesByField($sid, self::piiFieldIds($form));
+
         View::render('responses/show', [
             'form'       => $form,
-            'submission' => $data['submission'],
-            'answers'    => $data['answers'],
-            // P10: adjuntos de esta respuesta (field_id => [ ...adjuntos ]).
-            'files'      => self::filesByField($sid),
+            'submission' => $data['submission'] === null ? null : \App\Services\Pii::maybeMaskSubmission($data['submission']),
+            'answers'    => \App\Services\Pii::maybeMaskAnswers($data['answers'], $form['fields']),
+            'files'      => $files,
+            'pii_masked' => !$canSeePii,
             'csrf'       => Csrf::token(),
         ]);
     }
@@ -152,7 +174,30 @@ class ResponsesController
         $submissions = Submission::byFormFiltered((int) $form['id'], $from, $to);
         $submissionIds = array_column($submissions, 'id');
         $bySubmission = Submission::withAnswersByIds($submissionIds);
+
+        // F1: el JSON es el canal de integración (n8n, hojas de cálculo, otro
+        // servicio), o sea el que más se copia y el que menos se vigila. Se
+        // enmascara con la MISMA política que la pantalla: exportar no es una
+        // puerta trasera a la PII.
         $payload = Submission::exportPayload($form, $bySubmission, count($submissions));
+        if (!\App\Services\Pii::canView()) {
+            $marked = \App\Services\Pii::piiFieldTypes($form['fields'] ?? []);
+            foreach ($payload['submissions'] as $i => $row) {
+                $payload['submissions'][$i] = \App\Services\Pii::maybeMaskSubmission($row);
+                foreach ($marked as $fieldId => $type) {
+                    if (!array_key_exists($fieldId, $row['answers'])) {
+                        continue;
+                    }
+                    $raw = $row['answers'][$fieldId];
+                    // El valor ya viene decodificado (`decodeValue`), así que un
+                    // adjunto es un string legible y no el JSON de metadata: se
+                    // enmascara entero, sin volver a inspeccionarlo.
+                    $payload['submissions'][$i]['answers'][$fieldId] = is_array($raw)
+                        ? \App\Services\Pii::MASK
+                        : \App\Services\Pii::maskValue((string) $raw, $type);
+                }
+            }
+        }
 
         if (PHP_SAPI !== 'cli') {
             header('Content-Type: application/json; charset=utf-8');
@@ -177,13 +222,27 @@ class ResponsesController
      * P10: agrupa los adjuntos de la respuesta por field_id para pintar los
      * enlaces de descarga (id de la answer + índice del archivo).
      */
-    private static function filesByField(int $submissionId): array
+    private static function filesByField(int $submissionId, array $hiddenFieldIds = []): array
     {
         $out = [];
         foreach (\App\Models\Answer::attachmentsBySubmission($submissionId) as $file) {
+            if (isset($hiddenFieldIds[(int) $file['field_id']])) {
+                continue;
+            }
             $out[$file['field_id']][] = $file;
         }
         return $out;
+    }
+
+    /**
+     * F1: ids de los campos marcados como personales en este formulario, para no
+     * listar (ni dejar descargar) sus adjuntos a quien no tiene `responses.pii`.
+     *
+     * @return array<int,string> field_id => tipo
+     */
+    private static function piiFieldIds(array $form): array
+    {
+        return \App\Services\Pii::piiFieldTypes($form['fields'] ?? []);
     }
 
     private static function safeFile(string $name): string

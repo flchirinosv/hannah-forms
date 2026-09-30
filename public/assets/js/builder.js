@@ -76,6 +76,7 @@
         placeholder: f.placeholder || '',
         help_text: f.help_text || '',
         is_required: Boolean(f.is_required),
+        is_pii: Boolean(f.is_pii),
         options: Array.isArray(f.options) ? f.options : [],
         validations: f.validations && typeof f.validations === 'object' ? f.validations : {},
         parentId: f.parent_id ? (initIds[Number(f.parent_id)] || null) : null,
@@ -193,6 +194,8 @@
         valMinLenWrap: document.getElementById('valMinLenWrap'),
         valMaxLenWrap: document.getElementById('valMaxLenWrap'),
         fieldRequired: document.getElementById('fieldRequired'),
+        fieldPii: document.getElementById('fieldPii'),
+        fieldPiiWrap: document.getElementById('fieldPiiWrap'),
         btnApply: null, // se eliminó el botón «Aplicar»: la edición es en vivo
         btnDelete: document.getElementById('btnDeleteField'),
         btnUndo: document.getElementById('btnUndo'),
@@ -819,6 +822,7 @@
         el.fieldPlaceholder.value = f.placeholder || '';
         el.fieldHelp.value = f.help_text || '';
         el.fieldRequired.checked = Boolean(f.is_required);
+        el.fieldPii.checked = Boolean(f.is_pii);
 
         el.fieldPlaceholderWrap.classList.toggle('d-none', !info.hasPlaceholder);
         el.fieldHelpWrap.classList.toggle('d-none', !info.hasHelp);
@@ -837,8 +841,14 @@
         const isSection = Boolean(info.isSection);
         const isStructural = isSection || Boolean(info.isPage);
         el.fieldRequired.disabled = isStructural;
+        // F1: un contenedor (sección o página) no guarda respuestas, así que el
+        // flag se oculta en vez de solo deshabilitarse: un control visible pero
+        // muerto es una pregunta que el dueño se hace y no puede responder.
+        el.fieldPiiWrap.classList.toggle('d-none', isStructural);
+        el.fieldPii.disabled = isStructural;
         if (isStructural) {
             el.fieldRequired.checked = false;
+            el.fieldPii.checked = false;
             el.fieldLabel.placeholder = isSection ? 'Título de la sección' : 'Título de la página';
             const helpLabel = el.fieldHelpWrap.querySelector('label');
             if (helpLabel) helpLabel.textContent = 'Descripción';
@@ -1121,6 +1131,7 @@
         if (info.hasPlaceholder) f.placeholder = el.fieldPlaceholder.value.trim();
         if (info.hasHelp) f.help_text = el.fieldHelp.value.trim();
         f.is_required = isStructural ? false : el.fieldRequired.checked;
+        f.is_pii = isStructural ? false : el.fieldPii.checked;
 
         if (info.hasOptions) {
             f.options = Array.from(el.optionsList.querySelectorAll('.option-input'))
@@ -1331,6 +1342,7 @@
             placeholder: '',
             help_text: '',
             is_required: false,
+            is_pii: false,
             options: info && info.hasOptions ? [{ value: 'Opción 1' }, { value: 'Opción 2' }] : [],
             validations: (type === 'scale' || type === 'star') ? { max: 5 } : (type === 'nps' ? { min: 0, max: 10 } : {}),
             parentId: parentUid || null,
@@ -1570,6 +1582,7 @@
                 placeholder: f.placeholder || '',
                 help_text: f.help_text || '',
                 is_required: Boolean(f.is_required),
+                is_pii: Boolean(f.is_pii),
                 options: Array.isArray(f.options) ? f.options : [],
                 validations: f.validations && typeof f.validations === 'object' ? f.validations : {},
                 parent_id: f.parentId || null,

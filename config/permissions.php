@@ -43,6 +43,15 @@ return [
     'responses.view_own'    => ['Ver y eliminar respuestas de formularios propios', ['admin', 'user', 'editor']],
     'attachments.download_own' => ['Descargar adjuntos de formularios propios', ['admin', 'user', 'editor']],
 
+    // F1 (PII): es una CAPACIDAD, no un alcance, y por eso no lleva sufijo
+    // `_own`: no decide a qué formularios se llega (eso es `responses.view_own`),
+    // sino si dentro de los formularios ya autorizados se leen los valores
+    // enmascarados o los reales. Quien NO lo tiene (user y editor por defecto)
+    // ve `***` en la IP, el user-agent y los campos marcados como personales;
+    // quien sí lo tiene los ve en claro. Falla cerrado: si la clave no existe en
+    // la BD (migración no aplicada) `Auth::can()` da false y TODO sale enmascarado.
+    'responses.pii'         => ['Ver datos personales sin enmascarar (IP, user-agent y campos marcados)', ['admin']],
+
     // Entrada a la app autenticada.
     'dashboard.view'        => ['Entrar al dashboard', ['admin', 'user', 'editor']],
 ];

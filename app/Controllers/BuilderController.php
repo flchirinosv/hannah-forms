@@ -189,6 +189,13 @@ class BuilderController
                 $isRequired = $isStructural ? false : (bool) ($item['is_required'] ?? false);
                 $validations = $isStructural ? [] : (array) ($item['validations'] ?? []);
 
+                // F1: una sección o una página no guarda respuestas, así que no
+                // pueden contener datos personales: se fuerzan a false igual que
+                // `is_required`, o el cliente podría mandar el flag y marcar un
+                // contenedor entero (que enmascararía a todos sus hijos en la
+                // exportación, porque se filtran por la lista de ids marcados).
+                $isPii = $isStructural ? false : (bool) ($item['is_pii'] ?? false);
+
                 // M3: longitud máx. según el esquema (label/placeholder VARCHAR(190),
                 // help_text VARCHAR(255)) para evitar 500 silenciosos.
                 $label = (string) ($item['label'] ?? '');
@@ -219,7 +226,8 @@ class BuilderController
                         $validations,
                         $position,
                         $parentIdResolved,
-                        null
+                        null,
+                        $isPii
                     );
                     $finalId = (int) $item['id'];
                 } else {
@@ -234,7 +242,8 @@ class BuilderController
                         $validations,
                         $position,
                         $parentIdResolved,
-                        null
+                        null,
+                        $isPii
                     );
                 }
 

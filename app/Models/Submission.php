@@ -225,6 +225,12 @@ class Submission
                 'id'    => (int) $field['id'],
                 'type'  => (string) $field['type'],
                 'label' => (string) $field['label'],
+                // F1: la exportación dice qué campos son personales, para que el
+                // archivo sea interpretable aunque todos los valores estén
+                // enmascarados: sin esto, un `***` es indistinguible de una
+                // respuesta vacía y delataría el motivo del enmascarado al que
+                // no tiene derecho.
+                'is_pii' => (int) ($field['is_pii'] ?? 0) === 1 ? 1 : 0,
             ];
             $fieldById[(int) $field['id']] = true;
         }
@@ -235,11 +241,14 @@ class Submission
             foreach ($row['answers'] as $fieldId => $value) {
                 $answers[(int) $fieldId] = self::decodeValue((string) $value);
             }
+
+            $submission = $row['submission'] ?? [];
+
             $submissions[] = [
                 'id'          => (int) $sid,
-                'finished_at' => (string) ($row['submission']['finished_at'] ?? ''),
-                'ip_address'  => $row['submission']['ip_address'] ?? null,
-                'user_agent'  => $row['submission']['user_agent'] ?? null,
+                'finished_at' => (string) ($submission['finished_at'] ?? ''),
+                'ip_address'  => $submission['ip_address'] ?? null,
+                'user_agent'  => $submission['user_agent'] ?? null,
                 'answers'     => $answers,
             ];
         }

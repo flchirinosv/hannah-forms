@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS fields (
     placeholder VARCHAR(190) DEFAULT NULL,
     help_text   VARCHAR(255) DEFAULT NULL,
     is_required TINYINT(1) NOT NULL DEFAULT 0,
+    is_pii      TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Campo con datos personales: se enmascara sin el permiso responses.pii',
     options     JSON DEFAULT NULL,
     validations JSON DEFAULT NULL,
     position    INT NOT NULL DEFAULT 0,
