@@ -163,13 +163,11 @@ class AnalyticsController
         $from = self::validarFecha($from);
         $to = self::validarFecha($to);
 
-        // N+1 resuelto: cargar submissions + answers en una sola consulta
-        $submissions = Submission::byFormFiltered((int) $form['id'], (string) $from, (string) $to);
-        $submissionIds = array_column($submissions, 'id');
-        $answersBySubmission = Submission::withAnswersByIds($submissionIds);
-
+        // Streaming por tandas: en vez de `byFormFiltered()` + `withAnswersByIds()`
+        // (que cargaban TODAS las submissions y TODAS sus answers en memoria),
+        // `exportBatches()` itera con keyset (finished_at DESC, id DESC) y devuelve
+        // de a `ID_BATCH` (5000): cada tanda se escribe y se suelta.
         $headers = ['#', 'Fecha'];
-        $fieldById = [];
         // F1: tipos de los campos marcados como personales, para enmascararlos en
         // el CSV. El CSV no lleva IP ni user-agent (solo el JSON los lleva), así
         // que aquí lo único que se puede filtrar es el valor de la respuesta.
@@ -179,7 +177,6 @@ class AnalyticsController
                 continue;
             }
             $headers[] = $field['label'];
-            $fieldById[(int) $field['id']] = $field['label'];
         }
 
         // Headers y exit solo fuera de CLI (en el runner los controllers se
@@ -192,55 +189,59 @@ class AnalyticsController
         $out = fopen('php://output', 'w');
         fputcsv($out, $headers, ',', '"', '\\');
 
-        foreach ($submissions as $i => $submission) {
-            $byField = $answersBySubmission[(int) $submission['id']]['answers'] ?? [];
+        $n = 0;
+        foreach (Submission::exportBatches((int) $form['id'], (string) $from, (string) $to) as [$submissions, $answersBySubmission]) {
+            foreach ($submissions as $submission) {
+                $byField = $answersBySubmission[(int) $submission['id']]['answers'] ?? [];
+                $n++;
 
-            $row = [$i + 1, $submission['finished_at']];
-            foreach ($form['fields'] as $field) {
-                if (($field['type'] ?? '') === 'section') {
-                    continue;
-                }
-                $val = $byField[(int) $field['id']] ?? '';
-                // P10: los adjuntos salen como "nombre (tamaño)", sin la ruta
-                // interna de storage ni el JSON de metadata.
-                if ($val !== '' && \App\Services\Uploader::isAttachmentJson((string) $val)) {
-                    $val = \App\Services\Uploader::displayValue((string) $val);
-                }
-                // Decodificar JSON si es respuesta múltiple (checkbox) o
-                // compuesta (matriz/ranking: {clave: valor}).
-                if (str_starts_with($val, '[')) {
-                    $decoded = json_decode($val, true);
-                    if (is_array($decoded)) {
-                        $val = implode('; ', $decoded);
+                $row = [$n, $submission['finished_at']];
+                foreach ($form['fields'] as $field) {
+                    if (($field['type'] ?? '') === 'section') {
+                        continue;
                     }
-                } elseif (str_starts_with($val, '{')) {
-                    $decoded = json_decode($val, true);
-                    if (is_array($decoded)) {
-                        $parts = [];
-                        foreach ($decoded as $k => $v) {
-                            $parts[] = $k . ': ' . $v;
+                    $val = $byField[(int) $field['id']] ?? '';
+                    // P10: los adjuntos salen como "nombre (tamaño)", sin la ruta
+                    // interna de storage ni el JSON de metadata.
+                    if ($val !== '' && \App\Services\Uploader::isAttachmentJson((string) $val)) {
+                        $val = \App\Services\Uploader::displayValue((string) $val);
+                    }
+                    // Decodificar JSON si es respuesta múltiple (checkbox) o
+                    // compuesta (matriz/ranking: {clave: valor}).
+                    if (str_starts_with($val, '[')) {
+                        $decoded = json_decode($val, true);
+                        if (is_array($decoded)) {
+                            $val = implode('; ', $decoded);
                         }
-                        $val = implode('; ', $parts);
+                    } elseif (str_starts_with($val, '{')) {
+                        $decoded = json_decode($val, true);
+                        if (is_array($decoded)) {
+                            $parts = [];
+                            foreach ($decoded as $k => $v) {
+                                $parts[] = $k . ': ' . $v;
+                            }
+                            $val = implode('; ', $parts);
+                        }
                     }
-                }
-                // F1: se enmascara AQUÍ, dentro del bucle de campos y no en una
-                // pasada aparte sobre `$row`, por dos razones. La primera es
-                // que al final habría que volver a emparejar cada columna con su
-                // campo por posición (headers = 2 + nº de campos), que es un
-                // índice que se rompe en cuanto alguien añade una columna. La
-                // segunda es el orden: enmascarar antes de decodificar dejaría
-                // pasar la metadata del adjunto (el nombre del archivo es el
-                // dato) y un `[oculto]` empieza por `[`, igual que un JSON, así
-                // que el bloque de decodificación lo reinterpretaría.
-                if (isset($piiTypes[(int) $field['id']]) && $val !== '') {
-                    // El valor ya es texto legible (los adjuntos se aplanaron
-                    // arriba), así que el tipo basta para decidir el formato.
-                    $val = \App\Services\Pii::maskValue((string) $val, $piiTypes[(int) $field['id']]);
-                }
+                    // F1: se enmascara AQUÍ, dentro del bucle de campos y no en una
+                    // pasada aparte sobre `$row`, por dos razones. La primera es
+                    // que al final habría que volver a emparejar cada columna con su
+                    // campo por posición (headers = 2 + nº de campos), que es un
+                    // índice que se rompe en cuanto alguien añade una columna. La
+                    // segunda es el orden: enmascarar antes de decodificar dejaría
+                    // pasar la metadata del adjunto (el nombre del archivo es el
+                    // dato) y un `[oculto]` empieza por `[`, igual que un JSON, así
+                    // que el bloque de decodificación lo reinterpretaría.
+                    if (isset($piiTypes[(int) $field['id']]) && $val !== '') {
+                        // El valor ya es texto legible (los adjuntos se aplanaron
+                        // arriba), así que el tipo basta para decidir el formato.
+                        $val = \App\Services\Pii::maskValue((string) $val, $piiTypes[(int) $field['id']]);
+                    }
 
-                $row[] = self::csvSafe($val);
+                    $row[] = self::csvSafe($val);
+                }
+                fputcsv($out, $row, ',', '"', '\\');
             }
-            fputcsv($out, $row, ',', '"', '\\');
         }
 
         fclose($out);

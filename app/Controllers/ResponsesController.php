@@ -171,43 +171,48 @@ class ResponsesController
             $to = $tmp;
         }
 
-        $submissions = Submission::byFormFiltered((int) $form['id'], $from, $to);
-        $submissionIds = array_column($submissions, 'id');
-        $bySubmission = Submission::withAnswersByIds($submissionIds);
-
-        // F1: el JSON es el canal de integración (n8n, hojas de cálculo, otro
-        // servicio), o sea el que más se copia y el que menos se vigila. Se
-        // enmascara con la MISMA política que la pantalla: exportar no es una
-        // puerta trasera a la PII.
-        $payload = Submission::exportPayload($form, $bySubmission, count($submissions));
-        if (!\App\Services\Pii::canView()) {
-            $marked = \App\Services\Pii::piiFieldTypes($form['fields'] ?? []);
-            foreach ($payload['submissions'] as $i => $row) {
-                $payload['submissions'][$i] = \App\Services\Pii::maybeMaskSubmission($row);
-                foreach ($marked as $fieldId => $type) {
-                    if (!array_key_exists($fieldId, $row['answers'])) {
-                        continue;
-                    }
-                    $raw = $row['answers'][$fieldId];
-                    // El valor ya viene decodificado (`decodeValue`), así que un
-                    // adjunto es un string legible y no el JSON de metadata: se
-                    // enmascara entero, sin volver a inspeccionarlo.
-                    $payload['submissions'][$i]['answers'][$fieldId] = is_array($raw)
-                        ? \App\Services\Pii::MASK
-                        : \App\Services\Pii::maskValue((string) $raw, $type);
-                }
-            }
-        }
-
         if (PHP_SAPI !== 'cli') {
             header('Content-Type: application/json; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . self::safeFile((string) $form['slug']) . '.responses.json"');
         }
-        echo json_encode(
-            $payload,
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
-        );
+
+        // Streaming por tandas: exportBatches() devuelve submissions + answers
+        // de 5000 en 5000 con keyset (finished_at DESC, id DESC), así que un
+        // formulario de miles de respuestas no se carga entero en memoria.
+        $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+        echo '{' . "\n";
+        echo '  "form": ' . json_encode(Submission::exportFormMeta($form), $flags) . ',' . "\n";
+        echo '  "total": ' . Submission::countByFiltered((int) $form['id'], $from, $to) . ',' . "\n";
+        echo '  "submissions": [' . "\n";
+
+        $first = true;
+        $canView = \App\Services\Pii::canView();
+        $marked = $canView ? [] : \App\Services\Pii::piiFieldTypes($form['fields'] ?? []);
+        foreach (Submission::exportBatches((int) $form['id'], $from, $to) as [, $bySubmission]) {
+            foreach ($bySubmission as $sid => $row) {
+                $entry = Submission::exportSubmissionRow((int) $sid, $row);
+                if (!$canView) {
+                    $entry = \App\Services\Pii::maybeMaskSubmission($entry);
+                    foreach ($marked as $fieldId => $type) {
+                        if (!array_key_exists($fieldId, $entry['answers'])) {
+                            continue;
+                        }
+                        $raw = $entry['answers'][$fieldId];
+                        $entry['answers'][$fieldId] = is_array($raw)
+                            ? \App\Services\Pii::MASK
+                            : \App\Services\Pii::maskValue((string) $raw, $type);
+                    }
+                }
+
+                echo $first ? '' : ',' . "\n";
+                echo '    ' . json_encode($entry, $flags);
+                $first = false;
+            }
+        }
+
+        echo "\n" . '  ]' . "\n" . '}' . "\n";
         if (PHP_SAPI !== 'cli') {
             exit;
         }

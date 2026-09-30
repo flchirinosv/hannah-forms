@@ -205,6 +205,71 @@ class Submission
     }
 
     /**
+     * Metadata del formulario para la exportación JSON (bloque `form`).
+     *
+     * Separada de `exportPayload` para que el streaming del controlador pueda
+     * escribir el envoltorio una sola vez y emitir cada submission por
+     * separado, sin construir el histórico entero en memoria.
+     *
+     * F1: la exportación dice qué campos son personales, para que el archivo
+     * sea interpretable aunque todos los valores estén enmascarados: sin esto,
+     * un `***` es indistinguible de una respuesta vacía y delataría el motivo
+     * del enmascarado al que no tiene derecho.
+     *
+     * @param array $form formulario (con 'fields')
+     * @return array
+     */
+    public static function exportFormMeta(array $form): array
+    {
+        $fields = [];
+        foreach ($form['fields'] as $field) {
+            if (($field['type'] ?? '') === 'section') {
+                continue;
+            }
+            $fields[] = [
+                'id'    => (int) $field['id'],
+                'type'  => (string) $field['type'],
+                'label' => (string) $field['label'],
+                'is_pii' => (int) ($field['is_pii'] ?? 0) === 1 ? 1 : 0,
+            ];
+        }
+
+        return [
+            'id'     => (int) $form['id'],
+            'title'  => (string) $form['title'],
+            'slug'   => (string) $form['slug'],
+            'status' => (string) $form['status'],
+            'fields' => $fields,
+        ];
+    }
+
+    /**
+     * Una submission del payload de exportación (answers decodificadas).
+     *
+     * @param int   $sid submission id
+     * @param array $row entrada de `Submission::withAnswersByIds()`
+     *                   (['submission'=>..., 'answers'=>...])
+     * @return array
+     */
+    public static function exportSubmissionRow(int $sid, array $row): array
+    {
+        $answers = [];
+        foreach ($row['answers'] as $fieldId => $value) {
+            $answers[(int) $fieldId] = self::decodeValue((string) $value);
+        }
+
+        $submission = $row['submission'] ?? [];
+
+        return [
+            'id'          => $sid,
+            'finished_at' => (string) ($submission['finished_at'] ?? ''),
+            'ip_address'  => $submission['ip_address'] ?? null,
+            'user_agent'  => $submission['user_agent'] ?? null,
+            'answers'     => $answers,
+        ];
+    }
+
+    /**
      * Payload estructurado para la exportación JSON: metadata del form,
      * total y submissions con answers decodificadas (arrays/objetos).
      *
@@ -215,52 +280,13 @@ class Submission
      */
     public static function exportPayload(array $form, array $bySubmission, int $total): array
     {
-        $fields = [];
-        $fieldById = [];
-        foreach ($form['fields'] as $field) {
-            if (($field['type'] ?? '') === 'section') {
-                continue;
-            }
-            $fields[] = [
-                'id'    => (int) $field['id'],
-                'type'  => (string) $field['type'],
-                'label' => (string) $field['label'],
-                // F1: la exportación dice qué campos son personales, para que el
-                // archivo sea interpretable aunque todos los valores estén
-                // enmascarados: sin esto, un `***` es indistinguible de una
-                // respuesta vacía y delataría el motivo del enmascarado al que
-                // no tiene derecho.
-                'is_pii' => (int) ($field['is_pii'] ?? 0) === 1 ? 1 : 0,
-            ];
-            $fieldById[(int) $field['id']] = true;
-        }
-
         $submissions = [];
         foreach ($bySubmission as $sid => $row) {
-            $answers = [];
-            foreach ($row['answers'] as $fieldId => $value) {
-                $answers[(int) $fieldId] = self::decodeValue((string) $value);
-            }
-
-            $submission = $row['submission'] ?? [];
-
-            $submissions[] = [
-                'id'          => (int) $sid,
-                'finished_at' => (string) ($submission['finished_at'] ?? ''),
-                'ip_address'  => $submission['ip_address'] ?? null,
-                'user_agent'  => $submission['user_agent'] ?? null,
-                'answers'     => $answers,
-            ];
+            $submissions[] = self::exportSubmissionRow((int) $sid, $row);
         }
 
         return [
-            'form' => [
-                'id'     => (int) $form['id'],
-                'title'  => (string) $form['title'],
-                'slug'   => (string) $form['slug'],
-                'status' => (string) $form['status'],
-                'fields' => $fields,
-            ],
+            'form'        => self::exportFormMeta($form),
             'total'       => $total,
             'submissions' => $submissions,
         ];
@@ -358,6 +384,75 @@ class Submission
             'per_page' => $perPage,
             'pages'    => $pages,
         ];
+    }
+
+    /**
+     * Total de submissions del formulario que cumplen el filtro de fechas.
+     *
+     * Es lo que las exportaciones necesitan para el `total` del payload ANTES
+     * de empezar a escribir el cuerpo: con streaming, el histórico no está en
+     * memoria y `count()` no existe.
+     */
+    public static function countByFiltered(int $formId, string $from = '', string $to = ''): int
+    {
+        [$where, $params] = self::dateBounds($from, $to, 's.');
+
+        $row = self::db()->fetch(
+            "SELECT COUNT(*) AS c FROM submissions s WHERE s.form_id = :form_id$where",
+            $params + ['form_id' => $formId]
+        );
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Itera las submissions del formulario (filtro de fechas opcional) por
+     * TANDAS, para exportar sin cargar el histórico entero en memoria.
+     *
+     * `byFormFiltered()` + `withAnswersByIds()` pueblan todo en un array: con
+     * cientos de miles de respuestas la exportación JSON/CSV se comía la
+     * memoria. Aquí cada tanda es un `LIMIT` con keyset de `(finished_at, id)`
+     * (mismo orden global que el resto de la app: `finished_at DESC, id DESC`)
+     * y el consumes la escribe y la suelta. `withAnswersByIds()` se llama por
+     * tanda, así que su loteo interno y este keyset comparten el techo de
+     * placeholders sin duplicar trabajo.
+     *
+     * @return iterable<array{0: array, 1: array}> [submissions, answersById] por tanda
+     */
+    public static function exportBatches(int $formId, string $from = '', string $to = '', int $batch = 0): iterable
+    {
+        $batch = $batch > 0 ? $batch : self::idBatch();
+
+        [$where, $params] = self::dateBounds($from, $to, 's.');
+        $lastAt = null;
+        $lastId = 0;
+
+        while (true) {
+            $sql = "SELECT s.id, s.finished_at FROM submissions s
+                    WHERE s.form_id = :form_id$where";
+            if ($lastAt !== null) {
+                // Keyset de (finished_at, id) en orden DESC. OJO: comparación por
+                // tuplas a propósito — con `EMULATE_PREPARES=false` (este DSN)
+                // reusar `:last_at` dos veces tira HY093 "Invalid parameter number".
+                $sql .= ' AND (s.finished_at, s.id) < (:last_at, :last_id)';
+                $params['last_at'] = $lastAt;
+                $params['last_id'] = $lastId;
+            }
+
+            $submissions = self::db()->fetchAll(
+                $sql . " ORDER BY s.finished_at DESC, s.id DESC LIMIT $batch",
+                $params + ['form_id' => $formId]
+            );
+            if ($submissions === []) {
+                break;
+            }
+
+            $ids = array_column($submissions, 'id');
+            yield [$submissions, self::withAnswersByIds($ids)];
+
+            $last = $submissions[count($submissions) - 1];
+            $lastAt = $last['finished_at'];
+            $lastId = (int) $last['id'];
+        }
     }
 
     /**
