@@ -214,6 +214,12 @@
                         pager.outerHTML = data.pagination;
                     }
                     initDetailPager(); // re-engancha los botones nuevos
+                    // La clase se quita TAMBIÉN en el camino de éxito. Antes solo
+                    // la quitaba el catch, así que tras el primer cambio de
+                    // página la tbody se quedaba con opacity .55 y
+                    // pointer-events: none para siempre, con el spinner
+                    // girando: las respuestas ya cargadas no se podían abrir.
+                    tbody.classList.remove('vf-loading');
                 })
                 .catch(function () {
                     tbody.classList.remove('vf-loading');

@@ -158,7 +158,8 @@ $relativeTs = static function (string $timestamp): string {
                                               // donde el revisor ya está mirando. ?>
                                         <?php if ($form['status'] === 'in_review' && ($canReview ?? false)): ?>
                                             <li>
-                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" class="m-0">
+                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" class="m-0"
+                                                      data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador.">
                                                     <?= \App\Core\Csrf::field() ?>
                                                     <button type="submit" class="dropdown-item"><i class="fa-solid fa-check me-2 text-success"></i>Aprobar</button>
                                                 </form>

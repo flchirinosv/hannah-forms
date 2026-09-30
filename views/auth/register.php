@@ -21,14 +21,14 @@ use App\Core\View;
         <label for="password" class="form-label">Contraseña</label>
         <div class="input-group">
             <span class="input-group-text app-input-icon"><i class="fa-solid fa-lock"></i></span>
-            <input type="password" class="form-control" id="password" name="password" placeholder="Mínimo 10 caracteres" required minlength="10">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" required minlength="<?= (int) $min ?>">
         </div>
     </div>
     <div class="mb-3">
         <label for="password_confirm" class="form-label">Confirmar contraseña</label>
         <div class="input-group">
             <span class="input-group-text app-input-icon"><i class="fa-solid fa-lock"></i></span>
-            <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Repite la contraseña" required>
+            <input type="password" class="form-control" id="password_confirm" name="password_confirm" minlength="<?= (int) $min ?>" required>
         </div>
     </div>
     <div class="d-grid gap-2 mt-4">

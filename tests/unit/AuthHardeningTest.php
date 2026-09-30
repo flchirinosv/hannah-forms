@@ -126,10 +126,18 @@ class AuthHardeningTest
 
         // Y la vista tiene que decir lo mismo que el servidor, o el usuario
         // escribe 8 y el navegador se lo acepta y el servidor lo rechaza.
+        // Se comprueba que la vista INTERPOLE el valor que le pasa el
+        // controlador, y no que por casualidad hoy coincidan: un
+        // `minlength="10"` a mano cumplo este test y se rompía en el
+        // instante en que PASSWORD_MIN dejara de ser 10.
         $view = (string) file_get_contents($this->path('views/auth/register.php'));
         assertTrue(
-            str_contains($view, 'minlength="' . (int) $min . '"'),
-            'el minlength del formulario debe coincidir con PASSWORD_MIN'
+            str_contains($view, 'minlength="<?= (int) $min ?>'),
+            'el minlength del formulario debe venir de PASSWORD_MIN'
+        );
+        assertFalse(
+            preg_match('/minlength="\d+"/', $view) === 1,
+            'no debe quedar un minlength con un número fijo: el mínimo vive en AuthController::PASSWORD_MIN'
         );
         assertFalse(
             str_contains($view, 'Mínimo 6 caracteres'),

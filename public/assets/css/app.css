@@ -21,6 +21,10 @@
        convivían tres tamaños de botón de icono). Spec: docs/design.md §1.2. */
     --vf-ctrl-h: 32px;
     --vf-icon-btn: 32px;
+    /* Alto del botón de acción principal. No es --vf-ctrl-h porque el CTA es
+       el único control que se toca con el dedo en una pantalla pequeña, y a
+       32px queda por debajo del mínimo cómodo. `btn-sm` lo ignora. */
+    --vf-btn-cta-h: 44px;
     --vf-hint-fs: .75rem;
     --vf-focus-ring: 0 0 0 3px rgba(99, 102, 241, .18);
     --vf-tile-min-h: 72px;
@@ -42,23 +46,35 @@ body {
 }
 
 /* ---------- Botones / colores primarios ---------- */
-.btn-primary, .app-btn-primary {
+/* `.app-btn-primary` aporta SOLO alto, radio, peso y elevación. El color lo
+   pone la variante de Bootstrap (`btn-primary`, `btn-success`, `btn-danger`).
+   Antes esta clase lo pisaba: escribía un `background-color` directo, que gana
+   a `.btn { background-color: var(--bs-btn-bg) }` por orden de fuente (app.css va
+   después de bootstrap), así que un `btn-success app-btn-primary` salía índigo y
+   el `btn-success` no pintaba nada. La sombra además iba teñida del primario, y
+   sobre un botón verde se leía como un halo morado. */
+.btn-primary {
     background-color: var(--vf-primary);
     border-color: var(--vf-primary);
 }
-.btn-primary:hover, .btn-primary:focus,
-.app-btn-primary:hover, .app-btn-primary:focus {
+.btn-primary:hover, .btn-primary:focus {
     background-color: var(--vf-primary-dark);
     border-color: var(--vf-primary-dark);
 }
 .app-btn-primary {
-    min-height: 44px;
+    min-height: var(--vf-btn-cta-h);
     border-radius: 12px;
     font-weight: 600;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, .35);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .18);
     transition: transform .15s ease, box-shadow .15s ease;
 }
-.app-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99, 102, 241, .42); }
+.app-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(15, 23, 42, .24); }
+/* `btn-sm` manda en su propia altura: con los 44px del CTA se descuadraba de
+   sus hermanos de la misma fila, y la sombra competía con la de al lado. */
+.btn-sm.app-btn-primary {
+    min-height: var(--vf-ctrl-h);
+    box-shadow: none;
+}
 
 .app-btn-create {
     border-radius: 12px;
@@ -66,13 +82,13 @@ body {
 }
 
 .app-btn-icon {
-    width: 34px;
-    height: 34px;
+    width: var(--vf-icon-btn);
+    height: var(--vf-icon-btn);
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 9px;
+    border-radius: 8px;
     transition: all .15s ease;
 }
 .app-btn-icon:hover { transform: translateY(-1px); }
@@ -136,6 +152,9 @@ body {
 .app-dash-search .form-control { border-left: 0; }
 .app-dash-search .form-control:focus { box-shadow: none; border-color: var(--vf-border); box-shadow: inset 0 0 0 0; }
 .app-dash-search:focus-within { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-radius: .25rem; }
+/* `.btn-group` es `inline-flex` y no envuelve nunca: con los cinco filtros de
+   estado en línea se salían de la pantalla en móvil. */
+.app-dash-filters { flex-wrap: wrap; }
 .app-dash-filters .btn { font-size: .8rem; }
 .app-dash-filters .btn.active { background: var(--vf-primary); border-color: var(--vf-primary); color: #fff; }
 .app-dash-sort { max-width: 200px; border-color: var(--vf-border); }
@@ -149,7 +168,7 @@ body {
 .app-spark-svg .app-spark-last { fill: var(--vf-primary); }
 .app-dash-dd { line-height: 0; }
 .app-dd-btn {
-    width: 30px; height: 30px;
+    width: var(--vf-icon-btn); height: var(--vf-icon-btn);
     padding: 0;
     border: 1px solid var(--vf-border);
     border-radius: 8px;
@@ -630,6 +649,14 @@ body {
 /* ---------- Utilidades ---------- */
 .app-truncate-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .app-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Cabecera de página cuyo título es el de un formulario. El bloque del título
+   es un hijo flex y por defecto trae `min-width: auto`, que no lo deja bajar
+   del ancho de su contenido: con un título largo (o pegado sin espacios, como
+   una URL) la fila se ensanchaba y se salía de la pantalla en móvil.
+   `overflow-wrap: anywhere` deja que el título parta palabras en vez de
+   recortarse, que en un título sería perder texto. */
+.app-page-head > :first-child { min-width: 0; }
+.app-page-head h2 { overflow-wrap: anywhere; }
 .app-field-list .list-group-item { border-color: var(--vf-border); }
 .app-share-input { letter-spacing: .02em; }
 

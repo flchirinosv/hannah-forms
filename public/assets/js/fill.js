@@ -207,6 +207,9 @@
             const after = vis.find((v) => v > currentStep);
             currentStep = after !== undefined ? after : vis[vis.length - 1];
         }
+        // Se apunta el elemento con el foco ANTES de repintar: si al terminar
+        // ha desaparecido o ya no se ve, hay que recolocarlo (justo después).
+        const focusedBefore = document.activeElement;
         pageBlocks.forEach((pb, i) => {
             const rank = vis.indexOf(i);
             const show = rank >= 0;
@@ -245,6 +248,22 @@
             pb.setAttribute('aria-label', stepLabel(rank + 1, vis.length));
             buildFooterControls(foot, rank, vis.length);
         });
+        // Un nodo que se borra, o que queda `hidden`, no puede conservar el
+        // foco: el navegador lo devuelve a <body> y la persona que navega con
+        // teclado o con lector de pantalla se queda sin sitio. Los controles del
+        // pie ya no se reconstruyen, así que esto solo pasa en dos casos: el
+        // «Siguiente» del penúltimo paso, que se convierte en el botón de enviar,
+        // y un campo del paso del que se sale. En ambos se cae al bloque del
+        // paso, que es el mismo destino del avance automático y el único sitio
+        // donde puede aterrizarse algo que aún no se ha leído.
+        // `offsetParent === null` detecta cualquier `display:none`, venga de un
+        // atributo `hidden` o de la clase `.vf-step-hidden` de maquetación.
+        if (focusedBefore
+            && focusedBefore !== document.body
+            && focusedBefore !== document.documentElement
+            && (!focusedBefore.isConnected || focusedBefore.offsetParent === null)) {
+            focusCurrentStep();
+        }
         // La visibilidad de las tarjetas depende de los marcadores de salto que
         // se acaban de poner y quitar, y la barra depende de las tarjetas.
         applyCardVisibility();
@@ -257,38 +276,70 @@
         }
     }
 
-    // Reconstruye los controles del pie de paso (los del servidor asumen que
-    // todos los pasos se ven; con saltos la lógica prev/enviar cambia).
-    function buildFooterControls(foot, rank, count) {
-        foot.querySelectorAll('button[data-vf-action], #vfSubmit, .vf-footer-spacer').forEach((b) => b.remove());
+    // Los controles del pie se crean UNA vez por pie y luego solo se les
+    // alterna la visibilidad.
+    //
+    // Antes se reconstruían enteros en cada repintado, borrando los anteriores.
+    // El botón que la persona acababa de pulsar desaparecía del DOM, y un
+    // elemento que se borra se lleva el foco a <body>: tras «Siguiente» había
+    // que tabular desde el principio del documento. Eso contradecía el
+    // comentario de gotoStep() («el manual no mueve el foco porque el foco ya
+    // está donde el usuario lo puso»): el foco NO estaba donde el usuario lo
+    // puso, porque su nodo ya no existía. Ahora los controles sobreviven al
+    // repintado, así que el foco se queda donde corresponde.
+    function ensureFooterControls(foot) {
+        if (foot._vfControls) {
+            return foot._vfControls;
+        }
+        // Los que trajo el servidor (o los de una reconstrucción anterior) se
+        // retiran aquí, una sola vez, antes de que nada pueda tener el foco.
+        foot.querySelectorAll('button[data-vf-action], #vfSubmit, .vf-footer-spacer')
+            .forEach((el) => el.remove());
+
+        // Las etiquetas son fijas: «prev» siempre dice «anterior» y «next»
+        // siempre «siguiente». Lo que cambia por paso es cuál se ve, y eso lo
+        // decide buildFooterControls() con `hidden`.
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'btn vf-nav-btn';
+        prev.dataset.vfAction = 'prev';
+        prev.innerHTML = '<i class="fa-solid fa-arrow-left me-2"></i>' + t('ui.anterior');
+
+        const spacer = document.createElement('span');
+        spacer.className = 'vf-footer-spacer';
+
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'btn vf-nav-btn vf-nav-next';
+        next.dataset.vfAction = 'next';
+        next.innerHTML = t('ui.siguiente') + '<i class="fa-solid fa-arrow-right ms-2"></i>';
+
+        const submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.id = 'vfSubmit';
+        submit.className = 'vf-submit';
+        submit.innerHTML = '<span class="vf-submit-label"><i class="fa-solid fa-paper-plane me-2"></i>' + t('ui.enviar') + '</span>';
+
         const badge = foot.querySelector('.vf-step-badge');
-        if (rank > 0) {
-            const prev = document.createElement('button');
-            prev.type = 'button';
-            prev.className = 'btn vf-nav-btn';
-            prev.dataset.vfAction = 'prev';
-            prev.innerHTML = '<i class="fa-solid fa-arrow-left me-2"></i>' + t('ui.anterior');
-            foot.insertBefore(prev, badge);
-        } else {
-            const spacer = document.createElement('span');
-            spacer.className = 'vf-footer-spacer';
-            foot.insertBefore(spacer, badge);
-        }
-        if (rank >= count - 1) {
-            const submit = document.createElement('button');
-            submit.type = 'submit';
-            submit.id = 'vfSubmit';
-            submit.className = 'vf-submit';
-            submit.innerHTML = '<span class="vf-submit-label"><i class="fa-solid fa-paper-plane me-2"></i>' + t('ui.enviar') + '</span>';
-            foot.appendChild(submit);
-        } else {
-            const next = document.createElement('button');
-            next.type = 'button';
-            next.className = 'btn vf-nav-btn vf-nav-next';
-            next.dataset.vfAction = 'next';
-            next.innerHTML = t('ui.siguiente') + '<i class="fa-solid fa-arrow-right ms-2"></i>';
-            foot.appendChild(next);
-        }
+        foot.insertBefore(prev, badge);
+        foot.insertBefore(spacer, badge);
+        foot.appendChild(next);
+        foot.appendChild(submit);
+
+        foot._vfControls = { prev: prev, spacer: spacer, next: next, submit: submit };
+        return foot._vfControls;
+    }
+
+    // Pinta los controles del pie según la posición del paso (P8). No crea ni
+    // borra nada: solo alterna `hidden`, que es lo que mantiene el foco.
+    function buildFooterControls(foot, rank, count) {
+        const c = ensureFooterControls(foot);
+        const showPrev = rank > 0;
+        const last = rank >= count - 1;
+        c.prev.hidden = !showPrev;
+        c.spacer.hidden = showPrev;
+        c.next.hidden = last;
+        c.submit.hidden = !last;
     }
 
     // Valida SOLO el paso actual; no avanza si hay errores.

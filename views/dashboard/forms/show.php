@@ -2,22 +2,37 @@
 use App\Core\View;
 ?>
 <div class="container px-lg-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 app-page-head">
         <div>
             <a href="/dashboard" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver al dashboard</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i><?= View::escape($form['title']) ?></h2>
         </div>
-        <div class="d-flex gap-2">
+        <?php // Una sola acción primaria («Editar campos»); Respuestas y Analítica
+              // son las dos que se usan a diario, y todo lo demás baja a un menú.
+              // Antes eran seis botones del mismo peso en fila: en móvil no
+              // cabían (`d-flex` sin `flex-wrap`) y nada decía cuál era el
+              // importante. `app-dash-dd` + `app-dash-menu` son el mismo patrón
+              // que usa la tarjeta del dashboard. ?>
+        <div class="d-flex flex-wrap gap-2">
             <a href="/forms/<?= (int) $form['id'] ?>/builder" class="btn btn-primary app-btn-primary"><i class="fa-solid fa-pen me-1"></i>Editar campos</a>
             <a href="/forms/<?= (int) $form['id'] ?>/responses" class="btn btn-outline-primary"><i class="fa-solid fa-inbox me-1"></i>Respuestas</a>
             <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-outline-success"><i class="fa-solid fa-chart-column me-1"></i>Analítica</a>
-            <?php // P9 — Vista imprimible (imprimir o PDF desde el navegador) y export de la estructura. ?>
-            <a href="/forms/<?= (int) $form['id'] ?>/print" class="btn btn-outline-secondary" target="_blank" rel="noopener" title="Abrir la vista imprimible"><i class="fa-solid fa-print me-1"></i>Imprimir</a>
-            <a href="/forms/<?= (int) $form['id'] ?>/export-structure.json" class="btn btn-outline-secondary" title="Descargar la estructura como plantilla JSON"><i class="fa-solid fa-file-export me-1"></i>Exportar</a>
-            <form method="post" action="/forms/<?= (int) $form['id'] ?>/duplicate">
-                <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-outline-secondary" title="Crear una copia en borrador"><i class="fa-solid fa-clone me-1"></i>Duplicar</button>
-            </form>
+            <div class="dropdown app-dash-dd">
+                <button class="btn btn-outline-secondary app-dd-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 app-dash-menu">
+                    <li><a class="dropdown-item" href="/forms/<?= (int) $form['id'] ?>/print" target="_blank" rel="noopener"><i class="fa-solid fa-print me-2 text-muted"></i>Imprimir</a></li>
+                    <li><a class="dropdown-item" href="/forms/<?= (int) $form['id'] ?>/export-structure.json"><i class="fa-solid fa-file-export me-2 text-muted"></i>Exportar estructura</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/duplicate" class="m-0">
+                            <?= \App\Core\Csrf::field() ?>
+                            <button type="submit" class="dropdown-item"><i class="fa-solid fa-clone me-2 text-muted"></i>Duplicar</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -62,8 +77,8 @@ use App\Core\View;
                     </form>
 
                     <div class="row g-2 mb-4">
-                        <div class="col-sm-4">
-                            <button type="submit" form="formUpdate" class="btn btn-primary w-100 app-btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+                        <div class="col">
+                            <button type="submit" form="formUpdate" class="btn btn-outline-primary w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
                         </div>
                         <?php // F3 — Con revisión activa el dueño no tiene botón de publicar:
                               // el que hay sería aprobarse a uno mismo. Se muestra el
@@ -71,7 +86,7 @@ use App\Core\View;
                         <?php $reviewRequired = $reviewRequired ?? false; ?>
                         <?php $canReview = $canReview ?? false; ?>
                         <?php if ($form['status'] === 'draft' && $reviewRequired): ?>
-                            <div class="col-sm-6">
+                            <div class="col">
                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" id="formSendReview">
                                     <?= \App\Core\Csrf::field() ?>
                                     <button type="submit" class="btn btn-info w-100"><i class="fa-solid fa-paper-plane me-1"></i>Enviar a revisión</button>
@@ -79,13 +94,13 @@ use App\Core\View;
                             </div>
                         <?php endif; ?>
                         <?php if ($form['status'] === 'in_review' && $canReview): ?>
-                            <div class="col-6 col-sm-3">
+                            <div class="col">
                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove">
                                     <?= \App\Core\Csrf::field() ?>
                                     <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
                                 </form>
                             </div>
-                            <div class="col-6 col-sm-3">
+                            <div class="col">
                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" id="formReturnReview" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
                                     <?= \App\Core\Csrf::field() ?>
                                     <button type="submit" class="btn btn-outline-warning w-100"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
@@ -98,14 +113,25 @@ use App\Core\View;
                               // acción principal es un aviso, no un botón. ?>
                         <?php $inReview = $form['status'] === 'in_review'; ?>
                         <?php if ($inReview && !$canReview): ?>
-                            <div class="col-sm-6">
+                            <div class="col">
                                 <div class="alert alert-info mb-0 py-2 px-3 h-100 d-flex align-items-center">
                                     <i class="fa-solid fa-hourglass-half me-2"></i>Esperando revisión. Volverá al borrador o se publicará.
                                 </div>
                             </div>
                         <?php endif; ?>
                         <?php $mainSlot = ($form['status'] === 'draft' && !$reviewRequired) || $form['status'] === 'published' || $form['status'] === 'closed'; ?>
-                        <div class="<?= $mainSlot || $inReview ? 'col-sm-6' : 'col-sm-12' ?>">
+                        <?php // Esta columna solo se emite si hay una acción principal que
+                              // poner en ella. Antes se emitía siempre, con `col-sm-6` o
+                              // `col-sm-12` según el caso, y en los tres estados que no
+                              // tienen botón (en revisión con permiso —que ya tiene
+                              // Aprobar/Devolver—, en revisión sin permiso —que tiene
+                              // el aviso— y en borrador con revisión activa —que tiene
+                              // «Enviar a revisión») quedaba media fila en blanco.
+                              // Todas las acciones de la fila son `col`, de ancho
+                              // igual, para que la suma sea 12 diga lo que diga el
+                              // número de acciones que haya. ?>
+                        <?php if ($mainSlot): ?>
+                        <div class="col">
                             <?php if ($form['status'] === 'draft' && !$reviewRequired): ?>
                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions">
                                     <?= \App\Core\Csrf::field() ?>
@@ -125,8 +151,9 @@ use App\Core\View;
                                 </form>
                             <?php endif; ?>
                         </div>
+                        <?php endif; ?>
                         <?php if ($canDelete): ?>
-                        <div class="col-sm-6">
+                        <div class="col">
                             <form method="post" action="/forms/<?= (int) $form['id'] ?>/delete" id="formDelete" data-confirm="¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.">
                                 <?= \App\Core\Csrf::field() ?>
                                 <button type="submit" class="btn btn-outline-danger w-100"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
@@ -264,15 +291,22 @@ use App\Core\View;
                                     <span class="d-flex gap-1">
                                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                                 data-role="access-link" data-email="<?= View::escape($entry['email']) ?>"
-                                                title="Generar y copiar el enlace de acceso para este correo">
+                                                title="Generar y copiar el enlace de acceso para este correo"
+                                                aria-label="Generar y copiar el enlace de acceso para <?= View::escape($entry['email']) ?>">
                                             <i class="fa-solid fa-link"></i>
                                         </button>
-                                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email/remove">
+                                        <?php // `d-inline` es lo que hace que el botón se alinee con
+                                              // el de al lado: sin él, este <form> es un bloque dentro
+                                              // del `d-flex` de la fila y el botón se queda arriba
+                                              // con el interlineado del form debajo, un píxel o dos
+                                              // más bajo que su hermano. ?>
+                                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email/remove" class="d-inline">
                                             <?= \App\Core\Csrf::field() ?>
                                             <input type="hidden" name="email" value="<?= View::escape($entry['email']) ?>">
                                             <button type="submit" class="btn btn-outline-danger btn-sm"
                                                     data-confirm="¿Quitar <?= View::escape($entry['email']) ?> de la lista? Los enlaces que ya se le hayan enviado dejarán de funcionar."
-                                                    title="Quitar de la lista y revocar sus enlaces">
+                                                    title="Quitar de la lista y revocar sus enlaces"
+                                                    aria-label="Quitar <?= View::escape($entry['email']) ?> de la lista">
                                                 <i class="fa-solid fa-xmark"></i>
                                             </button>
                                         </form>

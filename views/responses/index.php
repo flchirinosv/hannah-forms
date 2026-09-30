@@ -25,7 +25,7 @@ if ($window !== []) {
 }
 ?>
 <div class="container px-lg-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 app-page-head">
         <div>
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-inbox me-2 text-primary"></i>Respuestas — <?= View::escape($form['title']) ?></h2>

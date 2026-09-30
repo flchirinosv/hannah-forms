@@ -143,7 +143,14 @@ class AuthController
 
     public function showRegister(): void
     {
-        View::render('auth/register', ['csrf' => Csrf::token()], 'guest');
+        // `min` es PASSWORD_MIN, no un 10 escrito aquí: `register()` valida
+        // contra la constante y este formulario es la otra mitad del mismo
+        // límite. Con el número fijo, subir el mínimo hacía que el navegador
+        // aceptara lo que el servidor iba a rechazar (y al revés).
+        View::render('auth/register', [
+            'csrf' => Csrf::token(),
+            'min'  => self::PASSWORD_MIN,
+        ], 'guest');
     }
 
     public function register(): void

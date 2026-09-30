@@ -247,13 +247,23 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                                 <?php endforeach; ?>
                             </div>
 
+                        <?php // `visually-hidden`, no `d-none`: el radio tiene que SEGUIR siendo
+                              // enfocable. Con `d-none` (`display:none`) el control
+                              // entero se quedaba sin un solo tabulador —el input
+                              // escondido y el `<span>` con `tabindex="-1"`—,
+                              // así que desde el teclado no se podía responder una
+                              // escala, un NPS ni unas estrellas. El CSS de
+                              // app.css ya tenía las reglas `input:focus-visible +
+                              // .scale-btn` / `.star-btn`; solo esperaban a que el
+                              // input dejara de estar en `display:none`. Lo mismo
+                              // para los tres tipos: scale, nps y star. ?>
                         <?php elseif ($type === 'scale'): ?>
                             <?php $max = (int) ($validations['max'] ?? 5); ?>
                             <div class="scale-selector">
                                 <?php for ($i = 1; $i <= $max; $i++): ?>
                                     <label class="scale-option">
                                         <input type="radio" name="<?= View::escape($fieldKey) ?>" value="<?= $i ?>"
-                                               class="d-none" <?= $required ? 'data-required="1"' : '' ?>
+                                               class="visually-hidden" <?= $required ? 'data-required="1"' : '' ?>
                                             <?= is_string($oldValue) && (string) $oldValue === (string) $i ? 'checked' : '' ?>>
                                         <span class="scale-btn" tabindex="-1"><?= $i ?></span>
                                     </label>
@@ -265,7 +275,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                                 <?php for ($i = 0; $i <= 10; $i++): ?>
                                     <label class="nps-option">
                                         <input type="radio" name="<?= View::escape($fieldKey) ?>" value="<?= $i ?>"
-                                               class="d-none" <?= $required ? 'data-required="1"' : '' ?>
+                                               class="visually-hidden" <?= $required ? 'data-required="1"' : '' ?>
                                             <?= is_string($oldValue) && (string) $oldValue === (string) $i ? 'checked' : '' ?>>
                                         <span class="scale-btn" tabindex="-1"><?= $i ?></span>
                                     </label>
@@ -282,7 +292,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                                 <?php for ($i = 1; $i <= $smax; $i++): ?>
                                     <label class="star-option">
                                         <input type="radio" name="<?= View::escape($fieldKey) ?>" value="<?= $i ?>"
-                                               class="d-none" <?= $required ? 'data-required="1"' : '' ?>
+                                               class="visually-hidden" <?= $required ? 'data-required="1"' : '' ?>
                                             <?= is_string($oldValue) && (string) $oldValue === (string) $i ? 'checked' : '' ?>>
                                         <i class="fa-solid fa-star star-btn" tabindex="-1"></i>
                                     </label>
@@ -551,7 +561,12 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             if ($pageBlockIdx > 1) {
                 echo '<button type="button" class="btn vf-nav-btn" data-vf-action="prev"><i class="fa-solid fa-arrow-left me-2"></i>' . $t('ui.anterior') . '</button>';
             } else {
-                echo '<span></span>';
+                // La clase importa: `ensureFooterControls()` retira los controles
+                // que traer el servidor por `button[data-vf-action], #vfSubmit,
+                // .vf-footer-spacer`. Un hueco sin clase no entraba en ese
+                // selector, así que el primer paso acababa con DOS separadores
+                // (el del servidor y el que crea el JS) y el badge descentrado.
+                echo '<span class="vf-footer-spacer"></span>';
             }
             echo '<span class="vf-step-badge" aria-live="polite">' . $t('ui.paso') . ' <span class="vf-step-num">' . $pageBlockIdx . '</span> ' . $t('ui.de') . ' <span class="vf-step-total">' . $totalBlockCount . '</span></span>';
             if ($pageBlockIdx < $totalBlockCount) {
