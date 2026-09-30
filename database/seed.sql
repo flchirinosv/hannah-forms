@@ -38,6 +38,7 @@ INSERT INTO permissions (`key`, description) VALUES
     ('forms.edit_own','Editar, publicar, cerrar y configurar formularios propios'),
     ('forms.delete_own', 'Eliminar formularios propios'),
     ('forms.export_own', 'Exportar datos de formularios propios'),
+    ('forms.review', 'Aprobar o devolver formularios enviados a revisión'),
     ('analytics.view_own', 'Ver la analítica de formularios propios'),
     ('responses.view_own', 'Ver y eliminar respuestas de formularios propios'),
     ('attachments.download_own', 'Descargar adjuntos de formularios propios'),

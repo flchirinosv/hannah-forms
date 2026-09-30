@@ -461,6 +461,47 @@ $fieldTypes = [
                         </select>
                     </div>
                 </div>
+                <?php // F4 — Acceso. Es un SELECT y no un interruptor porque hay tres
+                      // modos y un interruptor no puede decir «cualquiera con un
+                      // correo» frente a «solo los de la lista»: confundirlos sería
+                      // un fallo de acceso, no una manía de la interfaz. La lista de
+                      // emails NO se edita aquí sino en la ficha del formulario
+                      // (`#access`), que es donde se ven los enlaces emitidos. ?>
+                <hr class="my-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="stAccessMode" class="form-label small fw-semibold">Quién puede responder</label>
+                        <select class="form-select form-select-sm" id="stAccessMode">
+                            <option value="public">Cualquiera con el enlace</option>
+                            <option value="email">Cualquiera que verifique su correo</option>
+                            <option value="allowlist">Solo los correos de la lista</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <p class="small text-muted mb-0 pt-md-4" id="stAccessHint"></p>
+                    </div>
+                </div>
+                <?php // F3 — Revisión/aprobación. Va al final, en su propia fila y con
+                      // su explicación, porque es el único ajuste de este panel que
+                      // cambia QUIÉN puede publicar el formulario. ?>
+                <hr class="my-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="stReviewEnabled">
+                            <label class="form-check-label small fw-semibold" for="stReviewEnabled">Exigir revisión antes de publicar</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="stReviewNotifyEmail">
+                            <label class="form-check-label small fw-semibold" for="stReviewNotifyEmail">Avisar por correo a los revisores</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="small text-muted mb-0" id="stReviewHint"></p>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>

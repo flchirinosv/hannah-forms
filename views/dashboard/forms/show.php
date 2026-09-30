@@ -31,6 +31,24 @@ use App\Core\View;
                     </div>
                     <p class="text-muted small mb-4"><?= View::escape($form['description'] ?: 'Sin descripción') ?></p>
 
+                    <?php // F3 — Traza de la revisión. Es lo que distingue «revisado» de
+                          // «nadie miró esto»: quién lo pidió y quién lo aprobó. Solo se
+                          // pinta si hay algo que contar. ?>
+                    <?php $reviewTrail = $reviewTrail ?? null; ?>
+                    <?php if (!empty($reviewTrail) && ($reviewTrail['solicitado'] !== null || $reviewTrail['aprobado'] !== null)): ?>
+                        <div class="alert alert-light border small mb-4">
+                            <div class="fw-semibold mb-1"><i class="fa-solid fa-clipboard-check me-1 text-primary"></i>Revisión</div>
+                            <ul class="list-unstyled mb-0 small text-muted">
+                                <?php if ($reviewTrail['solicitado'] !== null): ?>
+                                    <li><i class="fa-regular fa-clock me-1"></i>Enviado a revisión el <?= View::escape(View::datetime($reviewTrail['solicitado'])) ?></li>
+                                <?php endif; ?>
+                                <?php if ($reviewTrail['aprobado'] !== null): ?>
+                                    <li><i class="fa-solid fa-check me-1 text-success"></i>Aprobado<?= $reviewTrail['aprobador'] !== null ? ' por ' . View::escape($reviewTrail['aprobador']) : '' ?> el <?= View::escape(View::datetime($reviewTrail['aprobado'])) ?></li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+
                     <form method="post" action="/forms/<?= (int) $form['id'] ?>/update" id="formUpdate">
                         <?= \App\Core\Csrf::field() ?>
                         <div class="mb-3">
@@ -47,8 +65,48 @@ use App\Core\View;
                         <div class="col-sm-4">
                             <button type="submit" form="formUpdate" class="btn btn-primary w-100 app-btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
                         </div>
-                        <div class="<?= $canDelete ? 'col-sm-6' : 'col-sm-12' ?>">
-                            <?php if ($form['status'] === 'draft'): ?>
+                        <?php // F3 — Con revisión activa el dueño no tiene botón de publicar:
+                              // el que hay sería aprobarse a uno mismo. Se muestra el
+                              // de «enviar a revisión» en su lugar. ?>
+                        <?php $reviewRequired = $reviewRequired ?? false; ?>
+                        <?php $canReview = $canReview ?? false; ?>
+                        <?php if ($form['status'] === 'draft' && $reviewRequired): ?>
+                            <div class="col-sm-6">
+                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" id="formSendReview">
+                                    <?= \App\Core\Csrf::field() ?>
+                                    <button type="submit" class="btn btn-info w-100"><i class="fa-solid fa-paper-plane me-1"></i>Enviar a revisión</button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($form['status'] === 'in_review' && $canReview): ?>
+                            <div class="col-6 col-sm-3">
+                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove">
+                                    <?= \App\Core\Csrf::field() ?>
+                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
+                                </form>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" id="formReturnReview" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
+                                    <?= \App\Core\Csrf::field() ?>
+                                    <button type="submit" class="btn btn-outline-warning w-100"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                        <?php // Cuál es el hueco de la «acción principal» depende del estado:
+                              // con revisión activa y en borrador no la hay (el hueco lo
+                              // ocupa el envío a revisión), y en revisión sin permiso la
+                              // acción principal es un aviso, no un botón. ?>
+                        <?php $inReview = $form['status'] === 'in_review'; ?>
+                        <?php if ($inReview && !$canReview): ?>
+                            <div class="col-sm-6">
+                                <div class="alert alert-info mb-0 py-2 px-3 h-100 d-flex align-items-center">
+                                    <i class="fa-solid fa-hourglass-half me-2"></i>Esperando revisión. Volverá al borrador o se publicará.
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php $mainSlot = ($form['status'] === 'draft' && !$reviewRequired) || $form['status'] === 'published' || $form['status'] === 'closed'; ?>
+                        <div class="<?= $mainSlot || $inReview ? 'col-sm-6' : 'col-sm-12' ?>">
+                            <?php if ($form['status'] === 'draft' && !$reviewRequired): ?>
                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions">
                                     <?= \App\Core\Csrf::field() ?>
                                     <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-globe me-1"></i>Publicar</button>

@@ -139,6 +139,22 @@ return [
     'mail.conf_alt_base'    => 'Thanks for your response',
     'mail.conf_alt_in'      => ' for the form "{t}".',
     'mail.conf_dot'         => '.',
+    // F2 — password recovery
+    'mail.reset_subject'      => 'Change your password',
+    'mail.reset_title'        => 'Reset your password',
+    'mail.reset_hello'        => 'Hello {name},',
+    'mail.reset_body'         => 'We received a request to change the password on your account. Use the button below and choose a new one. If this was not you, you can ignore this email: the link expires in {ttl} hour(s) and was not used.',
+    'mail.reset_cta'          => 'Change my password',
+    'mail.reset_fallback'     => 'If the button does not work, copy this address into your browser:',
+    'mail.reset_ignore'       => 'If you did not request this change, ignore this message and your password will stay the same.',
+    // F3 — review request notice (optional: `settings.review.notify_email`)
+    'mail.review_subject'    => 'A form is waiting for review',
+    'mail.review_title'      => 'Form under review',
+    'mail.review_body'       => '{owner} sent a form for review. You can approve it (it gets published) or send it back to the owner as a draft.',
+    'mail.review_cta'        => 'Open the review inbox',
+    'mail.review_text'       => '{owner} sent the form "{title}" for review. Review it at {url}',
+    'mail.review_ignore'     => 'If you were not expecting this notice you can ignore it: the form is not published without your approval.',
+    'mail.reset_alt'          => 'To change your account password, open this address: {url}',
 
     // Submit errors (FillController)
     'err.too_many'      => 'Too many submissions. Try again in a few minutes.',

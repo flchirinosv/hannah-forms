@@ -11,6 +11,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\FillController;
 use App\Controllers\FormController;
 use App\Controllers\ResponsesController;
+use App\Controllers\ReviewController;
 use App\Core\Router;
 
 /** @var Router $router */
@@ -44,6 +45,30 @@ $router->post('/forms/{id}/update', [FormController::class, 'update'], ['auth', 
 $router->post('/forms/{id}/delete', [FormController::class, 'delete'], ['auth', 'csrf']);
 $router->post('/forms/{id}/publish', [FormController::class, 'publish'], ['auth', 'csrf']);
 $router->post('/forms/{id}/close', [FormController::class, 'close'], ['auth', 'csrf']);
+
+// F3 — Revisión/aprobación. El envío a revisión es del dueño (`auth` + el
+// `canEdit` de la acción); aprobar y devolver exigen `forms.review`, que se
+// comprueba DENTRO de la acción y no en el middleware: el middleware solo
+// conoce `auth`/`admin`/`editor`, y un permiso de la matriz no cabe ahí sin
+// enseñarle el catálogo entero a la lista de middlewares.
+$router->post('/forms/{id}/review/send', [ReviewController::class, 'sendReview'], ['auth', 'csrf']);
+$router->post('/forms/{id}/review/approve', [ReviewController::class, 'approve'], ['auth', 'csrf']);
+$router->post('/forms/{id}/review/return', [ReviewController::class, 'returnDraft'], ['auth', 'csrf']);
+$router->get('/review', [ReviewController::class, 'inbox'], ['auth']);
+
+// F4 — Acceso restringido. La parte pública NO lleva middleware `auth` (el
+// visitante no tiene sesión: por eso existe) y solo `csrf`, porque el formulario
+// de identificación es un POST normal con campo `_token`.
+// La variante `/embed` devuelve al embed para que el visitante se quede dentro
+// del iframe; el gate, el correo y el token son los mismos.
+$router->post('/f/{slug}/access', [AccessController::class, 'requestAccess'], ['csrf']);
+$router->post('/f/{slug}/access/embed', [AccessController::class, 'requestAccessEmbed'], ['csrf']);
+// La gestión de la lista es del dueño: `auth` + el `canEdit` de la acción, igual
+// que el resto de la configuración del formulario. `copyLink` devuelve JSON, así
+// que su CSRF va por cabecera (`csrf-header`) y no por campo.
+$router->post('/forms/{id}/access/email', [AccessController::class, 'addEmail'], ['auth', 'csrf']);
+$router->post('/forms/{id}/access/email/remove', [AccessController::class, 'removeEmail'], ['auth', 'csrf']);
+$router->post('/forms/{id}/access/link', [AccessController::class, 'copyLink'], ['auth', 'csrf-header']);
 // P7
 $router->post('/forms/{id}/duplicate', [FormController::class, 'duplicate'], ['auth', 'csrf']);
 $router->get('/forms/{id}/qr.svg', [FormController::class, 'qrSvg'], ['auth']);

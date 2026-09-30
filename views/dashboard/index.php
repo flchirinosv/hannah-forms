@@ -49,6 +49,19 @@ $relativeTs = static function (string $timestamp): string {
         <?php endforeach; ?>
     </div>
 
+    <?php // F3 — Aviso permanente de que hay algo en revisión. Va fuera de las
+          // tarjetas de conteo a propósito: los 4 tiles llenan la fila y meter un
+          // quinto solo cuando aplica deja una rejilla coja según el estado. ?>
+    <?php if (($stats['in_review'] ?? 0) > 0): ?>
+        <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2 px-3 small app-share-hint" role="alert">
+            <i class="fa-solid fa-hourglass-half"></i>
+            <span><?= (int) $stats['in_review'] ?> formulario<?= (int) $stats['in_review'] === 1 ? '' : 's' ?> en revisión: no se sirve al público hasta que se apruebe.</span>
+            <?php if ($canReview ?? false): ?>
+                <a href="/review" class="alert-link ms-auto">Ir a la bandeja de revisión <i class="fa-solid fa-arrow-right ms-1"></i></a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (empty($forms)): ?>
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-5">
@@ -70,6 +83,10 @@ $relativeTs = static function (string $timestamp): string {
                 <button type="button" class="btn btn-outline-secondary active" data-filter="all">Todos</button>
                 <button type="button" class="btn btn-outline-secondary" data-filter="published">Publicados</button>
                 <button type="button" class="btn btn-outline-secondary" data-filter="draft">Borradores</button>
+                <?php // F3 — Su propio filtro: un formulario en revisión NO es un borrador
+                      // y filtrarlo con los borradores lo escondería de quien tiene
+                      // la tarea de aprobarlo. ?>
+                <button type="button" class="btn btn-outline-secondary" data-filter="in_review">En revisión</button>
                 <button type="button" class="btn btn-outline-secondary" data-filter="closed">Cerrados</button>
             </div>
             <select id="dashSort" class="form-select form-select-sm app-dash-sort" aria-label="Ordenar">
@@ -98,7 +115,7 @@ $relativeTs = static function (string $timestamp): string {
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between mb-2">
                             <span class="app-status app-status-<?= View::escape($form['status']) ?>">
-                                <?= ucfirst(View::escape($form['status'])) ?>
+                                <?= $form['status'] === 'in_review' ? 'En revisión' : ucfirst(View::escape($form['status'])) ?>
                             </span>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="app-sub-count small text-muted d-none d-sm-inline">
@@ -112,11 +129,44 @@ $relativeTs = static function (string $timestamp): string {
                                         <li><a class="dropdown-item" href="#" data-role="copy" data-url="<?= View::escape($publicUrl) ?>"><i class="fa-solid fa-link me-2 text-muted"></i>Copiar enlace</a></li>
                                         <li><a class="dropdown-item" href="<?= $publicUrl ?>" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square me-2 text-muted"></i>Abrir público</a></li>
                                         <li><hr class="dropdown-divider"></li>
+                                        <?php // F3 — La bandera se lee del JSON de `settings` que YA
+                                              // viene en la fila (`f.*`): llamar aquí a
+                                              // `Form::settings()` por formulario serían N consultas
+                                              // en cada carga del dashboard, y el listado está
+                                              // cacheado precisamente para no pagarlas. ?>
+                                        <?php $needsReview = !empty(\App\Models\Form::settingsFrom($form)['review']['enabled']); ?>
                                         <?php if ($form['status'] === 'draft' || $form['status'] === 'closed'): ?>
+                                            <?php // Un formulario con revisión no ofrece «Publicar»: el botón
+                                                  // solo produciría un error de vuelta. ?>
+                                            <?php if ($form['status'] === 'draft' && $needsReview): ?>
+                                                <li>
+                                                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" class="m-0">
+                                                        <?= \App\Core\Csrf::field() ?>
+                                                        <button type="submit" class="dropdown-item"><i class="fa-solid fa-paper-plane me-2 text-info"></i>Enviar a revisión</button>
+                                                    </form>
+                                                </li>
+                                            <?php else: ?>
+                                                <li>
+                                                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" class="m-0">
+                                                        <?= \App\Core\Csrf::field() ?>
+                                                        <button type="submit" class="dropdown-item"><i class="fa-solid fa-globe me-2 text-success"></i><?= $form['status'] === 'closed' ? 'Reabrir' : 'Publicar' ?></button>
+                                                    </form>
+                                                </li>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                        <?php // F3 — Aprobar/devolver desde la propia tarjeta, que es
+                                              // donde el revisor ya está mirando. ?>
+                                        <?php if ($form['status'] === 'in_review' && ($canReview ?? false)): ?>
                                             <li>
-                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" class="m-0">
+                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" class="m-0">
                                                     <?= \App\Core\Csrf::field() ?>
-                                                    <button type="submit" class="dropdown-item"><i class="fa-solid fa-globe me-2 text-success"></i><?= $form['status'] === 'closed' ? 'Reabrir' : 'Publicar' ?></button>
+                                                    <button type="submit" class="dropdown-item"><i class="fa-solid fa-check me-2 text-success"></i>Aprobar</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" class="m-0" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
+                                                    <?= \App\Core\Csrf::field() ?>
+                                                    <button type="submit" class="dropdown-item"><i class="fa-solid fa-rotate-left me-2 text-warning"></i>Devolver a borrador</button>
                                                 </form>
                                             </li>
                                         <?php endif; ?>

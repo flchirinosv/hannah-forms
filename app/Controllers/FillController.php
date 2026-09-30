@@ -53,6 +53,16 @@ class FillController
             return;
         }
 
+        // F3 — En revisión se responde con una página informativa, NO con un 404:
+        // quien tiene el enlace (se lo enviaron por correo) tiene que entender
+        // que el formulario existe y que no está listo, en vez de pensar que el
+        // enlace está roto o que le han timado.
+        if ($form['status'] === 'in_review') {
+            $locale = I18n::forRequest(Form::settings((int) $form['id']));
+            View::render('fill/in_review', ['form' => $form, 'locale' => $locale], null);
+            return;
+        }
+
         $settings = Form::settings((int) $form['id']);
 
         // P6 — Disponibilidad por calendario/cupo antes de mostrar el formulario.

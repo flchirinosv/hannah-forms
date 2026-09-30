@@ -311,12 +311,51 @@ class BuilderController
                     Response::json(['ok' => false, 'error' => 'El título no puede superar los 190 caracteres.'], 422);
                     return;
                 }
+
+                // F3 — El builder NO es una puerta de publicación. Sin esto, el
+                // gate de `FormController::publish()` era evitable: el dueño
+                // guardaba la estructura con `status: "published"` y se
+                // saltaba la revisión entera. Además, si el formulario ya estaba
+                // publicado y el dueño edita su contenido, la aprobación deja de
+                // corresponder a lo aprobado, así que vuelve a la cola en vez de
+                // quedarse publicado con cambios que nadie miró.
+                //
+                // Se resuelve la bandera con los settings que VIENEN en este
+                // mismo POST si los hay, y no con los ya guardados: el dueño
+                // puede activar la revisión y guardar a la vez, y en ese mismo
+                // POST el estado ya tiene que quedar sujeto a ella.
+                $reviewRequired = self::reviewRequiredAfterSave(
+                    isset($body['settings']) && is_array($body['settings']) ? $body['settings'] : null,
+                    (int) $form['id']
+                );
+
+                $requeuedForReview = false;
+                if ($reviewRequired) {
+                    if ($form['status'] === 'published') {
+                        $status = 'in_review';
+                        $requeuedForReview = true;
+                    } elseif ($status === 'published') {
+                        // Ignorar el `published` pedido: publicar sin revisión es
+                        // `/forms/{id}/publish` (que da un mensaje explicando el
+                        // motivo), no un campo de un formulario oculto.
+                        $status = $form['status'];
+                    }
+                }
+
                 Form::update(
                     (int) $form['id'],
                     $title,
                     trim((string) $body['description']),
                     $status
                 );
+
+                // `Form::update()` solo toca la columna `status`, así que sin
+                // esto la aprobación anterior seguiría puesta sobre un contenido
+                // distinto del aprobado. Va DENTRO de la transacción: si el resto
+                // del guardado falla, no queda una fila a medio camino.
+                if ($requeuedForReview) {
+                    Form::submitForReview((int) $form['id']);
+                }
             }
 
             // P1: settings del formulario (fuente única). Opcional: si no vienen,
@@ -361,6 +400,22 @@ class BuilderController
             Response::json(['ok' => false, 'error' => 'Ocurrió un error al guardar. Intenta de nuevo.'], 500);
             return;
         }
+    }
+
+    /**
+     * F3 — ¿Quedará este formulario sujeto a revisión tras este guardado?
+     *
+     * `null` de settings entrantes significa «no vienen en este POST»: entonces
+     * manda lo que hay guardado, y se normaliza igual para no distinguir entre
+     * un `true` y un `"1"` de un POST antiguo.
+     */
+    private static function reviewRequiredAfterSave(?array $incoming, int $formId): bool
+    {
+        $settings = $incoming !== null
+            ? \App\Services\FormSettings::normalize($incoming)
+            : Form::settings($formId);
+
+        return !empty($settings['review']['enabled']);
     }
 
     /**

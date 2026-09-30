@@ -1984,6 +1984,16 @@
             st('stHoneypotEnabled').checked = !!(s.honeypot && s.honeypot.enabled);
             st('stAntiBotEnabled').checked = !!(s.anti_bot && s.anti_bot.enabled);
             st('stLocale').value = (s.locale && s.locale.code) || 'es';
+            st('stReviewEnabled').checked = !!(s.review && s.review.enabled);
+            st('stReviewNotifyEmail').checked = !!(s.review && s.review.notify_email);
+            // F4 — un valor desconocido cae a 'public' (mismo criterio que
+            // FormSettings::normalize()): es el default historico y el que deja
+            // el formulario sirviendo en vez de cerrarlo por un dato raro.
+            st('stAccessMode').value = (s.access && ['public', 'email', 'allowlist'].indexOf(s.access.mode) !== -1)
+                ? s.access.mode
+                : 'public';
+            updateAccessHint();
+            updateReviewHint();
         }
 
         function collectSettingsFromModal() {
@@ -2027,6 +2037,52 @@
             };
         }
 
+        /**
+         * F4 — Explica el modo de acceso en el sitio, porque los tres no se
+         * distinguen solos: 'email' y 'allowlist' los dos piden un correo y
+         * mandan un enlace, y la diferencia (si el correo tiene que estar en una
+         * lista) es justo la que decide si alguien se queda esperando un correo
+         * que no va a llegar. El aviso de que cambiar el modo NO abre el
+         * formulario al que ya estaba restringido viene en los dos modos
+         * cerrados, que es donde se puede cambiar sin querer.
+         */
+        function updateAccessHint() {
+            const hint = st('stAccessHint');
+            const sel = st('stAccessMode');
+            if (!hint || !sel) return;
+            if (sel.value === 'public') {
+                hint.textContent = 'Sin identificacion: cualquiera con el enlace responde.';
+                return;
+            }
+            if (sel.value === 'email') {
+                hint.textContent = 'Pide un correo y envia un enlace. No hay lista: cualquier correo valido entra. '
+                    + 'Quitar el modo deja de exigir el enlace de inmediato.';
+                return;
+            }
+            hint.textContent = 'Solo los correos de la lista (se edita en la ficha del formulario) reciben un enlace. '
+                + 'La lista vacia cierra el formulario a todo el mundo.';
+        }
+
+        /**
+         * F3 — Explica el efecto de la revision sin pedir que lo lean las notas.
+         * El aviso por correo se explica aparte porque es el que mas sorprende:
+         * activar la revision y no enterarse de que no hay aviso por correo es
+         * como se queda un formulario esperando a un revisor que nunca sabe.
+         */
+        function updateReviewHint() {
+            const hint = st('stReviewHint');
+            if (!hint) return;
+            const on = st('stReviewEnabled').checked;
+            if (!on) {
+                hint.textContent = 'Desactivado: publicas directamente, como hasta ahora.';
+                return;
+            }
+            const mail = st('stReviewNotifyEmail').checked
+                ? 'Se avisara por correo a quien tenga el permiso de revision.'
+                : 'Solo aparecera en la bandeja de revision del panel, sin correo.';
+            hint.textContent = 'El boton Publicar desaparece y el formulario espera en la bandeja. Editarlo de nuevo lo devuelve a la cola. ' + mail;
+        }
+
         function toLocalInput(iso) {
             if (!iso) return '';
             const d = new Date(String(iso).replace(' ', 'T'));
@@ -2063,6 +2119,15 @@
                 }
                 markDirty();
                 showToast('Configuración aplicada. Se guardará en el siguiente guardado.', 'success');
+            });
+            // F3 — el texto de ayuda cambia con el toggle, asi que se escucha el
+            // checkbox y no solo se pinta al abrir el modal.
+            if (st('stAccessMode')) {
+                st('stAccessMode').addEventListener('change', updateAccessHint);
+            }
+
+            ['stReviewEnabled', 'stReviewNotifyEmail'].forEach((id) => {
+                if (st(id)) st(id).addEventListener('change', updateReviewHint);
             });
         }
 

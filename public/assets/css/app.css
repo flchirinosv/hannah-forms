@@ -178,6 +178,8 @@ body {
 .app-status-published { background: #dcfce7; color: #166534; }
 .app-status-draft     { background: #fef3c7; color: #92400e; }
 .app-status-closed    { background: #fee2e2; color: #991b1b; }
+/* F3 — `in_review` lleva guion bajo porque es el valor crudo de la columna ENUM. */
+.app-status-in_review { background: #e0e7ff; color: #3730a3; }
 .app-status::before {
     content: '';
     width: 7px; height: 7px;

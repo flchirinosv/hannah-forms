@@ -189,8 +189,24 @@ class FormController
             return;
         }
 
-        Form::update($id, $title, $description, $form['status']);
-        Session::flash('success', 'Formulario actualizado.');
+        // F3 — Misma regla que el builder: si el formulario exige revisión y ya
+        // está publicado, cambiar su contenido (aquí, título y descripción) lo
+        // devuelve a la cola. Cerrar la puerta en el builder y no en esta deja un
+        // «cambia el título por aquí y publícalo sin que nadie lo mire».
+        $requeued = self::reviewRequired($form) && $form['status'] === 'published';
+
+        Form::update(
+            $id,
+            $title,
+            $description,
+            $requeued ? 'in_review' : $form['status']
+        );
+        if ($requeued) {
+            Form::submitForReview($id);
+        }
+        Session::flash('success', $requeued
+            ? 'Formulario actualizado. Como exige revisión, ha vuelto a la cola.'
+            : 'Formulario actualizado.');
         Response::redirect('/forms/' . $id);
         return;
     }
@@ -258,6 +274,16 @@ class FormController
         }
         if (!$this->canEdit($form, (int) $user['id'])) {
             Response::forbidden();
+            return;
+        }
+
+        // F3 — Si el formulario exige revisión, publicar desde aquí la saltaría
+        // entera: el botón «Publicar» que el dueño tiene delante equivaldría a
+        // aprobarse a uno mismo. Se rechaza con un mensaje que dice qué hacer en
+        // su lugar, en vez de un 403 mudo (que el dueño no sabría interpretar).
+        if (self::reviewRequired($form)) {
+            Session::flash('error', 'Este formulario exige revisión: envíalo a revisión para que lo apruebe alguien con el permiso.');
+            Response::redirect('/forms/' . $id);
             return;
         }
 
@@ -461,5 +487,19 @@ class FormController
     private function canDelete(array $form, int $userId): bool
     {
         return Access::canDelete((int) $form['user_id']);
+    }
+
+    /**
+     * F3 — ¿Este formulario exige aprobación antes de publicarse?
+     *
+     * Se lee del setting normalizado y NO del JSON crudo, porque quien decide
+     * es lo que se guardó: un `settings.review.enabled` a `"1"` de un POST
+     * antiguo tiene que contar igual que un `true`. `Form::settings()` ya
+     * normaliza, así que aquí solo se comprueba la bandera.
+     */
+    public static function reviewRequired(array $form): bool
+    {
+        $settings = Form::settings((int) $form['id']);
+        return !empty($settings['review']['enabled']);
     }
 }

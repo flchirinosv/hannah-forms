@@ -151,6 +151,26 @@ final class FormSettings
             $out['randomize']['questions'] = (bool) ($raw['randomize']['questions'] ?? false);
         }
 
+        // F3 — el bloque `review` NO entra en el foreach de arriba porque tiene
+        // dos claves, no una: `enabled` (este formulario exige aprobación) y
+        // `notify_email` (avisar por correo a los revisores). El aviso es
+        // independiente del toggle a propósito: se puede querer el correo sin
+        // revisión, yviceversa no tiene sentido (no hay a quién avisar).
+        if (isset($raw['review']) && is_array($raw['review'])) {
+            $out['review']['enabled'] = (bool) ($raw['review']['enabled'] ?? false);
+            $out['review']['notify_email'] = (bool) ($raw['review']['notify_email'] ?? false);
+        }
+
+        // F4 — el MODO de acceso se normaliza contra la lista blanca. Cualquier
+        // valor desconocido cae en `public`, que es el default histórico: una
+        // fila corrupta deja de pedir identificación en vez de dejar el
+        // formulario cerrado para siempre (y se ve al instante, no de forma
+        // silenciosa para el visitante).
+        if (isset($raw['access']) && is_array($raw['access']) && isset($raw['access']['mode'])) {
+            $mode = (string) $raw['access']['mode'];
+            $out['access']['mode'] = in_array($mode, self::ACCESS_MODES, true) ? $mode : self::ACCESS_PUBLIC;
+        }
+
         if (isset($raw['locale']) && is_array($raw['locale']) && isset($raw['locale']['code'])) {
             $code = (string) $raw['locale']['code'];
             $out['locale']['code'] = in_array($code, self::LOCALES, true) ? $code : 'es';

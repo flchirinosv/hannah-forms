@@ -56,12 +56,17 @@ CREATE TABLE IF NOT EXISTS forms (
     title       VARCHAR(190) NOT NULL,
     description TEXT DEFAULT NULL,
     slug        VARCHAR(190) NOT NULL UNIQUE,
-    status      ENUM('draft','published','closed') NOT NULL DEFAULT 'draft',
+    status      ENUM('draft','in_review','published','closed') NOT NULL DEFAULT 'draft',
+    -- F3 — traza de la revisión. NULL = nunca se pidió/approbó.
+    review_requested_at DATETIME DEFAULT NULL COMMENT 'Instante UTC en que se envió a revisión',
+    reviewed_at DATETIME DEFAULT NULL COMMENT 'Instante UTC de la aprobación',
+    reviewed_by INT UNSIGNED DEFAULT NULL COMMENT 'Usuario con forms.review que aprobó',
     theme       JSON DEFAULT NULL,
     settings    JSON DEFAULT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_forms_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_forms_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_forms_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Fields

@@ -246,6 +246,120 @@ class Form
         self::bumpDashboardCache();
     }
 
+    // ---- F3: revisión/aprobación ----
+
+    /**
+     * F3 — Lleva el formulario a `in_review`.
+     *
+     * Borra la aprobación anterior (`reviewed_at`/`reviewed_by`) porque si un
+     * formulario ya publicado se vuelve a mandar a revisión, su aprobación es
+     * de una versión que ya no existe: dejarla pondría "aprobado por X" sobre un
+     * contenido que nadie miró.
+     */
+    public static function submitForReview(int $id): void
+    {
+        self::db()->execute(
+            "UPDATE forms
+             SET status = 'in_review',
+                 review_requested_at = UTC_TIMESTAMP(),
+                 reviewed_at = NULL,
+                 reviewed_by = NULL
+             WHERE id = :id",
+            ['id' => $id]
+        );
+        self::bumpDashboardCache();
+    }
+
+    /**
+     * F3 — Aprueba y publica. Deja constancia de QUIÉN y CUÁNDO, que es lo que
+     * convierte la revisión en una traza y no en un clic anónimo.
+     */
+    public static function approve(int $id, int $reviewerId): void
+    {
+        self::db()->execute(
+            "UPDATE forms
+             SET status = 'published',
+                 reviewed_at = UTC_TIMESTAMP(),
+                 reviewed_by = :by
+             WHERE id = :id",
+            ['id' => $id, 'by' => $reviewerId]
+        );
+        self::bumpDashboardCache();
+    }
+
+    /**
+     * F3 — Devuelve el formulario a `draft` sin publicarlo.
+     *
+     * `review_requested_at` se borra: el formulario sale así de la cola de
+     * «esperando revisión» del panel, que es lo que espera quien lo devuelve.
+     * La fecha del último intento no se archiva en ninguna otra parte porque no
+     * hay historial de revisiones en F3: el log de seguridad es el que guarda
+     * el rastro, y este método no lo escribe (el controlador, que es quien sabe
+     * si el cambio tiene sentido).
+     */
+    public static function returnToDraft(int $id): void
+    {
+        self::db()->execute(
+            "UPDATE forms
+             SET status = 'draft',
+                 review_requested_at = NULL,
+                 reviewed_at = NULL,
+                 reviewed_by = NULL
+             WHERE id = :id",
+            ['id' => $id]
+        );
+        self::bumpDashboardCache();
+    }
+
+    /**
+     * F3 — Formularios esperando revisión, del más antiguo al más reciente.
+     *
+     * Lo primero que se ordena por `review_requested_at` es "más antiguo", y
+     * no "más nuevo", porque la pregunta de quien revisa es «¿qué lleva más
+     * tiempo parado?». Un NULL (filararía de un `status` cambiado a mano)
+     * queda el último con `IS NULL` al final en MySQL: se ordenan al final en
+     * vez de construed como los más antiguos.
+     *
+     * @return array<int,array>
+     */
+    public static function pendingReviews(): array
+    {
+        return self::db()->fetchAll(
+            "SELECT f.id, f.title, f.description, f.slug, f.status, f.review_requested_at,
+                    u.name AS owner_name, u.email AS owner_email
+             FROM forms f
+             JOIN users u ON u.id = f.user_id
+             WHERE f.status = 'in_review'
+             ORDER BY f.review_requested_at IS NULL, f.review_requested_at ASC, f.id ASC"
+        );
+    }
+
+    /**
+     * F3 — Traza de la revisión de un formulario para la tarjeta del panel:
+     * quién lo pidió, quién lo aprobó y cuándo.
+     *
+     * @return array{solicitado: ?string, aprobado: ?string, aprobador: ?string}
+     */
+    public static function reviewTrail(int $id): array
+    {
+        $row = self::db()->fetch(
+            "SELECT f.review_requested_at, f.reviewed_at, u.name AS approver
+             FROM forms f
+             LEFT JOIN users u ON u.id = f.reviewed_by
+             WHERE f.id = :id",
+            ['id' => $id]
+        );
+        if ($row === null) {
+            return ['solicitado' => null, 'aprobado' => null, 'aprobador' => null];
+        }
+
+        return [
+            'solicitado' => $row['review_requested_at'] === null ? null : (string) $row['review_requested_at'],
+            'aprobado'   => $row['reviewed_at'] === null ? null : (string) $row['reviewed_at'],
+            'aprobador'  => $row['approver'] === null ? null : (string) $row['approver'],
+        ];
+    }
+
     public static function submissionCount(int $formId): int
     {
         $row = self::db()->fetch('SELECT COUNT(*) AS c FROM submissions WHERE form_id = :id', ['id' => $formId]);

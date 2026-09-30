@@ -47,6 +47,10 @@ class FormSettingsTest
         assertArrayHasKey('randomize', $d);
         assertArrayHasKey('embed', $d);
         assertArrayHasKey('honeypot', $d);
+        // F3
+        assertArrayHasKey('review', $d);
+        assertSame(false, $d['review']['enabled']);
+        assertSame(false, $d['review']['notify_email']);
         assertArrayHasKey('locale', $d);
         assertSame(['es', 'en'], FormSettings::LOCALES);
     }

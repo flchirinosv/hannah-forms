@@ -141,6 +141,10 @@ final class SecurityLog
             'admin.role_matrix',
             'form.delete',
             'form.duplicate',
+            'form.review_request',
+            'form.review_approve',
+            'form.review_reject',
+            'form.review_no_reviewer',
         ];
     }
 

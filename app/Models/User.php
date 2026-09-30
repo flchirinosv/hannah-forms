@@ -68,6 +68,46 @@ class User
         return self::db()->lastInsertId();
     }
 
+    /**
+     * F3 — Usuarios con el permiso `forms.review`, para el aviso de revisión.
+     *
+     * Reproduce la regla de permisos efectivos de `Auth` (rol propio + roles de
+     * los grupos) en UNA consulta con dos `EXISTS`, y no con un bucle que llame
+     * a `Role::effectivePermissionKeys()` por usuario: con 200 usuarios eso son
+     * 600 consultas en cada envío de aviso, y el aviso se dispara en el camino
+     * de un POST normal del dueño.
+     *
+     * Filtra `is_active = 1` porque avisar a una cuenta desactivada no sirve de
+     * nada y deja la dirección en manos de alguien que ya no entra.
+     *
+     * @return array<int,array{id:int,name:string,email:string}>
+     */
+    public static function reviewers(): array
+    {
+        return self::db()->fetchAll(
+            "SELECT u.id, u.name, u.email
+             FROM users u
+             WHERE u.is_active = 1
+               AND (
+                   EXISTS (
+                       SELECT 1
+                       FROM role_permissions rp
+                       JOIN permissions p ON p.id = rp.permission_id
+                       WHERE rp.role_id = u.role_id AND p.`key` = 'forms.review'
+                   )
+                   OR EXISTS (
+                       SELECT 1
+                       FROM role_group_users rgu
+                       JOIN role_group_roles rgr ON rgr.group_id = rgu.group_id
+                       JOIN role_permissions rp ON rp.role_id = rgr.role_id
+                       JOIN permissions p ON p.id = rp.permission_id
+                       WHERE rgu.user_id = u.id AND p.`key` = 'forms.review'
+                   )
+               )
+             ORDER BY u.id"
+        );
+    }
+
     public static function all(): array
     {
         return self::db()->fetchAll(

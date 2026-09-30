@@ -50,6 +50,7 @@ class DashboardController
             'published'   => 0,
             'draft'       => 0,
             'closed'      => 0,
+            'in_review'   => 0,
             'submissions' => 0,
         ];
 
@@ -59,11 +60,18 @@ class DashboardController
             $stats['submissions'] += (int) ($form['submissions_count'] ?? 0);
         }
 
+        // F3 — El contador sale del mismo listado ya cacheado, no de una consulta
+        // propia: si el listado va cacheado y el contador no, la tarjeta y el
+        // aviso discreparían hasta un minuto después de una revisión.
         View::render('dashboard/index', [
             'csrf'  => Csrf::token(),
             'user'  => $user,
             'forms' => $forms,
             'stats' => $stats,
+            // F3 — Solo quien puede aprobar ve los botones de acción; el aviso
+            // de «hay N esperando» lo ve cualquiera con formularios en alcance,
+            // porque también tiene que saber por qué uno no aparece publicado.
+            'canReview' => Auth::can('forms.review'),
             // V5 — Serie de actividad para el sparkline de cada tarjeta (días
             // locales, consulta única para todos los forms de la página).
             'activity' => Submission::activityByForms(array_map(

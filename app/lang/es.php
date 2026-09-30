@@ -140,6 +140,22 @@ return [
     'mail.conf_alt_base'    => 'Gracias por tu respuesta',
     'mail.conf_alt_in'      => ' en el formulario «{t}».',
     'mail.conf_dot'         => '.',
+    // F2 — recuperación de contraseña
+    'mail.reset_subject'      => 'Cambia tu contraseña',
+    'mail.reset_title'        => 'Restablecer tu contraseña',
+    'mail.reset_hello'        => 'Hola {name},',
+    'mail.reset_body'         => 'Recibimos una petición para cambiar la contraseña de tu cuenta. Pulsa el botón de abajo y elige una nueva. Si no fuiste tú, puedes ignorar este correo: el enlace caduca en {ttl} hora(s) y no se usou.',
+    'mail.reset_cta'          => 'Cambiar mi contraseña',
+    'mail.reset_fallback'     => 'Si el botón no funciona, copia esta dirección en tu navegador:',
+    'mail.reset_ignore'       => 'Si no solicitaste este cambio, ignora este mensaje y tu contraseña seguirá siendo la misma.',
+    // F3 — Aviso de revisión (opcional: `settings.review.notify_email`)
+    'mail.review_subject'    => 'Hay un formulario esperando revisión',
+    'mail.review_title'      => 'Formulario en revisión',
+    'mail.review_body'       => '{owner} ha enviado un formulario a revisión. Puedes aprobarlo (se publica) o devolverlo al dueño como borrador.',
+    'mail.review_cta'        => 'Abrir la bandeja de revisión',
+    'mail.review_text'       => '{owner} ha enviado a revisión el formulario «{title}». Revísalo en {url}',
+    'mail.review_ignore'     => 'Si no esperabas este aviso, no tienes que hacer nada: el formulario no se publica sin tu aprobación.',
+    'mail.reset_alt'          => 'Para cambiar la contraseña de tu cuenta, abre esta dirección: {url}',
 
     // Errores de envío (FillController submit)
     'err.too_many'     => 'Demasiados envíos. Intenta de nuevo en unos minutos.',

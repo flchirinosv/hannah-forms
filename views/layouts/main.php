@@ -34,6 +34,12 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link <?= $currentPath === '/dashboard' || $currentPath === '/' ? 'active' : '' ?>" href="/dashboard"><i class="fa-solid fa-gauge me-1"></i>Dashboard</a></li>
+                <?php // F3 — La bandeja solo aparece a quien puede aprobar. Sin este
+                      // gate en la vista, el enlace y un 403: la navegación
+                      // prometería una pantalla que el usuario no puede abrir. ?>
+                <?php if ($currentUser && \App\Core\Auth::can('forms.review')): ?>
+                <li class="nav-item"><a class="nav-link <?= $currentPath === '/review' ? 'active' : '' ?>" href="/review"><i class="fa-solid fa-clipboard-check me-1"></i>Revisión</a></li>
+                <?php endif; ?>
                 <?php if ($currentUser && \App\Core\Auth::can('admin.access')): ?>
                 <li class="nav-item"><a class="nav-link <?= str_starts_with($currentPath, '/admin') ? 'active' : '' ?>" href="/admin"><i class="fa-solid fa-user-gear me-1"></i>Administración</a></li>
                 <?php endif; ?>
@@ -53,6 +59,9 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                     <ul class="dropdown-menu dropdown-menu-end shadow">
                         <li><span class="dropdown-item-text small text-muted"><?= View::escape($currentUser['email'] ?? '') ?></span></li>
                         <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/account/password"><i class="fa-solid fa-user-shield me-1"></i>Seguridad de la cuenta</a>
+                        </li>
                         <li>
                             <form method="post" action="/logout">
                                 <?= \App\Core\Csrf::field() ?>

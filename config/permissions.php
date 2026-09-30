@@ -38,6 +38,13 @@ return [
     'forms.delete_own'      => ['Eliminar formularios propios', ['admin', 'user']],
     'forms.export_own'      => ['Exportar datos de formularios propios', ['admin', 'user', 'editor']],
 
+    // F3 — revisión/aprobación. NO lleva sufijo `_own` por la misma razón que
+    // `responses.pii`: no decide el alcance (a qué formularios se llega, eso es
+    // `forms.edit_own` / `forms.manage_all`), sino si quien llega puede APROBAR.
+    // Por defecto solo admin: publicar un formulario de otra persona es el acto
+    // con más consecuencias de la app (decide si un texto se hace público).
+    'forms.review'          => ['Aprobar o devolver formularios enviados a revisión', ['admin']],
+
     // Analítica, respuestas y adjuntos de formularios propios.
     'analytics.view_own'    => ['Ver la analítica de formularios propios', ['admin', 'user', 'editor']],
     'responses.view_own'    => ['Ver y eliminar respuestas de formularios propios', ['admin', 'user', 'editor']],
