@@ -122,7 +122,7 @@ class ControllerActionsTest
         if (in_array('guest', $mw, true)) {
             Session::remove('user_id');
         } else {
-            Session::set('user_id', (int) self::$adminId);
+            Auth::assumeLoggedIn((int) self::$adminId);
         }
         Auth::forgetCache();
 

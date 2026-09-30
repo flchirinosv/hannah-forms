@@ -391,9 +391,11 @@ class P9TemplatesTest
         $_POST = $post;
 
         // Sesión de prueba: usuario dueño de los formularios que se crean.
-        $user = \App\Models\User::find((int) self::$userId);
-        $_SESSION['user_id'] = (int) self::$userId;
-        unset($user);
+        // `assumeLoggedIn()` y no `$_SESSION['user_id']` a pelo: desde F2 una
+        // sesión SIN `auth_at` se cierra (no hay forma de comprobar de qué
+        // credencial viene), así que poner solo `user_id` funcionaba únicamente si otro
+        // test había dejado un `auth_at` suelto en `$_SESSION`.
+        \App\Core\Auth::assumeLoggedIn((int) self::$userId);
         \App\Core\Auth::forgetCache();
     }
 
@@ -402,7 +404,9 @@ class P9TemplatesTest
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REMOTE_ADDR'] = '198.51.100.9';
         $_SERVER['HTTP_USER_AGENT'] = 'P9TemplatesTest';
-        $_SESSION['user_id'] = (int) self::$userId;
+        // Ver `setPostEnVio()`: hace falta `assumeLoggedIn()` (que fija también
+        // `auth_at`), no solo `user_id`.
+        \App\Core\Auth::assumeLoggedIn((int) self::$userId);
         \App\Core\Auth::forgetCache();
         return \App\Core\Auth::user();
     }

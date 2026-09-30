@@ -55,7 +55,7 @@ class SecurityLogTest
 
     public function testRecordConUsuarioInexistenteGuardaConUserNull(): void
     {
-        Session::set('user_id', 999999999); // no existe
+        Auth::assumeLoggedIn(999999999); // no existe
         Auth::forgetCache();
 
         SecurityLog::record('form.delete', 'marca-slog-a');
@@ -66,7 +66,7 @@ class SecurityLogTest
 
     public function testRecordConUsuarioRealGuardaElId(): void
     {
-        Session::set('user_id', self::$userId);
+        Auth::assumeLoggedIn(self::$userId);
         Auth::forgetCache();
 
         SecurityLog::record('form.delete', 'marca-slog-b');

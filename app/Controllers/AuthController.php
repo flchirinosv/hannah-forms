@@ -29,8 +29,13 @@ class AuthController
      *
      * Es un bcrypt real de PASSWORD_DEFAULT a propósito: un hash inventado o
      * más barato (md5) devolvería antes y volvería a delatar la diferencia.
+     *
+     * F2: `public` porque `AccountController` lo usa también, al cambiar la
+     * contraseña desde la sesión y al aplanar el tiempo de `/forgot-password`.
+     * Es la MISMA constante y no una copia: dos señuelos con distinto coste
+     * volverían a delatar la diferencia de tiempos que existen para tapar.
      */
-    private const DUMMY_HASH = '$2y$12$z0PiH/0pr1y5CX2qWa9S6ec4Cw9eMuNODP2I8F.k9OTEkKh5I/RRu';
+    public const DUMMY_HASH = '$2y$12$z0PiH/0pr1y5CX2qWa9S6ec4Cw9eMuNODP2I8F.k9OTEkKh5I/RRu';
 
     /**
      * Mínimo de contraseña al registrarse.
@@ -40,8 +45,13 @@ class AuthController
      * propia contraseña documentada. Con 10 el mínimo sigue siendo firme y el
      * seed sigue funcionando; el hash del seed es bcrypt coste 12, que es la
      * mitad del trabajo.
+     *
+     * F2: `public` y compartido con `AccountController`: el mínimo de una
+     * contraseña fijada por recuperación tiene que ser el MISMO que el del
+     * registro, o se podría fijar por aquí una contraseña que el registro
+     * rechazaría. También la usa `views/auth/register.php`.
      */
-    private const PASSWORD_MIN = 10;
+    public const PASSWORD_MIN = 10;
 
     public function showLogin(): void
     {

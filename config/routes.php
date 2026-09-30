@@ -22,6 +22,17 @@ $router->get('/register', [AuthController::class, 'showRegister'], ['guest']);
 $router->post('/register', [AuthController::class, 'register'], ['guest', 'csrf']);
 $router->post('/logout', [AuthController::class, 'logout'], ['auth', 'csrf']);
 
+// F2 — Recuperación y cambio de contraseña.
+// `/reset-password` NO lleva middleware `guest`: el enlace del correo se abre en
+// un navegador que puede tener sesión iniciada, y `guest` lo redirigiría a
+// /dashboard sin mostrar nunca el formulario (el enlace parecería roto).
+$router->get('/forgot-password', [AccountController::class, 'showForgot'], ['guest']);
+$router->post('/forgot-password', [AccountController::class, 'sendReset'], ['guest', 'csrf']);
+$router->get('/reset-password', [AccountController::class, 'showReset']);
+$router->post('/reset-password', [AccountController::class, 'doReset'], ['csrf']);
+$router->get('/account/password', [AccountController::class, 'showPassword'], ['auth']);
+$router->post('/account/password', [AccountController::class, 'changePassword'], ['auth', 'csrf']);
+
 // Dashboard
 $router->get('/dashboard', [DashboardController::class, 'index'], ['auth']);
 $router->get('/', [DashboardController::class, 'index'], ['auth']);

@@ -24,8 +24,13 @@ class User
 
     public static function find(int $id): ?array
     {
+        // F2: `password_changed_at` va aquí porque `Auth::login()` lo necesita
+        // para fechar su propia sesión. Falta, el `auth_at` se queda en
+        // `time()` a secas y un login hecho en el MISMO segundo que un cambio
+        // de contraseña se cierra a sí mismo (el usuario entra y ve que le
+        // echan). No es que sobre: se lee con `?? null` en todas partes.
         return self::db()->fetch(
-            'SELECT id, role_id, name, email, password_hash, is_active FROM users WHERE id = :id LIMIT 1',
+            'SELECT id, role_id, name, email, password_hash, is_active, password_changed_at FROM users WHERE id = :id LIMIT 1',
             ['id' => $id]
         );
     }
@@ -33,7 +38,7 @@ class User
     public static function findWithRole(int $id): ?array
     {
         return self::db()->fetch(
-            'SELECT u.id, u.role_id, u.name, u.email, u.is_active, r.name AS role_name
+            'SELECT u.id, u.role_id, u.name, u.email, u.is_active, u.password_changed_at, r.name AS role_name
              FROM users u
              JOIN roles r ON r.id = u.role_id
              WHERE u.id = :id LIMIT 1',
@@ -90,6 +95,36 @@ class User
             'UPDATE users SET password_hash = :hash WHERE id = :id',
             ['hash' => password_hash($plainPassword, PASSWORD_DEFAULT), 'id' => $id]
         );
+    }
+
+    /**
+     * F2: cambia la contraseña y anota CUÁNDO, en una sola sentencia.
+     *
+     * Las dos columnas van juntas a propósito: si el hash se guardara y el
+     * `password_changed_at` fallara, las sesiones antiguas seguirían vivas
+     * (que es justo lo que este método existe para cerrar) sin que nada lo
+     * dijera. El rehash oportunista del login (`updatePasswordHash`) NO toca
+     * `password_changed_at`: rehashear con el mismo secreto no es cambiar la
+     * contraseña, y si lo hiciera cerraría la sesión del usuario que acaba de
+     * entrar.
+     *
+     * Devuelve el `password_changed_at` que quedó escrito (string UTC o null si
+     * el usuario no existía) para que quien cambia SU PROPIA contraseña pueda
+     * refrescar su sesión con el dato de la base y no con el reloj de PHP: si
+     * los dos relojes no coincidieran al segundo, se expulsaría del panel a sí
+     * mismo en la página siguiente.
+     */
+    public static function updatePassword(int $id, string $plainPassword): ?string
+    {
+        self::db()->execute(
+            'UPDATE users SET password_hash = :hash, password_changed_at = UTC_TIMESTAMP() WHERE id = :id',
+            ['hash' => password_hash($plainPassword, PASSWORD_DEFAULT), 'id' => $id]
+        );
+
+        $row = self::db()->fetch('SELECT password_changed_at FROM users WHERE id = :id', ['id' => $id]);
+        $value = $row['password_changed_at'] ?? null;
+
+        return $value === null ? null : (string) $value;
     }
 
     public static function toggleActive(int $id): void

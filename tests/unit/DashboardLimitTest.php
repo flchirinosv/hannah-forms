@@ -146,7 +146,7 @@ class DashboardLimitTest
 
     private static function authAs(int $userId): void
     {
-        Session::set('user_id', $userId);
+        Auth::assumeLoggedIn($userId);
         Auth::forgetCache();
     }
 

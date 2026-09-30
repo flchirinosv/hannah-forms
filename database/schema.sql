@@ -23,9 +23,30 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(190) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     is_active     TINYINT(1) NOT NULL DEFAULT 1,
+    -- F2: instante del último cambio de contraseña (UTC). `Auth::user()`
+    -- compara contra la apertura de sesión para cerrarla, porque las sesiones
+    -- son ficheros de PHP y no se pueden revocar por id. DATETIME y no
+    -- TIMESTAMP a propósito: un TIMESTAMP ON UPDATE saltaría con cualquier
+    -- UPDATE de la fila y cerraría sesiones sin motivo.
+    password_changed_at DATETIME DEFAULT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- F2: tokens de recuperación de contraseña (un solo uso, con caducidad).
+-- Se guarda el sha256 del token, no el token: la fila no es el secreto.
+CREATE TABLE IF NOT EXISTS password_resets (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NOT NULL,
+    token_hash  CHAR(64) NOT NULL,
+    expires_at  DATETIME NOT NULL,
+    used_at     DATETIME DEFAULT NULL,
+    ip_address  VARCHAR(45) DEFAULT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_password_resets_token (token_hash),
+    KEY idx_password_resets_user (user_id),
+    CONSTRAINT fk_password_resets_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Forms

@@ -11,7 +11,10 @@ use App\Core\View;
         </div>
     </div>
     <div class="mb-3">
-        <label for="password" class="form-label">Contraseña</label>
+        <div class="d-flex justify-content-between align-items-center">
+            <label for="password" class="form-label">Contraseña</label>
+            <a href="/forgot-password" class="small text-decoration-none">¿Olvidaste tu contraseña?</a>
+        </div>
         <div class="input-group">
             <span class="input-group-text app-input-icon"><i class="fa-solid fa-lock"></i></span>
             <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
