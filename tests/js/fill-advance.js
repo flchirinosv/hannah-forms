@@ -177,7 +177,14 @@ function card(opts) {
 function allowed(env) {
     const code = [
         extract('isEmptyValue'),
+        extract('len'),
         extract('getFieldValue'),
+        // validateField() entra en la ecuación porque «terminado» es contestado
+        // Y VÁLIDO: sin él, un ranking con posiciones repetidas o un email mal
+        // escrito darían el paso por bueno y el avance dejaría el error en la
+        // página anterior. Se extrae la REAL (copiarla aquí daría al arnés el
+        // poder de decir que la app valida algo que ya no valida).
+        extract('validateField'),
         extract('isCardAnswered'),
         extract('conditionVisible'),
         // stepCards() filtra por stepOfCard(), que a su vez mira el índice del
@@ -198,6 +205,7 @@ function allowed(env) {
         'currentStep',
         'pageBlocks',
         'target',
+        't',
     ];
     const values = [
         env.allFieldCards,
@@ -208,6 +216,9 @@ function allowed(env) {
         env.step,
         env.pageBlocks,
         env.target,
+        // validateField() solo usa t() para los TEXTOS del error: lo que
+        // importa para la puerta es cuántas cadenas devuelve, no qué dicen.
+        (k) => String(k),
     ];
 
     const run = new Function(...params, code + '\nreturn autoAdvanceAllowed(target);');
@@ -304,15 +315,15 @@ console.log('Matriz y ranking: completas o nada');
     is('ranking con una posición vacía no avanza', allowed(renv), false);
     r.ranks = ['1', '2', '3'];
     is('ranking completo avanza', allowed(renv), true);
-    // OJO, y es un límite de `isCardAnswered()`, no de F5: la medida de
-    // completitud de un ranking es «ninguna posición vacía», y no comprueba que
-    // las posiciones sean DISTINTAS. No hay unicidad ni en el cliente ni en el
-    // servidor. F5 usa esa misma función que la barra de progreso y que el
-    // envío, y no va a ser más estricta en un punto que las otras dos: si
-    // algún día se valida la unicidad, se arregla en `isCardAnswered()` y los
-    // tres sitios cambian a la vez.
+    // Las posiciones repetidas SÍ las rechaza el campo (val.ranking_unique), en
+    // el cliente y en el servidor. Y por eso el avance automático, que es lo
+    // único que cambia de página sin que la persona pulse nada, tiene que mirar
+    // la VALIDEZ y no solo la completitud: si solo mirara isCardAnswered(),
+    // saltaría con el error pintado en la página anterior, que es la forma de
+    // que ese error no se vuelva a ver nunca.
     r.ranks = ['1', '1', '3'];
-    is('ranking con posiciones repetidas: la medida actual lo da por contestado', allowed(renv), true);
+    is('ranking con posiciones repetidas: no avanza aunque todas las posiciones tengan número',
+        allowed(renv), false);
 }
 
 console.log('Una tarjeta en una sección oculta no bloquea el paso');
@@ -335,6 +346,35 @@ console.log('Una tarjeta oculta por su propia condición no bloquea el paso');
     target._page = pages[0];
     is('la obligatoria oculta por lógica no cuenta',
         allowed({ on: true, step: 0, pageBlocks: pages, allFieldCards: [visible, byCond], target: target }), true);
+}
+
+console.log('Escrito pero inválido tampoco es un paso terminado');
+{
+    const pages = twoPages(false);
+    // El campo ya lo pinta en rojo con val.email: avanzar aquí escondería ese
+    // error en la página anterior.
+    const c = card({ type: 'email', required: true, values: ['no-es-un-email'], page: pages[0] });
+    const target = control('text', 'no-es-un-email');
+    target._page = pages[0];
+    is('obligatorio relleno con un email inválido: no avanza',
+        allowed({ on: true, step: 0, pageBlocks: pages, allFieldCards: [c], target: target }), false);
+    c.values = ['ana@example.com'];
+    is('el mismo campo ya válido sí avanza',
+        allowed({ on: true, step: 0, pageBlocks: pages, allFieldCards: [c], target: target }), true);
+}
+
+console.log('Una OPCIONAL inválida no bloquea el paso');
+{
+    const pages = twoPages(false);
+    // Bloquear el avance por un campo opcional que además está mal escrito
+    // dejaría el formulario sin salida: la única forma de pasar sería arreglar
+    // una pregunta que no hace falta responder.
+    const opt = card({ type: 'email', required: false, values: ['tampoco'], page: pages[0] });
+    const req = card({ type: 'text', required: true, values: ['Ana'], page: pages[0] });
+    const target = control('text', 'Ana');
+    target._page = pages[0];
+    is('la opcional inválida no bloquea a la obligatoria que sí está bien',
+        allowed({ on: true, step: 0, pageBlocks: pages, allFieldCards: [opt, req], target: target }), true);
 }
 
 console.log('El paso omitido no avanza');

@@ -280,11 +280,11 @@ Notas de implementación que siguen vigentes:
   quita), no con una clase permanente. Y se comprueba **por valor**
   (`=== '1'`), no por presencia: `toggleAttribute()` deja el valor en `""`.
 - `isCardAnswered()` es «completa o nada» para matriz y ranking, igual que
-  `val.matrix_all`. Su límite heredado: la completitud de un ranking es «ninguna
-  posición vacía» y **no** comprueba que las posiciones sean distintas (no hay
-  unicidad ni en el cliente ni en el servidor). F5 no es más estricta en un punto
-  que el envío y la barra: si algún día se valida, se arregla en
-  `isCardAnswered()` y cambian los tres sitios a la vez.
+  `val.matrix_all`. Mide **completitud**, no validez, y por eso el avance pide
+  las dos cosas (`isCardAnswered() && validateField(card).length === 0`): con la
+  primera sola, un ranking con posiciones repetidas —que el campo ya pinta en
+  rojo con `val.ranking_unique`, y que validan el cliente y el servidor— daría el
+  paso por bueno y el error se quedaría en la página anterior.
 
 ---
 
@@ -299,21 +299,11 @@ distinto, no una fase. |
 | Cuentas de respondiente | Duplica el sistema de auth entero para alguien que solo rellena una vez. |
 | Multi-tenant | Sigue en `Tier 3` del roadmap. Es el que más cambia el modelo de datos de todos los que se han mirado. |
 
----
+## Documentación del repo
 
-## Nota sobre la documentación del repo
+Con F0–F5 cerradas, la higiene documental de esta tanda se hizo el 2026-09-29:
+`technical-document.md` §4 ya describe las 16 tablas, `api-spec.md` refleja
+`config/routes.php`, y `posicionamiento-comparativa.md` y
+`roadmap-encuesta.md` §Tier 3 dejaron de citar cifras y brechas obsoletas.
 
-Al cerrar esta tanda quedan desactualizados, a propósito y señalados:
 
-- `docs/technical-document.md` §4 describe 6 de 15 tablas (le faltan
-  `submissions.public_token`, `fields.is_pii` y ahora `password_resets`).
-- `docs/api-spec.md` está obsoleta: le faltan las rutas de F2 y sigue diciendo
-  contraseña ≥6 y CSP opcional.
-- `docs/posicionamiento-comparativa.md` cita una suite de 465 tests y Turnstile
-  como brecha, cuando P7 ya lo implementó.
-- `docs/roadmap-encuesta.md` §Tier 3: reCAPTCHA/Turnstile ya no pertenece ahí.
-
-Actualizar `technical-document.md` y `api-spec.md` es trabajo pendiente y
-acotado; lo que **no** conviene es dejar que este documento sea la única fuente
-de verdad de lo implementado, porque los agentes y las personas que lleguen
-después sólo encontrarán lo viejo.

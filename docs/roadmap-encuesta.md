@@ -162,5 +162,10 @@ locale   { code }                           // 'es' | 'en' (i18n reducido)
 
 ## Tier 3 (backlog futuro)
 
-Pagos (Stripe), integraciones nativas (Sheets/Zapier/Slack OAuth), multi-tenant/SaaS, IA
-generativa, reCAPTCHA/Turnstile, rework UX tipo Typeform, PWA/offline.
+Pagos (Stripe), integraciones nativas OAuth (Sheets/Zapier/Slack), multi-tenant/SaaS, IA
+generativa, rework UX tipo Typeform, PWA/offline.
+
+> Turnstile salió de este backlog (B2, 2026-09-28): `settings.anti_bot.enabled` + claves
+> de instancia, opt-in. Y con F0–F5 (avance automático entre páginas, acceso por email,
+> revisión, PII, recuperación de contraseña) este documento es historia: el plan detallado
+> de esas fases vive en `docs/evaluacion-propuestas.md`.

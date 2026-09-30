@@ -90,10 +90,17 @@ HTTP Response
 
 ```
 roles (1)──(N) users (1)──(N) forms (1)──(N) fields
-                                  │
-                                  (N)
-                              submissions (1)──(N) answers
+  │                           │
+  │ (N)                       │ (N)
+  role_permissions ↔ permissions │ submissions (1)──(N) answers
+  │                           │
+  role_group_roles (N)──(M) role_groups ──(N) role_group_users (M)──(1) users
 ```
+
+Todo lo demás son tablas soporte: `rate_limits` (anti-abuso), `migrations`
+(qué migraciones se aplicaron), `password_resets` (F2),
+`form_access_emails`/`form_access_tokens` (F4), `security_log` (auditoría que
+nunca rompe el request) y `cache` (caché TTL del dashboard).
 
 ### Tablas
 
@@ -203,6 +210,96 @@ WHERE de `findValidToken()`: es la mitad de la autorización.
 | expires_at | DATETIME | |
 | used_at | DATETIME NULL | se quema con el cambio de contraseña, en la misma transacción |
 | created_at | TIMESTAMP | |
+
+#### role_permissions
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| role_id | INT UNSIGNED FK→roles | CASCADE |
+| permission_id | INT UNSIGNED FK→permissions | CASCADE |
+
+PK (role_id, permission_id). RBAC (migración 0005): qué roles llevan qué
+permisos. La semántica de cada clave vive en `config/permissions.php`.
+
+#### permissions
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| key | VARCHAR(80) UNIQUE | `dashboard.view`, `forms.create`, … |
+| description | VARCHAR(255) NULL | |
+| created_at | TIMESTAMP | |
+
+Catálogo. Las filas las siembra `database/seed.sql` (instalación limpia) y la
+migración 0005/0006 (BD existente), las dos leyendo `config/permissions.php`.
+
+#### role_groups
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| name | VARCHAR(80) UNIQUE | |
+| description | VARCHAR(255) NULL | |
+| created_at | TIMESTAMP | |
+
+#### role_group_roles
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| group_id | INT UNSIGNED FK→role_groups | CASCADE |
+| role_id | INT UNSIGNED FK→roles | CASCADE |
+
+PK (group_id, role_id). Un usuario hereda los permisos de su rol propio **+** los
+de los roles de sus grupos.
+
+#### role_group_users
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| group_id | INT UNSIGNED FK→role_groups | CASCADE |
+| user_id | INT UNSIGNED FK→users | CASCADE |
+
+PK (group_id, user_id).
+
+#### rate_limits
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | BIGINT UNSIGNED AI PK | |
+| scope | VARCHAR(30) | `login`, `fill`, `dash:create`, `form_access`, … |
+| identifier | VARCHAR(64) | IP o email, según el scope |
+| attempts | INT UNSIGNED | cuenta del intento |
+| window_start | TIMESTAMP | ventana deslizante |
+| created_at | TIMESTAMP | |
+
+UNIQUE (scope, identifier) + índice (identifier, window_start). El número de la
+ventana es «n intentos por `window_start`» (no por intervalo deslizante, para
+que cada petición no tenga que calcular su ventana).
+
+#### security_log
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | BIGINT UNSIGNED AI PK | |
+| event | VARCHAR(60) | `auth.login_ok`, `csrf.invalid`, `webhook.private_host`, … |
+| detail | VARCHAR(500) NULL | |
+| ip | VARCHAR(45) NULL | |
+| user_id | INT UNSIGNED FK→users NULL | ON DELETE SET NULL |
+| created_at | TIMESTAMP | |
+
+Auditoría que **nunca** rompe el request (`SecurityLog::record()` con
+try/catch). `user_id` NULL si `Auth::id()` no resuelve.
+
+#### cache
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| cache_key | VARCHAR(190) PK | `dash:…` (dashboard) |
+| value | MEDIUMTEXT | |
+| expires_at | TIMESTAMP | evaluado en UTC |
+| created_at | TIMESTAMP | |
+
+#### migrations
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| name | VARCHAR(190) UNIQUE | nombre del fichero |
+| applied_at | TIMESTAMP | |
+
+Registro de `database/migrate.php`. **Nunca borres filas de aquí** para
+re-sembrar: una migración nueva es la única forma de re-ejecutar un seed.
 
 ---
 
@@ -340,9 +437,6 @@ php scripts/test.php --path tests/unit
 - nginx: `client_max_body_size` mayor que `post_max_size` (si no, nginx rechaza el POST antes de PHP)
 - El usuario del web server necesita permiso de escritura en `storage/uploads/`; ese directorio **no** debe servirse por el web server
 
-**Pendiente:**
-- Lazy loading del builder JS (cargar el bundle solo al entrar al builder)
-
 ---
 
 ## 9. Cronograma y Estado
@@ -358,6 +452,9 @@ php scripts/test.php --path tests/unit
 | P1–P10 | Roadmap del producto (multi-paso, correos, honeypot/embed/QR, quiz+salta-pagina+aleatoriedad, plantillas/export/impresion/i18n, uploads de archivos) | ✅ (ver `docs/roadmap-encuesta.md`) |
 | — | Zona horaria (fase 3 · D6): BD y PHP en UTC, conversión solo al pintar (Clock/View) | ✅ (2026-09-28) |
 | — | Analítica agregada (fase 3 · D8): `FieldAggregator` en 2 queries + métricas derivadas en PHP | ✅ (2026-09-28) |
+| — | Loteo de `withAnswersByIds()` en tandas de 5000 | ✅ (2026-09-28) |
+| — | Contrato horario: `SET time_zone='+00:00'` en la sesión + UTC en PHP | ✅ (2026-09-28) |
+| — | Fases de producto F0–F5 (avance automático, acceso por email, revisión, PII, contraseña) | ✅ (2026-09-29, ver `docs/evaluacion-propuestas.md`) |
 | — | Seguridad/quality (fase 4): smoke de todas las rutas, allowlist de redirect (F5.1), editor pendiente de RBAC (F5.2), límite dashboard por usuario (F5.3), thumbs, scale, limpieza de código muerto y assets | ✅ (2026-09-28) |
 | — | RBAC completo (fase 6, 2026-09-28): catálogo de permisos, matriz de roles editable, grupos de roles, `Auth::can()`/`Access` como puertas, middleware `admin` por permiso | ✅ (2026-09-28) |
 | — | Log de eventos de seguridad (fase 6, 2026-09-28): `security_log` + `/admin/security-log` + hooks en auth/CSRF/rate-limit/webhook/uploads/admin | ✅ (2026-09-28) |

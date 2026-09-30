@@ -145,7 +145,7 @@ class FillAdvanceTest
         );
     }
 
-    public function testLaDecisionUsaIsCardAnsweredYNoLaValidacionDelNavegador(): void
+    public function testLaDecisionCombinaContestadoYValido(): void
     {
         $body = $this->functionBody('function stepComplete(');
 
@@ -154,6 +154,15 @@ class FillAdvanceTest
             'stepComplete() tiene que decidir con isCardAnswered(): es la medida que usan el '
                 . 'envío y la barra, y la que trata la matriz como completa-o-nada. Medir aquí '
                 . 'con otra cosa abre la puerta a que el paso esté «completo» y el envío no'
+        );
+        assertTrue(
+            str_contains($body, 'validateField(card).length === 0'),
+            '«terminado» son DOS cosas: contestado Y válido. Con isCardAnswered() solo, el '
+                . 'avance se dispararía con un ranking de posiciones repetidas (que el campo ya '
+                . 'tiene en rojo con val.ranking_unique) o con un email mal escrito, y el error '
+                . 'se quedaría en la página anterior sin que nadie lo volviera a ver. El avance '
+                . 'automático es lo único que cambia de página sin que la persona pulse nada, así '
+                . 'que es justo este paso el que tiene que mirar la validez'
         );
         $src = (string) file_get_contents($this->path(self::JS));
         assertTrue(

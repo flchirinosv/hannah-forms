@@ -261,9 +261,9 @@ Verificado:
 | 0 | Regresiones del 2026-09-27 | HECHO |
 | 1 | Pérdida de datos | HECHO |
 | 2 | Seguridad | HECHO (los 8 ítems cerrados, 362 tests) |
-| 3 | Capa de datos | EN CURSO (índice/FK, limpieza de `rate_limits`, contrato horario y analítica/loteo hechos; falta cerrar queries redundantes) |
-| 4 | Calidad y docs | Pendiente |
-| 5 | Decisiones de producto | Pendiente |
+| 3 | Capa de datos | HECHO (índice/FK, limpieza de `rate_limits`, contrato horario, loteo y `settingsFrom()`/`Form::find($id,false)` contra las queries redundantes; la paginación del detalle de respuestas se cerró en `Submission::byFormPaginated`) |
+| 4 | Calidad y docs | HECHO (historial por fase, `ControllerActionsTest` recorre todas las rutas, asserts reales, `Request::ip()` fijado) |
+| 5 | Decisiones de producto | HECHO (F0–F5, ver `docs/evaluacion-propuestas.md`) |
 
 ## Fases 0 y 1 · cómo quedaron verificadas
 

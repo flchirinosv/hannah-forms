@@ -362,9 +362,14 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   es `autoAdvanceAllowed()`. Salta con `change` y **nunca** con `input`, y decide
   con `isCardAnswered()` y **nunca** con `checkValidity()`/`required` del
   navegador (un texto con espacios «cumple» `required`, y su respuesta no es
-  igual en todos los navegadores). Solo cuentan las obligatorias **visibles** del
-  paso, y un paso sin obligatorias no avanza nunca solo; el último paso y los
-  omitidos tampoco. `autoAdvanceReady` se enciende al final del arranque, tras
+  igual en todos los navegadores). Y «terminado» son DOS cosas: `stepComplete()`
+  exige `isCardAnswered() && validateField(card).length === 0`, porque la
+  completitud no es la validez (un ranking con posiciones repetidas tiene todas
+  las posiciones y aun así el campo está en rojo con `val.ranking_unique`) y el
+  avance automático es lo único que cambia de página sin que nadie pulse nada.
+  Una **opcional** inválida no bloquea. Solo cuentan las obligatorias
+  **visibles**, y un paso sin obligatorias no avanza nunca solo; el último paso y
+  los omitidos tampoco. `autoAdvanceReady` se enciende al final del arranque, tras
   `restoreDraft()` y `evaluateConditions()`: si no, el borrador restaurado hace
   que el formulario se recorra solo al cargar. `goPrev()` lo cancela.
 - El salto automático mueve el foco al **bloque** del paso
@@ -425,14 +430,14 @@ probando la rama equivocada).
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
-- `docs/technical-document.md`: arquitectura y modelo de datos; **§4 está
-  desactualizada** (6 de 15 tablas, sin `submissions.public_token`).
+- `docs/technical-document.md`: arquitectura y modelo de datos (16 tablas, con
+  F2/F3/F4 y RBAC).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
-  P1–P10 con su diagnóstico.
+  P1–P10 con su diagnóstico; los mapas de estado quedaron al día el 2026-09-29.
 - `docs/design.md`: spec del builder (tokens, componentes, reglas para código
   nuevo).
-- `docs/api-spec.md` está **obsoleta** (le faltan rutas nuevas y dice contraseña ≥6
-  / CSP opcional): para endpoints, usa `config/routes.php`.
+- `docs/api-spec.md`: referencia de endpoints. Para el middleware EXACTO de cada
+  ruta, `config/routes.php` sigue siendo la fuente de verdad.
 - `docs/audit-report*.md`, `fix-plan.md` y `levantamiento_informacion.md` son
   auditorías ya cerradas: histórico.
 - `freddy/`, `freddy.zip` y `pub.jar` son un toolkit externo de "levantamiento de

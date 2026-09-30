@@ -37,7 +37,7 @@ respondiente y con postura de seguridad de nivel auditoría.
 2. **Postura de seguridad publicada y verificada.** RBAC con roles+grupos, `security_log`
    de auditoría, CSRF, rate limits (login/fill/dashboard), SSRF-guard en webhooks, allowlist
    de redirects, honeypot, CSP, uploads con detección de MIME real + extensiones denegadas +
-   descarga autenticada con sandbox. Verificado por **465 tests automatizados**. Ningún SaaS
+   descarga autenticada con sandbox. Verificado por **627 tests automatizados**. Ningún SaaS
    cierra este argumento y, para quien no puede mandar datos de encuestados a terceros, es el
    argumento de compra.
 3. **Superficie de ataque mínima.** Cero Composer/npm en runtime: nada que explotar vía
@@ -56,14 +56,14 @@ respondiente y con postura de seguridad de nivel auditoría.
 | Comercio/pagos | Jotform (campos de producto + Stripe) |
 | Multilingüe del flujo | Solo es/en; Typeform/Tally multi-idioma |
 | Colaboración | RBAC de acceso sí; edición concurrente no |
-| Anti-bot | Honeypot + rate limit sin reCAPTCHA/Turnstile |
+| Anti-bot | Honeypot + rate limit + Turnstile (opt-in, con claves de instancia) |
 
 ## 5. Frente al nicho self-hosted
 
 - **LimeSurvey** es el "Excel" de las encuestas: gana en madurez, tipos de pregunta, cuotas,
   plugins y comunidad; pero es admin-heavy y de UI añeja, y su postura de seguridad no se
   verifica con una suite comparable. VanillaForms gana en builder moderno, simplicidad y
-  465 tests.
+  627 tests.
 - **Formbricks** es moderno pero está orientado a encuestas **in-app** (SDK, targeting).
   VanillaForms es el formulario público clásico con panel completo.
 
@@ -72,7 +72,7 @@ respondiente y con postura de seguridad de nivel auditoría.
 > Un constructor tipo SurveyMonkey/Tally **self-hosted**, sin coste por respondiente, con
 > postura de seguridad auditada (RBAC + log + SSRF + rate-limit + CSRF) y cero dependencias
 > runtime, hecho para organizaciones que quieren encuestas avanzadas sin delegar sus datos ni
-> pagar por volumen, con un acabado técnico profesional (465 tests) que LimeSurvey no tiene y
+> pagar por volumen, con un acabado técnico profesional (627 tests) que LimeSurvey no tiene y
 > el SaaS no te puede prometer.
 
 ## 7. Público objetivo

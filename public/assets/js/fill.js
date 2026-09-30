@@ -355,10 +355,11 @@
     //    este campo», que es justo la señal que se necesita. Con `input` el
     //    formulario avanzaría a media palabra.
     //  · No se usa `checkValidity()` ni el `required` del navegador: decide
-    //    `isCardAnswered()`, que es la MISMA medida que usa el envío y la barra
-    //    (y que no cuenta un campo de texto con solo espacios, ni una matriz a
-    //    medias). Un campo obligatorio «cumplido» por el navegador y no por la
-    //    persona no es un paso terminado.
+    //    `isCardAnswered()` + `validateField()`. La primera es la MISMA medida
+    //    que usa el envío y la barra (y no cuenta un texto con solo espacios, ni
+    //    una matriz a medias); la segunda es la que ya pinta el error en rojo, así
+    //    que un campo obligatorio «cumplido» por el navegador y no por la
+    //    persona, o escrito pero inválido, no es un paso terminado.
     //  · Solo cuentan las obligatorias VISIBLES: una opcional no puede bloquear
     //    el avance, y si el paso no tiene ninguna obligatoria no hay señal de
     //    «terminado» que esperar, así que no se avanza nunca solo.
@@ -386,9 +387,18 @@
     // ¿Está «terminado» el paso? Sin obligatorias visibles NO: no hay nada que
     // esperar, y devolver true haría que el primer cambio en el paso se
     // comiera el resto del formulario.
+    //
+    // Y «terminado» son DOS cosas, no una: contestado Y VÁLIDO. `isCardAnswered()`
+    // mide lo primero (que una matriz tenga todas las filas marcadas, que un
+    // ranking tenga todas las posiciones) y `validateField()` lo segundo. Con la
+    // primera sola, el avance se dispararía con un ranking de posiciones
+    // repetidas —que el campo ya tiene en rojo con `val.ranking_unique`— o con un
+    // email mal escrito: saltar de página dejando el error en la anterior es la
+    // forma de que ese error no se vuelva a ver, y el avance automático es lo
+    // único que cambia de página sin que la persona pulse nada.
     function stepComplete(step) {
         const req = requiredVisibleCards(step);
-        return req.length > 0 && req.every((card) => isCardAnswered(card));
+        return req.length > 0 && req.every((card) => isCardAnswered(card) && validateField(card).length === 0);
     }
 
     function autoAdvanceAllowed(target) {
