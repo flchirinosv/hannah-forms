@@ -113,6 +113,7 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 | name | VARCHAR(100) | |
 | email | VARCHAR(190) UNIQUE | |
 | password_hash | VARCHAR(255) | bcrypt |
+| password_changed_at | DATETIME NULL | F2: cierra sesiones anteriores al cambio |
 | is_active | TINYINT(1) | default 1 |
 | created_at / updated_at | TIMESTAMP | |
 
@@ -124,8 +125,11 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 | title | VARCHAR(190) | |
 | description | TEXT NULL | |
 | slug | VARCHAR(190) UNIQUE | public URL |
-| status | ENUM('draft','published','closed') | |
-| theme / settings | JSON NULL | |
+| status | ENUM('draft','in_review','published','closed') | F3: `in_review` no se sirve (página informativa) |
+| theme / settings | JSON NULL | incluye `review.{enabled,notify_email}` (F3) y `access.mode` (F4) |
+| review_requested_at | DATETIME NULL | F3: cuándo se mandó a revisión |
+| reviewed_at | DATETIME NULL | F3: cuándo se aprobó |
+| reviewed_by | INT UNSIGNED NULL FK→users | ON DELETE SET NULL (F3: la traza no se rompe al borrar el usuario) |
 | created_at / updated_at | TIMESTAMP | |
 
 #### fields
@@ -141,6 +145,7 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 | position | INT | orden (index sobre form_id,position) |
 | parent_id | INT UNSIGNED FK→fields NULL | sección contenedora (NULL = nivel superior) |
 | logic | JSON NULL | condición de visibilidad (operador + reglas) |
+| is_pii | TINYINT(1) | F1: el dueño marca el campo como personal |
 
 #### submissions
 | Campo | Tipo | Notas |
@@ -150,6 +155,7 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 | ip_address | VARCHAR(45) NULL | |
 | user_agent | VARCHAR(255) NULL | |
 | finished_at | TIMESTAMP | index (form_id, finished_at) |
+| public_token | CHAR(32) UNIQUE NULL | thanks por token de capacidad, nunca por `id` |
 
 #### answers
 | Campo | Tipo | Notas |
@@ -158,6 +164,44 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 | submission_id | INT UNSIGNED FK→submissions | CASCADE |
 | field_id | INT UNSIGNED FK→fields | CASCADE |
 | value | TEXT NULL | |
+| created_at | TIMESTAMP | |
+
+#### form_access_emails
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| form_id | INT UNSIGNED FK→forms | CASCADE |
+| email | VARCHAR(190) | en minúsculas: la clave de la allowlist |
+| created_at | TIMESTAMP | |
+
+UNIQUE (form_id, email). F4, solo se usa en modo `allowlist`.
+
+#### form_access_tokens
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| form_id | INT UNSIGNED FK→forms | CASCADE |
+| email | VARCHAR(190) | a quién se emitió |
+| token_hash | CHAR(64) UNIQUE | sha256; el token en claro solo existe en el correo |
+| expires_at | DATETIME | 30 días |
+| revoked_at | DATETIME NULL | lo pone `removeEmail()` |
+| ip_address | VARCHAR(45) NULL | |
+| created_at | TIMESTAMP | |
+
+UNIQUE (token_hash), índice (form_id, email). F4. **No lleva FK a
+`form_access_emails`**: en modo `email` hay tokens sin fila en la allowlist, y la
+revocación es explícita (transacción en `removeEmail()`). El `form_id` va en el
+WHERE de `findValidToken()`: es la mitad de la autorización.
+
+#### password_resets
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | INT UNSIGNED AI PK | |
+| user_id | INT UNSIGNED FK→users | CASCADE |
+| email | VARCHAR(190) | |
+| token_hash | CHAR(64) | sha256, de un solo uso |
+| expires_at | DATETIME | |
+| used_at | DATETIME NULL | se quema con el cambio de contraseña, en la misma transacción |
 | created_at | TIMESTAMP | |
 
 ---
@@ -242,7 +286,7 @@ Response: text/csv attachment (respeta el filtro de fechas)
 
 ### Estado actual
 - Runner propio creado en `scripts/test.php` (sin dependencias, no usa Composer/PHPUnit). Filtros con espacio: `--filter <substring del MÉTODO>`, `--path <directorio>` (un filtro que no casa con nada ejecuta 0 tests y sale verde — comprobar el contador).
-- Suite: `tests/unit/*.php` — **442 tests en verde** (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`). El detalle de fases vive en `docs/roadmap-encuesta.md`.
+- Suite: `tests/unit/*.php` — **615 tests en verde** (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`). El detalle de fases vive en `docs/roadmap-encuesta.md`.
 
 ### Ejecucion
 ```bash
@@ -288,6 +332,7 @@ php scripts/test.php --path tests/unit
 - Paginación client-side en dashboard, admin y tabla de analítica
 - Caché del dashboard (2026-09-28, fase 6): `Cache::remember('dash:...', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
 - Tabla de analítica paginada EN EL SERVIDOR (2026-09-28): `Submission::byFormFilteredPaginated` + `GET /forms/{id}/analytics/rows` (15/página, lazy-load por fetch); los agregados siguen globales
+- Revisión/aprobación (2026-09-29, F3): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` (solo `admin` por defecto) y controlador aparte `ReviewController` con las tres transiciones. Opt-in por formulario (`settings.review.enabled`); el estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
 - `defer` en scripts no críticos (dashboard.js, sortable+builder, chart+analytics), preservando el orden de dependencias
 
 **Despliegue (uploads):**

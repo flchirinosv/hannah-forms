@@ -1,93 +1,422 @@
 # AGENTS.md — VanillaForms
 
-Sistema de formularios self-hosted: PHP 8.2+ vanilla (sin framework), MVC propio, MariaDB, Bootstrap 5.
-Sin Composer, sin PHPUnit, sin dotenv externo: todo es implementación propia. No ejecutar `composer install`.
+Formularios self-hosted: **PHP 8.2+ vanilla, sin framework**, MVC propio, MariaDB,
+Bootstrap 5. Sin Composer, PHPUnit, dotenv ni bundler: el autoload, el cargador de
+`.env`, el router y el runner de tests son implementación propia. **No ejecutes
+`composer install` ni busques `composer lint`: no hay `composer.json`,
+`package.json`, `Makefile` ni CI.** Es el único control de calidad: `scripts/test.php`.
+
+Todo el código, los comentarios, los strings de UI y esta documentación están en
+español. `declare(strict_types=1);` va en `app/`, `config/`, `database/`,
+`scripts/` y `tests/`; **las vistas de `views/` no lo llevan** (son fragmentos).
+El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Test suite: `php scripts/test.php` (runner propio). Filtros: `--filter <substring del MÉTODO>` y `--path <directorio>` (con espacio, NO `--filter=`; y `--path` solo acepta directorios). Un filtro que no casa con ningún nombre de método ejecuta 0 tests y sale verde: comprobar siempre el contador de `Tests:`, no solo que no haya fallos. Y al revés: un `--filter` estrecho que solo toca clases con BD puede sacar errores `SKIP: base de datos no disponible` que en la suite completa NO aparecen (si nada conectó antes, la config de BD aún no está resuelta y esas clases la saltan), así que para creerle a un filtro hay que contrastarlo con una suite completa. Los hooks de `register_shutdown_function` de los tests con BD ya no pueden tumbar el proceso por lo mismo: se tragan su propio `Throwable` en vez de llevarse por delante el informe del runner.
-- BD nueva (desde cero): `mysql < database/schema.sql` y luego `mysql < database/seed.sql`. **`seed.sql` solo crea los ROLES** (sin usuarios ni hashes). Para una instalación real, el primer admin se crea a mano: `ADMIN_PASSWORD=una-clave-larga php scripts/create-admin.php`. Los usuarios demo (uno de ellos admin, todos con contraseña compartida) solo se siembran con `SEED_DEMO=1 php database/seed.php`, y avisan si se deja la contraseña pública `password123`. schema.sql crea BD `vanilla_forms`, tablas y `rate_limits`.
-- BD existente: `php database/migrate.php` (o `--status`). NO volver a correr `schema.sql` sobre una BD con datos; para eso están las migraciones.
-- Servir: `php -S 127.0.0.1:8080 -t public` (por defecto de `APP_URL` en `.env.example`).
+- Suite completa: `php scripts/test.php` → 64 archivos, 615 métodos, ~2.8 min;
+  sale 1 solo si hay `Fallidos` o `Errores`.
+- Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
+  espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
+  con el nombre de la clase ejecuta **0 tests y sale verde**. Mira siempre el
+  contador `Tests:`.
+- Una carpeta: `php scripts/test.php --path tests/unit` (solo directorios).
+- BD desde cero: `mysql < database/schema.sql` y luego
+  `mysql < database/seed.sql` (crea **roles + matriz de permisos**, nunca usuarios
+  ni hashes). BD existente: `php database/migrate.php` (`--status`); **no**
+  vuelvas a correr `schema.sql` sobre una BD con datos.
+- Primer admin: `ADMIN_PASSWORD=una-clave-larga php scripts/create-admin.php`
+  (también `--password-stdin` o prompt sin eco; **`--password=` está rechazado**,
+  queda en el historial del shell y en `ps`).
+- Usuarios demo: `SEED_DEMO=1 php database/seed.php`; sin el opt-in no hace nada
+  y **sale con código 1** a propósito, para que un despliegue se entere.
+- Servir: `php -S 127.0.0.1:8080 -t public` (default de `APP_URL` en `.env.example`).
+- Mantenimiento: `scripts/clean-rate-limits.php` (`--all` vacía todo y pide
+  confirmación, `--yes` la salta) y `scripts/clean-uploads.php` (`--dry-run` solo
+  cuenta).
+- **node es opcional**: solo lo usa `tests/unit/FillProgressTest.php` para correr
+  el arnés `tests/js/fill-progress.js`; sin node ese test avisa y pasa.
 
-## Arquitectura / flujo
+Atajos de OpenCode (`.opencode/`, no es código de la app): el skill `vf-docs`
+indexa `docs/` (con sus trampas de obsolescencia) y el skill `vf-migraciones` da la
+receta de migración idempotente; los commands `/test`, `/migrate` y
+`/nueva-migracion` ejecutan lo anterior.
 
-- `public/index.php` → `config/bootstrap.php` (carga `.env` vía `App\Core\Env`, conecta BD, inicia sesión, `America/Mexico_City`) → `config/routes.php` → controlador.
-- Autoload PSR-4 propio: `App\` → `app/` (`config/autoload.php`). No hay `vendor/` ni `composer.json`.
-- Rutas en `config/routes.php` con middleware por string: `auth`, `guest`, `admin`, `editor`, `csrf`.
-- Config sale de `.env` con fallbacks en `config/config.php`. Credenciales BD por defecto (dev): MariaDB en 127.0.0.1:3306, usuario `mariadb`.
-- Roles en seed: `admin`(1) / `user`(2, default) / `editor`(3). El technical-doc viejo dice "viewer"; el seed y los tests usan `user`.
+## Arquitectura
+
+- `public/index.php` → `config/bootstrap.php` (carga `.env` con `App\Core\Env`,
+  fija **UTC** en PHP, conecta la BD, inicia sesión) → `config/routes.php` →
+  controlador. `public/index.php` es el único PHP que ve el web server.
+- Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (11),
+  `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
+  es un directorio **vacío**), `Models` (8), `Services` (12), `lang/{es,en}.php`.
+  `views/` = 42 plantillas con `View`; `public/assets/js/` = `builder`, `fill`,
+  `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
+- Config: `.env` con fallbacks en `config/config.php`. `Config::get()` **sí**
+  admite notación de punto (`paths.uploads`, `app.locale`): accede así a las
+  claves nuevas y verifica que no devuelve el default en silencio.
+- Middleware por string en la definición de la ruta: `auth`, `guest`, `admin`,
+  `csrf`, `csrf-header`, `post-max` y `editor` (registrado, **aplicado a cero
+  rutas**; no lo uses como si hiciera algo).
+- Roles: `admin`(1) / `user`(2, default) / `editor`(3).
 
 ## Convenciones
 
-- `declare(strict_types=1);` en todo archivo PHP. Todo en español: comentarios, strings UI, mensajes de error, docs.
-- Escapar salida en vistas con `View::escape()` (htmlspecialchars ENT_QUOTES); nunca emitir un valor sin escapar.
-- `docs/technical-document.md`, `docs/recommendations.md` y `docs/audit-report.md` son la fuente de arquitectura/seguridad (audit-report documenta remediaciones ya aplicadas y es la historia del proyecto).
+- Escapar toda salida de vista con `View::escape()`; en JS, para interpolar en
+  atributos usa `esc()` (escapa `& < > " '`), nunca `textContent`.
+- `app.csp_policy` tiene default **seguro en código** (`script-src 'self'`): **no
+  hay `<script>` inline ni `on*=` en ninguna vista** (lo recorre un test);
+  `style-src 'unsafe-inline'` se queda a propósito. Para desactivar la CSP hay que
+  ponerla vacía a mano.
+- `defer` en los scripts no críticos: `dashboard.js`; `sortable` + `builder.js`;
+  `chart` + `analytics.js`. **Los dos scripts de una pareja necesitan el mismo
+  atributo** o el segundo corre antes que la librería. `bootstrap` + `app.js` y
+  `fill.js` van sin `defer` (críticos).
+- FontAwesome: solo `css/all.min.css`, `fonts/fa-solid-900.*`,
+  `fonts/fa-regular-400.*`. No reintroduzcas CDN ni assets que ese CSS no pida.
 
-## Tests
+## Tests: cómo funciona el runner
 
-- Convenciones del runner: clases `*Test` (pueden ir en namespace `Tests\Unit`), métodos públicos no estáticos `test*`, `setUp()` opcional ejecutado por cada test y `tearDown()` opcional ejecutado DESPUÉS de cada test (también si falla) para limpiar lo que el test escribió. Ojo: el runner instancia la clase una vez por test, así que el estado shared va en `static`. Asserts globales (`assertTrue`, `assertEquals`, `fail`, ...) los define `scripts/test.php`; por eso un archivo de test NO corre directo (`php tests/unit/XTest.php`).
-- AuthTest, DatabaseTest, FillControllerTest, FormTest, RateLimiterTest y SubmissionAnalyticsTest usan la BD real de `.env`; crean datos temporales (`@test.local`, tablas `_db_test*`) y se auto-limpian. Requieren PHP con `pdo_mysql` + `mbstring` y MariaDB corriendo (en este entorno: `apt install php8.4-mysql php8.4-mbstring`, usuario `mariadb`/`m4r14db`, BD `vanilla_forms` creada con `schema.sql`+`seed.sql`).
+- Clases `*Test` (pueden ir en `namespace Tests\Unit`), métodos públicos **no
+  estáticos** `test*`, `setUp()`/`tearDown()` opcionales de instancia (el
+  `tearDown` corre aunque el test falle). El runner **instancia la clase una vez
+  por test**: el estado compartido va en `static`.
+- Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
+  `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
+  `scripts/test.php`, así que un archivo de test **no corre directo**.
+- **37 de los 64 archivos tocan la BD real** (los que llaman
+  `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
+  esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
+  se auto-limpian.
+- **Trampa verificada**: `scripts/test.php` **no carga `.env`**, y 7 clases
+  (`I18nTest`, `P10UploadsTest`, `P7ShareTest`, `P8SmartTest`, `P9TemplatesTest`,
+  `QuizScoreTest`, `RandomizeTest`) intentan cargarlo con
+  `if (!class_exists(Config::class)) require bootstrap.php`; como `class_exists`
+  dispara el autoload y devuelve **siempre `true`**, el `require` no corre nunca y
+  `Config::$config` (caché estática de proceso) queda congelado con `DB_PASSWORD`
+  vacío. Con `--filter` estrecho esos tests salen con `Errores: 1` y
+  `SKIP: base de datos no disponible`; en la suite completa pasan.
+  **Contradice siempre un filtro con una suite completa.**
 
-## Gotchas
+## Invariantes que fallan en silencio
 
-- Todo POST necesita middleware `csrf` (hallazgo C1 histórico: builder quedó expuesto). Los forms HTML mandan `_token` (`Csrf::field()`); el builder JSON usa header `X-CSRF-Token` vía `Csrf::verifyHeader()` — agregar rutas JSON nuevas con ese patrón.
-- Migraciones: cada archivo en `database/migrations/` devuelve un closure que recibe `Database`; deben ser idempotentes. NO se envuelven en transacción (DDL hace commit implícito en MariaDB); registro en tabla `migrations` solo tras éxito.
-- `RateLimiter` evalúa la ventana de expiración del lado BD (`NOW() - INTERVAL`) para evitar desfases de zona horaria; mantener ese patrón al tocarlo.
-- `Request::ip()` solo confía en `X-Forwarded-For`/`X-Real-IP` si `TRUST_PROXY=true` en `.env` (por defecto `false`). Dejarlo `false` salvo que haya un nginx/haproxy de confianza que sobrescriba esos headers; si no, el rate limiting es bypasseable.
-- `Auth::user()` cachea el usuario por REQUEST (static), no en sesión; desactivar/degradar a un usuario surte efecto en el siguiente request. `Auth::forgetCache()` existe para limpiarla (tests).
-- `Response::*` (redirect/abort/json/...) solo emiten headers+`exit` cuando `PHP_SAPI !== 'cli'`. En el runner (CLI puro) los controllers se invocan sin matar el proceso; bajo `php -S` (SAPI `cli-server`) y FPM el comportamiento es el real. No reintroducir `exit` duro en `Response`.
-- El POST `/f/{slug}` ya NO responde el thanks: hace PRG (FASE 4) a `GET /f/{slug}/thanks`, o a `thanks.redirect_url` externa SOLO si el host pasa la allowlist de F5.1 (`RedirectGuard`) — una URL http/https por sí sola ya no basta (ver la entrada de F5.1). Las barreras de calendario/cupo (P6) viven en `FillController::scheduleState`/`quotaExceeded` y se chequean en `show` y en `submit`.
-- P7: honeypot = input `_vf_hp` en `views/fill/show.php` (activado por `settings.honeypot.enabled`); en `submit` se chequea ANTES del rate limit y hace `redirectToThanks(...); return;` fingiendo éxito SIN persistir. Embed público = `GET /f/{slug}/embed` (solo si `settings.embed.enabled`) y relaja XFO/frame-ancestors a `'self'` únicamente en ese action (y en `thanks` si el form es embebible), emitiendo headers solo fuera de CLI; el fill normal sigue `DENY`. QR: `libs/qrcode/qrcode.php` (vendored, MIT) + `App\Services\QrCode::svg()` renderiza SVG sin GD; la URL del QR se calcula del lado servidor (`FormController::qrSvg` nunca acepta url del cliente). Clonar = `POST /forms/{id}/duplicate` → `Form::duplicate` (copia campos remapeando `parent_id`, settings y slug único).
-- P8: salta-página = condición del campo `page` TRUE → se omite TODO el bloque. `FillController::submit` usa `pagePlan()` + `LogicEvaluator::dependencyOrder($fields, $extraDeps)` (cada pregunta depende de su page) para resolver la condición antes de sus preguntas; los campos de un bloque saltado no se validan/persisten ni son fuente (aunque el cliente envíe valores). OJO: una regla de página que referencie a una pregunta de SU bloque crea un ciclo → `validateStructure` lo rechaza al guardar (caveat documentado). La randomización (`settings.randomize.questions` + `validations.randomize`) SOLO aplica en GET (`show`/`embed`) vía `FillController::randomizeFields`; el re-render de errores del POST NO baraja. Quiz = `validations.correct` (string; checkbox con comas o JSON) + `App\Services\QuizScore::score()` stateless; el thanks se abre con un token de capacidad `?t=` (`submissions.public_token`, 128 bits, único e indexado) y `QuizScore` solo si la submission pertenece al form. OJO: el identificador del thanks NUNCA puede ser `submissions.id` — es un AUTO_INCREMENT recorrible y el thanks es público/sin sesión, así que `?sid=1..N` filtraba la respuesta literal de cada persona que contestó el formulario (`thanks.php` imprime «Tu respuesta» + la correcta). La migración 0003 hace backfill de las filas antiguas (NULL = solo agradecimiento, sin quiz, que es el fallo seguro) y `Submission::create()` acepta el token como 4º argumento opcional; `findWithAnswers(int)` queda solo para el dashboard autenticado, y de cara al thanks se usa `findWithToken(string)`.
-- P9: plantillas = JSON DECLARATIVO en `database/templates/*.json` (refs enteros, NO ids de BD) con `App\Services\TemplateService` (`list/load/normalizeStructure/apply/exportPayload`). `load()` filtra la key con `^[a-z0-9][a-z0-9-]{0,60}$` (nada de path traversal). `POST /forms` acepta `template`; si la plantilla falla se borra el formulario recién creado. El modal del dashboard manda el toggle por `dashboard.js` (no inline: CSP) y el cliente fill lee i18n de `data-vf-i18n` en `<form>` (nada de `<script>` inline) con fallback es.
-- P9 i18n: `App\Core\I18n` + `app/lang/{es,en}.php`; clave faltante devuelve la clave. Los catálogos DEBEN mantener la paridad de claves (lo verifica `I18nTest`) y el alcance es fill público + gracias/estados + correos (dashboard/builder quedan en español). Q6 (2026-09-28): `resolve()` ganó `?string $requested` y `bool $browser` con la firma clásica `resolve($settings)` SIN CAMBIOS (settings → `app.locale` → `es`), para que emails y middleware no se vean afectados; `I18n::forRequest($settings)` es la puerta del fill y añade: override `?lang=`/campo oculto `lang` en POST → settings.locale → Accept-Language del navegante (SOLO si el form no fija idioma: la elección del dueño manda) → `app.locale` → `es`. `views/fill/show.php` emite `<input type="hidden" name="lang">` para que el POST conserve el idioma renderizado (si no, un `?lang=` compartido se perdía en el re-render de errores), y `redirectToThanks` añade `?lang=` al PRG SOLO cuando el idioma resuelto difiere del que fija el formulario (la URL de gracias queda limpia en el caso normal). El override se valida contra `supportedLocales()`; un `?lang=xx` se ignora. Tests: `I18nTest` (incluye `testResolveUsaNavegante...` y `testForRequest...`).
-- P10: `App\Services\Uploader` es el ÚNICO que escribe/borra adjuntos (storage en `paths.uploads` = `storage/uploads/`, JAMÁS dentro de `public/`). `stored` es relativo a la raíz (`YYYY/MM/<hex>.<ext>`) y `absolutePath()` valida patrón + `realpath` dentro de la base. MIME SIEMPRE con `finfo` (nunca `$_FILES['type']`); la extensión efectiva sale del MIME y `DENY_EXT` (php/html/svg/exe/...) se rechaza antes de mirar nada. La descarga es `GET /attachments/{answers.id}?i=N` (owner/editor/admin, `octet-stream` + `nosniff` + `private, no-store` + CSP sandbox) — nunca sirvas `storage/` por el web server. Todo POST del fill con archivo necesita el middleware `post-max` ANTES de `csrf` (si el cuerpo pasa `post_max_size`, PHP vacía `$_POST`/`$_FILES` y sin ese guard se ve un "CSRF inválido" engañoso; responde 413 con `views/errors/413.php`). Al borrar una respuesta, un formulario o un campo en el builder, la purga es **de dos fases** y el orden importa en las dos: `Uploader::pendingFor{Submission,Form,Field}()` DEVUELVE las rutas y tiene que correr **antes** del `DELETE` (los `ON DELETE CASCADE` se llevan los `answers` y `Answer::attachmentValuesBy*` ya no encuentra nada → el binario queda huérfano para siempre), y `Uploader::purgePaths($rutas)` borra del disco **después** del `commit()` (purgar dentro de la transacción deja, si hay rollback, una fila `answers` viva apuntando a un binario inexistente → 404 permanente en `GET /attachments/{id}`). `purgeSubmission/purgeForm/purgeField` son envoltorios de una sola fase: no usarlos tras un DELETE. Nada fuera del dashboard muestra la metadata cruda: todo pasa por `Uploader::displayValue`.
-- `Config::get()` SÍ soporta notación de punto (`paths.uploads`, `app.uploads.max_size_mb`, `app.locale`); si añades una clave nueva, accede con esa forma y verifica que no devuelva el default en silencio (fue la causa de que los adjuntos se escribieran en `/uploads`).
-- Deploy P10: `php.ini` (`upload_max_filesize`, `post_max_size`) debe admitir el tamaño anunciado, nginx `client_max_body_size` > `post_max_size`, y el usuario del web server necesita escritura en `storage/uploads`.
-- SSRF del webhook (2026-09-28, fase 2 · 2.2): `Webhook::fire()` NO hace `file_get_contents` a la URL configurada. `resolveTarget($url, $allowPrivate)` resuelve el host y rechaza loopback, RFC1918, link-local (incluida `169.254.169.254` de la metadata de nube), CGNAT, multicast, reservadas y las IPv4 mapeadas en IPv6 (`::ffff:127.0.0.1`); se rechaza si **cualquiera** de las IP resueltas es privada (rebinding), y un host que no resuelve a ninguna IP tampoco pasa. La conexión se fija a la IP ya validada (TOCTOU) pero el `Host` y el SNI siguen siendo el NOMBRE (`peer_name`), que es lo que permite verificar el TLS de un dominio público al que se entra por su IP. No se siguen redirecciones, se rechazan CR/LF en la URL y credenciales embebidas. Sin `ext-curl` en este entorno, por eso el POST se hace a mano con `stream_socket_client` (si algún día hay curl, `CURLOPT_RESOLVE` es lo equivalente). OJO al tocarlo: (a) el seam `Webhook::setHandler()` está **detrás** de la validación, así que un test con URL de loopback ya no se dispara — usa `Webhook::setResolver()` para fijar la resolución y no depender del DNS real; (b) `webhook.allow_private_hosts` está declarado en el whitelist de `FormSettings::normalize()` porque si no se pierde en cada guardado y el opt-in de red local no sirve; (c) `isBlockedIp()` compara bytes empaquetados, no texto — pasar la IP en texto a `matchesCidr()` hace que nunca case y las mapeadas pasarían por públicas. Red local propia: hacen falta **DOS** opt-ins, no uno — `WEBHOOK_ALLOW_PRIVATE_HOSTS` (config `app.webhook.allow_private_hosts`, lo pone quien opera la instancia) Y `webhook.allow_private_hosts` en los settings del formulario. El AND es lo que cierra el agujero: con el opt-in solo en el formulario, cualquiera con permiso de edición (dueño, editor o admin, y con registro abierto cualquiera) mandaba `{"webhook":{"allow_private_hosts":true}}` al guardado de settings y usaba el webhook como proxy a la red interna; el opt-in del servidor no se puede tocar desde un formulario. OJO: el chequeo va en `fire()` ANTES de resolver y deja rastro en el log. En tests se fija con `Webhook::setAllowPrivate(true|false)` porque `Config` no tiene setter; `null` = se lee de la config (lo limpian `setUp`/`tearDown` de `WebhookSsrfTest`).
-- Builder F0/F1 (2026-09-27): el «+» de inserción es **hijo** de la tarjeta que precede y cuelga de su borde inferior (no hermano: SortableJS reordena los hijos de `#canvasFields` y un hermano se separaba de su elemento al arrastrar). El hover es selector de hijo, nunca `~`. El «+» y el «agregar pregunta dentro» de la sección abren el modal `#addFieldModal`, cuya cuadrícula se genera en la vista desde el mismo `$fieldTypes` que la paleta; el contexto marca `[data-vf-structural-part]` para ocultar sección/página dentro de una sección. Tokens de UI en `app.css:6-28` (`--vf-icon-btn`, `--vf-ctrl-h`, `--vf-hint-fs`, `--vf-focus-ring`, `--vf-tile-*`): todo botón de icono mide `--vf-icon-btn`. Spec completa en `docs/design.md`; decisiones y diagnóstico en `docs/builder-ui-plan.md`.
-- Builder F2 (2026-09-27): el engranaje de cada tarjeta (`data-act="settings"`) abre la configuración en `#fieldSettingsModal` reubicando la **MISMA** instancia de `#settingsForm` (`moveSettingsTo`), nunca duplicándola: ~45 refs cacheadas en `el` + pills de Bootstrap por selector global (`data-bs-target="#tabContent"`). El panel derecho se conserva y gana un botón de expandir. Ojo al tocarlo: (a) `openFieldSettings` llama a `selectFieldById`, que redibuja el lienzo, así que el opener se localiza por `[data-uid]` al cerrar; (b) `clearSettings()` reubica ANTES de alternar clases; (c) `moveSettingsTo` restaura `scrollY` y el `scrollTop` del contenedor, o la página salta al cerrar. `builder.js` bumpea a `v2026-09-27b`.
-- BUG RAÍZ de secciones (2026-09-27, `builder.js` `buildPayload()`): el estado en memoria usa `parentId` (camelCase) y el servidor lee `$item['parent_id']` (snake_case). Mandando `fields` en crudo, la clave llegaba `undefined` y **todas** las preguntas se guardaban como sueltas: al reabrir el builder la sección aparecía vacía y sus preguntas fuera (y por eso la condición «solo ocultaba el título»). `buildPayload()` ahora **mapea explícitamente** al contrato del servidor; es la única frontera entre ambas convenciones, no la cambies a `fields` sin mapear. Lo fija `tests/unit/BuilderPayloadContractTest.php` (compara las claves que el controlador lee con las que el JS serializa; verificado que falla si se revierte). Ojo: `Request::json()` lee `php://input`, no inyectable en CLI, así que el controller `saveStructure()` no es testeable en el runner sin un seam de producción.
-- F0.2 (2026-09-27): `applySettings()` NUNCA debe reconstruir `validations` desde cero (`const v = {}`): parte de `preservedValidations(f)` y encima escribe lo que el panel controla. El invariante, fijado por `tests/unit/BuilderValidationsContractTest.php`: una clave en `MANAGED_VALIDATION_KEYS` DEBE tener un control que la escriba en `applySettings()` (si no, listarla es justo lo que la borra); una clave que NO está en la lista se preserva sola, que es lo correcto para lo que no tiene UI (`max_files`). `text`/`textarea` declaran `validations: ['min_length','max_length']` porque `FillController` solo aplica longitudes a esos dos tipos. Antes, abrir el engranaje de una pregunta de plantilla y teclear borraba el cap y el autosave lo persistía. Ojo: `BuilderPayloadContractTest` compara NOMBRES de clave y no habría detectado esto; el fallo tenía los nombres bien y perdía el VALOR.
-- F0.1 (2026-09-27): el ocultado de tiles estructurales dentro de una sección usa `setAttribute('data-vf-structural-hidden','1')`/`removeAttribute` y el selector de `app.css` es `[data-vf-structural-hidden]` (por presencia). NO volver a `toggleAttribute()` con un selector `="1"`: `toggleAttribute` deja el valor `""` y el selector nunca casaba, así que "Sección de preguntas" y "Página" seguían visibles dentro de una sección y al pulsarlos se insertaban en la raíz sin avisar.
-- Builder F3 (2026-09-27): la lógica de sección se COMUNICA en el builder sin duplicar la semántica del servidor (chip `.app-logic-inherited` en las hijas, alcance «Se oculta el bloque entero (N)» en la sección, aviso `#logicInheritedNote` en la pestaña Lógica, etiqueta de paleta «Sección de preguntas» sincronizada en `$fieldTypes` + `typeInfo`). `BuilderController::resolveLogic()` ya no devuelve `null` para 4 causas distintas: devuelve `['error' => 'self'|'section'|'missing'|'invalid']` y `logicErrorMessage()` redacta un mensaje que nombra el elemento (tests en `tests/unit/BuilderLogicErrorsTest.php`).
-- F0.3 (2026-09-29, mismo descuido que F0.2 dos capas más abajo): que `applySettings()` escriba `v.correct` no basta — el control `#quizAnswer` NO TENÍA listener, así que teclear la respuesta correcta no llamaba a `applySettings()` y el autosave guardaba la validación anterior. El síntoma era «no guarda la respuesta correcta»; el servidor nunca estuvo en medio (`correct` viaja en `validations` y lo lee `QuizScore`). Con el mismo hueco iban `fieldShuffleOps` (`randomize`), `valFileAccept`/`valFileMaxSize`/`valFileMultiple`. Regla: **toda clave en `MANAGED_VALIDATION_KEYS` necesita control Y listener**, y el par clave→control está declarado en `CONTROL_FOR_KEY` de `tests/unit/BuilderValidationsContractTest.php` (que además barre los listeners con `wiredControls()`, así que aguanta tanto el enlace directo como el bucle `forEach` sobre la lista de ids). Texto → `input`, casillas → `change`. `builder.js` bumpea a `v2026-09-29a`.
-- Progreso del fill (2026-09-29): el denominador es `progressFieldCards()`, deliberadamente OTRO conjunto que `visibleFieldCards()`. Motivo: `.vf-step-hidden` es de MAQUETACIÓN (solo se ve un paso a la vez), así que filtrar por ella dejaba el denominador reducido al paso a la vista y contestar la primera página ponía la barra al 100%. OJO al escribir el caso de multipágina (`tests/js/fill-progress.js`): si las tarjetas no cuelgan de un `.vf-page-block`, el filtro viejo NO las excluía y el test pasaba verde con el bug puesto. El paso de verdad OMITIDO se marca con `data-vf-skipped` (lo pone `paintSteps`), NO con una clase: el atributo se pone y se quita, y las tarjetas del paso quedan con `vf-hidden`, que es lo que el filtro de progreso ya excluía. `applyCardVisibility()` vive separada de `evaluateConditions()` porque `paintSteps()` también la necesita (antes ocultaba las tarjetas del paso saltado sin poder volver a enseñarlas: un paso que dejaba de aplicar su condición se quedaba invisible para siempre). `isCardAnswered()` es «completa o nada» para matriz y ranking, igual que `validateField` (`val.matrix_all`): con `isEmptyValue(getFieldValue())` una fila de cinco llenaba la barra y el envío se rechazaba por el mismo dato. La visibilidad de la barra se decide DENTRO de `updateProgress()` (toggle, no `add`), para que un formulario que va revelando preguntas no se quede sin barra. `tests/js/fill-progress.js` extrae las funciones reales del JS y las corre contra un DOM mínimo; `tests/unit/FillProgressTest.php` lo invoca con `node` y avisa (sin ponerlo en rojo) si no lo hay — el runner trata un SKIP lanzado desde `setUp()` como ERROR.
-- `PublicUrl` (2026-09-29): el enlace que se copia, el QR y el `<iframe>` de embed salen de `App\Core\PublicUrl`, no de `app.url` (cuyo default de desarrollo es `http://127.0.0.1:8080`, así que en cualquier otro host el QR no abría nada a quien lo recibía). Orden de resolución: pin `APP_PUBLIC_URL` (config `app.public_url`) → petición actual (`HTTP_HOST` validado + `HTTPS`/`X-Forwarded-Proto`) → `app.url`. Ojo: (a) el pin vacío NO es «sin URL», es «sin pin» — el seam es `setBaseForTesting(?string $pin, ?string $urlFallback = null)`, donde el segundo argumento anula el último peldaño (`''` = instancia sin URL utilizable) y es lo que permite probar «no hay ninguna base» sin depender del `.env` de la máquina; (b) `X-Forwarded-Proto` solo se lee con `Request::trustsProxy()` (el mismo criterio que `Request::ip()`); (c) `Host` se valida estricto (CR/LF, `@`, espacios, corchetes IPv6 mal cerrados, puertos imposibles) y si no tiene forma de host se cae al peldaño 3, en vez de acabar inyectando texto en un `value=`, un `data-url=` o el QR; (d) `views/dashboard/forms/show.php` avisa con `isLocalBase()` cuando la base resuelta es loopback/RFC1918 o un nombre sin dominio — es un aviso, no un bloqueo.
-- Turnstile en multipágina (2026-09-29): `$emitPageFooter` de `views/fill/show.php` tiene que declarar `$turnstile` en su `use`. Una closure solo ve lo que declara: sin él, `!empty($turnstile['enabled'])` leía una variable INDEFINIDA, el widget no se pintaba en el pie del último paso y —como el `submit` sí exigía el token— el formulario se rechazaba a sí mismo con un anti-bot invisible. La rama `!$hasPages` (línea ~580) sí lo tenía; el bug era solo del pie. Ojo al añadir closures que lean variables de la vista: mismo patrón de fallo, sin aviso.
-- Lógica de grupo: la regla de la sección y la de su hija se combinan con AND (modelo de la industria: Typeform/Jotform/Cognito/Qualtrics; Google Forms es la excepción porque no tiene reglas por pregunta). Ya lo implementaban `FillController::isFieldVisible()` y `fill.js`; el builder solo lo muestra como estado heredado.
-- Gap sin JavaScript CERRADO: `FillController::initialVisibility()` resuelve la visibilidad en el render con las MISMAS reglas del submit (`isFieldVisible` + `pagePlan`) y la vista la marca con `vf-hidden`. `fill.js` recibió `plainFieldCards` para poder LEVANTAR ese `vf-hidden` cuando la condición cambie (si no, una pregunta sin lógica propia dentro de una sección quedaría oculta para siempre). Si añades ocultado en el render, asegúrate de que el cliente pueda revertirlo.
-- P9 exports: `GET /forms/{id}/print` (hoja imprimible standalone) y `GET /forms/{id}/export-structure.json` (formato plantilla, round-trip). Los `header()`/`exit` de `exportStructure` van dentro de `if (PHP_SAPI !== 'cli')` para no matar el runner de tests.
-- `Response::redirect/abort/json` NO cortan en CLI: si un controller debe detenerse ahí, poner `return;` explícito (si no, el flujo sigue y crea datos fantasma — bug corregido en `FormController::create`).
-- F2 (2026-09-28): los parámetros de ruta llegan SIEMPRE como string y las firmas piden `int` (`{id}`/`{sid}`) o `string` (`{slug}`); como `Router.php` es `strict_types=1`, sin conversión `/forms/abc/builder` era un TypeError = HTTP 500 con el stack trace en el cuerpo (fuga de la ruta del servidor). `Router::orderArgs()` convierte según el tipo declarado de la firma y, si no encaja, responde 404 (ese recurso no existe) y **no** llama al controlador. Reglas al añadir una ruta: el tipo declarado debe ser `int`/`float`/`bool`/`string` (o sin tipo); nada de `array`/objetos, que no se convierten. `toInt()` solo acepta `-?\d+` y dentro del rango: rechaza `' 5'`, `'5.0'`, `'1e3'`, `'+5'`, dígitos Unicode y desbordes, porque `is_numeric()` se los traga y darían el id equivocado. `RouterParamsTest` lo fija sobre TODAS las rutas de `config/routes.php`; cambiar `{id}` a `string` "para que PHP deje de quejarse" rompe el test. Si `Response` no corta en CLI, el router ya devuelve `null` de `orderArgs()` y el llamador para.
-- CSP + escapado del front (2026-09-28, fase 2 · 2.4/2.5): `app.csp_policy` tiene default SEGURO **en código** (`script-src 'self'`, sin `unsafe-inline`/`unsafe-eval`); `style-src 'unsafe-inline'` se queda a propósito (Bootstrap, `style=""` y el `<style>` de la hoja imprimible). OJO: el default estaba en `.env` de esta máquina, así que el hueco (instalación limpia sin CSP) NO se veía en desarrollo — por eso `testLaCspTieneDefaultSeguroEnCodigo` mira el valor en runtime **y** el default que pasa `config/config.php`; si solo miraras el runtime, vaciar el default no rompería nada aquí. Con `script-src 'self'` la app NO admite `<script>` inline ni `on*=`: el único que quedaba (botón de imprimir) está en `public/assets/js/print.js` vía `data-print`, y `testNingunaVistaTieneScriptInlineNiHandlerEnLinea` recorre `views/` (quitando comentarios) para que nadie reintroduzca uno y rompa la página en silencio. `frame-ancestors` se relaja de `'none'` a `'self'` con un REGEX sobre la política en `FillController::allowEmbedHeaders()` (solo en `/f/{slug}/embed` y en el thanks embebible): el default tiene que seguir casando con ese patrón o el embed se queda bloqueado sin avisar. Y `esc()` (builder.js + dashboard.js) escapa `& < > " '`: antes usaba el truco `textContent`→`innerHTML`, que NO escapa comillas, y su salida iba en atributos entrecomillados con `innerHTML` → `"` cerraba el atributo (XSS con la sesión de quien edita: el builder lo abre cualquiera con rol editor/admin). Invariante: la salida de `esc()` no tiene comillas crudas, así que vale para texto y atributo. Ojo al interpolar en atributo: usa `esc()`, nunca `textContent`, y el `type` de JS también cuenta (un `onerror=` o un `javascript:` en un `data-*` valdría igual).
-- `freddy/`, `freddy.zip` y `pub.jar` son un toolkit externo de "levantamiento de información" (genera recommendations/coverage), NO código de la app; no modificar salvo pedido explícito.- Seed y admin (2026-09-28, fase 2 · 2.3): `database/seed.sql` crea SOLO roles — no reintroducir usuarios ni hashes ahí, aunque sea "para que funcione de una vez": un bcrypt en el repo es una contraseña conocida aunque el archivo esté detrás de un opt-in, y los usuarios demo incluyen un admin. Los usuarios van por `database/seed.php`, que sin `SEED_DEMO=1` no hace nada y sale con **código 1** (a propósito, para que un despliegue que se lo encuentre en la tubería se note). El opt-in se comprueba **antes** del `INSERT`; si alguien lo mueve después, siembra igual y `SeedDemoOptInTest` se pone rojo. Para una instalación real, el primer admin se crea a mano con `scripts/create-admin.php`, que existe justo para que el opt-in no deje la app sin administrador (registrarse por la web da rol `user` y no hay ascenso). OJO: ese script NO acepta `--password=` (queda en el historial del shell y en `ps`) y lo rechaza con un mensaje que dice las tres vías válidas (`ADMIN_PASSWORD`, `--password-stdin`, prompt sin eco) — no lo cambies por un `??` en silencio.
-- Auth (2026-09-28, fase 2 · 2.7): el login verifica SIEMPRE una contraseña, exista el usuario o no, contra su hash o contra `AuthController::DUMMY_HASH`. Ese señuelo tiene que ser **bcrypt al coste de `PASSWORD_DEFAULT`**: un hash más barato, o un string que `password_verify` no puede verificar, devolvería antes y volvería a delatar la diferencia de tiempo (medido: 0.016 s vs 0.33 s, un factor 20). No reintroducir `$user === null || !password_verify(...)`: el resultado final es idéntico, así que ningún test de comportamiento lo nota. `PASSWORD_MIN = 10` es una constante compartida con `views/auth/register.php` (si divergen, el navegador acepta 8 y el servidor lo rechaza) y tiene que caber con `password123` (11), que es la contraseña del seed. Rehash oportunista en cada login correcto vía `User::updatePasswordHash()`. `Session::start()` fija `use_only_cookies` **antes** de `session_start()`, no como default global. OJO al medir timings por HTTP: el limitador de intentos se comprueba ANTES de verificar la contraseña, así que a partir del sexto intento ambas rutas responden en ~0.016 s; es un limitador por IP, no por email, pero hay que vaciar `rate_limits` entre parejas al medir.
-- `settings.theme.font` (2026-09-28, fase 2 · 2.8): el valor va directo a un `font-family` dentro de un `<style>` que carga el **fill público**, sin sesión ni CSRF, así que sin validación era inyección CSS. `FormSettings::isValidFontFamily()` es lista blanca (`^[A-Za-z0-9][A-Za-z0-9 _.,-]{0,119}$`; el 120 = 40 del recorte de `normalize()` × 3 familias) y se aplica en las DOS puertas: `normalize()` para lo que entra, y `themeCss()` para lo que sale, porque puede haber filas ya guardadas con un valor inválido y filtrar solo al guardar no las limpia. `validate()` mira el **valor crudo**: si mirara el normalizado (que ya viene en `null`) nunca vería el error y quien escribe la tipografía no sabría por qué no se guardó. La fuente se emite **sin comillas** a propósito: el patrón no las admite y el `htmlspecialchars` previo las volvía `&quot;`, que dentro de un `<style>` no se decodifica (nombre de fuente roto, sin error visible).
-- Zona horaria (2026-09-28, fase 3 · D6): el contrato tiene TRES puntos y romper cualquiera de los tres falla en silencio. (1) La BD habla UTC: `Database::__construct()` hace `SET time_zone = '+00:00'` porque PDO no tiene parámetro de DSN para la zona y `init_command` es de mysqlnd; sin eso la sesión hereda la del host. (2) PHP habla UTC: `config/bootstrap.php` hace `date_default_timezone_set('UTC')`. (3) La conversión a la zona del lector (config `app.timezone` = `APP_TIMEZONE`, default `America/Caracas`) ocurre SOLO al pintar, en `App\Core\Clock` y los helpers `View::date()/datetime()/relative()/now()/timestamp()`. Antes: PHP en `America/Mexico_City` + sesión en SYSTEM, o sea que imprimir el string crudo se veía bien y solo fallaba la aritmética (5 de 8 submissions reales caían en el día equivocado, y `open_at` de un formulario abría 4 h antes de la hora escrita). **No se migraron los datos y no hay que migrarlos**: los TIMESTAMP existentes son instantes UTC correctos (`strtotime($v.' UTC') === UNIX_TIMESTAMP($v)`), lo que estaba mal era quién los leía; desplazarlos los habría corrompido. OJO al agrupar por día: `Submission::dateBounds()` traduce el filtro a límites UTC con el final EXCLUSIVO (día local = `[04:00, 04:00)` en Caracas) y `dailyStats()` pasa el desplazamiento NUMÉRICO a `CONVERT_TZ`, nunca el nombre de la zona (el nombre exige las tablas de zonas horarias en el servidor y sin ellas devuelve `NULL` sin avisar). `schedule.open_at/close_at` son muros de reloj de un `datetime-local`: se interpretan en `app.timezone` (`FillController::parseScheduleDate`), respetando la zona si el string trae una explícita. `Submission::isValidDay()` rechaza fechas imposibles porque `createFromFormat` "corrige" `2026-02-31` a marzo sin avisar. Un test recorre `views/` y falla si alguna vista pinta una fecha de la BD con `date()`/`strtotime()` a pelo.
-- `rate_limits` (2026-09-28, fase 3 · D3): `RateLimiter::cleanExpired()` **no tenía call site** y la tabla crecía para siempre con las IPs de los respondientes (493 filas, +9 por ejecución de tests). Ahora `recordHit()` se lleva una limpieza oportunista (1 % de escrituras, una vez por petición vía `cleanedThisRequest`) con `MAX_WINDOW = 3600 s` — la ventana máxima que admite el limitador y el techo que usa la limpieza; se subió de 600 a 3600 cuando el límite del dashboard (F5.3, ventana por hora) pasó a ser el consumidor más grande. `maybeCleanExpired()` devuelve `?int`: `null` = no se ejecutó, entero = filas borradas. Eso no es purismo: devolver siempre 0 hace imposible distinguir "no limpió" de "no había nada" y un test con `> 0` pasa sin probar nada. El seam `setCleanupProbability()` existe para que un test pueda fijar 100 y comprobar que `recordHit()` REALMENTE limpia (con el 1 % real, el test pasaría igual con la llamada puesta que quitada — verificado). `scripts/clean-rate-limits.php` es el mantenimiento explícito/cron. Los fixtures de los tests de calendario (`ScheduleQuotaTest`) se escriben con `relojLocal()`: `date('Y-m-d H:i:s', time()-3600)` pinta hora UTC y llegaba 4 h al futuro en Caracas, así que la ventana salía invertida.
-- `parent_id` (2026-09-28, fase 3 · D5): la columna es `INT UNSIGNED DEFAULT NULL` con FK `fk_fields_parent ON DELETE CASCADE` (migración 0004) y **`0` no es un padre válido**: un AUTO_INCREMENT no puede tener id 0. "Sin sección" es `NULL` y la normalización vive en UN solo sitio, `Field::normalizeParentId()`, usada al leer y al escribir. La app escribía `parent_id = 0` (el builder y varios tests), así que guardar la estructura de un formulario con preguntas sueltas reventaba con un 1452.
-- Analítica (2026-09-28, fase 3 · D8): `AnalyticsController::show()` ya NO itera por pregunta: `FieldAggregator::forForm()` devuelve las estadísticas de TODOS los campos con **2 consultas fijas** (`Answer::nonEmptyCountsInForm` + `Answer::valueCountsInForm`), y promedios/min/max/NPS/matriz/ranking se derivan en PHP sobre esas dos tablas. El array tiene EXACTAMENTE la misma forma que devolvían los métodos por campo (la vista `views/analytics/show.php` no cambió y los métodos viejos siguen vivos como referencia del test de equivalencia `AnalyticsAggregationTest`). OJO: (a) `a.value` es TEXT y un `MIN`/`MAX` SQL compara como CADENA — `numberStatsInForm` usa `MIN(a.value + 0)` porque con 10, 9 y 7 devolvía min=10 y max=9; cualquier SQL futuro que derive de `a.value` numérico castea o compara mal. (b) El filtro `from`/`to` de `Answer::queryField()` recorta por DÍA LOCAL (mismos límites UTC que `Submission::dateBounds()`, final exclusivo): concatenar `$from . ' 00:00:00'` cae en el día equivocado para respuestas entre 00:00 y 04:00 UTC. (c) `Submission::withAnswersByIds()` trocea en tandas de `ID_BATCH = 5000` (techo real de MariaDB: 65 535 placeholders) y REORDENA el resultado globalmente (`finished_at DESC, id DESC`): concatenar tandas sin `usort` devuelve las respuestas en orden de tanda. `setIdBatchForTesting()` es el seam de tests. La agregación ES global sobre todas las submissions filtradas; paginar la tabla es una decisión de producto que NO está resuelta (métricas por página vs total). Tests: `AnalyticsAggregationTest` + `SubmissionBatchTest`.
-- F5.1 (2026-09-28): `thanks.redirect_url` ya NO se salta con una URL http/https válida: tiene que pasar la allowlist de servidor `RedirectGuard`. Config `app.redirect_allowlist` = `APP_REDIRECT_ALLOWLIST` (hosts separados por coma, sin esquema; **vacío = bloqueado por defecto** → el thanks normal con aviso). `checkedExternal($url, $default)` parses la URL, exige http/https sin credenciales, compara el host EXACTO contra la lista y, si el host NO está, devuelve `$default` (agradecimiento local). `FillController::redirectToThanks` lo usa en submit y en el honeypot. OJO: config vacía no es "todo pasa", es "nada pasa"; quien quiera redirects externos debe listar dominios. Seam `RedirectGuard::setAllowlistForTesting(?array)` (null = leer config; `Config` no tiene setter); `setUp`/`tearDown` lo limpian. Tests: `RedirectGuardTest` (unitaria) + `RedirectAllowlistTest` (FillController con BD).
-- F5.3 (2026-09-28): límite del dashboard POR USUARIO (no por IP). `App\Core\DashboardLimit` con `RateLimiter` y ventana `RateLimiter::MAX_WINDOW` (3600 s, ver D3): scope `dash:create` (crear/clonar form y exportar estructura) y `dash:export` (CSV/JSON de respuestas), identifier = `Auth::id()`. Config `app.limits.create_per_hour`/`export_per_hour` = `DASH_CREATE_PER_HOUR` (30) / `DASH_EXPORT_PER_HOUR` (120) en `.env`/`.env.example`. Guardas en `FormController::{create,duplicate,exportStructure}`, `AnalyticsController::exportCsv`, `ResponsesController::exportJson` ANTES del trabajo (no exportas y luego te dicen que no). Superado → `Response::abort(429, ...)` + vista nueva `views/errors/429.php`. En tests el límite se agota/se resetea vía `RateLimiter` con scope+identifier idénticos a producción (`DashboardLimitTest`).
-- Smoke de TODAS las rutas (2026-09-28): `tests/unit/ControllerActionsTest.php` recorre `config/routes.php` con el Router REAL (vía `ReflectionProperty(Router::class,'routes')`), concretiza `{id}/{sid}/{slug}` con fixtures, inicia sesión según middleware (`guest`→anónimo, resto→admin), hace CSRF (`_token` en POST o `HTTP_X_CSRF_TOKEN` + `CONTENT_TYPE=application/json` + `setRequestBodyForTests('{}')`), y da FAIL si un controller no produce halt NI salida. `ensureForm()` reconstruye form/field/submission tras rutas destructivas; 2º usuario para `/admin/users/*`. Assert `count($routes) >= 30`. OJO al añadir una ruta: este test la recorre — si necesitas sesión/target distintos, completa `ensureForm`/identifiers. Destapó y arregló: `exportJson`/`exportCsv`/`qrSvg` hacían `header()/exit` incondicionales (mataban al runner en CLI; ahora `PHP_SAPI !== 'cli'`, patrón igual a `exportStructure`) y `Form::duplicate` copiaba `settings` crudo (PDOException 4025 JSON_VALID al duplicar un form sin settings); ahora `json_encode(self::settingsFrom($form))` normaliza con defaults. Seams de observabilidad: `Response::setRecordHalt()/lastHalt()` (en CLI no hay otra forma de ver un redirect/abort).
-- `Request::ip()` (2026-09-28): contrato fijado por `RequestIpTest` + seam `Request::setTrustProxyForTesting(?bool)`. `TRUST_PROXY=false` (default) IGNORA `X-Forwarded-For`/`X-Real-IP` y usa `REMOTE_ADDR`. Con `true` confía en la PRIMERA IP válida de `X-Forwarded-For`, cae a `X-Real-IP` si no hay, y `0.0.0.0` si no hay ninguna válida. Quien toque `Request::ip()` debe mantener esa semántica (el rate limit del fill depende de que el spoof no pinte).
-- Thumbs webp (2026-09-28): `GET /attachments/{answers.id}?i=N&thumb=1` sirve la miniatura INLINE `image/webp` (Content-Length + readfile) con los mismos headers de seguridad que la descarga, pero ya no como `attachment`; SIN `?thumb=1` la descarga sigue siendo octet-stream. `Answer::attachmentsBySubmission` añade `has_thumb` (criterio idéntico al del download: `!empty($meta['thumb'])`) para que la vista distinga. `views/responses/show.php` pinta `<img class="vf-attachment-thumb" src="/attachments/{aid}?i={n}&thumb=1">` solo para `image/*` con `has_thumb`. El `header()`/readfile va fuera de CLI. Cubierto por `P10UploadsTest` (PNG 1x1 → `image/webp`, `has_thumb=false` en PDF; requiere GD con webp en el entorno).
-- Scale (2026-09-28): el tipo `scale` ahora se valida SERVER-SIDE en `FillController` (rama numérica: `is_numeric`, entero, `1..max`, rechaza `3.5`/`abc`/`0`); antes persistía cualquier valor y corrompía la analítica numérica. La vista emite `data-vf-min="1"` / `data-vf-max` en el input y `fill.js` valida en la rama numérica con mensaje `val.scale_range`. Clave nueva en `es.php`/`en.php` Y en el fallback de `fill.js`. Test: `SurveyTypesTest::testValidateScaleRango`.
-- fallback i18n de fill.js (2026-09-28): `FALLBACK_I18N` son literales ES HARDCODEADOS (antes se auto-referenciaba: `t()` definía `I18N` a partir de `t()`... de sí mismo). Invariante fijado por `tests/unit/FillJSI18nTest.php`: el fallback no contiene auto-referencias, es subconjunto de `app/lang/es.php` y sin claves muertas, y las claves que usa `t()` existen en `es.php`. Si añades una clave a `t()` en fill.js, hay que sumarla a `es.php` + `en.php` + `FALLBACK_I18N` o el test se pone rojo.
-- `scripts/clean-uploads.php` (2026-09-28): complemento de las purgas de P10. `Uploader::pruneEmptyMonths(?string $root = null, bool $dryRun = false)` borra los directorios `YYYY/MM` que quedan VACÍOS tras un purge, y también el año si quedó sin meses; solo toca rutas que sigan el patrón estricto `\d{4}/\d{2}` y que no tengan contenido — carpetas extrañas o con archivos se dejan intactas. `--dry-run` solo cuenta. Es el cron/manual; no duplica la lógica de `absolutePath`.
-- `Form::find($id, bool $withFields = true)` (2026-09-28): con `false` se ahorra `Field::byForm`. `ResponsesController::{index,delete}` pasan `false` (el listado y el borrado no pintan campos); `show`/`exportJson` y el resto siguen con `true` (verificado que las vistas de responses usan `$form['fields']`). Si añades una ruta que solo lee el contenedor, pasa `false`.
-- Limpieza fase 4 (2026-09-28): fuera del repo `Clock::addDays`, `Env::isLoaded` (+su prop `$loaded`), `Request::uri`, `Answer::valuesByField`, `Submission::countByForm` y `Field::deleteByForm` (sin call sites). NO eran seams: los seams documentados (Webhook::setResolver/setAllowPrivate, Mailer::setTransport, FieldAggregator::setIdBatchForTesting, RateLimiter::setCleanupProbability, Request::setRequestBodyForTests, Request::setTrustProxyForTesting, Response::setRecordHalt, RedirectGuard::setAllowlistForTesting) siguen vivos a propósito. FontAwesome: quedan `css/all.min.css` + `fonts/fa-solid-900.*` + `fa-regular-400.*`; se ELIMINARON brands/v4-shims/svg-with-js y los fonts de brands/v4compat — no reintroducir CDN ni archivos que `all.min.css` no pida (grep de `css/xxx` en views antes de añadir assets).
-- F5.2 (2026-09-28): el rol `editor` se DEJA COMO ESTÁ — decisión del autor, pendiente de un sistema de roles/grupos (RBAC). El middleware `editor` existe pero NO se aplica a ninguna ruta de `config/routes.php`; `canAccess()`/`canEdit()` dan a `editor` acceso de dueño en forms, responses, analytics y descarga de adjuntos. No restringirlo ahora; cuando exista RBAC, revisar cada `canAccess`/`canEdit` a la vez que se decide qué puede ver `editor`.
-- RBAC (2026-09-28, fase 6): catálogo de permisos en `config/permissions.php` (fuente de verdad: `clave => [desc, roles_default]`) sembrado en DOS copias — la migración 0005 lo lee en runtime y `database/seed.sql` lleva el bloque estático para instalaciones limpias; si cambia una clave o un rol por defecto hay que tocar LOS DOS, lo pinza `PermissionSeedParityTest` (lee seed.sql y compara claves, y user/editor contra el catálogo; admin = todas). Por defecto: admin = todos, user = `dashboard.view` + propios (create/edit_own/delete_own/export_own, analytics/view_own, responses/view_own, attachments/download_own), editor = user SIN `forms.delete_own` (F5.2 queda invertido: editor ya no ve formularios ajenos). `Auth::can()` es la ÚNICA puerta de negocio — NUNCA gates con `role_name`. Permisos efectivos = rol propio + roles de los grupos (`Role::effectivePermissionKeys(roleId, groupIds)` vía `role_groups/role_group_roles/role_group_users`). `App\Core\Access`: `canView/canEdit/canDelete/canExport/canReadOwn` = `ownWith(owner, perm)`: dueño && `Auth::can(perm)` || `Auth::can('forms.manage_all')` — `forms.manage_all` abre el alcance global (seed: solo admin; un grupo no-admin puede otorgarlo). Middleware `admin` = `Auth::can('admin.access')`; `AdminController` vuelve a comprobar cada permiso.
-- Matriz de roles (2026-09-28, fase 6): `AdminController::updateRoleMatrix()` RECHAZA un POST sin la estructura `perms[<role_id>][]` (un cuerpo vacío o JSON no significa "desmarcar todo": vaciaba la matriz entera y dejaba todos los roles sin permisos salvo admin.access — lo destapó el smoke `ControllerActionsTest` que postea `{}` a `/admin/roles/save`). El rol `admin` SIEMPRE conserva `admin.access` (se re-añade al guardar) para que el propio panel no sirva para auto-encarcelar al único recurso que puede arreglar la matriz.
-- `SecurityLog` (2026-09-28, fase 6): `record(evento, detalle)` NUNCA rompe el request (try/catch + error_log), valida `^[a-z0-9_.]{2,60}$`, ip = `Request::ip()`. OJO: si `Auth::id()` apunta a un usuario inexistente (sesión con usuario borrado, o tests con id ficticio), `user_id` se guarda como NULL — hay un `EXISTS` sobre `users` antes del INSERT; sin él reventaba la FK `fk_sl_user` y el evento se perdía. `knownEvents()` lista los eventos para el filtro de UI; `recent(event, page)` filtra solo por conocidos; `purgeOlderThan(fecha)` es el mantenimiento/cron. Hooks emitidos: `auth.login_ok/fail/register/logout`, `rate_limit.{login,fill,dash_create,dash_export}`, `csrf.invalid` (verifyRequest/verifyHeader al fallar), `webhook.private_host`, `upload.denied_ext`, `form.delete/duplicate`, `admin.group_create/group_delete/role_matrix`.
-- Caché dashboard (2026-09-28, fase 6): `Cache::remember(clave, ttl, cierre)` con expiración evaluada en UTC (patrón de RateLimiter); NUNCA rompe el request (si falla, devuelve el computo en vivo). `forgetLike('dash:')` invalida el prefijo entero y lo llaman Form::{create,update,delete,duplicate,setStatus,saveSettings} y Submission::{create,delete} (`bumpDashboardCache`). OJO CRÍTICO MariaDB: un `DELETE` en medio resetea `LAST_INSERT_ID()` a 0 — en `Form::create` y `Submission::create` el `lastInsertId()` se captura ANTES de invalidar la caché (mover la invalidación antes devolvía id 0 → cascada de "ID > 0" + FK 1452 en toda la suite).
-- Migration 0005: usar SIEMPRE `CREATE INDEX IF NOT EXISTS` (un `CREATE INDEX` plano revienta con 1061 al re-ejecutar: la migración quedaba "aplicada" pero con la matriz sembrada a medias). Si añades un permiso a la matriz de una BD existente: editar `config/permissions.php` + `seed.sql`, borrar la fila de `0005` de `migrations` y `php database/migrate.php` (el seed de role_permissions es INSERT IGNORE idempotente).
-- Paginación analítica (2026-09-28): la tabla de detalle se pagina EN EL SERVIDOR (15/página): `Submission::byFormFilteredPaginated(form, from, to, page, perPage)` acota la TABLA (los agregados siguen globales); `GET /forms/{id}/analytics/rows` devuelve `{ok, html, pagination, page, pages, total}` y la página 1 se renderiza server-side en `show()` (sin parpadeo); el pager (views/analytics/_pagination.php + `data-paginate-page` en analytics.js + `.vf-loading` en app.css) hace fetch. Envelope idéntico a `byFormPaginated`. Tests: `SubmissionPaginationTest`.
-- Sparkline V5 (2026-09-28): `Submission::activityByForms(array $formIds, int $days = 14)` agrupa por DÍA LOCAL (mismo `CONVERT_TZ` + offset numérico que `dailyStats`) en UNA consulta con `IN` de placeholders NOMBRADOS — PDO lanza HY093 si mezclas `?` con `:desfase` en una misma sentencia. Respeta `Cache` del dashboard (el controlador usa `Cache::remember('dash:')`)? NO: la vista pinta el SVG inline desde el array; ids vacíos o `days <= 0` devuelven `['labels'=>[], 'forms'=>[], 'max'=>0]`. Índice 0 = día más viejo, `n-1` = hoy. Tests: `SubmissionActivityTest` (siembra con `finished_at` = MEDIODÍA local convertido a UTC, no con desplazamientos de reloj fijos, o el test depende de la hora UTC del host).
-- V6 (2026-09-28): el modal de nuevo formulario usa tarjetas radio (`input[name="template"]` con clase `.d-none` dentro de `.app-tpl-card`) en vez de `<select>`. `TemplateService::list()` ganó la clave `types` (primeros 6 tipos ÚNICOS de campos no-sección, para los chips de la preview — aditiva, `P9TemplatesTest` no la verifica). En `dashboard.js` el bloque P9 DESHABILITA los radios (`.disabled = true` evita que un form en modo "en blanco" mande una plantilla vieja) y togglea `app-tpl-off` para atenuarlas; elegir una tarjeta marca `mode=template` automáticamente. Si vuelves a un `<select>`, el bloque JS actual (`templateInputs`, no `select`) se rompe en silencio.
-- B1 Slack/firma/retry (2026-09-28, Track B): `settings.webhook` tiene TRES claves nuevas y todas tienen que estar en el whitelist de `FormSettings::normalize()` o se pierden al guardar: `kind` ('generic' | 'slack'), `secret` (firma) y las dos viejas. `kind: 'slack'` NO es cosmético: Slack ignora nuestro payload, así que `Webhook::slackBody()` lo convierte a mensaje de texto (acotado a 3900 chars CON el sufijo de truncado dentro del tope) y las respuestas anidadas se aplanan con `; `. `webhook.secret` → cabecera `X-VanillaForms-Signature: sha256=<hex>` sobre el body EXACTO que se envía; el receptor recomputa el HMAC. El envío tiene UN retry: `post()` devuelve el CÓDIGO HTTP (parseando la línea de estado, 0 = no conectó) y `fire()` reintenta con `usleep(backoff)` — un 2xx no reintenta y dos fallos no reintentan el tercero. `setHandler()` sigue siendo el seam de "no tocar red" (recibe el payload CRUDO, antes de formatear); para probar el cuerpo ya formateado, la firma y los intentos está `setTransport(?callable $target, $body, $signature, $attempt): int` y `setRetryBackoff(0)` (sin esto la suite espera 1 s por test). Tests: `WebhookSlackTest`.
-- B2 Turnstile (2026-09-28, Track B): `settings.anti_bot.enabled` (toggle en el builder) + claves de instancia `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` (config `app.turnstile.*`). Regla de seguridad: sin AMBAS claves, el formulario NO se sirve — `renderAvailabilityGate` pinta `fill/closed` con `status.misconfigured_*` y `submit` corta con 403. "Verificar solo si hay clave" sería dejar el control apagado en silencio. En el submit va TRAS el honeypot y ANTES del rate limit, y un token rechazado hace `renderFillErrors()` (re-render con `err.turnstile` y NADA persistido) porque el token es de un solo uso. OJO al leer la site key: va por `Turnstile::publicSiteKey()` (que honra el seam de tests), NUNCA por `Config::get('app.turnstile.site_key')` directo — así el render sale con la clave vacía en cuanto un test inyecta las suyas. El widget (`div.cf-turnstile` + `api.js` de Cloudflare) solo se pinta con el opt-in puesto, y la CSP de ESA respuesta se relaja en `emitFillCsp()` (añade el origen a `script-src` y `frame-src`); el resto de la app sigue con `script-src 'self'`. Tests: `TurnstileTest` (seams) + `TurnstileFormTest` (fill real con BD: barrera, sin token, token falso, token bueno).
-- `defer` fase 6: los scripts no críticos llevan `defer` (dashboard.js; sortable.min.js + builder.js; chart.umd.min.js + analytics.js). OJO: los dos scripts de una pareja dependiente deben tener el MISMO atributo (defer o no), o el segundo ejecuta antes de que cargue la librería (chart/analytics y sortable/builder). `bootstrap.bundle.min.js` + `app.js` y `fill.js` quedan sin defer (críticos); `print.js` ya lo tenía.
+**Fill y thanks**
+
+- El POST `/f/{slug}` hace **PRG** a `GET /f/{slug}/thanks`; solo salta a una URL
+  externa si el host pasa `RedirectGuard`.
+- El thanks se identifica con un **token de capacidad `?t=`**
+  (`submissions.public_token`), **nunca con `submissions.id`**: es público y sin
+  sesión. De cara al thanks, `Submission::findWithToken(string)`;
+  `findWithAnswers(int)` es solo del dashboard.
+- Salto de página: si la condición del campo `page` es verdadera se omite el
+  bloque entero, y sus campos ni se validan ni se persisten ni son fuente aunque el
+  cliente mande valores; una regla de página que referencie a una pregunta de su
+  propio bloque es un ciclo que `validateStructure` rechaza al guardar.
+- La **lógica de grupo es AND** entre la regla de la sección y la de su hija.
+- `initialVisibility()` resuelve la visibilidad en el render con las mismas reglas
+  del submit: si añades ocultado en el servidor, asegúrate de que `fill.js` pueda
+  levantarlo (`plainFieldCards`).
+- Honeypot `_vf_hp`: se chequea **antes** del rate limit y **finge éxito sin
+  persistir**. Turnstile va tras el honeypot y antes del rate limit; sin **las
+  dos** claves de instancia el formulario **no se sirve** (403).
+- La randomización aplica **solo en GET** (`show`/`embed`): el re-render de errores
+  del POST no baraja.
+- Toda closure de `views/fill/show.php` que lea una variable de la vista la
+  declara en su `use`; si no, lee una indefinida y falla sin aviso.
+
+**Revisión de publicación (F3)**
+
+- `forms.status` tiene **cuatro** valores: `draft`, `in_review`, `published`,
+  `closed`. `in_review` **no** se sirve: el GET pinta `views/fill/in_review.php`
+  (página informativa, no 404, a propósito) y el POST corta con 403 como en un
+  `draft`.
+- La revisión es **opt-in por formulario** (`settings.review.enabled`, default
+  `false`) y aprobar exige el **permiso `forms.review`**, nunca `canEdit`: por eso
+  `ReviewController` es un controlador aparte de `FormController` (un `canEdit()`
+  leído como autorización para aprobar es exactamente el error a evitar).
+- El **estado solo lo mueven las tres acciones** de `ReviewController`
+  (`sendReview`, `approve`, `returnDraft`) y cada una comprueba su estado de
+  origen. El campo `status` del payload del builder **no publica**: con revisión
+  activa se ignora, y **editar un formulario ya aprobado lo devuelve a la cola**
+  borrando la aprobación anterior (`Form::submitForReview()` va dentro de la
+  transacción del builder). Ese gate vive en `BuilderController::saveStructure()`;
+  añadir otra vía que escriba `forms.status` es saltarse la revisión.
+- Aprobar un formulario propio está permitido y el log lo marca con `propio`: en
+  una instalación de un solo usuario no hay a quién pedirle aprobación, y
+  prohibirlo dejaría esa instalación sin poder publicar nunca.
+- `User::reviewers()` (rol propio **+** roles de los grupos, en una sola consulta
+  con dos `EXISTS`, filtrando `is_active = 1`) alimenta el aviso; el aviso en el
+  panel es siempre y el correo es opt-in (`settings.review.notify_email`) y apunta
+  al panel, nunca al enlace público. En tests, sus destinatarios se filtran por
+  `@test.local` porque también salen los usuarios reales de la instancia.
+
+**Acceso por email (F4)**
+
+- `settings.access.mode` tiene **tres** valores: `public` (default, para no
+  romper lo existente), `email` (cualquiera que reciba el enlace) y `allowlist`
+  (solo emails de `form_access_emails`). La allowlist se edita **en la ficha del
+  formulario**, no en el builder.
+- El gate vive en `FillController::resolveAccess()` y se aplica a **GET, embed y
+  POST**: el POST sin acceso corta con 403 **antes** del `post-max` y del `csrf`,
+  que si no responderían «algo va mal» a un visitante sin ningún problema.
+- El **`form_id` va en el WHERE** de `FormAccess::findValidToken()`, no se filtra
+  después: es la mitad de la autorización. Un token de otro formulario no existe.
+- El permiso de sesión (`$_SESSION['vf_form_access']`) guarda el **id de la fila
+  del token**, no el token ni solo la fecha, y `sessionAccessValid()` revalida
+  contra la BD en cada request. Sin esa revalidación, revocar un enlace o quitar
+  un email de la lista no cerraba nada a quien ya había pasado por él.
+- `removeEmail()` borra la fila y revoca sus tokens en una **transacción**;
+  `issue()` invalida el token anterior del mismo par (form, email).
+- `requestAccess()` responde **igual** exista o no el email en la lista (mismo
+  flash, mismo destino, un único `uniformAnswer()`) y **registra el intento** en
+  los dos scopes de rate limit: `isAllowed()` lee, `recordHit()` cuenta. Un test
+  que separe «correo enviado» de «correo no enviado» por el número de mensajes
+  rompe esta uniformidad.
+- F4 **no añade permiso**: la gestión de la lista usa `Access::canEdit()`.
+- En un test, `requestAccess()` exige limpiar `rate_limits` para los scopes
+  `form_access` y `form_access_email`: son globales y por IP, y todos los tests
+  salen de `127.0.0.1`, así que el cupo de los primeros agota el de los demás.
+
+**PII (F1)**
+
+- `fields.is_pii` (columna, migración **0006**) marca los campos personales; lo
+  pone el dueño en el builder y `BuilderController` lo fuerza a `false` en
+  secciones y páginas (no guardan respuestas). Sin marca no hay enmascarado
+  posible: un `text` puede ser "¿Qué opinas?" o "Nombre de tu jefe".
+- **`responses.pii` es la única puerta**, y `App\Services\Pii` el único sitio que
+  decide el valor que sale. Sin el permiso: IP a `192.168.1.x`, user-agent
+  `[oculto]`, campos marcados `[oculto]` (email `j***@e***.com`, teléfono solo
+  prefijo). `piiFieldTypes()` NO comprueba el permiso (extrae la lista);
+  `maybeMaskAnswers()`/`maybeMaskSubmission()` sí.
+- **Los cuatro canales de salida se enmascaran**: detalle, listado, `exportJson`
+  y `exportCsv`. Enmascarar en la vista y no en la exportación deja un canal
+  limpio. En el CSV se enmascara **dentro** del bucle de campos, después de
+  decodificar: `[oculto]` empieza por `[` como un JSON y el bloque lo
+  reinterpretaría.
+- El bloqueo de **adjuntos** va en `AttachmentController::download` (403 si el
+  campo es PII sin el permiso), no en la vista: `/attachments/{id}` es
+  adivinable por el id correlativo de `answers`.
+
+**Adjuntos**
+
+- `Uploader` es el **único** que escribe o borra adjuntos, y viven en
+  `paths.uploads` (`storage/uploads/`), **nunca** dentro de `public/`.
+- **Purga de dos fases y el orden importa**: `pendingFor{Submission,Form,Field}()`
+  **antes** del `DELETE` (el `ON DELETE CASCADE` se lleva los `answers` y el binario
+  queda huérfano) y `purgePaths($rutas)` **después** del `commit()` (purgar dentro
+  de la transacción deja una fila `answers` viva apuntando a un archivo
+  inexistente). `purgeSubmission/Form/Field` son envoltorios de una fase: no los
+  uses después de un DELETE.
+- MIME siempre con `finfo` (nunca `$_FILES['type']`); la extensión sale del MIME y
+  `DENY_EXT` se rechaza antes de mirar nada. Fuera del dashboard, toda metadata
+  pasa por `Uploader::displayValue()`.
+- Todo POST del fill con archivo lleva **`post-max` antes de `csrf`**: si el cuerpo
+  pasa `post_max_size`, PHP vacía `$_POST`/`$_FILES` y sin el guard sale un "CSRF
+  inválido" engañoso (responde 413).
+
+**Webhook**
+
+- El POST se hace a mano con `stream_socket_client` **aunque ext-curl esté
+  disponible**: es lo que permite fijar la conexión a la IP ya validada (TOCTOU)
+  manteniendo `Host` y SNI como el **nombre** (`peer_name`) para poder verificar el
+  TLS. Con curl, `CURLOPT_RESOLVE` es el equivalente.
+- `setHandler()` está **detrás** de la validación, así que un test con URL de
+  loopback ya no se dispara: usa `setResolver()` para fijar la resolución sin
+  depender del DNS real. `isBlockedIp()` compara bytes empaquetados, no texto.
+- Red local propia: hacen falta **dos** opt-ins, `WEBHOOK_ALLOW_PRIVATE_HOSTS`
+  (servidor) **Y** `webhook.allow_private_hosts` (settings del formulario).
+
+**Router, params y respuestas**
+
+- `Router.php` es `strict_types=1` y los parámetros llegan **siempre como string**:
+  el tipo declarado en la firma (`int` para `{id}`/`{sid}`, `string` para `{slug}`)
+  es el contrato, y `coerceParam()` convierte y responde 404 si no encaja. No
+  cambies `{id}` a `string`.
+- `Response::*` **solo emiten headers y `exit` cuando `PHP_SAPI !== 'cli'`**: en el
+  runner los controladores se invocan sin cortar el proceso, así que un action que
+  debe detenerse ahí necesita `return;` explícito o crea datos fantasma.
+- `tests/unit/ControllerActionsTest.php` recorre **todas** las rutas de
+  `config/routes.php` con el router real: al añadir una ruta, ese test la ejecuta
+  (completa `ensureForm`/identificadores si necesitas otros fixtures).
+
+**Auth y RBAC**
+
+- `Auth::can()` es la **única** puerta de negocio: nunca gates con `role_name`. Los
+  permisos efectivos = rol propio + roles de los grupos.
+- El catálogo de permisos está **duplicado**: `config/permissions.php` (fuente; la
+  lee la migración 0005 en runtime) y el bloque estático de `database/seed.sql`
+  (instalaciones limpias). Si cambias una clave o un rol por defecto, toca **los
+  dos**; lo fija `PermissionSeedParityTest`.
+- `updateRoleMatrix()` **rechaza** un POST sin la estructura `perms[<role>][]`
+  (un cuerpo vacío no significa "desmarcar todo") y el rol `admin` siempre conserva
+  `admin.access`.
+- El login verifica **siempre** una contraseña, exista el usuario o no, contra su
+  hash o contra `AuthController::DUMMY_HASH`, que tiene que ser bcrypt al coste de
+  `PASSWORD_DEFAULT`. `PASSWORD_MIN` (10) es una constante **pública** compartida
+  con `views/auth/register.php` y `AccountController` (tres sitios, una sola
+  constante: fijarla por un camino y no por otro dejaría contraseñas que un
+  formulario acepta y el otro rechaza).
+- `Auth::user()` cachea por request (static, no sesión): desactivar a un usuario
+  surte efecto en el request siguiente; `Auth::forgetCache()` la limpia.
+- `database/seed.sql` crea **solo roles**: un bcrypt en el repo es una contraseña
+  conocida, aunque esté detrás de un opt-in.
+
+**Recuperación de contraseña (F2)**
+
+- Las sesiones son **ficheros PHP**, no hay tabla de sesión: no se pueden revocar
+  por id. Lo que las cierra es comparar instantes, `Session['auth_at']` contra
+  `users.password_changed_at` (migración **0007**).
+- La comparación es **estricta** (`auth_at > password_changed_at`) porque los dos
+  valores vienen de relojes distintos (PHP y MariaDB) con resolución de segundo:
+  ante la ambigüedad del mismo segundo se **cierra** la sesión, que es el lado
+  caro de equivocarse. Quien abre sesión de verdad (`Auth::login()`,
+  `assumeLoggedIn()` y el refresco de `AccountController::changePassword`) pasa por
+  `Auth::markSessionFresh()`, que adelanta `auth_at` un segundo si hace falta, así
+  que la estrictez no expulsa a nadie legítimo.
+- **`User::updatePassword()` devuelve el `password_changed_at` que escribió**: el
+  que cambia su propia contraseña lo usa para refrescar su sesión con el dato de
+  la BD, no con `time()`. Y `User::find()` tiene que seleccionar
+  `password_changed_at` por eso (si falta, el login se cierra a sí mismo).
+- Una sesión **sin `auth_at`** es de antes de F2 y se cierra: al desplegar, todo
+  el mundo tiene que entrar otra vez. Es el precio de no aceptar sesiones cuyo
+  origen no se puede comprobar.
+- El token de recuperación se guarda **hasheado** (sha256) y de un solo uso: en
+  `doReset`, `markUsed()` y el cambio de contraseña van en la **misma
+  transacción**; si el token se quemara antes de guardar, un fallo dejaría el
+  enlace muerto y la contraseña sin cambiar. Un intento fallido **no** lo quema.
+- `/forgot-password` responde **igual** exista o no el email (mismo destino, mismo
+  mensaje) y no crea token ni correo para los desconocidos: el rate limit y el
+  mensaje uniforme son las defensas, el `password_verify` contra `DUMMY_HASH`
+  solo aplana la parte barata del tiempo de respuesta.
+- La recuperación **no puede fijar la contraseña que ya tenía** (se compara con el
+  hash, no con un campo del POST) y **cierra la sesión del navegador que la
+  completó** con `Auth::revokeCurrentSession()`, que a diferencia de `logout()`
+  conserva el flash del "contraseña cambiada".
+- `/reset-password` **no lleva middleware `guest`**: el enlace del correo se abre
+  en un navegador que puede tener sesión iniciada y `guest` lo mandaría a
+  /dashboard sin mostrar el formulario.
+- El enlace del correo sale de `PublicUrl` (como el QR y el embed), nunca de
+  `app.url`.
+- `PASSWORD_MIN` en las vistas de auth y en el mail: la clave de i18n nueva hay que
+  meterla en `es.php`, `en.php` **y** (si la lee `fill.js`) en `FALLBACK_I18N`.
+
+**Capa de datos**
+
+- **Contrato horario, tres puntos**: la sesión de MariaDB hace
+  `SET time_zone = '+00:00'`, PHP hace `date_default_timezone_set('UTC')`, y la
+  conversión a la zona del lector (`app.timezone`, default `America/Caracas`)
+  ocurre **solo al pintar** (`App\Core\Clock` y los helpers de `View`). Romper
+  cualquiera de los tres solo se nota en la aritmética. **No migres los datos**:
+  los TIMESTAMP existentes son instantes UTC correctos.
+- Al agrupar por día: límites **UTC** con el final **exclusivo**
+  (`Submission::dateBounds()`) y desplazamiento **numérico** en `CONVERT_TZ` (el
+  nombre de zona exige las tablas de zonas horarias del servidor y sin ellas
+  devuelve `NULL` sin avisar). `schedule.open_at/close_at` son muros de reloj de un
+  `datetime-local`: se interpretan en `app.timezone`.
+- `a.value` es TEXT, así que `MIN`/`MAX` SQL comparan como cadena: para números,
+  castea (`MIN(a.value + 0)`).
+- `withAnswersByIds()` trocea en tandas de 5000 (techo de placeholders) y
+  **reordena el resultado globalmente**; concatenar tandas sin `usort` devuelve
+  respuestas en orden de tanda.
+- `fields.parent_id` es `INT UNSIGNED DEFAULT NULL`: **"sin sección" es `NULL`,
+  nunca `0`**. La normalización vive solo en `Field::normalizeParentId()`.
+- MariaDB resetea `LAST_INSERT_ID()` a 0 con un `DELETE` en medio: en `Form::create`
+  y `Submission::create` el `lastInsertId()` se captura **antes** de
+  `bumpDashboardCache()`.
+- Migraciones: closure idempotente, **sin transacción** (el DDL hace commit
+  implícito), registro en `migrations` solo tras éxito y **`CREATE INDEX IF NOT
+  EXISTS`** siempre (un `CREATE INDEX` plano revienta con 1061 al re-ejecutar y
+  deja la matriz a medias).
+- Una clave de permiso nueva necesita una **migración nueva** que re-siemre el
+  catálogo leyéndolo de `config/permissions.php` (así hace la 0006): la que lo
+  sembró ya no vuelve a correr. **Nunca borres filas de `migrations`** para
+  re-sembrar.
+
+**Builder (JS)**
+
+- `buildPayload()` **mapea explícitamente** `parentId` (camelCase, en memoria) a
+  `parent_id` (snake_case, lo que lee el servidor): es la única frontera entre
+  ambas convenciones. Lo fija `BuilderPayloadContractTest`.
+- `applySettings()` **nunca** reconstruye `validations` desde cero, parte de
+  `preservedValidations(f)`. Regla dura: **toda clave en `MANAGED_VALIDATION_KEYS`
+  necesita control Y listener** (el par clave→control está en `CONTROL_FOR_KEY`, de
+  `BuilderValidationsContractTest`).
+- Ocultar tiles estructurales dentro de una sección es
+  `setAttribute('data-vf-structural-hidden','1')` + selector
+  `[data-vf-structural-hidden]` **por presencia**: `toggleAttribute()` deja el valor
+  `""` y el selector nunca casa.
+- El engranaje de cada tarjeta **reubica la misma** instancia de `#settingsForm`
+  (`moveSettingsTo`), no la duplica; como `openFieldSettings` redibuja el lienzo, el
+  opener se localiza por `[data-uid]` al cerrar. Spec de UI: `docs/design.md`.
+
+**fill.js / i18n**
+
+- El denominador de la barra de progreso es `progressFieldCards()`, que es
+  deliberadamente **otro conjunto** que `visibleFieldCards()`: `.vf-step-hidden`
+  es de maquetación (solo se ve un paso), no de omisión. El paso realmente
+  **omitido** se marca con `data-vf-skipped` (atributo que se pone y se quita), no
+  con una clase.
+- `applyCardVisibility()` vive separada de `evaluateConditions()` porque
+  `paintSteps()` también la necesita, e `isCardAnswered()` es "completa o nada"
+  para matriz y ranking (igual que `val.matrix_all`).
+- Al añadir una clave de i18n hay que tocar **tres** sitios: `app/lang/es.php`,
+  `app/lang/en.php` (paridad, la verifica `I18nTest`) y `FALLBACK_I18N` de
+  `fill.js` (subconjunto de `es.php`, sin auto-referencias).
+- `resolve($settings)` mantiene su firma clásica para emails y middleware;
+  `I18n::forRequest($settings)` es la puerta del fill y añade el override
+  `?lang=`/campo oculto, validado contra `supportedLocales()`.
+
+**Seguridad y peticiones**
+
+- `Request::ip()` solo confía en `X-Forwarded-For`/`X-Real-IP` con
+  `TRUST_PROXY=true` (default `false`): si no, el rate limiting del fill es
+  bypasseable. `X-Forwarded-Proto` (en `PublicUrl`) usa el mismo criterio.
+- El enlace copiado, el QR y el `<iframe>` de embed salen de `App\Core\PublicUrl`
+  (`APP_PUBLIC_URL` → petición actual → `app.url`), nunca de `app.url` directo.
+- `thanks.redirect_url` pasa `RedirectGuard` (allowlist `APP_REDIRECT_ALLOWLIST`);
+  **vacía = bloqueado**, no "todo pasa".
+- `settings.theme.font` es lista blanca (`FormSettings::isValidFontFamily()`) y se
+  valida en **las dos puertas**, `normalize()` (lo que entra) y `themeCss()` (lo
+  que sale), porque puede haber filas ya guardadas con valores inválidos;
+  `validate()` mira el valor **crudo**, no el normalizado.
+- Los límites del dashboard son **por usuario** (`App\Core\DashboardLimit`, scopes
+  `dash:create` / `dash:export`) y se comprueban **antes** de hacer el trabajo.
+- `SecurityLog::record()` y `Cache::remember()` nunca rompen el request (el
+  primero guarda `user_id` NULL si `Auth::id()` no existe); `forgetLike('dash:')`
+  lo llaman las escrituras de `Form`/`Submission`.
+- Un test que falsifique sesión con `$_SESSION['user_id']` a pelo está **roto**
+  desde F2 (una sesión sin `auth_at` se cierra y `Auth::user()` da null): usa
+  `Auth::assumeLoggedIn()`, que fija las dos cosas. Por eso el `tearDown` de un
+  test con `Session::destroy()` es correcto aunque ponga rojo a otro test: lo
+  que estaba rompiendo es ese otro test, que dependía de un `auth_at` compartido.
+
+## Seams de test (no son código muerto)
+
+`Webhook::setResolver/setAllowPrivate/setTransport/setRetryBackoff/setHandler`,
+`Mailer::setTransport`, `Turnstile::publicSiteKey`,
+`Submission::setIdBatchForTesting`, `RateLimiter::setCleanupProbability`,
+`Request::setRequestBodyForTests/setTrustProxyForTesting`,
+`Response::setRecordHalt/lastHalt`, `RedirectGuard::setAllowlistForTesting`,
+`PublicUrl::setBaseForTesting`, `Auth::forgetCache`. `Config` no tiene setter:
+para lo suyo, o `null` = se lee de la config, o un seam propio.
+`Auth::assumeLoggedIn()` es además el **único** modo de falsar una sesión en un
+test: fija `auth_at` a la vez que `user_id`, y omitirlo hace que `Auth::user()`
+cierre la sesión y todos los `Auth::can()` de ese test den false (verde, pero
+probando la rama equivocada).
+
+## Dónde mirar
+
+- `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
+- `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; F0–F3
+  cerradas, F4 y F5 pendientes de autorización.
+- `docs/technical-document.md`: arquitectura y modelo de datos; **§4 está
+  desactualizada** (6 de 15 tablas, sin `submissions.public_token`).
+- `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
+  P1–P10 con su diagnóstico.
+- `docs/design.md`: spec del builder (tokens, componentes, reglas para código
+  nuevo).
+- `docs/api-spec.md` está **obsoleta** (le faltan rutas nuevas y dice contraseña ≥6
+  / CSP opcional): para endpoints, usa `config/routes.php`.
+- `docs/audit-report*.md`, `fix-plan.md` y `levantamiento_informacion.md` son
+  auditorías ya cerradas: histórico.
+- `freddy/`, `freddy.zip` y `pub.jar` son un toolkit externo de "levantamiento de
+  información", **no código de la app** (y están en `.gitignore`). No los toques.
