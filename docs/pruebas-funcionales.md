@@ -1,0 +1,373 @@
+# Tabla de pruebas funcionales
+
+Lista de comprobaciones para **detectar problemas** en una instalación, antes
+de un despliegue y después de cualquier cambio. Escrita contra el código
+(verificada en el commit `751602c`).
+
+No sustituye a la suite automática (`php scripts/test.php`, 642 casos): esa
+verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
+se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
+teclado funcione.
+
+---
+
+## Cómo usarla
+
+**Columnas**
+
+| Columna | Qué hay en ella |
+|---|---|
+| **#** | Identificador. Cítalo al reportar un fallo. |
+| **Qué probar** | Pasos concretos y cortos. |
+| **Esperado** | Lo que tiene que pasar. Si no pasa, hay un problema. |
+| **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
+| **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
+
+**175 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
+que comprueban fallos que ya existieron y se corrigieron.
+
+**Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
+Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
+
+**Cuándo**
+
+- Antes de un despliegue: A, B, N y O enteras.
+- Después de tocar el constructor: D, G y R enteras.
+- Después de tocar el fill o el panel: E, F, K y R enteras.
+- Después de tocar seguridad o permisos: M, N y O enteras.
+
+---
+
+## Datos de prueba previos
+
+Para no perderte, prepara esto antes de empezar:
+
+- [ ] **Dos cuentas**: `admin` (con todos los permisos) y `usuario` (rol `user`).
+- [ ] **Una tercera cuenta** de rol `editor`, para comprobar que el borrado le
+      está denegado.
+- [ ] **Un formulario simple**: un texto obligatorio y un email. Publicado.
+- [ ] **Un formulario largo**: con un campo de archivo, una matriz, un ranking,
+      una escala, un NPS y una estrella.
+- [ ] **Un formulario multipágina**: al menos 3 páginas y una sección con
+      condición.
+- [ ] **Un formulario con revisión activada** y otro sin ella.
+- [ ] **Un formulario con un campo marcado como dato personal.**
+- [ ] **SMTP configurado** (o acepta `N/A` en todo el bloque L).
+- [ ] **`TRUST_PROXY=false`** (el valor por defecto). Si lo cambiaste, las
+      pruebas del bloque M fallarán, y el fallo sería de configuración, no de
+      la app.
+
+---
+
+## A. Instalación y arranque
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| A1 | `php -l` sobre `public/index.php` y `config/bootstrap.php` | Sin errores de sintaxis | A | |
+| A2 | Abrir `/` en el navegador | Redirige a `/login` o `/dashboard`; nunca pantalla en blanco ni error PHP | A | |
+| A3 | Navegar a una URL inexistente (`/no-existe`) | Página 404 con icono, motivo y botón de volver. **El texto explicativo tiene que verse** | M | |
+| A4 | Enviar un formulario por GET a `/dashboard` | 405 con su propia página, no una traza | M | |
+| A5 | Revisar `storage/uploads/` | Existe y el servidor web puede escribir (si no, los adjuntos fallarán) | A | |
+| A6 | Mirar el panel del navegador en `/dashboard` | Sin errores de JavaScript en la consola | M | |
+| A7 | Recargar varias veces y pulsar atrás | No aparece contenido duplicado ni «la página se está mostrando dos veces» | M | |
+
+---
+
+## B. Cuentas, sesión y recuperación
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| B1 | Registrarse en `/register` con email y contraseña de 12 caracteres | Cuenta creada y **entra directamente** al panel | A | |
+| B2 | Registrarse con contraseña de 9 caracteres | Rechazado, con mensaje de longitud mínima | A | |
+| B3 | Registrarse con email ya existente | Rechazado sin revelar si el email existe | M | |
+| B4 | Mirar el campo de contraseña de `/register` | El texto de longitud mínima coincide con el del servidor (**no un número fijo**) | M | |
+| B5 | Entrar con contraseña incorrecta | Mensaje de error genérico, **no** «usuario no encontrado» | A | |
+| B6 | Entrar con un email inexistente | El mismo mensaje que B5, y tarda un tiempo parecido | M | |
+| B7 | Fallar el login 6 veces seguidas con la misma IP | A partir del 6.º: «demasiados intentos» y no entra. Es aviso + vuelta a `/login`, no un 429 | M | |
+| B8 | Usar un email inexistente en `/forgot-password` | **Respuesta idéntica** a la de un email real: mismo mensaje, mismo destino | A | |
+| B9 | Pedir recuperación con un email real, usar el enlace | Permite poner contraseña nueva y confirmar | A | |
+| B10 | Reutilizar ese mismo enlace una segunda vez | Falla: es de un solo uso | A | |
+| B11 | Con la sesión abierta, cambiar la contraseña desde la cuenta | **Se mantiene la sesión** (hay que refrescar) | A | |
+| B12 | Cambiar la contraseña de un usuario desde `/admin` y usar su sesión | Al pedir la siguiente página, **la sesión está cerrada** | A | |
+| B13 | Entrar en `/dashboard` sin sesión | Redirige a `/login` | A | |
+| B14 | Desactivar un usuario desde `/admin` y usar su sesión | En la siguiente petición pierde el acceso, sin esperar a que caduque la sesión | M | |
+| B15 | Cerrar sesión y volver atrás | No se puede volver a la zona autenticada | A | |
+
+---
+
+## C. Panel y navegación
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| C1 | `/dashboard` con formularios | Lista con título, estado y fecha; enlace a cada uno | A | |
+| C2 | Crear un formulario | Se abre su constructor. El estado es **borrador** | A | |
+| C3 | Botón de duplicar un formulario | Crea una copia con otro nombre; cuenta para el límite horario | M | |
+| C4 | Pulsar «Crear formulario» 31 veces en una hora | A partir del 31.º avisa del límite (30/hora por usuario) | B | |
+| C5 | Navegar por todas las entradas del menú | Ninguna devuelve 403 ni 404 inesperado con una cuenta `admin` | A | |
+| C6 | Entrar al panel con una cuenta sin `admin.access` | `/admin` da 403 con su propia página | A | |
+| C7 | Crear un formulario nuevo y volver al listado | Aparece con estado **borrador** y su ficha abre | M | |
+
+---
+
+## D. Constructor
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| D1 | Abrir el constructor de un formulario vacío | Lienzo vacío, panel «Agrega elementos» y «Configuración» | A | |
+| D2 | Arrastrar un campo al lienzo | Aparece una tarjeta con su etiqueta | A | |
+| D3 | Pulsar el engranaje de una tarjeta | Se abre su configuración; el engranaje de otra tarjeta lleva la suya allí (no se duplica el panel) | A | |
+| D4 | Editar etiqueta y opciones, luego **Guardar** y reabrir | Todo persiste | A | |
+| D5 | Cambiar el orden de dos campos, **Guardar**, reabrir | El orden persiste | A | |
+| D6 | Añadir 21 tipos de campo distintos | Todos aparecen en la lista y ninguno revienta el lienzo | A | |
+| D7 | Editar un campo, cambiar de pestaña a **Lógica** y guardar | La pestaña Lógica no borra lo que había en Contenido ni al revés | A | |
+| D8 | Poner un campo obligatorio y enviar el formulario vacío | El navegador avisa; y si se fuerza, el servidor también lo rechaza | A | |
+| D9 | Poner mínimo/máximo/longitud en un campo de texto y número | Los mensajes de error son los del tipo correcto, no genéricos | M | |
+| D10 | Configurar una matriz con una fila incompleta al enviar | Error indicando la fila concreta | M | |
+| D11 | Configurar un ranking con dos opciones en la misma posición | Rechazado («posiciones repetidas») | M | |
+| D12 | Marcar un campo de texto como **dato personal** y guardar | La marca persiste | A | |
+| D13 | Intentar marcar como PII una sección o una página | No se permite (no guardan respuestas) | M | |
+| D14 | Guardar con el navegador bloqueando peticiones | Aviso de que no se pudo guardar; **no** dice que sí | A | |
+| D15 | Cambiar algo, recargar con F5 sin pulsar **Guardar** | Los cambios **se pierden**, sin aviso de salida. Si pierdes trabajo, es el comportamiento actual: guarda antes de recargar | M | |
+| D16 | Crear una condición que se referencia a sí misma (o dentro de su propio bloque) | El guardado la rechaza con un mensaje entendible | M | |
+
+---
+
+## E. Publicación, estados y revisión
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| E1 | Crear un formulario y abrir su enlace sin publicar | 403 con la página de acceso denegado | A | |
+| E2 | Publicar y abrir el enlace | Se ve el formulario | A | |
+| E3 | Cerrar el formulario y abrir el enlace | Ya no se puede enviar; **las respuestas anteriores siguen ahí** | A | |
+| E4 | Con revisión activada, pulsar **Publicar** | **No se publica**: avisa de que exige revisión y devuelve a la ficha (no un 403 mudo) | A | |
+| E4b | Con revisión activada, pulsar **Enviar a revisión** | Pasa a `in_review` y aparece en `/review` | A | |
+| E5 | Con revisión activada, editar un formulario ya aprobado | Vuelve a la cola y **se borra la aprobación anterior** | A | |
+| E6 | Aprobar un formulario propio | Se permite, y el registro de eventos lo marca como propio | M | |
+| E7 | Intentar aprobar sin permiso `forms.review` | 403. Tener `forms.edit_own` **no** sirve para aprobar | A | |
+| E8 | Abrir un formulario en revisión por su enlace | Página informativa de «en revisión» (no un 404), y enviar da 403 | M | |
+| E9 | Devolver a borrador un formulario en revisión | Vuelve a borrador y se puede editar | A | |
+| E10 | Aprobar un formulario ya publicado | Rechazado (el estado de origen no es válido) | M | |
+| E11 | Programar apertura futura (`open_at`) | Antes de esa hora no se puede enviar; a partir de ella, sí | M | |
+| E12 | Poner `close_at` anterior a `open_at` | El ajuste se rechaza con error | B | |
+| E13 | Alcanzar el cupo máximo de respuestas | Envío rechazado con el aviso de cupo | M | |
+| E14 | Poner el cupo a 0 sin activarlo | No limita nada (0 = sin cuota) | B | |
+
+---
+
+## F. Llenado del formulario (el punto de vista de quien responde)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| F1 | Rellenar todo y enviar | Confirmación y URL de gracias con **token** en `?t=` | A | |
+| F2 | Abrir la URL de gracias de otra persona | Muestra esa respuesta, no una lista ni un error genérico | A | |
+| F3 | Reusar la URL de gracias cambiando el número del token | Error; no se ven respuestas ajenas | A | |
+| F4 | Enviar un campo inválido saltándose la validación del navegador | El **servidor** lo rechaza y no guarda nada parcial | A | |
+| F5 | Marcar un campo obligatorio con un espacio «   » | Rechazado (un espacio no es una respuesta) | M | |
+| F6 | Navegar un formulario de 3 páginas con **solo** el teclado (Tab y flechas) | Se puede responder y avanzar entero sin ratón | A | |
+| F7 | En una escala, un NPS o unas estrellas, tabular hasta el control | Recibe el foco y se ve el anillo de foco. **Un tabulador, no ninguno** | A | |
+| F8 | En multipágina, pulsar «Siguiente» con el teclado | El foco se queda en el paso: **no vuelve al principio del documento** | A | |
+| F9 | Saltar entre pasos con los botones «Anterior» / «Siguiente» | El foco no salta al primer campo por sorpresa | M | |
+| F10 | Abrir la página al revés (Ctrl+R en Chrome) en un formulario de 3 páginas | Recupera lo ya contestado si el borrador está activo | M | |
+| F11 | Un campo con condición que se cumple | Aparece al instante; al enviar, **sí** se guarda | A | |
+| F12 | Un campo con condición que NO se cumple | Desaparece y **no se guarda** aunque se mande su valor a mano | A | |
+| F13 | Condición sobre un campo dentro de una sección con su propia condición | La sección se muestra solo si se cumplen **las dos** reglas | A | |
+| F14 | Responder el último paso de un multipágina | Se guarda y se llega a la página de gracias | A | |
+| F15 | Abrir dos veces el mismo formulario con barajado activado | Las preguntas salen en distinto orden en cada apertura GET | B | |
+| F16 | Con avance automático activado, responder un paso | Salta al siguiente solo; y **no** salta al cargar con un borrador restaurado | M | |
+| F17 | Con avance automático, un paso con un ranking de posiciones repetidas | No avanza solo: está incompleto aunque «pase» el navegador | M | |
+| F18 | Insertar el `<iframe>` de embed en una página **del mismo dominio** | El formulario se ve completo dentro del iframe | M | |
+| F18b | Insertar el mismo iframe en una página de **otro dominio** | El navegador lo bloquea, y es lo correcto: el embed solo se permite en el mismo origen | M | |
+| F19 | Abrir `/f/{slug}/embed` sin el embed activado | 403 | B | |
+| F20 | Cambiar el idioma con `?lang=en` (o el selector si existe) | La interfaz cambia a inglés | B | |
+
+---
+
+## G. Condicionales y multipágina (detalle)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| G1 | Una condición de texto con cada operador (igual, distinto, contiene, no contiene, tiene valor, está vacío, regex) | Cada uno se comporta como su etiqueta | A | |
+| G1b | Una condición sobre un desplegable | Aparecen «Incluye la opción» / «No incluye la opción», **no** «Contiene» | M | |
+| G1c | Una condición sobre un número o una fecha | Aparecen mayor / mayor o igual / menor / menor o igual | M | |
+| G2 | Un campo obligatorio cuya condición no se cumple | **No** bloquea el envío (no se está mostrando, no se valida) | A | |
+| G3 | Barajado activado + envío con errores | Al recargar por error **no** reordena las preguntas (mantiene lo que el usuario vio) | M | |
+| G4 | Una página cuya condición la salta | El paso se marca como omitido en el pie y **la barra de progreso no cuenta** ese paso | A | |
+| G5 | Barra de progreso en un formulario con páginas omitidas | El porcentaje no se descuadra al saltarse un paso | M | |
+| G6 | Pie del paso actual | El número de paso y el total coinciden entre el bloque y el pie | M | |
+
+---
+
+## H. Adjuntos
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| H1 | Subir un PDF, una imagen y un .docx | Los tres se aceptan | A | |
+| H2 | Subir un `.exe`, `.php` o `.js` | Rechazado, aunque el navegador lo permita | A | |
+| H3 | Renombrar un `.exe` a `.pdf` | Rechazado: el tipo se mira en el **archivo**, no en el nombre | A | |
+| H4 | Subir un archivo de más tamaño del permitido | Error de tamaño; el tamaño que manda es el menor entre ajuste y `php.ini` | M | |
+| H5 | Subir más archivos de los permitidos | Error de número de archivos | M | |
+| H6 | Enviar un formulario con archivo de más de `post_max_size` | **413 «demasiado grande»**, no «sesión inválida» | A | |
+| H7 | Descargar un adjunto desde el detalle de la respuesta | Se descarga el archivo correcto | A | |
+| H8 | Comprobar la ruta del archivo en el disco | Vive en `storage/uploads/`, **fuera de `public/`** (no se accede por URL directa) | A | |
+| H9 | Borrar una respuesta con adjuntos y ejecutar `clean-uploads.php --dry-run` | El archivo aparece como huérfano para limpiar | M | |
+| H10 | Un campo de archivo marcado como PII, descargado **sin** el permiso `responses.pii` | 403, no el archivo | A | |
+
+---
+
+## I. Acceso restringido por email (F4)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| I1 | Formulario en modo `public` (por defecto) | Cualquiera con el enlace responde | A | |
+| I2 | Cambiar a modo `email` y abrir el enlace sin haber pedido acceso | Pide acceso; no se ve el formulario | A | |
+| I3 | Pedir acceso con un email de la lista | Llega el correo con el enlace; al abrirlo, se entra | A | |
+| I4 | Pedir acceso con un email **fuera** de la lista | **Respuesta idéntica** a la de un email de la lista (mismo mensaje, mismo destino) | A | |
+| I5 | Enviar el formulario sin acceso válido | 403 (no «algo va mal», no «sesión inválida») | A | |
+| I6 | Usar un enlace de acceso de **otro formulario** | No vale: el enlace va atado al formulario | A | |
+| I7 | Quitar un email de la lista y usar su enlace ya activating | El enlace deja de servir en la petición siguiente | A | |
+| I8 | Abrir el formulario en una ventana privada y usar un enlace válido | El acceso depende de la sesión del navegador, no solo del enlace | M | |
+| I9 | Ver el enlace copiado y el QR de un formulario con acceso restringido | Ambos funcionan como el enlace, sin trampas | M | |
+
+---
+
+## J. Datos personales (P1 / F1)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| J1 | Responder un formulario con un campo marcado, entrando como `admin` | El valor se ve **en claro** | A | |
+| J2 | Ver el mismo detalle entrando como `user` | El campo sale enmascarado (`[oculto]`, `j***@e***.com`, prefijo de teléfono) | A | |
+| J3 | Ver el listado de respuestas como `user` | También enmascarado, no solo el detalle | A | |
+| J4 | Exportar a **CSV** como `user` | Enmascarado **dentro** del CSV, sin romper el formato | A | |
+| J5 | Exportar a **JSON** como `user` | Enmascarado, con el total y la estructura intactos | A | |
+| J6 | Mirar la IP y el user-agent como `user` | `192.168.1.x` y `[oculto]` | M | |
+| J7 | Exportar como `user` con **muchas** respuestas (>5000) | Las últimas también salen enmascaradas (no solo las primeras) | M | |
+| J8 | Un campo de texto **no** marcado como dato personal | Sale **en claro**. La app no puede adivinar si un texto es «tu jefe» o «tu opinión»: sin la marca no hay enmascarado | B | |
+
+---
+
+## K. Analítica y exportaciones
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| K1 | Abrir la analítica de un formulario con respuestas | Series por día, distribución y desglose | A | |
+| K2 | **Cambiar de página en la tabla de respuestas** | La tabla **vuelve a ser interactiva**: se puede abrir una respuesta. El spinner no se queda girando | A | |
+| K3 | Cambiar de página dos veces seguidas | La segunda también funciona | A | |
+| K4 | Si la petición falla, ver el error | Avisa y la tabla vuelve a ser utilizable | M | |
+| K5 | Exportar a CSV | Se descarga con el nombre `<slug>.csv`; columnas `#`, `Fecha` y una por campo; **sin columnas de sección** | A | |
+| K6 | CSV con respuestas de matriz, ranking y casillas | Quedan aplanadas en una sola celda por campo | M | |
+| K7 | CSV con un filtro de fechas activo | Solo incluye las respuestas del rango | A | |
+| K8 | Exportar a JSON | Envoltura con `form`, `total` y `submissions[]` | A | |
+| K9 | Exportar la estructura del formulario | JSON con campos y ajustes, utilizable para reprocesar | M | |
+| K10 | Exportar 121 veces en una hora | A partir de la 121.ª avisa del límite (120/hora por usuario) | B | |
+| K11 | CSV con acentos y eñes | Se abre bien en una hoja de cálculo (UTF-8) | M | |
+
+---
+
+## L. Correos
+
+*(Si no hay SMTP configurado, marca el bloque entero `N/A`.)*
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| L1 | Enviar una respuesta con aviso al dueño activado | Llega el correo al dueño con el detalle | A | |
+| L2 | Con confirmación activada y campo de email | Llega al email indicado por el que respondió | A | |
+| L3 | Revisar el remitente | Es el configurado en `MAIL_FROM_ADDRESS` | M | |
+| L4 | Abrir el enlace de recuperación desde el correo | Llega al formulario de contraseña nueva, **aunque haya sesión iniciada** | A | |
+| L5 | Pedir acceso (F4) y abrir el enlace del correo | Funciona y no lleva a una página interna | M | |
+| L6 | Con revisión activada y aviso por correo | Llega el aviso de que hay algo en la bandeja | B | |
+| L7 | Enviar una respuesta **sin** SMTP | La respuesta **se guarda igual**; solo falta el correo | A | |
+
+---
+
+## M. Seguridad y anti-bot
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| M1 | Honeypot activo (por defecto) | Invisible al usuario, presente en el HTML | M | |
+| M2 | Rellenar el honeypot a mano y enviar | **Finge éxito** (muestra gracias) y **no guarda la respuesta** | A | |
+| M3 | Turnstile con las dos claves | El widget aparece y bloquea el envío si no se resuelve | A | |
+| M4 | Turnstile activado **sin** claves en `.env` | El formulario da 403 (no se degrada en silencio) | A | |
+| M5 | Enviar el mismo formulario 11 veces en 10 minutos desde la misma IP | A partir del 11.º: página 429. El contador es por formulario e IP | M | |
+| M6 | Recoger el enlace de un formulario desde `?t=` | El enlace no permite ver ni cambiar nada más que esa respuesta | A | |
+| M7 | Revisar el registro de seguridad tras los intentos anteriores | Quedan registrados los eventos de seguridad relevantes | M | |
+| M8 | Ver el origen de los envíos (Network) | Los recursos salen del propio dominio; **no hay scripts inline** | M | |
+| M9 | Comprobar la cabecera `X-Frame-Options` | `DENY` | B | |
+| M10 | Registrar 11 cuentas en 10 minutos desde la misma IP | A partir del 11.º avisa del límite | B | |
+| M11 | Con `TRUST_PROXY=true` y un `X-Forwarded-For` inventado | Solo tiene efecto si **tú** decidiste confiar en el proxy; con el valor por defecto se ignora | M | |
+
+---
+
+## N. Administración, roles y grupos
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| N1 | Crear un usuario en `/admin` | Nace con rol por defecto y **sin** permisos extra | A | |
+| N2 | Crear un rol nuevo | Nace **sin** permisos: la matriz es la que decide | A | |
+| N3 | Dar un permiso a un rol en la matriz | Lo tienen los usuarios de ese rol | A | |
+| N4 | Crear un rol con un nombre duplicado o con acentos parecidos | Rechazado, y el motivo es legible | M | |
+| N5 | Enviar la matriz de permisos con todo desmarcado | La petición se rechaza: un envío vacío no significa «desmarcar todo», así que hay que decir explícitamente qué quitar | A | |
+| N6 | Quitarle el permiso `admin.access` al rol `admin` | No se puede: el rol `admin` conserva siempre el acceso al panel | M | |
+| N7 | Crear un grupo y meter dos usuarios | Ambos heredan los roles del grupo | A | |
+| N8 | Sacar un usuario del grupo | Pierde los permisos del grupo en la petición siguiente | A | |
+| N9 | Enviar un cambio de pertenencia con la lista vacía | Saca al usuario de todos los grupos (no «no lo he tocado») | A | |
+| N10 | Dar un rol desde la ficha del grupo y desde la del usuario | Las dos direcciones coinciden: mismo resultado | M | |
+| N11 | Un `editor` intenta borrar su propio formulario | Denegado (no tiene `forms.delete_own`) | M | |
+| N12 | Un `user` con `forms.manage_all` | Ve y opera formularios de otros usuarios | M | |
+| N13 | Guardar un grupo **sin** mandar su nombre | El nombre se conserva; si lo mandas vacío, se queda vacío. Ausente ≠ vacío | M | |
+| N14 | Ver la matriz de roles | Refleja lo que decides en `config/permissions.php` (roles del catálogo) | M | |
+
+---
+
+## O. Errores y casos límite
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| O1 | Cada página de error (403, 404, 405, 413, 419, 429, 500, 503) | Todas muestran **icono + motivo + qué hacer**. El motivo aparece **una sola vez** y nunca como «403 Error» | A | |
+| O2 | Provocar un 500 | Página de error propia, sin traza PHP visible | A | |
+| O3 | Un envío con el cuerpo enorme | 413 con su motivo | A | |
+| O4 | Un envío con el token de sesión caducado | 419 «sesión expirada», no un error genérico | A | |
+| O5 | Navegar por todas las rutas del panel con una cuenta recién creada | Ninguna revienta con un error PHP | A | |
+| O6 | Un formulario con un nombre larguísimo (200 caracteres) | La cabecera y el botón no se desbordan ni se pisan | M | |
+| O7 | Los filtros de la tabla de respuestas en móvil | Envuelven en varias líneas, no se salen de la pantalla | M | |
+| O8 | many respuestas y filtrar por un rango sin resultados | Mensaje de «sin resultados», no una tabla vacía sin explicación | M | |
+| O9 | Navegar con el teclado por el panel | Foco visible en todos los botones; las imágenes con significado tienen texto | M | |
+| O10 | Reducir la ventana a 375 px y recorrer el panel y el constructor | Nada se desborda horizontalmente; las acciones principales se siguen viendo | M | |
+
+---
+
+## R. Regresiones del último cambio (`751602c`)
+
+Estas seis comprueban fallos que existieron de verdad y que ya no están.
+Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| R1 | Abrir la analítica y cambiar de página **dos veces** | La tabla se puede abrir y usar tras cada cambio. Antes se quedaba con `opacity .55` y `pointer-events: none` **para siempre** | A | |
+| R2 | Abrir cada una de las 8 páginas de error | El texto explicativo de cada una se ve (antes era markup muerto) | A | |
+| R3 | En multipágina, usar solo el teclado para recorrer los pasos | El foco no salta al principio del documento tras «Siguiente» | A | |
+| R4 | Botón verde en cualquier vista | Sale **verde**, no índigo (`.app-btn-primary` ya no pisa el color de la variante) | A | |
+| R5 | Ficha de un formulario con revisión | Una acción primaria, las de siempre y un menú «más»; «Guardar» no compite con «Publicar» | M | |
+| R6 | Escala, NPS y estrellas con el teclado | Un tabulador por control y anillo de foco visible (antes no eran alcanzables) | A | |
+
+---
+
+## Cuando encuentres un fallo
+
+Anota para que el diagnóstico sea rápido:
+
+1. **ID** de la prueba (por ejemplo `R1`) y **qué esperabas** frente a **qué pasó**.
+2. **URL** exacta y **qué hiciste** justo antes.
+3. **Cuenta** con la que lo viste (`admin`, `user`, `editor`) y si el formulario
+   tenía revisión, PII o acceso restringido.
+4. **Navegador y versión**, y si es una prueba de móvil.
+5. Si es un error del servidor: **el mensaje del log** (el error visible de la
+   página es intencionadamente genérico).
+6. Si te saltó la suite automática: `php scripts/test.php --filter <nombre del
+   método>` para reproducir solo ese caso.
+
+Tres fallos que **no** son fallos, por si aparecen en la lista:
+
+- Un 403 en un formulario que sigue en borrador.
+- `[oculto]` en un campo de datos personales sin permiso `responses.pii`.
+- Un número escrito a mano en `minlength` de un formulario que no sea el de
+  registro (solo ese debe tomarlo de la constante del servidor).
