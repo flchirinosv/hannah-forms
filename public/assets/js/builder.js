@@ -2034,6 +2034,20 @@
                 honeypot: { enabled: g('stHoneypotEnabled').checked },
                 anti_bot: { enabled: g('stAntiBotEnabled').checked },
                 locale: { code: g('stLocale').value },
+                // F3 — dos claves y no una, asi que no entra en el patron de los
+                // toggles de una clave de arriba.
+                review: {
+                    enabled: g('stReviewEnabled').checked,
+                    notify_email: g('stReviewNotifyEmail').checked,
+                },
+                // F4 — el modo de acceso. La lista de emails va aparte, en
+                // form_access_emails: se edita en la ficha del formulario y no
+                // aqui, porque revocar tiene que borrar sus enlaces.
+                access: {
+                    mode: ['public', 'email', 'allowlist'].indexOf(g('stAccessMode').value) !== -1
+                        ? g('stAccessMode').value
+                        : 'public',
+                },
             };
         }
 

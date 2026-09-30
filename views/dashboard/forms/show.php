@@ -182,6 +182,112 @@ use App\Core\View;
                 </div>
             </div>
 
+            <?php // F4 — Acceso. La lista se edita aquí y NO en el builder a propósito:
+                  // quitar un email revoca sus enlaces, y esa consecuencia se ve
+                  // mejor junto al formulario que dentro de un modal de ajustes. ?>
+            <?php $accessMode = $accessMode ?? 'public'; ?>
+            <?php $accessList = $accessList ?? []; ?>
+            <?php $accessCount = $accessCount ?? 0; ?>
+            <div class="card border-0 shadow-sm mb-4" id="access"
+                 data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
+                 data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0"><i class="fa-solid fa-user-lock me-2 text-primary"></i>Acceso</h3>
+                        <span class="badge text-bg-light text-muted"><?= View::escape(match ($accessMode) {
+                            'email' => 'Por correo',
+                            'allowlist' => 'Solo la lista',
+                            default => 'Público',
+                        }) ?></span>
+                    </div>
+
+                    <?php if ($accessMode === 'public'): ?>
+                        <p class="text-muted small mb-0">
+                            <i class="fa-solid fa-circle-info me-1"></i>Cualquiera con el enlace puede responder.
+                            Cambia el modo en <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
+                        </p>
+                    <?php elseif ($accessMode === 'email'): ?>
+                        <p class="text-muted small mb-0">
+                            <i class="fa-solid fa-circle-info me-1"></i>Cualquiera que escriba un correo recibe un
+                            enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
+                            <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
+                        </p>
+                    <?php else: ?>
+                        <p class="text-muted small">
+                            Solo los correos de esta lista reciben un enlace. Quitar a alguien de la lista
+                            <strong>invalida los enlaces que ya se le hayan enviado</strong>.
+                        </p>
+
+                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email" class="mb-3">
+                            <?= \App\Core\Csrf::field() ?>
+                            <div class="input-group input-group-sm">
+                                <input type="email" name="email" class="form-control" required maxlength="190"
+                                       placeholder="nombre@ejemplo.com" aria-label="Correo con acceso">
+                                <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-plus me-1"></i>Añadir</button>
+                            </div>
+                        </form>
+
+                        <?php // F4 — Salida del enlace recién emitido. Se rellena por JS y
+                              // se queda a la vista a propósito: el token solo
+                              // existe en claro en el momento de emitirlo, así que
+                              // si el portapapeles falla no hay forma de recuperarlo
+                              // y el enlace se habría perdido. ?>
+                        <div class="d-none mb-3" id="accessLinkOut">
+                            <label class="form-label small mb-1">
+                                Enlace para <span data-role="access-link-for"></span>
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" readonly
+                                       aria-label="Enlace de acceso generado">
+                                <?php // `access-recopy` y no el `js-copy-url` de siempre:
+                                      // ese prepende el origen de la página, y esta URL
+                                      // ya viene absoluta desde PublicUrl.
+                                      ?>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        data-role="access-recopy" title="Copiar otra vez"><i class="fa-solid fa-copy"></i></button>
+                            </div>
+                            <p class="small text-muted mb-0 mt-1">
+                            Al pedir otro enlace para el mismo correo, este deja de funcionar.</p>
+                        </div>
+
+                        <?php if ($accessCount === 0): ?>
+                            <div class="alert alert-warning d-flex gap-2 mb-0 py-2 px-3 small" role="alert">
+                                <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                                <span>La lista está vacía: ahora mismo <strong>nadie</strong> puede responder a este
+                                formulario, ni siquiera quien ya tenía un enlace.</span>
+                            </div>
+                        <?php else: ?>
+                            <ul class="list-group list-group-flush app-field-list mb-0">
+                                <?php foreach ($accessList as $entry): ?>
+                                <li class="list-group-item d-flex align-items-center justify-content-between px-0">
+                                    <span class="small app-truncate-1"><?= View::escape($entry['email']) ?></span>
+                                    <span class="d-flex gap-1">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                data-role="access-link" data-email="<?= View::escape($entry['email']) ?>"
+                                                title="Generar y copiar el enlace de acceso para este correo">
+                                            <i class="fa-solid fa-link"></i>
+                                        </button>
+                                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email/remove">
+                                            <?= \App\Core\Csrf::field() ?>
+                                            <input type="hidden" name="email" value="<?= View::escape($entry['email']) ?>">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    data-confirm="¿Quitar <?= View::escape($entry['email']) ?> de la lista? Los enlaces que ya se le hayan enviado dejarán de funcionar."
+                                                    title="Quitar de la lista y revocar sus enlaces">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    </span>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <?php if ($accessCount > count($accessList)): ?>
+                                <p class="small text-muted mb-0 mt-2">y <?= (int) $accessCount - count($accessList) ?> más…</p>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">

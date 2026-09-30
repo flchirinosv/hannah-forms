@@ -20,6 +20,24 @@ final class FormSettings
 {
     public const LOCALES = ['es', 'en'];
 
+    /**
+     * F4 — modos de acceso, en orden de apertura: cada uno es "todo lo anterior
+     * más esto". La lista es pública porque la comparten la normalización (lo que
+     * entra), el gate del fill (lo que sale) y las vistas.
+     */
+    public const ACCESS_PUBLIC    = 'public';
+    public const ACCESS_EMAIL     = 'email';
+    public const ACCESS_ALLOWLIST = 'allowlist';
+
+    public const ACCESS_MODES = [
+        self::ACCESS_PUBLIC,
+        self::ACCESS_EMAIL,
+        self::ACCESS_ALLOWLIST,
+    ];
+
+    /** El fill solo pide identificación con estos dos. */
+    public const RESTRICTED_MODES = [self::ACCESS_EMAIL, self::ACCESS_ALLOWLIST];
+
     public static function defaults(): array
     {
         return [
@@ -43,6 +61,21 @@ final class FormSettings
             'embed'      => ['enabled' => false],
             'honeypot'   => ['enabled' => true],
             'anti_bot'   => ['enabled' => false],
+            // F3 — revisión/aprobación. `enabled` es OPT-IN por formulario a
+            // propósito: si la revisión fuese el comportamiento por defecto,
+            // todos los formularios existentes dejarían de poder publicarse sin
+            // un revisor, y en una instancia de un solo usuario (el caso normal
+            // de un self-hosted) la revisión sería teatro que bloquea al
+            // propietario de su propia herramienta.
+            'review'     => ['enabled' => false, 'notify_email' => false],
+            // F4 — acceso al formulario. `public` es el default porque es el
+            // comportamiento histórico: poner esto en `email` o `allowlist` por
+            // defecto cerraría de golpe todos los formularios ya publicados, y
+            // una actualización no puede dejar de servir algo que ayer servía.
+            // La lista de emails NO va aquí (está en `form_access_emails`): la
+            // revoca un borrado en cascada de sus tokens, y eso es SQL, no un
+            // array que reescribir entero en cada cambio.
+            'access'     => ['mode' => self::ACCESS_PUBLIC],
             'locale'     => ['code' => 'es'],
         ];
     }
@@ -204,6 +237,15 @@ final class FormSettings
 
         if ($n['quota']['enabled'] && $n['quota']['max'] < 1) {
             return 'El cupo máximo debe ser un número mayor que cero.';
+        }
+
+        // F4 — el modo crudo se mira a propósito, igual que la tipografía: si
+        // solo se mirase el normalizado, un modo inválido se habría convertido
+        // en `public` y el que lo escribió se quedaría sin saber que su
+        // formulario acaba de quedar abierto para todo el mundo.
+        $rawMode = $raw['access']['mode'] ?? null;
+        if (is_string($rawMode) && $rawMode !== '' && !in_array($rawMode, self::ACCESS_MODES, true)) {
+            return 'El modo de acceso debe ser "public", "email" o "allowlist".';
         }
 
         if ($n['notify']['enabled'] && $n['notify']['emails'] === []) {

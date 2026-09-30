@@ -470,7 +470,15 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
 
     <?php // P10 — multipart solo si el formulario tiene campos de archivo. ?>
     <?php $hasFileField = false; foreach ($fields as $fld) { if (($fld['type'] ?? '') === 'file') { $hasFileField = true; break; } } ?>
-    <form method="post" action="/f/<?= View::escape($form['slug']) ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>" data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
+    <?php // F4 — El token de acceso viaja también en el action del formulario, no
+          // solo en la sesión: sin cookies el GET se sirve igual (el token venía
+          // en la URL) pero el POST se caería en un 403 sin explicación, y dentro
+          // de un iframe la cookie es de terceros y muchos navegadores la
+          // bloquean. Es la misma credencial que ya está en la barra de
+          // direcciones, en el historial y en el Referer que el navegador no envía
+          // desde un action: no amplia la exposición, evita un formulario
+          // irrellenable. ?>
+    <form method="post" action="/f/<?= View::escape($form['slug']) ?><?= !empty($accessToken) ? '?t=' . rawurlencode((string) $accessToken) : '' ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>" data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
         <?= \App\Core\Csrf::field() ?>
 
         <?php // Q6 — El idioma renderizado viaja en el POST para que el re-render

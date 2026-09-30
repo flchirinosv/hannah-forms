@@ -107,6 +107,22 @@ final class PublicUrl
     }
 
     /**
+     * F4 — URL de acceso con token: la que va en el correo del respondiente y en
+     * el enlace que el dueño copia.
+     *
+     * El token viaja en la query y no en una cookie porque es la misma credencial
+     * que se envía por correo: la cookie la pone el servidor, el enlace lo lleva
+     * quien lo manda. Sale de `PublicUrl` (y no de `app.url`) por la misma razón
+     * que el QR y el embed: en una instalación detrás de un proxy o en un
+     * dominio distinto del configurado, `app.url` produce enlaces que no abren
+     * en el sitio real.
+     */
+    public static function accessUrl(string $slug, string $token): string
+    {
+        return self::fillUrl($slug) . '?t=' . rawurlencode($token);
+    }
+
+    /**
      * ¿La base resuelta es una dirección de red local (localhost, 127.x,
      * ::1, RFC1918) o un nombre sin dominio?
      *

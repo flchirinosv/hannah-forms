@@ -88,6 +88,37 @@ return [
     'status.misconfigured_note'  => 'has a bot check enabled that this server is not configured for yet.',
     'status.draft_title'    => 'In preparation',
     'status.draft_note'     => 'This form has not been published yet.',
+    // F4 — identification page for a restricted form. `intro_*` DOES depend on
+    // the mode (the visitor needs to know whether to wait for an email or to
+    // write to whoever passed the link on), but never whether a specific address
+    // is on the list: that answer comes by email, and it is always the same one.
+    'access.title'            => 'Restricted access',
+    'access.email_label'      => 'Your email address',
+    'access.email_placeholder' => 'name@example.com',
+    'access.cta'              => 'Get the link',
+    'access.intro_email'      => 'Enter your email and we will send you a link to open the form.',
+    'access.intro_allowlist'  => "Enter your email and we will send you a link if you are on this form's list.",
+    'access.sent_title'       => 'Check your email',
+    'access.sent_body'        => 'If that address is authorized you will get a link to open the form. The message is the same either way, for privacy.',
+    'access.note_email'       => 'The link is personal: do not share it.',
+    'access.note_allowlist'   => 'The link is personal: do not share it.',
+    'access.denied'           => 'You need an access link to respond to this form.',
+    'access.invalid_email'    => 'That email address does not look valid.',
+    'access.already_added'    => '{email} was already on the list.',
+    'access.added'            => '{email} was added to the access list.',
+    'access.removed'          => '{email} was removed from the list and their links no longer work.',
+    'access.not_allowlist_mode' => 'The list is only used in the «list only» mode.',
+    'access.not_in_list'      => 'That email address is not on the access list.',
+    'mail.access_subject'     => 'Your link to the form',
+    'mail.access_title'       => 'Access link to the form',
+    'mail.access_body'        => 'You can open the form with this link. You do not need an account.',
+    'mail.access_cta'         => 'Open the form',
+    'mail.access_ttl'         => 'The link is valid for {ttl} days from when it was sent.',
+    'mail.access_ignore'      => 'If you were not expecting this email you can ignore it: the link gives access to nothing else.',
+    'mail.access_alt'         => 'To open the form «{form}», go to this address: {url}',
+    // F3 — a form in review answers with this page, not a 404
+    'status.in_review_title' => 'Form under review',
+    'status.in_review_note'  => 'It is waiting to be approved. Come back later: there is nothing you need to do.',
 
     // Thanks + quiz
     'thanks.custom_title'   => 'Thanks for your response!',

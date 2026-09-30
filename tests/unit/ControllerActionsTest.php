@@ -181,6 +181,11 @@ class ControllerActionsTest
             $post['email'] = 'humo-' . bin2hex(random_bytes(3)) . '@test.local';
             $post['password'] = 'clave-smoke-123';
             $post['password_confirm'] = 'clave-smoke-123';
+        } elseif (str_contains($path, '/access')) {
+            // F4: las rutas de acceso necesitan un email para llegar a la parte
+            // interesante. Sin esto el smoke solo comprobaría que un POST vacío no
+            // revienta, que es la mitad fácil.
+            $post['email'] = 'humo-acceso-' . bin2hex(random_bytes(3)) . '@test.local';
         } elseif (preg_match('#^/f/#', $path) === 1) {
             $post['field_' . self::$fieldId] = 'valor humo';
             $post['_vf_hp'] = '';

@@ -16,6 +16,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Models\Answer;
 use App\Models\Form;
+use App\Models\FormAccess;
 use App\Models\Submission;
 use App\Services\LogicEvaluator;
 use App\Services\Notifier;
@@ -65,6 +66,16 @@ class FillController
 
         $settings = Form::settings((int) $form['id']);
 
+        // F4 — primero se identifica, después se informa de si está abierto.
+        $accessToken = null;
+        if (FormAccess::isRestricted($settings)) {
+            [$granted, $accessToken] = self::resolveAccess($form);
+            if (!$granted) {
+                $this->renderAccessPage($form, $settings, false);
+                return;
+            }
+        }
+
         // P6 — Disponibilidad por calendario/cupo antes de mostrar el formulario.
         if ($this->renderAvailabilityGate($form, $settings)) {
             return;
@@ -75,7 +86,7 @@ class FillController
         // errores NO se baraja (los campos no se reordenan bajo los dedos).
         $form['fields'] = self::randomizeFields($form['fields'], $settings);
 
-        $this->renderFill($form, $settings);
+        $this->renderFill($form, $settings, [], false, $accessToken);
     }
 
     /**
@@ -106,13 +117,27 @@ class FillController
             View::render('fill/draft', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
             return;
         }
+        // F3 — mismo criterio que en show(): el embed tampoco sirve un formulario
+        // en revisión.
+        if ($form['status'] === 'in_review') {
+            View::render('fill/in_review', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
+            return;
+        }
+        $accessToken = null;
+        if (FormAccess::isRestricted($settings)) {
+            [$granted, $accessToken] = self::resolveAccess($form);
+            if (!$granted) {
+                $this->renderAccessPage($form, $settings, true);
+                return;
+            }
+        }
         if ($this->renderAvailabilityGate($form, $settings)) {
             return;
         }
 
         // P8 — Barajar también en el embed (mismo comportamiento que show).
         $form['fields'] = self::randomizeFields($form['fields'], $settings);
-        $this->renderFill($form, $settings, [], true);
+        $this->renderFill($form, $settings, [], true, $accessToken);
     }
 
     /**
@@ -122,8 +147,10 @@ class FillController
      * @param array $old Valores previos (re-render de error).
      * @param bool  $embed Emite X-Frame-Options SAMEORIGIN y relaja
      *   frame-ancestors (solo para /f/{slug}/embed).
+     * @param ?string $accessToken F4: token de acceso que se propaga al
+     *   `action` del formulario para que el POST vuelva a presentarlo.
      */
-    private function renderFill(array $form, array $settings, array $old = [], bool $embed = false): void
+    private function renderFill(array $form, array $settings, array $old = [], bool $embed = false, ?string $accessToken = null): void
     {
         // B2 — La CSP de ESTA respuesta depende del tipo de página: embed
         // (frame-ancestors 'self') y Turnstile (script-src/frame-src del widget).
@@ -138,6 +165,7 @@ class FillController
             'turnstile' => self::turnstileData($settings),
             // Gap sin JS: el render ya sale con la visibilidad resuelta.
             'hidden'   => self::initialVisibility($form['fields'], $old),
+            'accessToken' => $accessToken,
         ], null);
     }
 
@@ -161,8 +189,9 @@ class FillController
      * Re-render del formulario con errores (validación o verificación bot).
      * Comparte el data de renderFill pero con `errors` y con las respuestas
      * previas como fuentes de visibilidad (lo que vería el participante).
+     * @param ?string $accessToken F4: token de acceso a propagar al `action`.
      */
-    private function renderFillErrors(array $form, array $settings, array $errors): void
+    private function renderFillErrors(array $form, array $settings, array $errors, ?string $accessToken = null): void
     {
         $this->emitFillCsp($settings, false);
         $old = Request::all();
@@ -174,6 +203,7 @@ class FillController
             'old'      => $old,
             'turnstile' => self::turnstileData($settings),
             'hidden'   => self::initialVisibility($form['fields'], $old),
+            'accessToken' => $accessToken,
         ], null);
     }
 
@@ -341,6 +371,138 @@ class FillController
         return false;
     }
 
+    /**
+     * F4 — Pinta la página de identificación (`views/fill/access.php`).
+     *
+     * Va DESPUÉS de los cortes por estado y ANTES del gate de disponibilidad, en
+     * ese orden por dos razones: a un formulario en borrador, cerrado o en
+     * revisión no tiene sentido pedirle un correo (no hay nada que rellenar), y
+     * el calendario y el cupo cuentan datos del formulario («abre el martes»,
+     * «cupo lleno») que a un desconocido no hay por qué revelarle. Se identifica
+     * uno y después se le dice si está abierto.
+     */
+    private function renderAccessPage(array $form, array $settings, bool $embed): void
+    {
+        // Los flashes se LEEN aquí (y por eso se consumen) en los dos caminos: si
+        // el visitante ya tuviera acceso no se pinta esta página, y un flash sin
+        // consumir aparecería más tarde en otra pantalla.
+        $sent = Session::getFlash('success');
+        $error = Session::getFlash('error');
+
+        View::render('fill/access', [
+            'form'     => $form,
+            'locale'   => I18n::forRequest($settings),
+            'csrf'     => Csrf::token(),
+            'mode'     => FormAccess::mode($settings),
+            'embed'    => $embed,
+            'sent'     => $sent !== '',
+            'sentMessage' => $sent,
+            'errorMessage' => $error !== '' ? $error : null,
+        ], null);
+    }
+
+    /**
+     * ¿Está autorizado este visitante a ver y enviar ESTE formulario? ¿Y con qué
+     * token lo ha hecho?
+     *
+     * El token que vuelve a propósito es el que llegó en la query: se propaga al
+     * `action` del formulario para que el POST también lo lleve. La sesión sola
+     * no basta —sin cookies el GET se sirve igual (el token va en la URL) y el
+     * POST se caería con un 403 que no tiene explicación— y dentro de un iframe
+     * la cookie es de terceros y muchos navegadores la bloquean.
+     *
+     * @return array{0: bool, 1: ?string} [autorizado, token en claro si vino por query]
+     */
+    private static function resolveAccess(array $form): array
+    {
+        $formId = (int) $form['id'];
+
+        $token = trim((string) Request::query('t', ''));
+        if ($token !== '') {
+            $row = FormAccess::findValidToken($formId, $token);
+            if ($row !== null) {
+                // El permiso de sesión caduca CON el token y, además, se
+                // revalida contra la fila en cada request (ver
+                // `sessionAccessValid`): la caducidad sola dejaría vivo al que
+                // ya había pasado por un enlace que después se revoca.
+                self::grantSessionAccess($formId, (int) $row['id'], (string) $row['expires_at']);
+
+                return [true, $token];
+            }
+        }
+
+        return [self::sessionAccessValid($formId), null];
+    }
+
+    /**
+     * Fija el permiso de sesión con la caducidad del token que lo origina.
+     *
+     * Se guarda el **id de la fila**, no el token: la sesión no debe contener
+     * ninguna credencial, solo el puntero a lo que ya autorizó una vez. Y el id
+     * no sirve para volver a entrar por la URL, que es lo que allows.
+     */
+    private static function grantSessionAccess(int $formId, int $tokenId, string $expiresAt): void
+    {
+        $grants = Session::get('vf_form_access', []);
+        if (!is_array($grants)) {
+            $grants = [];
+        }
+
+        // Poda de lo caducado al escribir, para que `$_SESSION` no crezca con
+        // cada formulario restringido que visita alguien.
+        $now = time();
+        foreach ($grants as $id => $grant) {
+            if (!is_array($grant) || (int) ($grant['exp'] ?? 0) <= $now) {
+                unset($grants[$id]);
+            }
+        }
+
+        $grants[$formId] = ['id' => $tokenId, 'exp' => self::toUnix($expiresAt)];
+        Session::set('vf_form_access', $grants);
+    }
+
+    /**
+     * La sesión da acceso, pero solo mientras su fila siga viva.
+     *
+     * El `form_id` va en la consulta aunque la fila se buscara por id: una fila de
+     * token es de un formulario, y un permiso de sesión que no lo comprobara
+     * aceptaría un id de token de otro formulario como si fuera suyo.
+     */
+    private static function sessionAccessValid(int $formId): bool
+    {
+        $grants = Session::get('vf_form_access', []);
+        if (!is_array($grants) || !isset($grants[$formId]) || !is_array($grants[$formId])) {
+            return false;
+        }
+
+        $grant = $grants[$formId];
+        if ((int) ($grant['exp'] ?? 0) <= time()) {
+            unset($grants[$formId]);
+            Session::set('vf_form_access', $grants);
+
+            return false;
+        }
+
+        return FormAccess::tokenIsLive($formId, (int) ($grant['id'] ?? 0));
+    }
+
+    /**
+     * Convierte el DATETIME UTC de la BD (`expires_at`) en un instante.
+     *
+     * El sufijo ` UTC` es explícito A PROPÓSITO: `expires_at` lo escribe
+     * `gmdate()` y la sesión de MariaDB está en `+00:00`, así que el valor es
+     * UTC aunque el reloj de la máquina no lo esté. Sin el sufijo, `strtotime()`
+     * lo interpretaría en `app.timezone` y la sesión duraría unas horas de más o
+     * menos según dónde esté el servidor — justo el error que solo se nota en la
+     * aritmética, y aquí la aritmética ES la autorización.
+     */
+    private static function toUnix(string $utcDateTime): int
+    {
+        $ts = strtotime($utcDateTime . ' UTC');
+
+        return $ts === false ? 0 : $ts;
+    }
+
     public function submit(string $slug): void
     {
         $form = Form::findBySlug($slug);
@@ -356,6 +518,20 @@ class FillController
         if ($form['status'] !== 'published') {
             Response::abort(403, I18n::t('err.not_accepting', $locale));
             return;
+        }
+
+        // F4 — Contrapartida del gate del GET, y aquí, en el controlador: quitar
+        // el `action` del formulario o el botón del cliente no es una puerta. Un
+        // POST directo saltándose el GET es justo lo que hay que impedir, y por
+        // eso el corte va antes que el `post-max` y que el CSRF: a un formulario
+        // restringido no se le contesta nada hasta saber si tiene acceso.
+        $accessToken = null;
+        if (FormAccess::isRestricted($settings)) {
+            [$granted, $accessToken] = self::resolveAccess($form);
+            if (!$granted) {
+                Response::abort(403, I18n::t('access.denied', $locale));
+                return;
+            }
         }
 
         // P10 — Si el POST excede post_max_size, PHP vacía $_POST/$_FILES: el
@@ -408,7 +584,7 @@ class FillController
             // falla se re-renderiza el form con el error y el visitante reintenta.
             $token = trim((string) Request::post('cf-turnstile-response', ''));
             if ($token === '' || !Turnstile::verify($token, Request::ip())) {
-                $this->renderFillErrors($form, $settings, [I18n::t('err.turnstile', $locale)]);
+                $this->renderFillErrors($form, $settings, [I18n::t('err.turnstile', $locale)], $accessToken);
                 return;
             }
         }
@@ -579,7 +755,7 @@ class FillController
             // P10: los archivos ya subidos en este intento no deben quedar
             // huérfanos en disco si el resto del envío es inválido.
             Uploader::rollback($storedFiles);
-            $this->renderFillErrors($form, $settings, $errors);
+            $this->renderFillErrors($form, $settings, $errors, $accessToken);
             return;
         }
 

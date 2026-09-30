@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Controllers\AdminController;
+use App\Controllers\AccessController;
+use App\Controllers\AccountController;
 use App\Controllers\AnalyticsController;
 use App\Controllers\AttachmentController;
 use App\Controllers\AuthController;

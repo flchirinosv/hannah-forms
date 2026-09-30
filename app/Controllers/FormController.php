@@ -13,6 +13,8 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\FormAccess;
+use App\Services\FormSettings;
 use App\Services\TemplateService;
 
 class FormController
@@ -148,6 +150,24 @@ class FormController
             // La URL se dedujo (o se resolvió a una dirección local): el enlace
             // y el QR solo abrirán desde esta red. Ver App\Core\PublicUrl.
             'publicUrlIsLocal' => \App\Core\PublicUrl::isLocalBase(),
+            // F3 — la vista decide qué botón pintar según esto: con revisión
+            // activa, «Publicar» dejaría de existir para el dueño.
+            'reviewRequired' => !empty($settings['review']['enabled']),
+            'canReview'      => Auth::can('forms.review'),
+            'reviewTrail'    => $form['status'] === 'in_review' || $form['reviewed_at'] !== null
+                ? Form::reviewTrail($id)
+                : null,
+            // F4 — La lista solo se carga en modo `allowlist`, que es el único
+            // caso en que existe: en los otros dos son dos consultas de más en
+            // cada visita al detalle. Y recortada a 200, porque pintar 5000
+            // emails en un `<ul>` no ayuda a nadie a administrarlos.
+            'accessMode'     => FormAccess::mode($settings),
+            'accessList'     => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
+                ? FormAccess::allowlistFor($id, '', 200)
+                : [],
+            'accessCount'    => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
+                ? FormAccess::allowlistCount($id)
+                : 0,
         ]);
     }
 

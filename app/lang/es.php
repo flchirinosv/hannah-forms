@@ -89,6 +89,37 @@ return [
     'status.misconfigured_note'  => 'tiene una verificación de robot activada que el servidor no tiene configurada todavía.',
     'status.draft_title'    => 'En preparación',
     'status.draft_note'     => 'Este formulario aún no ha sido publicado por su propietario.',
+    // F4 — página de identificación de un formulario restringido. `intro_*` SÍ
+    // depende del modo (el visitante necesita saber si le espere un correo o
+    // escribir a quien le pasó el enlace), pero nunca si un email concreto está
+    // en la lista: esa respuesta la da el correo, y es siempre la misma.
+    'access.title'            => 'Acceso restringido',
+    'access.email_label'      => 'Tu correo electrónico',
+    'access.email_placeholder' => 'nombre@ejemplo.com',
+    'access.cta'              => 'Recibir el enlace',
+    'access.intro_email'      => 'Escribe tu correo y te enviamos un enlace para abrir el formulario.',
+    'access.intro_allowlist'  => 'Escribe tu correo y te enviaremos un enlace si estás en la lista de este formulario.',
+    'access.sent_title'       => 'Revisa tu correo',
+    'access.sent_body'        => 'Si ese correo está autorizado, recibirás un enlace para abrir el formulario. El mensaje es el mismo exista o no el acceso, por privacidad.',
+    'access.note_email'       => 'El enlace es personal: no lo compartas.',
+    'access.note_allowlist'   => 'El enlace es personal: no lo compartas.',
+    'access.denied'           => 'Necesitas un enlace de acceso para responder a este formulario.',
+    'access.invalid_email'    => 'Ese correo no parece válido.',
+    'access.already_added'    => '{email} ya estaba en la lista.',
+    'access.added'            => 'Se añadió {email} a la lista de acceso.',
+    'access.removed'          => 'Se quitó {email} de la lista y sus enlaces ya no sirven.',
+    'access.not_allowlist_mode' => 'La lista solo se usa en el modo «Solo los de la lista».',
+    'access.not_in_list'      => 'Ese correo no está en la lista de acceso.',
+    'mail.access_subject'     => 'Tu enlace para el formulario',
+    'mail.access_title'       => 'Enlace de acceso al formulario',
+    'mail.access_body'        => 'Puedes abrir el formulario con este enlace. No necesitas crear ninguna cuenta.',
+    'mail.access_cta'         => 'Abrir el formulario',
+    'mail.access_ttl'         => 'El enlace es válido durante {ttl} días desde que se envió.',
+    'mail.access_ignore'      => 'Si no esperabas este correo, puedes ignorarlo: el enlace no da acceso a nada más.',
+    'mail.access_alt'         => 'Para abrir el formulario «{form}», entra en esta dirección: {url}',
+    // F3 — el enlace en revisión responde con esta página, no con un 404
+    'status.in_review_title' => 'Formulario en revisión',
+    'status.in_review_note'  => 'Está esperando a que alguien lo apruebe. Vuelve más tarde: no hace falta que hagas nada.',
 
     // Gracias + quiz
     'thanks.custom_title'   => '¡Gracias por tu respuesta!',

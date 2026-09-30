@@ -108,6 +108,39 @@ CREATE INDEX idx_fields_parent ON fields (parent_id);
 -- Una BD creada con las migraciones no tiene ese índice suelto, y con él cada
 -- INSERT de formulario escribía un índice de más.
 CREATE INDEX idx_forms_user_status ON forms (user_id, status);
+-- F3 — panel de revisores: «formularios esperando revisión» ordenado por antigüedad
+CREATE INDEX idx_forms_status_review ON forms (status, review_requested_at);
+
+-- F4: allowlist de acceso (modo `allowlist`).
+-- Va en tabla y no en `settings` porque revocar tiene que borrar los tokens de
+-- ese email en la misma operación, y eso es una cascada de SQL, no un bucle de
+-- PHP que puede quedarse a medias. El UNIQUE hace idempotente «añadir dos veces».
+CREATE TABLE IF NOT EXISTS form_access_emails (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    form_id    INT UNSIGNED NOT NULL,
+    email      VARCHAR(190) NOT NULL COMMENT 'Normalizado a minúsculas por el modelo',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_form_access_email (form_id, email),
+    CONSTRAINT fk_form_access_email_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- F4: enlaces de acceso. NO es de un solo uso (un F5 lo dejaría inservible):
+-- lo que lo limita es la caducidad y `revoked_at`.
+-- No lleva FK a `form_access_emails` porque en modo `email` hay tokens sin fila
+-- en la allowlist; la revocación es explícita y va en transacción en el modelo.
+CREATE TABLE IF NOT EXISTS form_access_tokens (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    form_id    INT UNSIGNED NOT NULL,
+    email      VARCHAR(190) NOT NULL COMMENT 'A quién se emitió; no es la autorización',
+    token_hash CHAR(64) NOT NULL COMMENT 'sha256 del token: la fila no es el secreto',
+    expires_at DATETIME NOT NULL,
+    revoked_at DATETIME DEFAULT NULL COMMENT 'Revocado por el dueño al quitar el email',
+    ip_address VARCHAR(45) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_form_access_token (token_hash),
+    KEY idx_form_access_form_email (form_id, email),
+    CONSTRAINT fk_form_access_token_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- Submissions
 CREATE TABLE IF NOT EXISTS submissions (
