@@ -18,9 +18,6 @@ class I18nTest
 {
     public function setUp(): void
     {
-        if (!class_exists(\App\Core\Config::class)) {
-            require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        }
         // Q6 — estado limpio del request (el runner CLI no lo inyecta). Se
         // borran solo las claves: $_GET/$_POST deben seguir siendo arrays para
         // Request::all().

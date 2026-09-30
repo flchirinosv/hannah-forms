@@ -18,13 +18,6 @@ use App\Controllers\FillController;
  */
 class RandomizeTest
 {
-    private static bool $envLoaded = false;
-
-    public function setUp(): void
-    {
-        self::loadEnv();
-    }
-
     public function testBarajarUnidadesConservaIdsOrdenDePaginasYSubtree(): void
     {
         $fields = [
@@ -137,16 +130,5 @@ class RandomizeTest
         $out = FillController::randomizeFields($fields, []);
         assertSame('text', $out[0]['type']);
         assertSame('x', $out[1]['options'][0]['value']);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        if (!class_exists(\App\Core\Config::class)) {
-            require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        }
-        self::$envLoaded = true;
     }
 }

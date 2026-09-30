@@ -19,12 +19,9 @@ use App\Services\TemplateService;
 class P9TemplatesTest
 {
     private static ?int $userId = null;
-    private static bool $envLoaded = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
-
         try {
             $db = \App\Core\Database::getInstance(\App\Core\Config::db());
             $db->fetch('SELECT 1 AS ok');
@@ -430,17 +427,6 @@ class P9TemplatesTest
         $db = \App\Core\Database::getInstance(\App\Core\Config::db());
         $rows = $db->fetchAll('SELECT id FROM forms WHERE user_id = :uid', ['uid' => (int) self::$userId]);
         return array_map(static fn($r) => (int) $r['id'], $rows);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        if (!class_exists(\App\Core\Config::class)) {
-            require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        }
-        self::$envLoaded = true;
     }
 
     private static function cleanupResiduals(): void

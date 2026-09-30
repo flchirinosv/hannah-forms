@@ -27,7 +27,6 @@ class P10UploadsTest
     private static ?int $userId = null;
     private static int $formId = 0;
     private static string $slug = '';
-    private static bool $envLoaded = false;
 
     /** Archivos en storage/uploads al empezar cada test (para comparar deltas). */
     private static int $baseStored = 0;
@@ -81,8 +80,6 @@ class P10UploadsTest
 
     public function setUp(): void
     {
-        self::loadEnv();
-
         try {
             Database::getInstance(Config::db())->fetch('SELECT 1 AS ok');
         } catch (\Throwable $e) {
@@ -638,16 +635,6 @@ class P10UploadsTest
         $_POST = $post;
     }
 
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        if (!class_exists(Config::class)) {
-            require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        }
-        self::$envLoaded = true;
-    }
 
     private static function cleanupResiduals(): void
     {

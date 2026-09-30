@@ -27,6 +27,17 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/autoload.php';
 
+// Cargar el `.env` ANTES de que ningún test toque `Config`. `Config::all()` lee
+// `config/config.php` una sola vez y cachea el array en `self::$config`, así que
+// la primera llamada congela las credenciales para el resto del proceso. El
+// runner antes solo cargaba el autoload y los tests que necesitaban la BD
+// llamaban a `Env::load()` por su cuenta: con un `--filter` estrecho, el que
+// corría primero la cargaba y el resto heredaba su config por casualidad del
+// orden de ejecución (y si ninguno la cargaba, salía `SKIP: base de datos no
+// disponible` sin decir por qué). Aquí la carga es del runner, no de un test:
+// el resultado no depende de qué test se ejecute primero.
+\App\Core\Env::load(dirname(__DIR__) . '/.env');
+
 $args = $_SERVER['argv'] ?? [];
 parseArgs($args, $filter, $pathFilter);
 

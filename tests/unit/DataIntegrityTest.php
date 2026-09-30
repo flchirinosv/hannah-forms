@@ -427,9 +427,9 @@ class DataIntegrityTest
     }
 
     /**
-     * El runner solo carga `config/autoload.php`, no `config/bootstrap.php`, así
-     * que el `.env` no está cargado y las credenciales saldrían vacías. Mismo
-     * patrón que FormTest y P7ShareTest.
+     * El runner ya carga el `.env` (ver `scripts/test.php`), así que esto es
+     * redundante y se puede borrar junto con el `$envLoaded`. Se deja mientras
+     * los ~35 tests que aún lo tienen no se limpien en una sola pasada.
      */
     private static function loadEnv(): void
     {

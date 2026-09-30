@@ -46,7 +46,6 @@ use App\Services\FormSettings;
  */
 class FormAccessTest
 {
-    private static bool $envLoaded = false;
     private static ?int $ownerId = null;
     private static ?int $formId = null;
     private static ?string $slug = null;
@@ -67,7 +66,6 @@ class FormAccessTest
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
         $this->sent = [];
 
@@ -640,17 +638,6 @@ class FormAccessTest
     {
         Auth::assumeLoggedIn($userId);
         Auth::forgetCache();
-    }
-
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        if (!class_exists(Config::class)) {
-            require_once dirname(__DIR__, 2) . '/config/bootstrap.php';
-        }
-        self::$envLoaded = true;
     }
 
     /**

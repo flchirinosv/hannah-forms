@@ -87,15 +87,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
-- **Trampa verificada**: `scripts/test.php` **no carga `.env`**, y 7 clases
-  (`I18nTest`, `P10UploadsTest`, `P7ShareTest`, `P8SmartTest`, `P9TemplatesTest`,
-  `QuizScoreTest`, `RandomizeTest`) intentan cargarlo con
-  `if (!class_exists(Config::class)) require bootstrap.php`; como `class_exists`
-  dispara el autoload y devuelve **siempre `true`**, el `require` no corre nunca y
-  `Config::$config` (caché estática de proceso) queda congelado con `DB_PASSWORD`
-  vacío. Con `--filter` estrecho esos tests salen con `Errores: 1` y
-  `SKIP: base de datos no disponible`; en la suite completa pasan.
-  **Contradice siempre un filtro con una suite completa.**
+- **El runner carga el `.env`**: `scripts/test.php` hace `Env::load()` antes de
+  que ningún test toque `Config`, y eso es lo que hace que un `--filter`
+  estrecho dé el mismo resultado que la suite completa. No lo quites: sin esa
+  línea, `Config::all()` congela `DB_PASSWORD` vacío en la PRIMERA llamada, y
+  el resultado depende de qué test corra primero (7 clases lo intentaban
+  arreglar con `if (!class_exists(Config::class)) require bootstrap.php`, un
+  patrón roto porque `class_exists` dispara el autoload y devuelve **siempre
+  `true`**: el `require` no corría nunca y el workaround se llevó por delante).
+  ~35 clases conservan un `loadEnv()` propio que ya es redundante pero
+  inofensivo (`Env::load` no sobreescribe variables ya definidas).
 
 ## Invariantes que fallan en silencio
 
