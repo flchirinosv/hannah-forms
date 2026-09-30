@@ -123,14 +123,35 @@ Ya lo hiciste en el paso 4 con `create-admin.php`.
 
 ### 4.2 Registrarse
 
-Hay un registro público en `/register`: **cualquiera que llegue al sitio puede
-crear una cuenta** y entrar al panel. No hay casilla para desactivarlo y no hay
-verificación por correo (una cuenta es activa desde el instante en que se
-registra). Si tu instalación no es pública, bloquea esa ruta en el servidor web:
+**El registro público está cerrado por defecto.** Para una instalación que no es
+pública esto es lo que quieres: nadie se registra solo, y las cuentas las crea
+quien administra desde el panel.
 
-```nginx
-location = /register { deny all; return 403; }
+Si en algún momento quieres abrirlo, ponlo en `.env` y reinicia:
+
+```ini
+REGISTRATION_ENABLED=true
 ```
+
+Con el registro abierto, cualquiera que llegue a `/register` puede crear una
+cuenta y entrar al panel. **No hay verificación por correo**: una cuenta queda
+activa desde el instante en que se registra, así que cualquiera puede usar la
+dirección que escriba. Ábrelo solo si el panel es público a propósito.
+
+Con el registro cerrado (el valor por defecto) pasan las dos cosas:
+
+- El enlace «Regístrate aquí» desaparece del formulario de acceso, y `/register`
+  responde 403 tanto si se entra por GET como si se envía el formulario.
+- Las cuentas se crean desde el panel, en `/admin` → «Nuevo usuario».
+
+| Valor | `/register` | Quién puede crear cuentas |
+| --- | --- | --- |
+| `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien administra, desde `/admin` |
+| `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio |
+
+> Si además quieres que la ruta devuelva 403 **antes** de que PHP la vea
+> (por ejemplo, en un despliegue con la aplicación en otro servidor), puedes
+> mantener el bloqueo en el web server. Los dos mecanismos son compatibles.
 
 Quien llega sin sesión a un enlace de formulario público **no** necesita
 cuenta: eso es distinto del panel.
@@ -275,6 +296,24 @@ Actívalo en cuanto crees el campo: **sin esa marca no hay enmascarado posible**
 porque un campo de texto puede ser «¿Qué opinas?» o «Nombre de tu jefe», y la
 app no puede adivinarlo.
 
+**El constructor te avisa.** Cuando escribes una pregunta cuya etiqueta parece
+un dato personal («¿Tu nombre y apellidos?», «Correo de contacto», «Teléfono»,
+«Cédula», «Dirección», «Fecha de nacimiento»…), el panel te lo señala con un
+aviso amarillo y dos botones:
+
+| Botón | Qué hace |
+|---|---|
+| **Sí, es dato personal** | Activa el interruptor y guarda el cambio |
+| **No es** | Oculta el aviso **para esa pregunta** |
+
+Que avise y no decida es a propósito: «Nombre de la empresa» o «¿Qué nombre le
+pones a tu proyecto?» no son datos de nadie, y esconderlos sin que lo pidas
+sería justo el error contrario. Si reescribes la etiqueta, el aviso vuelve a
+aparecer, porque a lo mejor ahora sí es una pregunta distinta.
+
+El aviso solo sale en preguntas de verdad: en las secciones y en las páginas no
+aparece, porque no guardan respuestas.
+
 ---
 
 ## 7. Ajustes del formulario
@@ -285,7 +324,7 @@ constructor. Grupos y valores por defecto:
 | Grupo | Qué hace | Por defecto |
 |---|---|---|
 | Contenido | Título, descripción, texto del botón de envío | — |
-| Tema | Color primario, color de fondo, tipografía (lista blanca) | Sin personalización |
+| Tema | Color primario, color de fondo, tipografía | Sin personalización |
 | Comportamiento | Acceso, cupo, programación, embed, barajado | Público |
 | Multipágina | Separadores de paso, avance automático | Sin avance automático |
 | Confirmación | Mensaje de gracias, redirección | Sin redirección |
@@ -295,6 +334,27 @@ constructor. Grupos y valores por defecto:
 | Revisión | Revisión antes de publicar + aviso por correo | Desactivado |
 | Analítica | Qué se guarda y durante cuánto | — |
 | Idioma | `es` o `en` | `es` |
+
+### 7.0 Cómo leer esta pantalla
+
+Todos los ajustes vienen apagados y se guardan solos al cerrar. Los que tienen
+un texto gris debajo dicen qué hacen y dan un ejemplo; los que no, es porque se
+explican solos.
+
+Cinco cosas que la pantalla avisa por ti porque fallan en silencio:
+
+| Aviso | Qué pasa si no lo lees |
+|---|---|
+| **Tipografía**: solo letras, números, espacios y `- _ . ,`, y **sin comillas** | Escribes `Georgia, serif` y se guarda; escribes `'Georgia', serif` y se descarta sin decir nada |
+| **Campo email** de la confirmación: es la etiqueta exacta de la pregunta | Si no coincide con ninguna, el correo no se envía y no hay error en pantalla |
+| **Turnstile**: actívalo solo si el servidor ya tiene claves | El formulario deja de mostrarse a **todo el mundo**, no solo a los bots |
+| **Abre/Cierra**: se leen en la zona horaria del servidor, y abrir después de cerrar se rechaza | Una ventana que no existe nunca |
+| **Redirección de gracias**: solo si el dominio está en la lista del servidor | Se muestra la página de gracias y no se redirige |
+
+Bajo **Tema** hay una maqueta con el botón y la barra de progreso: cambia los
+dos colores y los ves al instante, sin abrir la vista previa aparte. La fuente
+no sale en la maqueta a propósito, porque el equipo de quien responde puede no
+tenerla instalada y el resultado real no sería el que ves.
 
 ### 7.1 Honeypot
 

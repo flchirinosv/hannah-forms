@@ -54,11 +54,68 @@ class ControllerActionsTest
 
         self::cleanupResiduals();
 
+        // /register está CERRADO por defecto (REGISTRATION_ENABLED=false): sin
+        // esto el smoke recorrería las dos rutas del registro y solo comprobaría
+        // un 403, que es la mitad fácil. Con el registro abierto, el POST de
+        // humo llega de verdad al alta de cuenta.
+        Config::setForTesting('app.registration_enabled', true);
+
         self::$adminEmail = 'smoke-' . bin2hex(random_bytes(3)) . '@test.local';
         self::$adminId = User::create('Smoke Admin', self::$adminEmail, 'clave-smoke-123', 1);
         // Usuario objetivo para /admin/users/* (no degradar/desactivar al propio admin).
         self::$otherId = (int) User::create('Smoke Otro', 'smoke-b-' . bin2hex(random_bytes(3)) . '@test.local', 'clave-smoke-123', 2);
         self::ensureForm();
+    }
+
+    /**
+     * El registro público apagado tiene que cerrar GET y POST por igual.
+     *
+     * Se usa la tabla de rutas REAL (no una ruta escrita a mano) para que el
+     * test no pueda quedarse comprobando un endpoint que ya no existe. Con el
+     * registro abierto, el smoke de arriba recorre las dos rutas de verdad.
+     */
+    public function testElRegistroApagadoCierraGetYPost(): void
+    {
+        Config::setForTesting('app.registration_enabled', false);
+
+        $router = new Router();
+        require dirname(__DIR__, 2) . '/config/routes.php';
+        $rp = new \ReflectionProperty(Router::class, 'routes');
+        $rp->setAccessible(true);
+        $rutas = array_values(array_filter(
+            $rp->getValue($router),
+            static fn (array $r): bool => $r['path'] === '/register'
+        ));
+
+        assertSame(2, count($rutas), 'deben existir las dos rutas de registro (GET y POST)');
+
+        foreach ($rutas as $ruta) {
+            $out = self::dispatchRoute($ruta, '/register');
+            $html = (string) $out['html'];
+            // `lastHalt()` devuelve la ÚLTIMA entrada del log, que es un array
+            // ['type' => 'abort', 'code' => 403], no un entero suelto.
+            $halt = $out['halt'];
+
+            assertTrue(
+                is_array($halt) && ($halt['type'] ?? '') === 'abort' && (int) ($halt['code'] ?? 0) === 403,
+                $ruta['method'] . ' /register con el registro apagado debe cortar con 403, paró en '
+                    . json_encode($halt, JSON_UNESCAPED_UNICODE)
+            );
+            assertFalse(
+                str_contains($html, 'name="password_confirm"'),
+                $ruta['method'] . ' /register no debe pintar el formulario de alta con la puerta cerrada'
+            );
+        }
+
+        Config::forgetForTesting();
+    }
+
+    public function tearDown(): void
+    {
+        // El override de Config es global (static): sin esto, «registro
+        // abierto» se lo encuentra el siguiente test que recorra /register y
+        // estaría probando un estado que la instalación real no tiene.
+        Config::forgetForTesting();
     }
 
     public function testTodasLasRutasRespondenSinErroresNiEndpointsMudos(): void

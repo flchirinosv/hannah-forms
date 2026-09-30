@@ -190,20 +190,26 @@ $fieldTypes = [
                         </div>
                         <div class="mb-3 d-none" id="fieldValidationWrap">
                             <label class="form-label small fw-semibold">Validaciones</label>
+                            <p class="form-text">Lo que el campo acepte. Lo que quede fuera se rechaza al enviar, con el mensaje que ponga quien responde.</p>
                             <div class="row g-2">
                                 <div class="col-6 d-none" id="valMinWrap">
-                                    <input type="number" class="form-control form-control-sm" id="valMin" placeholder="Min">
+                                    <label class="form-label small mb-1" for="valMin">Mínimo</label>
+                                    <input type="number" class="form-control form-control-sm" id="valMin" placeholder="Ej: 1">
                                 </div>
                                 <div class="col-6 d-none" id="valMaxWrap">
-                                    <input type="number" class="form-control form-control-sm" id="valMax" placeholder="Max">
+                                    <label class="form-label small mb-1" for="valMax">Máximo</label>
+                                    <input type="number" class="form-control form-control-sm" id="valMax" placeholder="Ej: 5">
                                 </div>
                                 <div class="col-6 d-none" id="valMinLenWrap">
-                                    <input type="number" class="form-control form-control-sm" id="valMinLen" placeholder="Min chars">
+                                    <label class="form-label small mb-1" for="valMinLen">Caracteres mínimos</label>
+                                    <input type="number" class="form-control form-control-sm" id="valMinLen" placeholder="Ej: 10">
                                 </div>
                                 <div class="col-6 d-none" id="valMaxLenWrap">
-                                    <input type="number" class="form-control form-control-sm" id="valMaxLen" placeholder="Max chars">
+                                    <label class="form-label small mb-1" for="valMaxLen">Caracteres máximos</label>
+                                    <input type="number" class="form-control form-control-sm" id="valMaxLen" placeholder="Ej: 280">
                                 </div>
                             </div>
+                            <p class="form-text mb-0 d-none" id="valScaleHint"></p>
                         </div>
                         <!-- P8: quiz (respuesta correcta) y barajado de opciones -->
                         <div class="mb-3 d-none" id="fieldQuizWrap">
@@ -222,7 +228,12 @@ $fieldTypes = [
                         <div class="form-check form-switch mb-3" id="fieldPiiWrap">
                             <input class="form-check-input" type="checkbox" id="fieldPii">
                             <label class="form-check-label small" for="fieldPii">Contiene datos personales</label>
-                            <div class="text-muted mt-1" style="font-size:.72rem">Las respuestas de este campo saldr&aacute; enmascaradas (IP, navegador y valor) para quien no tenga el permiso <code>responses.pii</code>. M&aacute;rcalo si pide un nombre, un tel&eacute;fono, un correo, un documento o una direcci&oacute;n.</div>
+                            <div class="text-muted mt-1" style="font-size:.72rem">Las respuestas de este campo saldr&aacute;n enmascaradas (IP, navegador y valor) para quien no tenga el permiso <code>responses.pii</code>. M&aacute;rcalo si pide un nombre, un tel&eacute;fono, un correo, un documento o una direcci&oacute;n.</div>
+                            <div class="alert alert-warning py-2 px-2 mt-2 mb-0 d-none" id="piiSuggestWrap" role="status" style="font-size:.72rem">
+                                <div id="piiSuggestText"></div>
+                                <button type="button" class="btn btn-sm btn-outline-warning mt-1" id="btnPiiSuggest"><i class="fa-solid fa-shield-halved me-1"></i>S&iacute;, es dato personal</button>
+                                <button type="button" class="btn btn-sm btn-link text-muted mt-1" id="btnPiiDismiss">No es</button>
+                            </div>
                         </div>
                         </div>
                         <div class="tab-pane fade" id="tabLogic" role="tabpanel">
@@ -322,33 +333,63 @@ $fieldTypes = [
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body p-4">
-                <p class="text-muted small mb-3">Estos ajustes se guardan junto con la estructura (autosave).</p>
+                <div class="alert alert-light border small mb-4" role="note">
+                    <p class="mb-1"><strong>Todo es opcional.</strong> Los ajustes vienen apagados y se guardan con la estructura. Si no te hace falta algo, déjalo como está.</p>
+                    <p class="mb-0 text-muted">Los que tienen texto gris debajo son los que más confunden: explican qué hace el ajuste y te dan un ejemplo. Los que cambian el comportamiento de quien responde (<i>Comportamiento</i>, <i>Anti-spam</i>) conviene revisarlos dos veces.</p>
+                </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-palette me-1"></i>Tema</h6>
-                <div class="row g-3 mb-4">
+                <p class="text-muted small mb-3">Colores y tipografía con los que se pinta el formulario. Sirven para que el formulario se vea como tu marca, no como el de por defecto.</p>
+                <div class="row g-3 mb-2">
                     <div class="col-md-4">
                         <label for="stPrimary" class="form-label small fw-semibold">Color principal</label>
                         <input type="color" class="form-control form-control-color w-100" id="stPrimary" value="#0d6efd">
+                        <p class="form-text mb-0">Botón de enviar, barra de progreso y enlaces.</p>
                     </div>
                     <div class="col-md-4">
                         <label for="stBackground" class="form-label small fw-semibold">Color de fondo</label>
                         <input type="color" class="form-control form-control-color w-100" id="stBackground" value="#f6f6f6">
+                        <p class="form-text mb-0">El fondo de la página del formulario.</p>
                     </div>
                     <div class="col-md-4">
                         <label for="stFont" class="form-label small fw-semibold">Fuente</label>
-                        <input type="text" class="form-control form-control-sm" id="stFont" placeholder="Ej: Georgia, serif">
+                        <input type="text" class="form-control form-control-sm" id="stFont" list="stFontList" placeholder="Ej: Georgia, serif">
+                        <datalist id="stFontList">
+                            <option value="system-ui, sans-serif"></option>
+                            <option value="Georgia, serif"></option>
+                            <option value="Inter, sans-serif"></option>
+                            <option value="Source Sans 3, sans-serif"></option>
+                            <option value="Verdana, sans-serif"></option>
+                            <option value="monospace"></option>
+                        </datalist>
+                        <p class="form-text mb-0">Solo letras, números, espacios y <code>- _ . ,</code>. Se admiten alternativas separadas por coma. <strong>Sin comillas:</strong> escribe <code>Times New Roman, serif</code>, no <code>'Times New Roman', serif</code>. Y ten en cuenta que esto no descarga la fuente: si el visitante no la tiene instalada, se verá la que tenga.</p>
+                        <p class="form-text mb-0" id="stFontNote" role="status"></p>
+                    </div>
+                </div>
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <p class="small fw-semibold mb-2"><i class="fa-solid fa-eye me-1"></i>Así se verá <span class="text-muted fw-normal">(solo los colores; la fuente depende del equipo de quien responde)</span></p>
+                    <div class="d-flex flex-wrap align-items-center gap-3" id="stThemePreview">
+                        <button type="button" class="btn btn-sm" id="stThemePreviewBtn" disabled>Enviar</button>
+                        <span class="small fw-semibold" id="stThemePreviewTitle">Título del formulario</span>
+                        <span class="small flex-grow-1" style="min-width:120px;max-width:220px;height:6px;border-radius:3px;background:#dee2e6"><span id="stThemePreviewBar" style="display:block;height:100%;width:60%;border-radius:3px"></span></span>
                     </div>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-calendar-days me-1"></i>Programación y cupo</h6>
+                <p class="text-muted small mb-3">Cuándo y cuántas veces se puede responder. Con las fechas vacías el formulario acepta envíos siempre.</p>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label for="stOpenAt" class="form-label small fw-semibold">Abre el</label>
                         <input type="datetime-local" class="form-control form-control-sm" id="stOpenAt">
+                        <p class="form-text mb-0">Antes de esta fecha el formulario no acepta envíos. Vacío = desde ya.</p>
                     </div>
                     <div class="col-md-6">
                         <label for="stCloseAt" class="form-label small fw-semibold">Cierra el</label>
                         <input type="datetime-local" class="form-control form-control-sm" id="stCloseAt">
+                        <p class="form-text mb-0">Después de esta fecha deja de aceptarlos. Vacío = sin fecha de cierre. Lo que ya se envió se conserva.</p>
+                    </div>
+                    <div class="col-md-12">
+                        <p class="form-text mb-0"><i class="fa-solid fa-globe me-1"></i>Se interpretan en la zona horaria de la instalación (<code>APP_TIMEZONE</code>), no en la de quien responde. Si <em>Abre</em> es posterior a <em>Cierra</em>, el formulario no tendrá ninguna ventana y el ajuste se rechaza al guardar.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
@@ -358,47 +399,57 @@ $fieldTypes = [
                     </div>
                     <div class="col-md-8">
                         <label for="stQuotaMax" class="form-label small fw-semibold">Máximo de respuestas</label>
-                        <input type="number" class="form-control form-control-sm" id="stQuotaMax" min="1" placeholder="0 = sin cupo">
+                        <input type="number" class="form-control form-control-sm" id="stQuotaMax" min="1" placeholder="Ej: 100">
+                        <p class="form-text mb-0">Solo cuenta si el interruptor de la izquierda está encendido. Al llegar al máximo, el formulario deja de aceptar envíos.</p>
                     </div>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-envelope me-1"></i>Notificaciones</h6>
+                <p class="text-muted small mb-3">A quién se avisa cuando alguien envía el formulario, y quién recibe una copia de su propia respuesta.</p>
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stNotifyEnabled">
                             <label class="form-check-label small fw-semibold" for="stNotifyEnabled">Notificar al recibir</label>
                         </div>
+                        <p class="form-text mb-0">Te avisa a ti de cada envío.</p>
                     </div>
                     <div class="col-md-8">
                         <label for="stNotifyEmails" class="form-label small fw-semibold">Correos (separados por coma)</label>
-                        <input type="text" class="form-control form-control-sm" id="stNotifyEmails" placeholder="a@x.com, b@y.com">
+                        <input type="text" class="form-control form-control-sm" id="stNotifyEmails" placeholder="Ej:RRHH@empresa.com, datos@empresa.com">
+                        <p class="form-text mb-0">Hasta 10, separados por coma. Los que no sean un correo válido se descartan solos, sin aviso.</p>
                     </div>
                     <div class="col-md-8">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stConfirmEnabled">
-                            <label class="form-check-label small fw-semibold" for="stConfirmEnabled">Confirmación al respondiente</label>
+                            <label class="form-check-label small fw-semibold" for="stConfirmEnabled">Enviar confirmación a quien responde</label>
                         </div>
+                        <p class="form-text mb-0">Necesita un campo de tipo email en el formulario (abajo) y que el correo saliente esté configurado en el servidor.</p>
                     </div>
                     <div class="col-md-4">
                         <label for="stConfirmToField" class="form-label small fw-semibold">Campo email</label>
-                        <input type="text" class="form-control form-control-sm" id="stConfirmToField" placeholder="Nombre del campo email">
+                        <input type="text" class="form-control form-control-sm" id="stConfirmToField" list="stConfirmFieldList" placeholder="Ej: Correo electrónico">
+                        <datalist id="stConfirmFieldList"></datalist>
+                        <p class="form-text mb-0">La <strong>etiqueta exacta</strong> de la pregunta que recoge el correo. Si no coincide con ninguna, el correo no se envía y no sale ningún aviso en pantalla: elige una de la lista.</p>
                     </div>
                     <div class="col-md-6">
                         <label for="stConfirmSubject" class="form-label small fw-semibold">Asunto</label>
-                        <input type="text" class="form-control form-control-sm" id="stConfirmSubject">
+                        <input type="text" class="form-control form-control-sm" id="stConfirmSubject" placeholder="Ej: Recibimos tu respuesta">
+                        <p class="form-text mb-0">Texto literal, se usa tal cual. Vacío = «Recibimos tu respuesta: <em>título del formulario</em>».</p>
                     </div>
                     <div class="col-md-6">
                         <label for="stConfirmMessage" class="form-label small fw-semibold">Mensaje</label>
-                        <textarea class="form-control form-control-sm" id="stConfirmMessage" rows="2"></textarea>
+                        <textarea class="form-control form-control-sm" id="stConfirmMessage" rows="2" placeholder="Vacío = mensaje por defecto"></textarea>
                     </div>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-link me-1"></i>Integraciones y final</h6>
+                <p class="text-muted small mb-3">Avisa a otro sistema de cada envío, y qué se muestra cuando la persona ya envió el formulario.</p>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label for="stWebhookUrl" class="form-label small fw-semibold">Webhook (URL)</label>
                         <input type="url" class="form-control form-control-sm" id="stWebhookUrl" placeholder="https://ejemplo.com/hook">
+                        <p class="form-text mb-0">Si se llena, cada envío se manda por HTTP a esa URL. Debe ser <code>http</code> o <code>https</code> y alcanzable desde el servidor. Los reintentos no se repiten si la respuesta no es 2xx.</p>
                     </div>
                     <div class="col-md-3">
                         <label for="stWebhookKind" class="form-label small fw-semibold">Formato</label>
@@ -406,38 +457,48 @@ $fieldTypes = [
                             <option value="generic">JSON</option>
                             <option value="slack">Slack</option>
                         </select>
+                        <p class="form-text mb-0"><strong>JSON</strong>: el envío entero. <strong>Slack</strong>: solo un texto para un canal.</p>
                     </div>
                     <div class="col-md-3">
                         <label for="stWebhookSecret" class="form-label small fw-semibold">Secreto (firma)</label>
                         <input type="text" class="form-control form-control-sm" id="stWebhookSecret" placeholder="Opcional" autocomplete="off">
+                        <p class="form-text mb-0">Si lo pones, cada petición lleva la firma <code>X-VF-Signature</code> para que el receptor verifique que el envío es auténtico.</p>
+                    </div>
+                    <div class="col-md-12">
+                        <p class="form-text mb-0"><i class="fa-solid fa-shield-halved me-1"></i>Por seguridad, las direcciones internas (<code>localhost</code>, <code>192.168.x.x</code>, <code>10.x.x.x</code>) están bloqueadas. Si necesitas una de ellas, quien administra el servidor tiene que activarlo con <code>WEBHOOK_ALLOW_PRIVATE_HOSTS</code>: desde el formulario no se puede.</p>
                     </div>
                     <div class="col-md-12">
                         <label for="stThanksMessage" class="form-label small fw-semibold">Mensaje de gracias personalizado</label>
                         <textarea class="form-control form-control-sm" id="stThanksMessage" rows="2" placeholder="En blanco = mensaje por defecto"></textarea>
+                        <p class="form-text mb-0">Lo que ve la persona al terminar. En blanco se usa el mensaje por defecto de la instalación.</p>
                     </div>
                     <div class="col-md-12">
                         <label for="stThanksRedirect" class="form-label small fw-semibold">URL de redirección tras enviar</label>
                         <input type="url" class="form-control form-control-sm" id="stThanksRedirect" placeholder="https://… (opcional)">
+                        <p class="form-text mb-0">A dónde se le lleva al terminar, <em>después</em> de ver el mensaje de gracias. Solo se sigue si el dominio está permitido por el servidor (<code>APP_REDIRECT_ALLOWLIST</code>); si no, se muestra la página de gracias y a secas.</p>
                     </div>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-toggle-on me-1"></i>Comportamiento</h6>
+                <p class="text-muted small mb-3">Interruptores que cambian cómo se rellena el formulario. Todos vienen apagados.</p>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stQuizEnabled">
                             <label class="form-check-label small fw-semibold" for="stQuizEnabled">Modo quiz</label>
                         </div>
+                        <p class="form-text mb-0">Muestra la respuesta correcta y lleva la cuenta de aciertos al final.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stRandQuestions">
                             <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas</label>
                         </div>
+                        <p class="form-text mb-0">Cada persona ve las preguntas en un orden distinto.</p>
                     </div>
                     <?php // F5 — Avance automático entre páginas. Va junto al resto de
                           // interruptores de comportamiento del relleno, con su
-                          // explicación al lado: es el ajuste que más surprise si
+                          // explicación al lado: es el ajuste que más sorprende si
                           // se activa sin querer, y solo tiene efecto en
                           // formularios CON páginas. ?>
                     <div class="col-md-4">
@@ -452,18 +513,21 @@ $fieldTypes = [
                             <input class="form-check-input" type="checkbox" id="stEmbedEnabled">
                             <label class="form-check-label small fw-semibold" for="stEmbedEnabled">Permitir embeber (iframe)</label>
                         </div>
+                        <p class="form-text mb-0">Habilita el código para insertar el formulario dentro de otra web.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stHoneypotEnabled">
                             <label class="form-check-label small fw-semibold" for="stHoneypotEnabled">Anti-spam (honeypot)</label>
                         </div>
+                        <p class="form-text mb-0">Una trampa invisible para los robots. Si la rellenan, el envío se acepta pero <strong>no se guarda</strong>, así que quien la rellenó no ve ningún error.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stAntiBotEnabled">
                             <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)</label>
                         </div>
+                        <p class="form-text mb-0"><strong>Actívalo solo si ya hay claves de Cloudflare en el servidor.</strong> Sin ellas el formulario deja de mostrarse a todo el mundo, no solo a los bots.</p>
                     </div>
                     <div class="col-md-4">
                         <label for="stLocale" class="form-label small fw-semibold">Idioma público</label>
@@ -471,6 +535,7 @@ $fieldTypes = [
                             <option value="es">Español</option>
                             <option value="en">English</option>
                         </select>
+                        <p class="form-text mb-0">Idioma con el que se presenta el formulario. Quien responda puede cambiarlo con <code>?lang=</code> en el enlace.</p>
                     </div>
                 </div>
                 <?php // F4 — Acceso. Es un SELECT y no un interruptor porque hay tres
@@ -480,6 +545,8 @@ $fieldTypes = [
                       // emails NO se edita aquí sino en la ficha del formulario
                       // (`#access`), que es donde se ven los enlaces emitidos. ?>
                 <hr class="my-3">
+                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-lock me-1"></i>Acceso</h6>
+                <p class="text-muted small mb-3">Quién puede abrir y enviar el formulario. Por defecto, cualquiera que tenga el enlace.</p>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label for="stAccessMode" class="form-label small fw-semibold">Quién puede responder</label>
@@ -497,6 +564,8 @@ $fieldTypes = [
                       // su explicación, porque es el único ajuste de este panel que
                       // cambia QUIÉN puede publicar el formulario. ?>
                 <hr class="my-3">
+                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-user-check me-1"></i>Revisión</h6>
+                <p class="text-muted small mb-3">Si activada, el formulario no se publica hasta que alguien con permiso lo apruebe.</p>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-check form-switch">
@@ -509,6 +578,7 @@ $fieldTypes = [
                             <input class="form-check-input" type="checkbox" id="stReviewNotifyEmail">
                             <label class="form-check-label small fw-semibold" for="stReviewNotifyEmail">Avisar por correo a los revisores</label>
                         </div>
+                        <p class="form-text mb-0">El aviso lleva al panel de revisión, nunca al enlace público.</p>
                     </div>
                     <div class="col-md-4">
                         <p class="small text-muted mb-0" id="stReviewHint"></p>

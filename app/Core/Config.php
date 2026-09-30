@@ -8,12 +8,65 @@ class Config
 {
     private static ?array $config = null;
 
+    /**
+     * Overrides para tests, indexados por clave CON puntos
+     * (`app.registration_enabled`).
+     *
+     * `Config` no tenía setter a propósito: la configuración se lee una vez de
+     * `.env` y no debe cambiar bajo los pies de la app. Un interruptor como
+     * `REGISTRATION_ENABLED` sí necesita poder probarse en los dos estados, y
+     * para eso no vale reescribir la variable de entorno: el runner llama a
+     * `Env::load()` una vez y `all()` congela el array en la primera lectura, así
+     * que cambiar el entorno después no llega a nada.
+     *
+     * Por eso el override vive AQUÍ y no en un `set()` general: solo existe para
+     * los tests, se aplica antes de la lectura congelada, y `forgetForTesting()`
+     * lo devuelve al estado real. La app no lo llama nunca.
+     *
+     * @var array<string, mixed>
+     */
+    private static array $overrides = [];
+
     public static function all(): array
     {
         if (self::$config === null) {
-            self::$config = require dirname(__DIR__, 2) . '/config/config.php';
+            $config = require dirname(__DIR__, 2) . '/config/config.php';
+            foreach (self::$overrides as $key => $value) {
+                $node = &$config;
+                $segments = explode('.', $key);
+                $last = array_pop($segments);
+                foreach ($segments as $segment) {
+                    if (!isset($node[$segment]) || !is_array($node[$segment])) {
+                        $node[$segment] = [];
+                    }
+                    $node = &$node[$segment];
+                }
+                $node[$last] = $value;
+                unset($node);
+            }
+            self::$config = $config;
         }
         return self::$config;
+    }
+
+    /**
+     * Fija un override de configuración para el test en curso. Llama a
+     * `forgetForTesting()` en el tearDown.
+     */
+    public static function setForTesting(string $key, $value): void
+    {
+        self::$overrides[$key] = $value;
+        self::$config = null;
+    }
+
+    /**
+     * Quita los overrides y vuelve a leer la configuración real. Sin esto el
+     * array congelado de `all()` se llevaría el valor del test al siguiente.
+     */
+    public static function forgetForTesting(): void
+    {
+        self::$overrides = [];
+        self::$config = null;
     }
 
     /**

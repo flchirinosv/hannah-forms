@@ -195,6 +195,12 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   pone el dueño en el builder y `BuilderController` lo fuerza a `false` en
   secciones y páginas (no guardan respuestas). Sin marca no hay enmascarado
   posible: un `text` puede ser "¿Qué opinas?" o "Nombre de tu jefe".
+- El builder **avisa, no marca**: cuando la etiqueta parece un dato personal
+  muestra una sugerencia (con patrón propio, sin auto-marcado) y el marcado solo
+  se produce por el botón «Sí, es dato personal» (que pasa por `applySettings()`).
+  El descarte es **por etiqueta** (no booleano eterno), para que al reescribirla
+  vuelva a preguntar. La sugerencia no aparece en secciones/páginas, porque el
+  control está oculto.
 - **`responses.pii` es la única puerta**, y `App\Services\Pii` el único sitio que
   decide el valor que sale. Sin el permiso: IP a `192.168.1.x`, user-agent
   `[oculto]`, campos marcados `[oculto]` (email `j***@e***.com`, teléfono solo
@@ -253,6 +259,19 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 **Auth y RBAC**
 
+- El **registro público está cerrado por defecto**: `REGISTRATION_ENABLED` con
+  fallback `false` en `config/config.php`. `AuthController::showRegister()` y
+  `register()` consultan `registrationEnabled()` y cortan con 403, y
+  `views/auth/login.php` esconde el enlace. El gate del POST va **antes** del
+  `csrf` del middleware: si no, un visitante sin ningún problema vería «token
+  CSRF inválido» en vez de «el registro está cerrado». Cerrar `/register` **no**
+  afecta al alta por panel (`/admin`), que es la vía de las cuentas de una
+  instalación normal.
+- `Config` tiene **un solo** seam, y es de test: `setForTesting()` /
+  `forgetForTesting()`. Pisan `$overrides` y dejan `$config` a `null` para
+  que `all()` vuelva a leer `.env` con ellos aplicados. Por eso el `tearDown`
+  tiene que llamar a `forgetForTesting()`: un override vivo se lo traga el
+  siguiente test que lea `Config`, y el fallo sale en otro sitio.
 - `Auth::can()` es la **única** puerta de negocio: nunca gates con `role_name`. Los
   permisos efectivos = rol propio + roles de los grupos.
 - El catálogo de permisos está **duplicado**: `config/permissions.php` (fuente; la
@@ -471,7 +490,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 175 comprobaciones manuales en 15 bloques (A–O)
+- `docs/pruebas-funcionales.md`: 180 comprobaciones manuales en 15 bloques (A–O)
   más regresiones (R), para detectar problemas que la suite no ve (teclado,
   maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
   la lista mínima.

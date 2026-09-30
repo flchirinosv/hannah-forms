@@ -68,6 +68,24 @@
         return rules.length ? { operator: logic.operator === 'any' ? 'any' : 'all', rules: rules } : null;
     }
 
+    // Estado de la sugerencia de PII. Va AQUÍ, con el resto del estado del
+    // módulo, y no junto a su listener: `applySettings()` la lee al abrir el
+    // panel y se llama durante el arranque, antes de que se haya evaluado una
+    // `let` declarada más abajo (que la dejaría en zona muerta temporal).
+    // Guarda la ETIQUETA que el dueño descartó con «No es», no un booleano:
+    // si reescribe la pregunta, es otra pregunta y hay que volver a preguntarlo.
+    let piiDismissedLabel = null;
+
+    // P1 — Términos que hacen sospechar que la respuesta identifica a alguien.
+    // Van arriba (y no junto a la función que los usa) por lo mismo: es un
+    // `const`, y `applySettings()` ya corre antes de esa declaración.
+    const PII_HINT_RE = /\b(nomb[re]|apellid|email|e-?mail|correo|tel[eé]fon|celular|m[oó]vil|whatsapp|direcci[oó]n|domicilio|calle|avenida|postal|\bcp\b|cedula|c[eé]dula|dni|pasaporte|registro|n[oó]mero de documento|identidad|fecha de nacimiento|nacimiento|edad|telefono)\b/i;
+
+    function resetPiiSuggestion() {
+        piiDismissedLabel = null;
+        if (typeof updatePiiSuggestion === 'function') updatePiiSuggestion();
+    }
+
     let fields = Array.isArray(initialFields) ? initialFields.map((f) => ({
         _uid: initIds[Number(f.id)],
         id: f.id ? Number(f.id) : null,
@@ -190,6 +208,7 @@
         valMinLen: document.getElementById('valMinLen'),
         valMaxLen: document.getElementById('valMaxLen'),
         valMinWrap: document.getElementById('valMinWrap'),
+        valScaleHint: document.getElementById('valScaleHint'),
         valMaxWrap: document.getElementById('valMaxWrap'),
         valMinLenWrap: document.getElementById('valMinLenWrap'),
         valMaxLenWrap: document.getElementById('valMaxLenWrap'),
@@ -877,6 +896,26 @@
         el.valMaxWrap.classList.toggle('d-none', !(info.validations && info.validations.includes('max')));
         el.valMinLenWrap.classList.toggle('d-none', !(info.validations && info.validations.includes('min_length')));
         el.valMaxLenWrap.classList.toggle('d-none', !(info.validations && info.validations.includes('max_length')));
+
+        // Para una escala (estrellas, NPS) «mínimo» y «máximo» no son un rango
+        // que rellene quien responde, sino cuántos niveles tiene la escala. Sin
+        // esta línea el mismo rótulo significa dos cosas según el tipo de campo
+        // y no hay forma de saberlo desde el panel.
+        if (el.valScaleHint) {
+            if (info.isScale) {
+                el.valScaleHint.textContent = info.isNps
+                    ? 'Escala de 0 a 10. Mínimo 0 y máximo 10 son los valores habituales; con NPS el mínimo siempre es 0.'
+                    : 'Número de niveles de la escala. Ej: 5 para cinco estrellas.';
+                el.valScaleHint.classList.remove('d-none');
+            } else {
+                el.valScaleHint.classList.add('d-none');
+            }
+        }
+        // Se repinta al abrir el panel: el descarte es POR ETIQUETA, así que al
+        // saltar a otro campo el aviso se recalcula desde cero. La `let` vive
+        // arriba, con el resto del estado, porque `applySettings` se llama desde
+        // el arranque del builder y aquí todavía no existiría (zona muerta).
+        resetPiiSuggestion();
 
         // P8 — Quiz: input de respuesta correcta visible solo con modo quiz,
         // en preguntas puntuables (no secciones/páginas/matriz/ranking).
@@ -1892,14 +1931,74 @@
             });
         }
 
+        // P1 — Sugerencia de PII. `fields.is_pii` es lo único que abre la puerta
+        // del enmascarado (App\Services\Pii), y hay que activarlo a mano, así que
+        // el fallo típico es que nadie se acuerda y el nombre de un titular queda
+        // en claro para todo el mundo. Aquí se AVISA, no se decide: una pregunta
+        // puede llamarse «Nombre de la empresa» o «¿Qué nombre le pones a tu
+        // proyecto?» y no ser un dato personal en ninguno de los dos casos, así
+        // que marcar solo es del dueño. Por eso nunca se auto-marca.
+        // El patrón (`PII_HINT_RE`) y el estado están declarados arriba del
+        // módulo, no aquí: `updatePiiSuggestion()` se llama desde
+        // `applySettings()` y esa corre en el arranque.
+        function updatePiiSuggestion() {
+            const wrap = document.getElementById('piiSuggestWrap');
+            const text = document.getElementById('piiSuggestText');
+            if (!wrap || !text || !el.fieldPii || !el.fieldPiiWrap) return;
+            // Una sección o una página no guardan respuestas: el servidor les
+            // fuerza `is_pii = false` y el control se esconde, así que tampoco
+            // hay nada que sugerir.
+            if (el.fieldPiiWrap.classList.contains('d-none')) {
+                wrap.classList.add('d-none');
+                return;
+            }
+            const label = el.fieldLabel.value.trim();
+            const m = PII_HINT_RE.exec(label);
+            const hit = m ? m[0] : null;
+            if (!hit || el.fieldPii.checked) {
+                wrap.classList.add('d-none');
+                piiDismissedLabel = null;
+                return;
+            }
+            // «No es» vale para la etiqueta que se estaba mirando. Si se
+            // reescribe, la pregunta vuelve a ser otra y se vuelve a preguntar.
+            if (piiDismissedLabel !== null && piiDismissedLabel !== label) {
+                piiDismissedLabel = null;
+            }
+            if (piiDismissedLabel === label) {
+                wrap.classList.add('d-none');
+                return;
+            }
+            text.textContent = 'La pregunta dice «' + hit + '». Si la respuesta identifica a '
+                + 'alguien, actívala para que salga enmascarada.';
+            wrap.classList.remove('d-none');
+        }
+
+        if (el.fieldLabel) el.fieldLabel.addEventListener('input', updatePiiSuggestion);
+        if (el.fieldPii) el.fieldPii.addEventListener('change', updatePiiSuggestion);
+        const btnSuggest = document.getElementById('btnPiiSuggest');
+        if (btnSuggest) {
+            btnSuggest.addEventListener('click', () => {
+                el.fieldPii.checked = true;
+                updatePiiSuggestion();
+                applySettings();
+            });
+        }
+        const btnDismiss = document.getElementById('btnPiiDismiss');
+        if (btnDismiss) {
+            btnDismiss.addEventListener('click', () => {
+                piiDismissedLabel = el.fieldLabel.value.trim();
+                updatePiiSuggestion();
+            });
+        }
+
         // Edición en vivo: ya no hay botón «Aplicar», se persiste mientras se teclea.
         ['fieldLabel', 'fieldPlaceholder', 'fieldHelp'].forEach((k) => {
             el[k].addEventListener('input', applySettings);
         });
         ['fieldScaleMax', 'valMin', 'valMax', 'valMinLen', 'valMaxLen'].forEach((k) => {
             el[k].addEventListener('input', applySettings);
-        });
-        ['fieldMatrixRows', 'fieldMatrixCols'].forEach((k) => {
+        });        ['fieldMatrixRows', 'fieldMatrixCols'].forEach((k) => {
             el[k].addEventListener('input', applySettings);
         });
         el.fieldRequired.addEventListener('change', applySettings);
@@ -1998,6 +2097,80 @@
             updateAccessHint();
             updateAdvanceHint();
             updateReviewHint();
+            paintThemePreview();
+            fillEmailFieldDatalist();
+        }
+
+        // P1 — Vista previa del tema dentro de la propia modal. Los dos colores
+        // se ven al instante sin salir del formulario, que es la razón por la
+        // que la gente duda tanto de ellos. NO aplica la fuente: `--vf-font`
+        // solo la respeta el equipo que tenga esa fuente instalada, así que
+        // mostrar aquí una maqueta con ella daría una impresión falsa.
+        function paintThemePreview() {
+            const primary = st('stPrimary');
+            const background = st('stBackground');
+            const box = st('stThemePreview');
+            if (!primary || !background || !box) return;
+            const p = primary.value || '#0d6efd';
+            const b = background.value || '#f6f6f6';
+            box.style.backgroundColor = b;
+            const btn = st('stThemePreviewBtn');
+            if (btn) {
+                btn.style.backgroundColor = p;
+                btn.style.borderColor = p;
+                btn.style.color = '#fff';
+            }
+            const bar = st('stThemePreviewBar');
+            if (bar) bar.style.backgroundColor = p;
+        }
+
+        // El mismo patrón de `FormSettings::isValidFontFamily()`, replicado aquí
+        // para avisar EN VIVO. Sin esto la fuente se descarta al guardar sin
+        // decir nada (el servidor la filtra en normalize() y en themeCss()), y
+        // el síntoma es «escribí la fuente y no pasó nada».
+        const FONT_FAMILY_RE = /^[A-Za-z0-9][A-Za-z0-9 _.,-]{0,119}$/;
+
+        function checkFontLive() {
+            const input = st('stFont');
+            const note = st('stFontNote');
+            if (!input || !note) return;
+            const v = input.value.trim();
+            if (v === '') {
+                note.textContent = 'Vacío = la tipografía por defecto.';
+                note.className = 'form-text mb-0 text-muted';
+                return;
+            }
+            if (FONT_FAMILY_RE.test(v)) {
+                note.textContent = 'Correcta. Se usará si el equipo de quien responde la tiene instalada.';
+                note.className = 'form-text mb-0 text-success';
+                return;
+            }
+            note.textContent = 'Esta no se guarda: solo se admiten letras, números, espacios y - _ . , '
+                + '(sin comillas ni paréntesis). Ej: Georgia, serif';
+            note.className = 'form-text mb-0 text-danger fw-semibold';
+        }
+
+        // P7 — `to_field` se resuelve por la ETIQUETA del campo y, si no
+        // encuentra ninguna, Notifier se lo come en silencio (solo escribe una
+        // línea en el log). Ofrecer la lista de etiquetas reales quita la
+        // adivinaría, que es el error típico de este ajuste.
+        function fillEmailFieldDatalist() {
+            const dl = st('stConfirmFieldList');
+            if (!dl) return;
+            dl.textContent = '';
+            fields
+                .filter((f) => {
+                    if (!f || f.type !== 'email' || !f.label) return false;
+                    const info = typeInfo[f.type];
+                    // Una sección o una página no guardan respuestas, así que no
+                    // sirven de destinatario. Mismo criterio que applySettings().
+                    return !info || (!info.isSection && !info.isPage);
+                })
+                .forEach((f) => {
+                    const opt = document.createElement('option');
+                    opt.value = f.label;
+                    dl.appendChild(opt);
+                });
         }
 
         function collectSettingsFromModal() {
@@ -2135,6 +2308,15 @@
             if (!v) return null;
             return String(v).replace('T', ' ');
         }
+
+        // Vista previa del tema y aviso de la fuente. Se engancha una sola vez al
+        // arrancar el builder (no en cada apertura de la modal): los listeners
+        // viven en los inputs, así que solo hay que leerlos.
+        ['stPrimary', 'stBackground'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', paintThemePreview);
+        });
+        if (st('stFont')) st('stFont').addEventListener('input', checkFontLive);
 
         if (st('btnFormSettings') && settingsModalHolder) {
             st('btnFormSettings').addEventListener('click', () => {

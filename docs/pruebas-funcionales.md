@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**175 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
+**180 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -75,6 +75,10 @@ Para no perderte, prepara esto antes de empezar:
 
 ## B. Cuentas, sesión y recuperación
 
+> **Prerrequisito de B1–B4:** poner `REGISTRATION_ENABLED=true` en `.env` y
+> reiniciar. Es el registro público el que se prueba ahí; el estado cerrado, que
+> es el de por defecto, se prueba en B16–B18.
+
 | # | Qué probar | Esperado | P. | Estado |
 |---|---|---|---|---|
 | B1 | Registrarse en `/register` con email y contraseña de 12 caracteres | Cuenta creada y **entra directamente** al panel | A | |
@@ -92,6 +96,10 @@ Para no perderte, prepara esto antes de empezar:
 | B13 | Entrar en `/dashboard` sin sesión | Redirige a `/login` | A | |
 | B14 | Desactivar un usuario desde `/admin` y usar su sesión | En la siguiente petición pierde el acceso, sin esperar a que caduque la sesión | M | |
 | B15 | Cerrar sesión y volver atrás | No se puede volver a la zona autenticada | A | |
+| B16 | Con `REGISTRATION_ENABLED=false` (por defecto), abrir `/login` | **No aparece** el enlace «Regístrate aquí» | A | |
+| B17 | Con el registro cerrado, entrar en `/register` | 403 con la página de error, **no** el formulario de alta | A | |
+| B18 | Con el registro cerrado, mandar un POST a `/register` a mano | 403, y **no** «token CSRF inválido» ni ningún mensaje de formulario | M | |
+| B19 | Crear un usuario desde `/admin` con el registro cerrado | Se puede entrar con esa cuenta: el alta por panel no depende del interruptor | A | |
 
 ---
 
@@ -128,7 +136,18 @@ Para no perderte, prepara esto antes de empezar:
 | D13 | Intentar marcar como PII una sección o una página | No se permite (no guardan respuestas) | M | |
 | D14 | Guardar con el navegador bloqueando peticiones | Aviso de que no se pudo guardar; **no** dice que sí | A | |
 | D15 | Cambiar algo, recargar con F5 sin pulsar **Guardar** | Los cambios **se pierden**, sin aviso de salida. Si pierdes trabajo, es el comportamiento actual: guarda antes de recargar | M | |
-| D16 | Crear una condición que se referencia a sí misma (o dentro de su propio bloque) | El guardado la rechaza con un mensaje entendible | M | |
+| D16 | Crear una condición que se referencia a sí misma (o dentro de su propio bloque) | El guardado la rechaza con un mensaje entendible | M |
+| D17 | Escribir una etiqueta con datos personales («¿Tu nombre y apellidos?») | Aparece un aviso amarillo que lo dice, con dos botones, **sin** marcarlo solo | A | |
+| D18 | En ese aviso, pulsar **Sí, es dato personal** | El interruptor se activa y el cambio **se guarda** (reabrir y comprobar) | A | |
+| D19 | Escribir una etiqueta personal y pulsar **No es** | El aviso desaparece | A | |
+| D20 | Con el aviso descartado, **reescribir** la etiqueta con otras palabras | El aviso vuelve a aparecer, porque es otra pregunta | M | |
+| D21 | Poner una etiqueta con «Nombre de la empresa» | Aparece el aviso (no decide), y al pulsar «No es» el campo **sigue sin marcarse** y sin consecuencias | M |
+| D22 | Abrir el engranaje de una sección o una página | **No** sale el aviso de PII, porque no guardan respuestas | M |
+| D23 | Abrir **Configuración** del formulario y cambiar el color principal | La maqueta de abajo cambia al instante, sin cerrar la pantalla | A | |
+| D24 | Escribir una tipografía con comillas (`'Georgia', serif`) | Aviso en rojo dizendo que no se guarda, **antes** de guardar | A | |
+| D25 | Escribir una tipografía válida (`Georgia, serif`) | Aviso en verde, y se aplica | A | |
+| D26 | En la configuración, activar la confirmación y mirar **Campo email** | La lista desplegable ofrece las etiquetas de los campos de tipo email que ya existen | M |
+| D27 | Buscar en la pantalla de configuración un ajuste sin explicación | Los que necesitan contexto lo tienen en gris debajo; ningún número suelto sin decir qué es | M | |
 
 ---
 
@@ -241,7 +260,7 @@ Para no perderte, prepara esto antes de empezar:
 | J5 | Exportar a **JSON** como `user` | Enmascarado, con el total y la estructura intactos | A | |
 | J6 | Mirar la IP y el user-agent como `user` | `192.168.1.x` y `[oculto]` | M | |
 | J7 | Exportar como `user` con **muchas** respuestas (>5000) | Las últimas también salen enmascaradas (no solo las primeras) | M | |
-| J8 | Un campo de texto **no** marcado como dato personal | Sale **en claro**. La app no puede adivinar si un texto es «tu jefe» o «tu opinión»: sin la marca no hay enmascarado | B | |
+| J8 | Un campo de texto **no** marcado como dato personal | Sale **en claro**. La app no puede adivinar si un texto es «tu jefe» o «tu opinión»: sin la marca no hay enmascarado. El constructor avisa si la etiqueta lo parece (D17), pero no marca solo | B | |
 
 ---
 

@@ -146,6 +146,46 @@ class AuthHardeningTest
     }
 
     /**
+     * El registro público es opt-in (REGISTRATION_ENABLED, default false).
+     *
+     * Se comprueban las DOS puertas, no solo el formulario: apagar el GET y
+     * dejar vivo el POST deja un endpoint que responde «token inválido» en vez
+     * de «aquí no hay registro», que es la respuesta que hace perder el rato a
+     * quien depura. El comportamiento (403 en las dos rutas) lo prueba
+     * `ControllerActionsTest::testElRegistroApagadoCierraGetYPost`; aquí se
+     * vigila que el gate exista en los dos métodos.
+     */
+    public function testElRegistroPublicoEstaApagadoPorDefectoYCierraLasDosPuertas(): void
+    {
+        $src = (string) file_get_contents($this->path('config/config.php'));
+        assertTrue(
+            str_contains($src, "'REGISTRATION_ENABLED', false"),
+            'el default tiene que ser false: en una instalación self-hosted el alta la hace el admin, '
+                . 'y con true cualquiera que llegue a /register se crea su propia cuenta'
+        );
+
+        $controller = (string) file_get_contents($this->path('app/Controllers/AuthController.php'));
+        foreach (['showRegister', 'register'] as $accion) {
+            $cuerpo = $this->cuerpoDelMetodo($controller, $accion);
+            assertTrue(
+                str_contains($cuerpo, 'registrationEnabled()'),
+                'el gate tiene que estar en ' . $accion . '(): comprobarlo solo en el GET deja el POST '
+                    . 'creando cuentas con la puerta cerrada'
+            );
+        }
+    }
+
+    public function testElLoginNoOfreceRegistroSiEstaApagado(): void
+    {
+        $login = (string) file_get_contents($this->path('views/auth/login.php'));
+        assertTrue(
+            str_contains($login, 'app.registration_enabled'),
+            'el enlace «Regístrate aquí» tiene que depender del interruptor: con la puerta cerrada '
+                . 'es una vía muerta que lleva a un 403'
+        );
+    }
+
+    /**
      * El mínimo de 10 tiene que caber con la contraseña del seed
      * (`password123`, 11 caracteres). Con 12 el admin demo se quedaba fuera de
      * su propia contraseña documentada, así que el valor está atado a esto.
@@ -262,5 +302,56 @@ class AuthHardeningTest
     private function path(string $rel): string
     {
         return dirname(__DIR__, 2) . '/' . $rel;
+    }
+
+    /**
+     * Cuerpo de un método por nombre, del archivo entero.
+     *
+     * Corta en la llave de cierre que corresponde al método, contando llaves y
+     * teniendo en cuenta cadenas y comentarios: buscar el primer `    }` a ojo
+     * se lleva por delante los `if` de dentro del método y el test pasa sin
+     * estar probando lo que dice.
+     */
+    private function cuerpoDelMetodo(string $src, string $metodo): string
+    {
+        $inicio = strpos($src, 'function ' . $metodo . '(');
+        assertNotNull($inicio === false ? null : $inicio, 'no se encontró el método ' . $metodo);
+
+        $llaves = 0;
+        $abrio = false;
+        $enComilla = null;
+        for ($i = $inicio; $i < strlen($src); $i++) {
+            $ch = $src[$i];
+            if ($enComilla !== null) {
+                if ($ch === '\\') {
+                    $i++;
+                } elseif ($ch === $enComilla) {
+                    $enComilla = null;
+                }
+                continue;
+            }
+            if ($ch === "'" || $ch === '"') {
+                $enComilla = $ch;
+                continue;
+            }
+            if ($ch === '/' && $i + 1 < strlen($src) && $src[$i + 1] === '/') {
+                $fin = strpos($src, "\n", $i);
+                $i = $fin === false ? strlen($src) : $fin;
+                continue;
+            }
+            if ($ch === '{') {
+                $llaves++;
+                $abrio = true;
+                continue;
+            }
+            if ($ch === '}') {
+                $llaves--;
+                if ($abrio && $llaves === 0) {
+                    return substr($src, $inicio, $i - $inicio + 1);
+                }
+            }
+        }
+
+        return '';
     }
 }

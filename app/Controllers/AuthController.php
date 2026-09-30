@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\RateLimiter;
 use App\Core\Request;
@@ -141,8 +142,26 @@ class AuthController
         return;
     }
 
+    /**
+     * El registro público es opt-in (REGISTRATION_ENABLED, default false).
+     *
+     * El gate va en las DOS rutas, GET y POST, y en el action va ANTES del
+     * csrf: apagar la puerta en el formulario pero no en el POST dejaría un
+     * endpoint vivo que responde «token inválido» en vez de «no hay registro»,
+     * que es justo la respuesta que hace perder el tiempo a quien depura.
+     */
+    private function registrationEnabled(): bool
+    {
+        return (bool) Config::get('app.registration_enabled', false);
+    }
+
     public function showRegister(): void
     {
+        if (!$this->registrationEnabled()) {
+            Response::abort(403, 'El registro público está desactivado en esta instalación.');
+            return;
+        }
+
         // `min` es PASSWORD_MIN, no un 10 escrito aquí: `register()` valida
         // contra la constante y este formulario es la otra mitad del mismo
         // límite. Con el número fijo, subir el mínimo hacía que el navegador
@@ -155,6 +174,11 @@ class AuthController
 
     public function register(): void
     {
+        if (!$this->registrationEnabled()) {
+            Response::abort(403, 'El registro público está desactivado en esta instalación.');
+            return;
+        }
+
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
             Response::redirect('/register');
