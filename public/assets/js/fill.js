@@ -163,8 +163,35 @@
         }
         currentStep = resolveStep(step, opts.dir === undefined ? 1 : opts.dir);
         paintSteps(opts.scroll !== false);
+        // F5 — el salto AUTOMÁTICO tiene que mover el foco; el manual no, porque
+        // el foco ya está donde el usuario lo puso (moverlo en cada «Siguiente»
+        // sería tirar al principio de la página por la mitad de cada paso).
+        if (opts.focus) {
+            focusCurrentStep();
+        }
         if (opts.save !== false) {
             scheduleSave();
+        }
+    }
+
+    // F5 — Deja el foco en el bloque del paso actual y no en un campo.
+    //
+    // Escribir en el bloque (y no en el primer input) es deliberado: al saltar,
+    // la persona todavía no ha leído las preguntas de la página nueva, y poner
+    // el cursor en un campo la mete a escribir a ciegas. El bloque lleva
+    // `tabindex="-1"` y un `aria-label` («Paso 2 de 3») en la vista, así que un
+    // lector de pantalla anuncia la región en vez de callarse.
+    // F5 — Mismo texto que pinta la vista en el pie del paso, con las mismas
+    // claves de i18n, para que la etiqueta accesible y el badge visible digan
+    // exactamente lo mismo.
+    function stepLabel(num, total) {
+        return t('ui.paso') + ' ' + num + ' ' + t('ui.de') + ' ' + total;
+    }
+
+    function focusCurrentStep() {
+        const block = pageBlocks[currentStep];
+        if (block && typeof block.focus === 'function') {
+            block.focus({ preventScroll: true });
         }
     }
 
@@ -211,6 +238,11 @@
             if (total) {
                 total.textContent = String(vis.length);
             }
+            // F5 — el nombre accesible del bloque se renumera con EXACTAMENTE
+            // los mismos dos números que el badge. Si solo se actualizara el
+            // badge, al saltarse un paso un lector de pantalla oiría «Paso 2 de
+            // 3» en el bloque y «Paso 2 de 2» en el pie de la misma página.
+            pb.setAttribute('aria-label', stepLabel(rank + 1, vis.length));
             buildFooterControls(foot, rank, vis.length);
         });
         // La visibilidad de las tarjetas depende de los marcadores de salto que
@@ -300,7 +332,114 @@
         if (currentStep <= 0) {
             return;
         }
+        // Volver atrás es siempre una decisión consciente: aunque el paso al que
+        // se vuelve ya esté completo, no se rebota al siguiente.
+        cancelAutoAdvance();
         gotoStep(currentStep - 1, { dir: -1 });
+    }
+
+    /* ---------- F5: avance automático entre páginas ---------- */
+    //
+    // Opt-in por formulario (`settings.advance.auto`, off por omisión). Cuando
+    // está activo, contestar el último campo OBLIGATORIO visible del paso salta
+    // al siguiente, en vez de obligar a pulsar «Siguiente».
+    //
+    // Las reglas que hacen que esto no se convierta en la trampa que la
+    // evaluación de F5 advertía (el usuario se queda atascado en un paso que no
+    // ve como completado, o avanza con un campo que el navegador dio por bueno
+    // y el usuario no escribió):
+    //
+    //  · Dispara el evento `change`, NUNCA `input`. `change` en un campo de
+    //    texto salta al perder el foco (o al pulsar Enter), no en cada tecla: con
+    //    teclado y con lector de pantalla el evento significa «he terminado
+    //    este campo», que es justo la señal que se necesita. Con `input` el
+    //    formulario avanzaría a media palabra.
+    //  · No se usa `checkValidity()` ni el `required` del navegador: decide
+    //    `isCardAnswered()`, que es la MISMA medida que usa el envío y la barra
+    //    (y que no cuenta un campo de texto con solo espacios, ni una matriz a
+    //    medias). Un campo obligatorio «cumplido» por el navegador y no por la
+    //    persona no es un paso terminado.
+    //  · Solo cuentan las obligatorias VISIBLES: una opcional no puede bloquear
+    //    el avance, y si el paso no tiene ninguna obligatoria no hay señal de
+    //    «terminado» que esperar, así que no se avanza nunca solo.
+    //  · Un paso OMITIDO (`data-vf-skipped`) no avanza y el último paso no (su
+    //    botón es Enviar, no Siguiente).
+    //  · `autoAdvanceReady` se apaga en cuanto se avanza, para que un paso que
+    //    ya venía completo del borrador no encadene saltos al cargar.
+    const autoAdvanceOn = form.dataset.vfAutoAdvance === '1';
+    const AUTO_ADVANCE_DELAY = 350;
+    let autoAdvanceReady = false;
+    let autoAdvanceTimer = null;
+
+    function cancelAutoAdvance() {
+        autoAdvanceReady = false;
+        clearTimeout(autoAdvanceTimer);
+        autoAdvanceTimer = null;
+    }
+
+    // Obligatorias visibles del paso. Las de un paso saltado no cuentan (no se
+    // pueden contestar: `paintSteps()` las marca y el servidor tampoco las pide).
+    function requiredVisibleCards(step) {
+        return stepCards(step).filter((card) => conditionVisible(card) && card.dataset.vfRequired === '1');
+    }
+
+    // ¿Está «terminado» el paso? Sin obligatorias visibles NO: no hay nada que
+    // esperar, y devolver true haría que el primer cambio en el paso se
+    // comiera el resto del formulario.
+    function stepComplete(step) {
+        const req = requiredVisibleCards(step);
+        return req.length > 0 && req.every((card) => isCardAnswered(card));
+    }
+
+    function autoAdvanceAllowed(target) {
+        if (!autoAdvanceOn || !autoAdvanceReady || !hasPages) {
+            return false;
+        }
+        // El último paso lleva el botón de Enviar.
+        if (currentStep >= pageBlocks.length - 1) {
+            return false;
+        }
+        if (typeof target.closest !== 'function') {
+            return false;
+        }
+        const block = target.closest('.vf-page-block');
+        if (!block || block !== pageBlocks[currentStep]) {
+            return false;
+        }
+        // Un paso OMITIDO no es un destino ni una señal de completitud: sus
+        // campos ni se validan ni se persisten.
+        if (block.getAttribute('data-vf-skipped') === '1') {
+            return false;
+        }
+        return stepComplete(currentStep);
+    }
+
+    function maybeAutoAdvance(target) {
+        if (!autoAdvanceAllowed(target)) {
+            return;
+        }
+        // Las opciones (radio, checkbox, select) son una decisión cerrada: se
+        // avanza ya. En un campo de texto el `change` llega al perder el foco, y
+        // quien va tabulando por el paso llega a encadenar varios: el retardo
+        // agrupa esos cambios y, si sigue escribiendo, cada uno lo postpone.
+        if (target.type === 'radio' || target.type === 'checkbox' || target.tagName === 'SELECT') {
+            doAutoAdvance();
+            return;
+        }
+        clearTimeout(autoAdvanceTimer);
+        autoAdvanceTimer = setTimeout(() => {
+            autoAdvanceTimer = null;
+            // Se vuelve a comprobar: entre el `change` y este temporizador el
+            // usuario puede haber tocado otro campo del mismo paso.
+            if (autoAdvanceAllowed(target)) {
+                doAutoAdvance();
+            }
+        }, AUTO_ADVANCE_DELAY);
+    }
+
+    function doAutoAdvance() {
+        cancelAutoAdvance();
+        gotoStep(currentStep + 1, { dir: 1, focus: true });
     }
 
     /* ---------- utilidades ---------- */
@@ -1158,6 +1297,16 @@
 
         form.addEventListener('submit', onSubmit);
 
+        // F5 — avance automático. Delegado en el form y en `change` (no en
+        // `input`) a propósito: `change` es el evento de «hecho con este campo»,
+        // tanto al elegir una opción como al salir de un campo de texto, y es el
+        // que un lector de pantalla puede provocar con el teclado igual que un
+        // ratón. Va después de los listeners por elemento, así que cuando corre
+        // las condiciones de ese paso ya están evaluadas.
+        form.addEventListener('change', (e) => {
+            maybeAutoAdvance(e.target);
+        });
+
         // P4: navegación entre pasos (Anterior/Siguiente) y Enter para avanzar.
         form.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-vf-action]');
@@ -1196,6 +1345,11 @@
         restoreDraft();
         // Aplicar condiciones tras cualquier restauración (con o sin errores).
         evaluateConditions();
+        // F5 — el avance automático se habilita AL FINAL del arranque, con el
+        // borrador ya aplicado y las condiciones ya resueltas. Antes, un paso
+        // que el borrador dejaba completo podía disparar el salto sin que nadie
+        // hubiera tocado nada, y el formulario se recorría solo al cargar.
+        autoAdvanceReady = true;
     }
 
     attach();

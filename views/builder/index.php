@@ -435,6 +435,18 @@ $fieldTypes = [
                             <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas</label>
                         </div>
                     </div>
+                    <?php // F5 — Avance automático entre páginas. Va junto al resto de
+                          // interruptores de comportamiento del relleno, con su
+                          // explicación al lado: es el ajuste que más surprise si
+                          // se activa sin querer, y solo tiene efecto en
+                          // formularios CON páginas. ?>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="stAdvanceAuto">
+                            <label class="form-check-label small fw-semibold" for="stAdvanceAuto">Avanzar solo al responder</label>
+                            <p class="small text-muted mb-0 mt-1" id="stAdvanceHint"></p>
+                        </div>
+                    </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stEmbedEnabled">

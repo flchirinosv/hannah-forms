@@ -1,8 +1,7 @@
 # Evaluación de propuestas (F0–F5)
 
 **Fecha:** 2026-09-29
-**Estado:** F0, F1, F2, F3 y F4 **implementadas y verificadas**. F5 **evaluada y
-pendiente de autorización** (no se ha escrito ni una línea de su código).
+**Estado:** F0, F1, F2, F3, F4 y F5 **implementadas y verificadas**.
 
 Este documento es la evaluación de las seis propuestas que traía la lista de
 mejoras, no un plan de trabajo. Para cada una: qué es, qué cuesta de verdad, qué
@@ -237,16 +236,55 @@ quedarse atascado en un paso que no ve como completado. Y hay que evitar que
 avance con un campo vacío solo porque el navegador marques `required` como
 "satisfecho" por un valor que el usuario no ha escrito de verdad.
 
-**Decisión.** Pendiente de autorización, recomendada como siguiente por ser de
-riesgo bajo. Notas de implementación de antemano:
+**Decisión.** Implementada como **opt-in por formulario**
+(`settings.advance.auto`, apagado por omisión), porque es un detalle que molesta
+si aparece sin pedirlo y en un formulario de una sola pregunta no hace nada. Los
+tres riesgos que la evaluación señalaba son los que gobiernan el diseño:
+
+- **La trampa del `required`.** No se usa `checkValidity()` ni
+  `reportValidity()` en ningún sitio de la decisión. Completa el paso
+  `isCardAnswered()` —la misma medida que el envío y la barra de progreso—, que
+  no cuenta un campo de texto con solo espacios. En un campo de texto, el
+  navegador además marca `required` como satisfecho con un espacio en blanco, y
+  su respuesta no es la misma en todos los navegadores.
+- **El atasco de accesibilidad.** El avance salta con `change`, nunca con
+  `input`: en un campo de texto `change` llega al perder el foco o al pulsar
+  Enter («he terminado este campo»), y es el evento que el teclado y un lector de
+  pantalla provocan igual que un ratón. Además, al saltar, el foco se mueve al
+  **bloque** del paso nuevo (que lleva `tabindex="-1"` y un nombre accesible
+  «Paso 2 de 3»), no a su primer campo: al cambiar de página la persona todavía
+  no ha leído las preguntas, y meterle el cursor en un input la manda a escribir
+  a ciegas. El foco se queda donde está en el salto manual, que sí viene de un
+  botón.
+- **Que el formulario se recorra solo al cargar.** `autoAdvanceReady` se
+  enciende al final del arranque, después de `restoreDraft()` y de
+  `evaluateConditions()`. Con el borrador local restaurado, un paso puede venir
+  ya completo; si el mecanismo estuviera armado desde el primer momento se comería
+  el resto del formulario sin que nadie hubiera tocado nada. `goPrev()` lo
+  cancela, porque volver atrás es siempre una decisión consciente.
+
+Reglas de la puerta (`autoAdvanceAllowed()`): solo las obligatorias **visibles**
+del paso cuentan (una opcional no puede bloquear el salto, y si el paso no tiene
+ninguna obligatoria no hay nada que esperar y no se avanza nunca solo); el último
+paso no avanza (su botón es Enviar); un paso **omitido** no avanza; y un `change`
+que venga de otro paso no mueve este.
+
+Notas de implementación que siguen vigentes:
 
 - El denominador de la barra de progreso es `progressFieldCards()` en
   `public/assets/js/fill.js`, y es **otro conjunto** que `visibleFieldCards()`:
-  tocar uno sin el otro desincroniza la barra.
+  tocar uno sin el otro desincroniza la barra. F5 no lo toca: usa
+  `stepCards()`/`conditionVisible()`, los mismos filtros de visibilidad pero por
+  paso.
 - El paso realmente **omitido** se marca con `data-vf-skipped` (se pone y se
-  quita), no con una clase permanente.
+  quita), no con una clase permanente. Y se comprueba **por valor**
+  (`=== '1'`), no por presencia: `toggleAttribute()` deja el valor en `""`.
 - `isCardAnswered()` es «completa o nada» para matriz y ranking, igual que
-  `val.matrix_all`.
+  `val.matrix_all`. Su límite heredado: la completitud de un ranking es «ninguna
+  posición vacía» y **no** comprueba que las posiciones sean distintas (no hay
+  unicidad ni en el cliente ni en el servidor). F5 no es más estricta en un punto
+  que el envío y la barra: si algún día se valida, se arregla en
+  `isCardAnswered()` y cambian los tres sitios a la vez.
 
 ---
 

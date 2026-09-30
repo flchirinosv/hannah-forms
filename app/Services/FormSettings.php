@@ -76,6 +76,12 @@ final class FormSettings
             // revoca un borrado en cascada de sus tokens, y eso es SQL, no un
             // array que reescribir entero en cada cambio.
             'access'     => ['mode' => self::ACCESS_PUBLIC],
+            // F5 — avance automático entre páginas. OPT-IN por formulario, y no
+            // por un motivo distinto del de las demás banderas: un salto de página
+            // automático es la clase de detalle que molesta si aparece sin
+            // pedirlo, y en un formulario de una sola pregunta la opción no hace
+            // nada. Quien lo active lo hace porque su formulario encaja con ello.
+            'advance'    => ['auto' => false],
             'locale'     => ['code' => 'es'],
         ];
     }
@@ -192,6 +198,14 @@ final class FormSettings
         if (isset($raw['review']) && is_array($raw['review'])) {
             $out['review']['enabled'] = (bool) ($raw['review']['enabled'] ?? false);
             $out['review']['notify_email'] = (bool) ($raw['review']['notify_email'] ?? false);
+        }
+
+        // F5 — el avance automático es una clave y no un `enabled` del foreach de
+        // arriba, porque su nombre de bloque (`auto`) describe lo que hace y no
+        // si el bloque está activo: se lee `[advance][auto]`, no
+        // `[advance][enabled]`.
+        if (isset($raw['advance']) && is_array($raw['advance'])) {
+            $out['advance']['auto'] = (bool) ($raw['advance']['auto'] ?? false);
         }
 
         // F4 — el MODO de acceso se normaliza contra la lista blanca. Cualquier

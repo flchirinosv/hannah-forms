@@ -358,6 +358,23 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `applyCardVisibility()` vive separada de `evaluateConditions()` porque
   `paintSteps()` también la necesita, e `isCardAnswered()` es "completa o nada"
   para matriz y ranking (igual que `val.matrix_all`).
+- **F5 (avance automático)**: opt-in (`settings.advance.auto`, off), y su puerta
+  es `autoAdvanceAllowed()`. Salta con `change` y **nunca** con `input`, y decide
+  con `isCardAnswered()` y **nunca** con `checkValidity()`/`required` del
+  navegador (un texto con espacios «cumple» `required`, y su respuesta no es
+  igual en todos los navegadores). Solo cuentan las obligatorias **visibles** del
+  paso, y un paso sin obligatorias no avanza nunca solo; el último paso y los
+  omitidos tampoco. `autoAdvanceReady` se enciende al final del arranque, tras
+  `restoreDraft()` y `evaluateConditions()`: si no, el borrador restaurado hace
+  que el formulario se recorra solo al cargar. `goPrev()` lo cancela.
+- El salto automático mueve el foco al **bloque** del paso
+  (`tabindex="-1"` + `aria-label`, en `views/fill/show.php`), no a su primer
+  campo, y el manual no lo mueve: `gotoStep()` solo lo hace con `opts.focus`.
+  `stepLabel()` compone el nombre accesible con las **mismas** claves i18n que el
+  badge del pie, y `paintSteps()` lo renumera con los mismos dos números que él
+  (`rank`/`vis.length`): al omitirse un paso, el bloque y su pie tienen que
+  decir lo mismo. `data-vf-skipped` se comprueba **por valor** (`=== '1'`), no
+  por presencia.
 - Al añadir una clave de i18n hay que tocar **tres** sitios: `app/lang/es.php`,
   `app/lang/en.php` (paridad, la verifica `I18nTest`) y `FALLBACK_I18N` de
   `fill.js` (subconjunto de `es.php`, sin auto-referencias).
@@ -406,8 +423,8 @@ probando la rama equivocada).
 ## Dónde mirar
 
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
-- `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; F0–F3
-  cerradas, F4 y F5 pendientes de autorización.
+- `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
+  cerradas.
 - `docs/technical-document.md`: arquitectura y modelo de datos; **§4 está
   desactualizada** (6 de 15 tablas, sin `submissions.public_token`).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y

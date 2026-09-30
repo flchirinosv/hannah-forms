@@ -1980,6 +1980,9 @@
             st('stThanksRedirect').value = (s.thanks && s.thanks.redirect_url) || '';
             st('stQuizEnabled').checked = !!(s.quiz && s.quiz.enabled);
             st('stRandQuestions').checked = !!(s.randomize && s.randomize.questions);
+            // F5 — la clave del bloque es `auto`, no `enabled`: no entra en el
+            // patron de los toggles de una clave de arriba.
+            st('stAdvanceAuto').checked = !!(s.advance && s.advance.auto);
             st('stEmbedEnabled').checked = !!(s.embed && s.embed.enabled);
             st('stHoneypotEnabled').checked = !!(s.honeypot && s.honeypot.enabled);
             st('stAntiBotEnabled').checked = !!(s.anti_bot && s.anti_bot.enabled);
@@ -1993,6 +1996,7 @@
                 ? s.access.mode
                 : 'public';
             updateAccessHint();
+            updateAdvanceHint();
             updateReviewHint();
         }
 
@@ -2030,6 +2034,9 @@
                 },
                 quiz: { enabled: g('stQuizEnabled').checked },
                 randomize: { questions: g('stRandQuestions').checked },
+                // F5 — dos claves? No: el bloque `advance` tiene una sola,
+                // `auto`, asi que va aqui junto a los demas.
+                advance: { auto: g('stAdvanceAuto').checked },
                 embed: { enabled: g('stEmbedEnabled').checked },
                 honeypot: { enabled: g('stHoneypotEnabled').checked },
                 anti_bot: { enabled: g('stAntiBotEnabled').checked },
@@ -2060,6 +2067,24 @@
          * formulario al que ya estaba restringido viene en los dos modos
          * cerrados, que es donde se puede cambiar sin querer.
          */
+        /**
+         * F5 — Explica cuando el ajuste hace algo y cuando no. Importa porque
+         * un formulario de una sola pagina (que es el caso mas comun) tiene el
+         * interruptor a mano y no ocurre NADA: sin esta frase, el ajuste parece
+         * roto en lugar de inaplicable.
+         */
+        function updateAdvanceHint() {
+            const hint = st('stAdvanceHint');
+            const box = st('stAdvanceAuto');
+            if (!hint || !box) return;
+            if (!box.checked) {
+                hint.textContent = '';
+                return;
+            }
+            hint.textContent = 'Salta al siguiente paso al completar sus preguntas obligatorias. '
+                + 'Solo en formularios con paginas.';
+        }
+
         function updateAccessHint() {
             const hint = st('stAccessHint');
             const sel = st('stAccessMode');
@@ -2136,6 +2161,9 @@
             });
             // F3 — el texto de ayuda cambia con el toggle, asi que se escucha el
             // checkbox y no solo se pinta al abrir el modal.
+            if (st('stAdvanceAuto')) {
+                st('stAdvanceAuto').addEventListener('change', updateAdvanceHint);
+            }
             if (st('stAccessMode')) {
                 st('stAccessMode').addEventListener('change', updateAccessHint);
             }

@@ -478,7 +478,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
           // direcciones, en el historial y en el Referer que el navegador no envía
           // desde un action: no amplia la exposición, evita un formulario
           // irrellenable. ?>
-    <form method="post" action="/f/<?= View::escape($form['slug']) ?><?= !empty($accessToken) ? '?t=' . rawurlencode((string) $accessToken) : '' ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>" data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
+    <form method="post" action="/f/<?= View::escape($form['slug']) ?><?= !empty($accessToken) ? '?t=' . rawurlencode((string) $accessToken) : '' ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>"<?= !empty($settings['advance']['auto']) ? ' data-vf-auto-advance="1"' : '' ?> data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
         <?= \App\Core\Csrf::field() ?>
 
         <?php // Q6 — El idioma renderizado viaja en el POST para que el re-render
@@ -503,10 +503,19 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
         $totalBlockCount = $pageMarkersV1 + ($hasImplicitFirst ? 1 : 0);
         $blockOpen = false;
 
-        $emitPageHeader = static function (?array $pageField) use (&$pageBlockIdx, &$blockOpen, $t): void {
+        $emitPageHeader = static function (?array $pageField) use (&$pageBlockIdx, &$blockOpen, $t, $totalBlockCount): void {
             $pageBlockIdx++;
             $blockOpen = true;
-            $blockAttrs = '';
+            // F5 — `tabindex="-1"` NO pone el bloque en el orden de tabulación:
+            // solo lo hace focusable porscript, que es justo lo que hace falta
+            // para dejar el foco en el paso nuevo tras un salto automático. Sin
+            // esto el foco se queda en un campo del paso anterior (ya oculto) y
+            // quien navega con teclado o con lector de pantalla no tiene ni idea
+            // de que ha cambiado de página. El `aria-label` da nombre a la región
+            // («Paso 2 de 3») sin pintar una etiqueta que estorbe.
+            $blockAttrs = ' tabindex="-1" aria-label="'
+                . View::escape($t('ui.paso') . ' ' . $pageBlockIdx . ' ' . $t('ui.de') . ' ' . $totalBlockCount)
+                . '"';
             if ($pageField !== null) {
                 $pageLogic = $pageField['logic'] ?? null;
                 if (is_array($pageLogic) && !empty($pageLogic['rules'])) {
