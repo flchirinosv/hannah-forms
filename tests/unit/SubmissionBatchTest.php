@@ -31,11 +31,9 @@ class SubmissionBatchTest
     private static array $expected = [];
 
     private static bool $available = true;
-    private static bool $envLoaded = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
         try {
             $db = \App\Core\Database::getInstance(\App\Core\Config::db());
             $db->fetch('SELECT 1 AS ok');
@@ -233,17 +231,5 @@ class SubmissionBatchTest
             "DELETE f FROM forms f JOIN users u ON u.id = f.user_id WHERE f.title LIKE 'Form Loteo%'"
         );
         $db->execute("DELETE FROM users WHERE email LIKE 'loteo-%@test.local'");
-    }
-
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        self::$envLoaded = true;
-        $root = dirname(__DIR__, 2);
-        if (is_file($root . '/.env')) {
-            \App\Core\Env::load($root . '/.env');
-        }
     }
 }

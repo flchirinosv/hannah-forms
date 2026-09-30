@@ -24,11 +24,11 @@ class MultiStepTest
     private static ?int $userId = null;
     private static int $formId = 0;
     private static string $slug = '';
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
 
         try {
             $db = \App\Core\Database::getInstance(\App\Core\Config::db());
@@ -186,18 +186,17 @@ class MultiStepTest
         self::$slug = '';
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-            // Un cleanup de salida NO puede matar el proceso. Este hook corre
-            // al terminar, cuando puede que ningún test haya llegado a conectar
-            // (por ejemplo con un --filter que no toca la BD): entonces
-            // `Config::db()` todavía no tiene credenciales, `getInstance()`
-            // lanza PDOException y el shutdown se lleva por delante el informe
-            // entero del runner, que es justo cuando más falta hace. Se traga
-            // el fallo a propósito: si no se pudo limpiar, se limpia a mano.
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
+            // Un cleanup de salida NO puede matar el proceso: este hook corre
+            // al terminar, y un `getInstance()` fallido (mysqld parado, socket,
+            // credenciales) lanzaría PDOException y se llevaría por delante el
+            // informe entero del runner, que es justo cuando más falta hace.
+            // Se traga el fallo a propósito: si no se pudo limpiar, se limpia
+            // a mano. OJO: la config ya NO es una causa posible de ese fallo —
+            // el runner carga el `.env` (ver `scripts/test.php`).
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

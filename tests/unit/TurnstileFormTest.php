@@ -29,11 +29,11 @@ class TurnstileFormTest
     private static ?int $userId = null;
     private static ?int $formId = null;
     private static string $slug = '';
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
         try {
             $db = Database::getInstance(Config::db());
             $db->fetch('SELECT 1 AS ok');
@@ -243,11 +243,10 @@ class TurnstileFormTest
         self::$slug = '';
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

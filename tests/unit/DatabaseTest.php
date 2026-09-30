@@ -13,13 +13,6 @@ use App\Core\Database;
  */
 class DatabaseTest
 {
-    private static bool $envLoaded = false;
-
-    public function setUp(): void
-    {
-        self::loadEnv();
-    }
-
     public function testConexionExitosa(): void
     {
         $db = Database::getInstance(Config::db());
@@ -95,13 +88,5 @@ class DatabaseTest
         assertSame('0', (string) ($count['c'] ?? ''));
 
         $db->execute('DROP TABLE IF EXISTS _db_test4');
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 }

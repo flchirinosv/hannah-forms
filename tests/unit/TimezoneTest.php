@@ -7,7 +7,6 @@ namespace Tests\Unit;
 use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\View;
 use App\Models\Submission;
 
@@ -23,7 +22,6 @@ use App\Models\Submission;
  */
 class TimezoneTest
 {
-    private static bool $envLoaded = false;
     private static ?Database $db = null;
     private static array $formIds = [];
     private static array $submissionIds = [];
@@ -31,7 +29,6 @@ class TimezoneTest
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::db();
     }
 
@@ -313,14 +310,6 @@ class TimezoneTest
         $linea = preg_replace('#/\*.*?\*/#', '', (string) $linea);
 
         return trim((string) $linea);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function db(): Database

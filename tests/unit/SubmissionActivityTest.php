@@ -27,11 +27,11 @@ class SubmissionActivityTest
     private static array $users = [];
     private static array $forms = [];
     private static bool $available = true;
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
         try {
             self::$available = true;
             $db = Database::getInstance(Config::db());
@@ -148,11 +148,10 @@ class SubmissionActivityTest
         self::$forms = [];
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

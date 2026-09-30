@@ -10,7 +10,6 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Mailer;
 use App\Core\PublicUrl;
 use App\Core\RateLimiter;
@@ -39,7 +38,6 @@ use App\Models\User;
  */
 class PasswordRecoveryFlowTest
 {
-    private static bool $envLoaded = false;
     private static ?int $userId = null;
     private static ?string $email = null;
     private static string $password = 'clave-inicial-larga-123';
@@ -58,7 +56,6 @@ class PasswordRecoveryFlowTest
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
         $this->sent = [];
 
@@ -436,14 +433,6 @@ class PasswordRecoveryFlowTest
             ['uid' => (int) self::$userId]
         );
         return (int) ($row['c'] ?? -1);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function cleanupResiduals(): void

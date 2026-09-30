@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Response;
 use App\Controllers\FillController;
 use App\Models\Field;
@@ -21,14 +20,14 @@ use App\Services\RedirectGuard;
  */
 class RedirectAllowlistTest
 {
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
     private static ?int $userId = null;
     private static ?int $formId = null;
     private static string $slug = '';
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
 
         try {
             $db = Database::getInstance(Config::db());
@@ -125,11 +124,10 @@ class RedirectAllowlistTest
         return (int) ($row['c'] ?? 0);
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

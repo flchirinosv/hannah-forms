@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Auth;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\RateLimiter;
 use App\Core\Session;
 use App\Models\PasswordReset;
@@ -27,13 +26,11 @@ use App\Models\User;
  */
 class PasswordResetTest
 {
-    private static bool $envLoaded = false;
     private static ?int $userId = null;
     private static ?string $password = null;
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
 
         self::$password = 'vieja-clave-' . bin2hex(random_bytes(4));
@@ -295,14 +292,6 @@ class PasswordResetTest
         );
         $value = $row['password_changed_at'] ?? null;
         return $value === null ? null : (string) $value;
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function cleanupResiduals(): void

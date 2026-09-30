@@ -7,7 +7,6 @@ namespace Tests\Unit;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Response;
 use App\Core\Session;
 use App\Controllers\AnalyticsController;
@@ -37,7 +36,7 @@ use App\Models\User;
  */
 class ExportStreamingTest
 {
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
     private static ?int $userId = null;
     private static ?int $formId = null;
     private static int $fPlain = 0;
@@ -45,7 +44,7 @@ class ExportStreamingTest
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
         self::cleanupResiduals();
         // Tanda corta para cruzar la frontera con pocas filas (seam oficial;
         // con 5000 la invariante del keyset no se ejercitaría).
@@ -228,11 +227,10 @@ class ExportStreamingTest
         return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d');
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

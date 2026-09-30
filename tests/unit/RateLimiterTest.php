@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\RateLimiter;
 
 /**
@@ -15,14 +14,11 @@ use App\Core\RateLimiter;
  */
 class RateLimiterTest
 {
-    private static bool $envLoaded = false;
-
     private static string $scope = 'test:rate';
     private static string $id = '';
 
     public function setUp(): void
     {
-        self::loadEnv();
         if (!self::dbAvailable()) {
             throw new \RuntimeException('SKIP: base de datos no disponible');
         }
@@ -30,14 +26,6 @@ class RateLimiterTest
         self::$id = 'test-' . bin2hex(random_bytes(4));
         // Asegurar limpieza inicial
         RateLimiter::reset(self::$scope, self::$id);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function dbAvailable(): bool

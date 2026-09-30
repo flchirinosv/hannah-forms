@@ -10,7 +10,6 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Mailer;
 use App\Core\PublicUrl;
 use App\Core\Request;

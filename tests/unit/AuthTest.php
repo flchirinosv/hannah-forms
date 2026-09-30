@@ -14,12 +14,10 @@ use App\Models\User;
  */
 class AuthTest
 {
-    private static bool $envLoaded = false;
     private static ?int $userId = null;
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
 
         $email = 'authtest-' . bin2hex(random_bytes(4)) . '@test.local';
@@ -116,14 +114,6 @@ class AuthTest
         }
         Session::destroy();
         self::$userId = null;
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function cleanupResiduals(): void

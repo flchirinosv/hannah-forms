@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Auth;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Session;
 use App\Models\Answer;
 use App\Models\Field;
@@ -32,7 +31,6 @@ use App\Services\Pii;
  */
 class PiiMaskingTest
 {
-    private static bool $envLoaded = false;
     private static ?int $userId = null;
     private static ?int $adminId = null;
     private static ?int $formId = null;
@@ -41,7 +39,6 @@ class PiiMaskingTest
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
 
         $suffix = bin2hex(random_bytes(4));
@@ -363,14 +360,6 @@ class PiiMaskingTest
         assertSame(1, $campos['Nombre completo'] ?? -1, 'el campo importado debe conservar la marca');
 
         Database::getInstance(\App\Core\Config::db())->execute('DELETE FROM forms WHERE id = :id', ['id' => $nuevoId]);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function cleanupResiduals(): void

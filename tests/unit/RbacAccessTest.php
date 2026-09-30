@@ -7,7 +7,6 @@ namespace Tests\Unit;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Session;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -27,13 +26,13 @@ use App\Models\User;
  */
 class RbacAccessTest
 {
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
     private static ?int $userId = null;
     private static ?int $editorId = null;
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
         self::cleanupResiduals();
 
         self::$userId = User::create('RBAC User', 'rbac-' . bin2hex(random_bytes(4)) . '@test.local', 'password', 2);
@@ -116,11 +115,10 @@ class RbacAccessTest
         Auth::forgetCache();
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

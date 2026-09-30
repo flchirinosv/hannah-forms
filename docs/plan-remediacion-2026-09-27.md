@@ -938,6 +938,10 @@ Suite completa: **401 tests, 0 fallos, 0 errores**.
 
 ### Lo que queda abierto (y no es de la capa de datos)
 
+> **CERRADO 2026-09-28 por D13** (paginación server-side de la tabla de
+> analítica, `Submission::byFormFilteredPaginated()`, 15/página, página 1
+> renderizada en servidor). El texto se conserva como registro de la fase 5.
+
 `AnalyticsController` carga **todas** las submissions del formulario
 (`byFormFiltered()` no tiene `LIMIT`) y la vista las pinta una a una. Con un
 formulario de miles de respuestas esa página se come la memoria y el render. La
@@ -1071,11 +1075,28 @@ envelope, el clamp de páginas fuera de rango y el 403 sin permiso de dueño.
 
 ## Abierto
 
-- Lazy loading del bundle del builder (`builder.js` + `sortable` se cargan con
-  `defer` pero siempre se descargan; cargarlos solo al entrar al builder).
-- La matriz de permisos de una instalación con grupos personalizados no se
-  migra automáticamente (el seed solo toca los roles por defecto): es una
-  decisión de producto para cuando exista RBAC de "grupos que ve".
+Revisado el 2026-09-30. **No queda nada abierto de la lista anterior**: un ítem
+era moot y el otro sigue vivo pero con valor bajo.
+
+- ~~La matriz de permisos de una instalación con grupos personalizados no se
+  migra automáticamente~~ — **moot, no pendiente** (2026-09-30). El ítem daba
+  por hecho que un grupo iba a tener su propia matriz de permisos, y no la
+  tiene: `role_permissions` es **por rol**, y un grupo solo confiere roles
+  (`Role::effectivePermissionKeys($roleId, $groupIds)` = rol propio + roles de
+  los grupos, en una consulta con dos `EXISTS`). Por tanto un grupo con
+  permisos propios no existe como concepto y no hay nada que migrar; la
+  semipermanencia de una instalación con grupos se resuelve desde la matriz de
+  roles del panel, que es lo que sí escribe `role_permissions`. Un grupo nuevo
+  que quiere cambiar qué puede hacer sus usuarios se ajusta en los ROLES que
+  confiere.
+- Lazy loading del bundle del builder (`builder.js` + `sortable`, hoy con
+  `defer` en `views/builder/index.php`). **Sigue sin hacerse, y se decide que
+  no**: los dos scripts ya se descargan **solo** en la página del builder, así
+  que el lazy loading no le ahorra un solo byte a nadie — quien no entra al
+  builder no los descarga igual, y quien entra los necesita. Se anota por si
+  algún día el builder crece lo bastante como para que duela, que hoy no es el
+  caso. Ojo si se retoma: los dos scripts de la pareja necesitan el
+  **mismo** atributo o el segundo corre antes que la librería.
 
 ---
 

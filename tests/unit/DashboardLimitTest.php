@@ -8,7 +8,6 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Database;
 use App\Core\DashboardLimit;
-use App\Core\Env;
 use App\Core\RateLimiter;
 use App\Core\Response;
 use App\Core\Session;
@@ -26,12 +25,12 @@ use App\Models\User;
  */
 class DashboardLimitTest
 {
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
     private static ?int $userId = null;
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
 
         try {
             $db = Database::getInstance(Config::db());
@@ -159,11 +158,10 @@ class DashboardLimitTest
         );
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

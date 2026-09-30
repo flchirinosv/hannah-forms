@@ -95,8 +95,11 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   arreglar con `if (!class_exists(Config::class)) require bootstrap.php`, un
   patrón roto porque `class_exists` dispara el autoload y devuelve **siempre
   `true`**: el `require` no corría nunca y el workaround se llevó por delante).
-  ~35 clases conservan un `loadEnv()` propio que ya es redundante pero
-  inofensivo (`Env::load` no sobreescribe variables ya definidas).
+  Los ~30 `loadEnv()` que quedaban se borraron; 16 de ellos además registraban
+  un `register_shutdown_function(cleanupResiduals)` y ese hook **sigue en pie**
+  con otro nombre, `ensureCleanupHook()`, porque su guard evita que se registre
+  una vez por test. `EnvTest` es la excepción: prueba el cargador en sí, con un
+  `.env` temporal.
 
 ## Invariantes que fallan en silencio
 
@@ -318,6 +321,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `withAnswersByIds()` trocea en tandas de 5000 (techo de placeholders) y
   **reordena el resultado globalmente**; concatenar tandas sin `usort` devuelve
   respuestas en orden de tanda.
+- **Los exports escriben en streaming, no acumulan**: `exportJson` y `exportCsv`
+  iteran `Submission::exportBatches()` (keyset `(finished_at, id)`, ceden
+  `[$rows, $bySubmission]` por tanda) y `countByFiltered()` da el `total` del
+  envelope sin barrer. Volver a juntar todo en un array antes de escribir es un
+  OOM que ningún test detecta. Dos trampas: el keyset se compara **por tuplas**
+  (`(s.finished_at, s.id) < (:last_at, :last_id)`) porque `Database` usa
+  `ATTR_EMULATE_PREPARES = false` y **reusar `:last_at` dos veces lanza HY093**;
+  y la PII se enmascara **por fila** (no una vez al principio, o las filas de
+  las últimas tandas salen en claro). Tanda = `idBatch()`, seam
+  `setIdBatchForTesting()`. `exportPayload()` conserva su forma exacta.
 - `fields.parent_id` es `INT UNSIGNED DEFAULT NULL`: **"sin sección" es `NULL`,
   nunca `0`**. La normalización vive solo en `Field::normalizeParentId()`.
 - MariaDB resetea `LAST_INSERT_ID()` a 0 con un `DELETE` en medio: en `Form::create`

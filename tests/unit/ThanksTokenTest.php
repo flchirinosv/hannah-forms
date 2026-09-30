@@ -40,12 +40,9 @@ class ThanksTokenTest
     private static string $otherSlug = '';
     private static ?int $q1 = null;
     private static ?int $q2 = null;
-    private static bool $envLoaded = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
-
         try {
             $db = \App\Core\Database::getInstance(\App\Core\Config::db());
             $db->fetch('SELECT 1 AS ok');
@@ -336,18 +333,6 @@ class ThanksTokenTest
     {
         $db = \App\Core\Database::getInstance(\App\Core\Config::db());
         return $db->fetch('SELECT * FROM submissions WHERE id = :id', ['id' => $id]) ?? [];
-    }
-
-    private static function loadEnv(): void
-    {
-        if (self::$envLoaded) {
-            return;
-        }
-        $envFile = dirname(__DIR__, 2) . '/.env';
-        if (is_file($envFile)) {
-            (new \App\Core\Env())->load($envFile);
-        }
-        self::$envLoaded = true;
     }
 
     private static function cleanupResiduals(): void

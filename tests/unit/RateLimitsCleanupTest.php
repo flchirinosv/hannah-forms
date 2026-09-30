@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\RateLimiter;
 use ReflectionClass;
 
@@ -26,7 +25,6 @@ use ReflectionClass;
  */
 class RateLimitsCleanupTest
 {
-    private static bool $envLoaded = false;
     private static ?Database $db = null;
 
     /** Marcas de los scopes que cada test crea, para borrarlos al terminar. */
@@ -34,7 +32,6 @@ class RateLimitsCleanupTest
 
     public function setUp(): void
     {
-        self::loadEnv();
         self::db();
     }
 
@@ -271,14 +268,6 @@ class RateLimitsCleanupTest
         $prop = $ref->getProperty('cleanedThisRequest');
         $prop->setAccessible(true);
         $prop->setValue(null, false);
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function db(): Database

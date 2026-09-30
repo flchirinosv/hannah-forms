@@ -12,7 +12,6 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
-use App\Core\Env;
 use App\Core\Mailer;
 use App\Core\PublicUrl;
 use App\Core\Request;
@@ -48,7 +47,7 @@ use App\Services\FormSettings;
  */
 class FormReviewTest
 {
-    private static bool $envLoaded = false;
+    private static bool $cleanupHookRegistered = false;
     private static ?int $ownerId = null;
     private static ?string $ownerEmail = null;
     private static ?int $reviewerId = null;
@@ -72,7 +71,7 @@ class FormReviewTest
 
     public function setUp(): void
     {
-        self::loadEnv();
+        self::ensureCleanupHook();
         self::cleanupResiduals();
         $this->sent = [];
 
@@ -683,11 +682,10 @@ class FormReviewTest
         return (string) ($row['detail'] ?? '');
     }
 
-    private static function loadEnv(): void
+    private static function ensureCleanupHook(): void
     {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
+        if (!self::$cleanupHookRegistered) {
+            self::$cleanupHookRegistered = true;
             register_shutdown_function(static function () {
                 try {
                     self::cleanupResiduals();

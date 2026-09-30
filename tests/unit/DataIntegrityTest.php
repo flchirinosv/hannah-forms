@@ -42,12 +42,9 @@ class DataIntegrityTest
     private static string $email = 'integridad@test.local';
     private static int $userId = 0;
     private static int $formId = 0;
-    private static bool $envLoaded = false;
 
     public function setUp(): void
     {
-        self::loadEnv();
-
         try {
             $this->db()->fetch('SELECT 1 AS ok');
         } catch (\Throwable $e) {
@@ -424,18 +421,5 @@ class DataIntegrityTest
     private function db(): Database
     {
         return Database::getInstance(Config::db());
-    }
-
-    /**
-     * El runner ya carga el `.env` (ver `scripts/test.php`), así que esto es
-     * redundante y se puede borrar junto con el `$envLoaded`. Se deja mientras
-     * los ~35 tests que aún lo tienen no se limpien en una sola pasada.
-     */
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            \App\Core\Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 }

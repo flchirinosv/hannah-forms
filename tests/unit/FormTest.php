@@ -6,7 +6,6 @@ namespace Tests\Unit;
 
 use App\Core\Config;
 use App\Core\Database;
-use App\Core\Env;
 use App\Models\Field;
 use App\Models\Form;
 use App\Models\Submission;
@@ -23,11 +22,8 @@ class FormTest
     /** @var int|null */
     private $userId = null;
 
-    private static bool $envLoaded = false;
-
     public function setUp(): void
     {
-        self::loadEnv();
         self::cleanupResiduals();
 
         $this->userId = User::create('Form Test', 'formtest-' . bin2hex(random_bytes(4)) . '@test.local', 'password', 2);
@@ -116,14 +112,6 @@ class FormTest
         }
         $this->userId = null;
         $this->formId = null;
-    }
-
-    private static function loadEnv(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
     }
 
     private static function cleanupResiduals(): void

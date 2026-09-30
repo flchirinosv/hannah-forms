@@ -7,7 +7,6 @@ namespace Tests\Unit;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
-use App\Core\Env;
 use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Controllers\AuthController;
@@ -161,7 +160,6 @@ class AuthHardeningTest
      */
     public function testElLoginRehasheaUnHashViejo(): void
     {
-        self::requireDb();
         $email = 'rehash-' . bin2hex(random_bytes(4)) . '@test.local';
         $plain = 'contrasena-larga-2026';
         $id = User::create('Rehash', $email, $plain, 2);
@@ -252,16 +250,6 @@ class AuthHardeningTest
     }
 
     /* ---------- Utilidades ---------- */
-
-    private static function requireDb(): void
-    {
-        if (!self::$envLoaded) {
-            Env::load(dirname(__DIR__, 2) . '/.env');
-            self::$envLoaded = true;
-        }
-    }
-
-    private static bool $envLoaded = false;
 
     private function path(string $rel): string
     {
