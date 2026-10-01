@@ -159,6 +159,13 @@ flash con el motivo) y botón con `data-confirm` solo donde se puede.
   Si hay descripción, la cabecera se queda con ella; sin título ni descripción,
   no se pinta cabecera. La clave i18n se **borra** en los dos idiomas y no
   estaba en `FALLBACK_I18N`, así que no hay un tercer sitio que tocar.
+- **Revisión en pantalla posterior: tres fallos del mismo tipo.** Se corrigió
+  solo la mitad de las dos cosas del CSS. `.app-section-children` (lienzo) sí
+  perdió el `border-left`; `.vf-section-children` (página pública) no. El botón
+  del NPS (`<span>` sin `display`) no tenía caja, y el «Página N» del salto venía
+  del builder guardándolo como etiqueta, no de la vista. Corregidos los tres, con
+  la migración **0012** limpiando el relleno ya guardado, cuatro tests nuevos
+  (Q10–Q12) y la suite en 715.
 - `.vf-scale-num` recibe `min-width`: los botones se dimensionan por contenido y
   al pasar de «9» a «10» la fila entera se movía.
 - Huecos de la paleta y tamaño del botón de «Quitar» opción: dos cosas que solo

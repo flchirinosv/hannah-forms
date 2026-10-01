@@ -1233,12 +1233,16 @@ body {
 }
 .vf-preview-dim { opacity: .55; filter: grayscale(.3); }
 
-/* ---- Hijos de una sección en la página pública ---- */
+/* ---- Hijos de una sección en la página pública ----
+ * Mismo criterio que `.app-section-children` del builder: los hijos van sobre
+ * el fondo de la sección y SIN la línea vertical de la izquierda. El borde de
+ * 3px con su hueco de 1rem se confundía con el de la propia tarjeta y hacía
+ * doble escalón; el fondo y el radio son los que separan el bloque. */
 .vf-section-children {
-    margin: .75rem 0 .25rem;
-    padding: 0 .25rem .4rem 1.25rem;
-    border-left: 3px solid #e0e7ff;
-    border-radius: 0 8px 8px 0;
+    margin: .6rem 0 0;
+    padding: 0 0 .4rem;
+    background: rgba(245, 247, 255, .55);
+    border-radius: 8px;
 }
 
 /* ---- Drawer de condiciones en el builder ---- */
@@ -1557,10 +1561,17 @@ body {
 
 /* ---- P2: tipos de encuesta (NPS, estrellas, matriz, ranking) ---- */
 .nps-selector { display: flex; gap: .3rem; flex-wrap: wrap; }
+/* `display` NO es opcional aquí: `.scale-btn` es un `<span>`, y a un elemento
+ * inline el `width`/`height` no le aplican — sin esto los botones del NPS salen
+ * como el número suelto pegado al borde. La regla de `.scale-selector` sí lo
+ * declaraba, y como el NPS reutiliza su clase, el estilo venía de aquí. */
 .nps-selector .scale-btn {
+    display: inline-flex; align-items: center; justify-content: center;
     width: 40px; height: 40px;
     border-radius: 12px;
     font-size: .9rem;
+    font-weight: 600; color: #334155;
+    cursor: pointer; transition: all .15s ease;
     border: 2px solid var(--vf-border);
     background: #fff;
     box-shadow: 0 1px 2px rgba(15,23,42,.04);

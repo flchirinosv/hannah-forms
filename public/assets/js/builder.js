@@ -398,8 +398,12 @@
 
     function cardHeadHtml(f) {
         const required = f.is_required ? '<span class="text-danger">*</span>' : '';
+        // Un salto de paso no guarda etiqueta (el builder no inventa contenido),
+        // así que su tarjeta se identifica por el nombre del tipo. El resto de
+        // campos, igual que hasta ahora.
+        const fallback = f.type === 'page' ? 'Página' : 'Sin título';
         return '<div class="d-flex justify-content-between align-items-start mb-1 app-field-head">' +
-            '<span class="app-field-label fw-semibold small app-label-edit" title="Clic para editar la etiqueta">' + esc(f.label || 'Sin título') + ' ' + required + '</span>' +
+            '<span class="app-field-label fw-semibold small app-label-edit" title="Clic para editar la etiqueta">' + esc(f.label || fallback) + ' ' + required + '</span>' +
             cardHeadRight(f) +
         '</div>';
     }
@@ -1371,7 +1375,13 @@
 
         let defaultLabel = 'Nueva pregunta (' + (info ? info.label : type) + ')';
         if (info && info.isSection) defaultLabel = 'Nueva sección';
-        if (isPage) defaultLabel = 'Página ' + (fields.filter((x) => x.type === 'page').length + 1);
+        // Un salto de paso NO lleva etiqueta: `label` es contenido, y lo que se
+        // guarda es lo que se publica. Con «Página N» el builder escribía un
+        // título de relleno que en el formulario final salía como encabezado
+        // (y repetía lo que el aria-label del bloque ya decía). El nombre del
+        // tipo lo pone el editor al pintar la tarjeta y el divisor del preview,
+        // no el dato.
+        if (isPage) defaultLabel = '';
 
         const f = {
             _uid: 'field-' + (nextUid++),

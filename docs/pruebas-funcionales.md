@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**218 pruebas** en 18 bloques (A–Q), más un bloque de regresiones (R) con las
+**221 pruebas** en 18 bloques (A–Q), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -404,6 +404,9 @@ Para no perderte, prepara esto antes de empezar:
 | Q7 | Preview en vivo con NPS, estrellas, matriz y ranking | Se ven como en el fill: los mismos botones, celdas y posiciones | M | |
 | Q8 | Publicar un formulario con un salto de página **sin** etiqueta | No sale un «Página N» inventado; el pie sigue diciendo «Paso 2 de 3» | M | |
 | Q9 | El mismo salto **con** descripción y sin etiqueta | Sale la cabecera con la descripción y sin título inventado | M | |
+| Q10 | Formulario publicado con una **sección** que tiene preguntas dentro (no el builder) | Los campos van sobre el fondo de la sección **sin** la línea vertical de la izquierda: en la página pública tampoco hay doble escalón | M | |
+| Q11 | Formulario publicado con un campo NPS | Las opciones 0–10 son once **botones cuadrados** con el número centrado, no números sueltos con un borde pegado al texto | M | |
+| Q12 | Un formulario paginado creado **antes** de la corrección | Sus saltos ya publicados salen sin «Página N»; si le habías puesto nombre a mano («Primera página»), ese nombre se conserva | M | |
 
 ---
 

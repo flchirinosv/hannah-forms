@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 72 archivos, 711 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 72 archivos, 715 métodos, ~3 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -124,6 +124,19 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `initialVisibility()` resuelve la visibilidad en el render con las mismas reglas
   del submit: si añades ocultado en el servidor, asegúrate de que `fill.js` pueda
   levantarlo (`plainFieldCards`).
+- El **builder y el fill comparten CSS, no clases**: `.app-section-children` (lienzo)
+  y `.vf-section-children` (página pública) existen por la misma razón, así que la
+  invariant se ata a **las dos** en `BuilderPreviewCssTest`; corregir una y dejar
+  la otra deja el formulario igual que estaba. Y un `<span>` con `width`/`height`
+  no tiene caja: `.scale-btn` necesita `display` (el del NPS nunca lo tuvo, así
+  que sus 40px no se aplicaban y salía el número suelto), que es lo que separa
+  un botón de un dígito con un borde alrededor.
+- **`fields.label` es contenido, no un rótulo de editor**: un salto de página nace
+  SIN etiqueta —que la invente el builder la convierte en título publicado— y la
+  migración **0012** limpia el `Página N` que las instalaciones anteriores ya
+  tenían guardado, con un patrón estrecho que respeta lo escrito a mano y nunca
+  toca la descripción. El nombre del tipo lo pone el editor al pintar la tarjeta
+  y el divisor del preview.
 - Honeypot `_vf_hp`: se chequea **antes** del rate limit y **finge éxito sin
   persistir**. Turnstile va tras el honeypot y antes del rate limit; sin **las
   dos** claves de instancia el formulario **no se sirve** (403).
