@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 71 archivos, 694 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 71 archivos, 705 métodos, ~3 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -57,7 +57,12 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Middleware por string en la definición de la ruta: `auth`, `guest`, `admin`,
   `csrf`, `csrf-header`, `post-max` y `editor` (registrado, **aplicado a cero
   rutas**; no lo uses como si hiciera algo).
-- Roles: `admin`(1) / `user`(2, default) / `editor`(3).
+- Roles: `admin`(1) / `user`(2, default) / `editor`(3) / `approver`(4, el de
+  `forms.review` + `dashboard.view`). Los cuatro son del sistema:
+  `Role::SYSTEM_ROLES`, una constante y no una columna `is_system` (el conjunto
+  depende de lo que la app sepa hacer, y una columna que la migración no puede
+  rellenar acaba discrepando del código). `Role::delete()` reductor si es del
+  sistema o tiene personas, y devuelve el motivo.
 
 ## Convenciones
 
@@ -311,8 +316,13 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   (un cuerpo vacío no significa "desmarcar todo") y el rol `admin` siempre conserva
   `admin.access`.
 - Un rol nuevo se crea con `Role::create()` y **nace sin permisos**: la matriz es lo
-  que decide qué puede hacer. El re-seed de las migraciones solo otorga a los roles
-  con nombre del catálogo, así que un rol invented no se lo lleva nadie por el camino.
+  que decide qué puede hacer. El re-seed de las migraciones (0005, 0006, 0011) solo
+  otorga a los roles con nombre del catálogo, así que un rol inventado no se lo lleva
+  nadie por el camino.
+- **Cada enlace de la navegación se enseña solo si su destino deja pasar**
+  (`views/layouts/main.php`: `dashboard.view`, `forms.review`, `admin.access`,
+  `forms.create`). El caso que lo fijó: un `approver` veía «Nuevo formulario» y
+  recibía un 403 con toda la pinta de un botón que funciona.
 - `roles.name` es `utf8mb4_unicode_ci`: el WHERE y el índice único **no distinguen
   mayúsculas ni acentos**. Por eso `Role::create()` valida el slug y devuelve `null`
   ante un duplicado, y por eso un test de "no existe tal nombre" tiene que mirar el

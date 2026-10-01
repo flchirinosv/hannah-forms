@@ -41,9 +41,12 @@ return [
     // F3 — revisión/aprobación. NO lleva sufijo `_own` por la misma razón que
     // `responses.pii`: no decide el alcance (a qué formularios se llega, eso es
     // `forms.edit_own` / `forms.manage_all`), sino si quien llega puede APROBAR.
-    // Por defecto solo admin: publicar un formulario de otra persona es el acto
-    // con más consecuencias de la app (decide si un texto se hace público).
-    'forms.review'          => ['Aprobar o devolver formularios enviados a revisión', ['admin']],
+    // Por defecto admin y el rol del sistema `approver` (migración 0011): con
+    // solo `admin`, «mandar a revisión» era en la práctica «que lo mire el que
+    // ya puede hacer todo». Publicar un formulario de otra persona es el acto
+    // con más consecuencias de la app (decide si un texto se hace público), y
+    // `approver` es exactamente el rol de quien solo hace eso.
+    'forms.review'          => ['Aprobar o devolver formularios enviados a revisión', ['admin', 'approver']],
 
     // Analítica, respuestas y adjuntos de formularios propios.
     'analytics.view_own'    => ['Ver la analítica de formularios propios', ['admin', 'user', 'editor']],
@@ -59,6 +62,9 @@ return [
     // la BD (migración no aplicada) `Auth::can()` da false y TODO sale enmascarado.
     'responses.pii'         => ['Ver datos personales sin enmascarar (IP, user-agent y campos marcados)', ['admin']],
 
-    // Entrada a la app autenticada.
-    'dashboard.view'        => ['Entrar al dashboard', ['admin', 'user', 'editor']],
+    // Entrada a la app autenticada. `approver` entra por aquí para poder llegar
+    // a `/review`: sin `dashboard.view` el rol que solo puede aprobar se
+    // encontraría con un 403 en la puerta de entrada, y con el enlace «Revisión»
+    // en la barra sin forma de verlo.
+    'dashboard.view'        => ['Entrar al dashboard', ['admin', 'user', 'editor', 'approver']],
 ];

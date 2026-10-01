@@ -13,10 +13,16 @@
 
 USE vanilla_forms;
 
+-- `approver` es un rol del SISTEMA (Role::SYSTEM_ROLES): no se puede borrar
+-- desde /admin/roles, porque perderlo dejaría la revisión de F3 sin nadie que
+-- pueda aprobar. Nace con `forms.review` (aprobar) y `dashboard.view` (poder
+-- LLEGAR a /review, que el dashboard exige); darle además edición sería un
+-- dueño a medio camino, que es justo lo que este rol no es.
 INSERT INTO roles (name, description) VALUES
-    ('admin',  'Acceso total al sistema'),
-    ('user',   'Crea y gestiona sus propios formularios'),
-    ('editor', 'Puede editar formularios pero no eliminarlos')
+    ('admin',    'Acceso total al sistema'),
+    ('user',     'Crea y gestiona sus propios formularios'),
+    ('editor',   'Puede editar formularios pero no eliminarlos'),
+    ('approver', 'Revisa y aprueba los formularios que otros le envían')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- ===========================================================================
@@ -55,5 +61,6 @@ JOIN permissions p ON (
     (r.name = 'admin')
     OR (r.name = 'user'  AND p.`key` IN ('forms.create','forms.edit_own','forms.delete_own','forms.export_own','analytics.view_own','responses.view_own','attachments.download_own','dashboard.view'))
     OR (r.name = 'editor' AND p.`key` IN ('forms.create','forms.edit_own','forms.export_own','analytics.view_own','responses.view_own','attachments.download_own','dashboard.view'))
+    OR (r.name = 'approver' AND p.`key` IN ('forms.review','dashboard.view'))
 )
 ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);

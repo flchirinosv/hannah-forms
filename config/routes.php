@@ -122,4 +122,5 @@ $router->post('/admin/groups/delete', [AdminController::class, 'groupDelete'], [
 $router->get('/admin/roles', [AdminController::class, 'roles'], ['auth', 'admin']);
 $router->post('/admin/roles/create', [AdminController::class, 'roleCreate'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/roles/save', [AdminController::class, 'updateRoleMatrix'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/security-log', [AdminController::class, 'securityLog'], ['auth', 'admin']);

@@ -78,6 +78,53 @@ Migración **0011**: `INSERT IGNORE` del rol + re-siembra leyendo `config/permis
 tiene usuarios), `AdminController::roleDelete()` (`admin.roles`, CSRF, `SecurityLog`,
 flash con el motivo) y botón con `data-confirm` solo donde se puede.
 
+### Notas del bloque 5
+
+- **`approver` nace con `dashboard.view` además de `forms.review`.** El plan
+  decía solo `forms.review` y estaba mal: `DashboardController::index()` exige
+  `dashboard.view`, así que un rol que solo puede aprobar se encuentra con un
+  403 en la puerta de entrada y la bandeja `/review` no se alcanza desde la
+  navegación. `dashboard.view` es lo mínimo para **llegar**; lo que lo hace
+  dueño de algo (`forms.edit_own`, `forms.create`) sigue sin dárselo, que es la
+  línea que separa «revisor» de «dueño a medio camino».
+- **La lista de roles del sistema va en el código (`Role::SYSTEM_ROLES`), no en
+  una columna `is_system`.** Una columna parecería más limpia, pero el conjunto
+  depende de lo que la app sepa hacer (`approver` existe por la revisión de F3)
+  y no se puede rellenar en el DDL: sembrarla desde la migración obligaría a
+  una migración nueva cada vez que se añadiera un rol **y** a un `UPDATE` para
+  los que ya estuvieran, con el riesgo de que la fila y el código acaben
+  discrepando. Con la lista en el código la comparación es la fuente.
+- **Las dos condiciones del borrado se comprueban por separado y en el
+  modelo.** `users.role_id` es `ON DELETE RESTRICT`, así que la base ya impide
+  borrar un rol con gente; se comprueba en `Role::delete()` para poder decir
+  «tiene 3 personas» en vez de un error de integridad. Y los roles del sistema
+  no se borran aunque estén vacíos: `approver` sin `forms.review` es un rol que
+  no puede hacer nada, y borrarlo deja la revisión de F3 sin destino.
+- **El botón de borrar no es un botón deshabilitado con un `title`.** No hay
+  botón, y el motivo va al lado como insignia («Sistema», «En uso»). Un
+  deshabilitado con la explicación larga es algo que hay que descubrir con el
+  ratón, y la pregunta de quien administra no es «¿por qué no puedo?» sino
+  «¿qué hago?».
+- **La baja va en una tarjeta aparte, no en la cabecera de la matriz.** El botón
+  necesita su propio `form` y un `form` dentro del `form` de «Guardar matriz» es
+  HTML inválido que cada navegador resuelve como le apetece.
+- **`data-confirm` va en el `form`, no en el botón.** El listener de `app.js`
+  busca `form[data-confirm]`, así que puesto en el botón no aparecería ninguna
+  confirmación.
+- **La navegación enseña solo lo que se puede usar.** Se han metido dos gates
+  más en `views/layouts/main.php` (`dashboard.view` para el enlace del
+  dashboard, `forms.create` para «Nuevo formulario») siguiendo el precedente
+  de F3 con el enlace de Revisión. El caso que lo motivó: un `approver` que
+  veía «Nuevo formulario» y recibía un 403 con toda la pinta de un botón que
+  funciona.
+- **`Role::userCount()` va aparte de `allWithPermissions()`** y en un mapa
+  indexado por id: la lista de la baja se recorre con `foreach` y un `count`
+  por fila son N consultas para un número que se enseña junto al nombre.
+- Lo que NO se ha tocado: `updateRoleMatrix()` sigue dejando vaciarle los
+  permisos a cualquier rol, incluido `approver`. Si un operador le quita
+  `forms.review` al rol, es su decisión y la matriz es el sitio para tomarla; no
+  hace falta una regla más.
+
 ### 6 · Limpieza visual
 `.app-section-children` sin `padding-left` ni `border-left` (fondo conservado),
 `.app-palette-static` con `gap` (separar Sección de Página), preview de sección en
@@ -109,9 +156,9 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - [x] 2 · Merge + mudanza de ajustes
 - [x] 3 · Acceso sin recarga
 - [x] 4 · Registro global
-- [ ] 5 · Rol `approver` + borrable
+- [x] 5 · Rol `approver` + borrable
 - [ ] 6 · Limpieza visual
-- [ ] Suite completa verde
+- [x] Suite completa verde
 
 ### Notas de ejecución
 

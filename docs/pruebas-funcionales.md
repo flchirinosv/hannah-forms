@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**203 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
+**209 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -350,6 +350,12 @@ Para no perderte, prepara esto antes de empezar:
 | N12 | Un `user` con `forms.manage_all` | Ve y opera formularios de otros usuarios | M | |
 | N13 | Guardar un grupo **sin** mandar su nombre | El nombre se conserva; si lo mandas vacío, se queda vacío. Ausente ≠ vacío | M | |
 | N14 | Ver la matriz de roles | Refleja lo que decides en `config/permissions.php` (roles del catálogo) | M | |
+| N15 | Entrar con una cuenta con rol `approver` | Ve *Dashboard* y *Revisión*, y **no** ve «Nuevo formulario» ni *Administración*: nada de lo que ve le da un 403 | A | |
+| N16 | Con ese mismo `approver`, abrir la ficha de un formulario enviado a revisión | Puede aprobarlo o devolverlo, pero no editarlo ni borrarlo | A | |
+| N17 | En la tarjeta *Baja de roles* | Los cuatro del sistema salen marcados como «Sistema» y **sin** botón de borrar; los tuyos, con el número de personas que los llevan | A | |
+| N18 | Intentar borrar un rol propio que alguien lleva | No se borra y el motivo dice cuántas personas lo tienen | A | |
+| N19 | Borrar un rol propio que no lleva nadie | Se borra, avisa, y también desaparece de los grupos que lo confieran (con aviso previo al confirmar) | M | |
+| N20 | El mismo borrado con la confirmación rechazada | No pasa nada: el rol sigue ahí | M | |
 
 ---
 

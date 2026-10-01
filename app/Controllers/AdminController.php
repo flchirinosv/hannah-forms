@@ -491,8 +491,20 @@ class AdminController
             return;
         }
 
+        $roles = Role::allWithPermissions();
+
+        // El recuento va aparte (`allWithPermissions()` no lo trae) y en un
+        // mapa indexado por id, no como una clave más del rol: la lista de la
+        // baja se recorre con `foreach` y un `count` por fila son N consultas
+        // para un número que se enseña junto al nombre.
+        $usuarios = [];
+        foreach ($roles as $rol) {
+            $usuarios[(int) $rol['id']] = Role::userCount((int) $rol['id']);
+        }
+
         View::render('admin/roles', [
-            'roles'       => Role::allWithPermissions(),
+            'roles'       => $roles,
+            'userCounts'  => $usuarios,
             'permissions' => self::catalog(),
             'csrf'        => Csrf::token(),
         ]);
@@ -568,6 +580,48 @@ class AdminController
 
         SecurityLog::record('admin.role_create', 'rol «' . (string) (Role::find($roleId)['name'] ?? $raw) . '» creado.');
         Session::flash('success', 'Rol creado sin permisos. Márcalos en la matriz de abajo.');
+        Response::redirect('/admin/roles');
+        return;
+    }
+
+    /**
+     * POST /admin/roles/delete — borra un rol propio que no lleva a nadie.
+     *
+     * Las dos condiciones (no del sistema y sin usuarios) las decide
+     * `Role::delete()`, que además devuelve el motivo. Aquí no se reimplementan:
+     * una comprobación de «tiene usuarios» en el controlador y otra en el
+     * modelo divergirían en cuanto una cambiara, y el «borrado en cascada» que
+     * hace la base sería la única que queda.
+     *
+     * Va al log porque borrar un rol cambia lo que puede hacer un grupo entero:
+     * los grupos confieren roles, así que quitar `soporte-tecnico` deja a sus
+     * miembros sin nada que el grupo les traía.
+     */
+    public function roleDelete(): void
+    {
+        if (!Auth::can('admin.roles')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        $roleId = (int) Request::post('role_id', 0);
+        $rol = $roleId > 0 ? Role::find($roleId) : null;
+        $nombre = $rol === null ? ('#' . $roleId) : (string) $rol['name'];
+
+        $motivo = null;
+        if (!Role::delete($roleId, $motivo)) {
+            Session::flash('error', 'No se pudo borrar «' . $nombre . '»: ' . (string) $motivo);
+            Response::redirect('/admin/roles');
+            return;
+        }
+
+        SecurityLog::record('admin.role_delete', 'rol «' . $nombre . '» borrado.');
+        Session::flash('success', 'Rol «' . $nombre . '» borrado.');
         Response::redirect('/admin/roles');
         return;
     }

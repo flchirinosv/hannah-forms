@@ -33,7 +33,14 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav me-auto">
+                <?php // Cada enlace se enseña solo si su destino le va a dejar pasar.
+                      // El caso que motivó el gate: `approver` tiene `dashboard.view`
+                      // y `forms.review`, pero NO `forms.create`, así que un botón
+                      // «Nuevo formulario» para él es un 403
+                      // con toda la pinta de un botón que funciona. ?>
+                <?php if ($currentUser && \App\Core\Auth::can('dashboard.view')): ?>
                 <li class="nav-item"><a class="nav-link <?= $currentPath === '/dashboard' || $currentPath === '/' ? 'active' : '' ?>" href="/dashboard"><i class="fa-solid fa-gauge me-1"></i>Dashboard</a></li>
+                <?php endif; ?>
                 <?php // F3 — La bandeja solo aparece a quien puede aprobar. Sin este
                       // gate en la vista, el enlace y un 403: la navegación
                       // prometería una pantalla que el usuario no puede abrir. ?>
@@ -45,11 +52,13 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                 <?php endif; ?>
             </ul>
             <ul class="navbar-nav ms-auto align-items-lg-center">
+                <?php if ($currentUser && \App\Core\Auth::can('forms.create')): ?>
                 <li class="nav-item me-lg-2 mb-2 mb-lg-0">
                     <a href="/dashboard" class="btn btn-light btn-sm app-btn-create w-100">
                         <i class="fa-solid fa-plus me-1"></i>Nuevo formulario
                     </a>
                 </li>
+                <?php endif; ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <span class="app-avatar"><?= View::escape(strtoupper(substr($currentUser['name'] ?? 'U', 0, 1))) ?></span>

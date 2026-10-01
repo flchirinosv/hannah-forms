@@ -20,7 +20,7 @@ VanillaForms es un sistema de formularios web self-hosted construido con PHP 8.2
 ## 2. Alcance
 
 ### Incluido
-- Autenticacion y gestion de usuarios con roles (admin, editor, user)
+- Autenticacion y gestion de usuarios con roles (admin, editor, user, approver)
 - CRUD de formularios con estados (draft, published, closed)
 - Constructor visual de campos (builder) con drag & drop, secciones informativas y logica condicional de visibilidad
 - Formulario publico de respuesta via slug
@@ -109,7 +109,7 @@ nunca rompe el request), `cache` (caché TTL del dashboard) y `app_settings`
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | id | INT UNSIGNED AI PK | |
-| name | VARCHAR(50) UNIQUE | admin, editor, user |
+| name | VARCHAR(50) UNIQUE | admin, editor, user, approver |
 | description | VARCHAR(255) NULL | |
 | created_at | TIMESTAMP | |
 

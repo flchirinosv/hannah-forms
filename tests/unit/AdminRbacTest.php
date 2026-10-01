@@ -11,6 +11,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\SecurityLog;
 use App\Core\Session;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -268,6 +269,202 @@ class AdminRbacTest
     }
 
     /* ---------------------------------------------------------------
+     * 4. Baja de roles (bloque 5): lo propio y vacío, nunca lo del sistema
+     * --------------------------------------------------------------- */
+
+    public function testSeBorraUnRolPropioQueNoLlevaANadie(): void
+    {
+        $rolId = $this->roleWithPermission('rbac-humo-' . self::$prefix, 'forms.create');
+        assertNotNull(Role::find($rolId), 'el rol existe antes de borrarlo');
+
+        $motivo = null;
+        assertTrue(Role::delete($rolId, $motivo), 'un rol propio sin personas sí se borra: ' . (string) $motivo);
+        assertNull(Role::find($rolId), 'y deja de existir');
+    }
+
+    public function testNoSeBorraUnRolQueTienePersonas(): void
+    {
+        $rolId = $this->roleWithPermission('rbac-congente-' . self::$prefix, 'forms.create');
+        self::setUserRole(self::$targetId, $rolId);
+
+        $motivo = null;
+        assertFalse(Role::delete($rolId, $motivo), 'un rol con personas no se puede borrar');
+        assertTrue(
+            str_contains((string) $motivo, 'persona'),
+            'el motivo dice cuántas personas lo llevan: ' . (string) $motivo
+        );
+        assertNotNull(Role::find($rolId), 'y el rol sigue ahí');
+    }
+
+    public function testNoSeBorraNingunRolDelSistemaAunqueEstenVacio(): void
+    {
+        foreach (Role::SYSTEM_ROLES as $nombre) {
+            assertTrue(Role::isSystem($nombre), $nombre . ' es un rol del sistema');
+        }
+
+        $admin = Role::findByName('admin');
+        assertNotNull($admin, 'admin existe');
+        $motivo = null;
+        assertFalse(
+            Role::delete((int) $admin['id'], $motivo),
+            'admin no se borra aunque la tabla `users` no tenga a nadie con ese rol'
+        );
+        assertTrue(
+            str_contains((string) $motivo, 'sistema'),
+            'y el motivo lo dice: ' . (string) $motivo
+        );
+        assertNotNull(Role::findByName('admin'), 'admin sigue existiendo');
+    }
+
+    public function testElBorradoSeLlevaElRolDeLosGruposYSusPermisos(): void
+    {
+        $rolId = $this->roleWithPermission('rbac-grupo-' . self::$prefix, 'forms.create');
+        RoleGroup::setRoles(self::$groupA, [$rolId]);
+        assertSame([$rolId], self::groupRoles(self::$groupA), 'el grupo confiere el rol');
+
+        $motivo = null;
+        assertTrue(Role::delete($rolId, $motivo), 'se borra: ' . (string) $motivo);
+        assertSame([], self::groupRoles(self::$groupA), 'el grupo deja de conferir un rol que ya no existe');
+        assertSame([], Role::permissionKeys($rolId), 'y sus permisos se van con él');
+    }
+
+    public function testElPanelBorraElRolYLoAnotaEnElLog(): void
+    {
+        $rolId = $this->roleWithPermission('rbac-log-' . self::$prefix, 'forms.create');
+        $this->authAsAdmin();
+
+        $out = $this->call('roleDelete', ['role_id' => (string) $rolId]);
+
+        // Un `Response::redirect()` deja `type => 'redirect'`, no `code`: el
+        // código 302 lo pone la cabecera, que en el runner no se emite.
+        assertSame('redirect', $out['halt']['type'] ?? '', 'borrar un rol redirige a la matriz');
+        assertTrue($out['exito'] !== '', 'y avisa: ' . (string) $out['error']);
+        assertNull(Role::find($rolId), 'el rol ya no está');
+
+        // El log importa porque un rol lo heredan también los grupos: quitar
+        // `soporte-tecnico` deja a sus miembros sin nada, y eso no se ve en la
+        // fila que se acaba de borrar.
+        $eventos = array_column(SecurityLog::recent('admin.role_delete', 1, 200)['items'], 'detail');
+        assertTrue(
+            (bool) array_filter($eventos, static fn(string $d): bool => str_contains($d, 'rbac-log-' . self::$prefix)),
+            'el borrado queda anotado en el log de seguridad'
+        );
+    }
+
+    public function testElPanelNoBorraUnRolDelSistemaYExplicaPorQue(): void
+    {
+        $approver = Role::findByName('approver');
+        assertNotNull($approver, 'la migración 0011 dejó el rol approver');
+        $this->authAsAdmin();
+
+        $out = $this->call('roleDelete', ['role_id' => (string) $approver['id']]);
+
+        assertSame('redirect', $out['halt']['type'] ?? '', 'intenta y redirige a la matriz');
+        assertTrue($out['exito'] === '', 'no dice que se borró');
+        assertTrue(
+            str_contains((string) $out['error'], 'sistema'),
+            'el motivo es que es del sistema: ' . (string) $out['error']
+        );
+        assertNotNull(Role::findByName('approver'), 'approver sigue en pie');
+    }
+
+    public function testBorrarUnRolSinAdminRolesDa403(): void
+    {
+        $rolId = $this->roleWithPermission('rbac-sinpermiso-' . self::$prefix, 'forms.create');
+        $this->authAs((int) $this->roleWithPermission('rbac-otro-' . self::$prefix, 'admin.users'));
+
+        $out = $this->call('roleDelete', ['role_id' => (string) $rolId]);
+
+        assertSame(403, $out['halt']['code'] ?? 0, 'sin `admin.roles` no se borra nada');
+        assertNotNull(Role::find($rolId), 'el rol sigue ahí');
+    }
+
+    /**
+     * El caso que motivó el gate de la navegación: un rol que solo puede
+     * aprobar. Con `forms.review` y nada más, el enlace «Nuevo formulario» le
+     * llevaba a un 403 con toda la pinta de un botón que funciona.
+     *
+     * Se comprueba la NAVEGACIÓN RENDERIZADA, no el catálogo: que el rol tenga
+     * los permisos correctos no dice nada de lo que se le enseña.
+     */
+    public function testElApproverEntraAlPanelYNoLeOfrecemosCrearFormularios(): void
+    {
+        $approver = Role::findByName('approver');
+        assertNotNull($approver, 'la migración 0011 dejó el rol approver');
+        $userId = (int) User::create(
+            'Approver ' . self::$prefix,
+            self::$prefix . '-approver@test.local',
+            'clave-approver-123',
+            (int) $approver['id']
+        );
+        $this->authAs($userId);
+
+        assertTrue(Auth::can('forms.review'), 'puede aprobar');
+        assertTrue(Auth::can('dashboard.view'), 'y puede entrar al panel');
+        assertFalse(Auth::can('forms.create'), 'pero no puede crear formularios');
+
+        $nav = $this->renderNav();
+        assertTrue(str_contains($nav, 'href="/review"'), 'la navegación le enseña la bandeja de revisión');
+        assertTrue(str_contains($nav, 'href="/dashboard"'), 'y el dashboard, que es de donde sale');
+        assertFalse(
+            str_contains($nav, 'app-btn-create'),
+            'pero NO el botón «Nuevo formulario»: sin `forms.create` ese botón solo produce 403'
+        );
+        assertFalse(str_contains($nav, 'href="/admin"'), 'ni Administración: no tiene `admin.access`');
+    }
+
+    /**
+     * El botón de borrar es la mitad de la puerta: el modelo puede permitir una
+     * baja que la pantalla no ofrece (rol propio con gente, por ejemplo), y eso
+     * se lee como «el panel va roto». Se comprueba el HTML Renderizado, no el
+     * fuente, porque lo que importa es lo que hay en pantalla.
+     */
+    public function testElBotonDeBorrarSoloApareceDondeSePuedeBorrar(): void
+    {
+        $propio = $this->roleWithPermission('rbac-boton-' . self::$prefix, 'forms.create');
+        $this->authAsAdmin();
+
+        $html = $this->renderRoles();
+
+        preg_match_all('/action="\/admin\/roles\/delete".*?role_id" value="(\d+)"/s', $html, $m);
+        $pintados = array_map('intval', $m[1]);
+
+        $esperados = [];
+        foreach (Role::allWithPermissions() as $rol) {
+            $id = (int) $rol['id'];
+            if (!Role::isSystem((string) $rol['name']) && Role::userCount($id) === 0) {
+                $esperados[] = $id;
+            }
+        }
+        sort($pintados);
+        sort($esperados);
+
+        assertSame($esperados, $pintados, 'el botón aparece exactamente en los roles propios y sin personas');
+        assertTrue(
+            in_array($propio, $pintados, true),
+            'el rol de este test se puede borrar y por eso tiene botón (si no, la comparación de arriba no probaría nada)'
+        );
+    }
+
+    /**
+     * Un rol del sistema que falta en la base es un fallo que no se ve: la
+     * matriz sale igual, la revisión deja de funcionar y nadie sabe por qué.
+     */
+    public function testElRolApproverExisteConSoloSusDosPermisos(): void
+    {
+        $approver = Role::findByName('approver');
+        assertNotNull($approver, 'la migración 0011 debe crear el rol approver (¿aplicaste `php database/migrate.php`?)');
+
+        $keys = Role::permissionKeys((int) $approver['id']);
+        sort($keys);
+        assertSame(
+            ['dashboard.view', 'forms.review'],
+            $keys,
+            'approver aprueba y entra al panel; ni una clave más (nada de forms.edit_own: no es dueño de nada)'
+        );
+    }
+
+    /* ---------------------------------------------------------------
      * Utilidades
      * --------------------------------------------------------------- */
 
@@ -307,6 +504,44 @@ class AdminRbacTest
             );
         }
         return $id;
+    }
+
+    /** GET de la matriz de roles: devuelve el HTML pintado. */
+    private function renderRoles(): string
+    {
+        $_POST = [];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/admin/roles';
+        ob_start();
+        try {
+            (new AdminController())->roles();
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        return $html;
+    }
+
+    /** El layout principal con el contenido vacío: solo la barra de navegación. */
+    private function renderNav(): string
+    {
+        $_SERVER['REQUEST_URI'] = '/dashboard';
+        $content = '';
+        ob_start();
+        try {
+            include dirname(__DIR__, 2) . '/views/layouts/main.php';
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        return $html;
+    }
+
+    /** Mueve a una persona a un rol (para probar que un rol con gente no se borra). */
+    private static function setUserRole(int $userId, int $roleId): void
+    {
+        Database::getInstance(Config::db())->execute(
+            'UPDATE users SET role_id = :r WHERE id = :u',
+            ['r' => $roleId, 'u' => $userId]
+        );
     }
 
     /** POST de navegador (con CSRF) contra una acción de AdminController. */

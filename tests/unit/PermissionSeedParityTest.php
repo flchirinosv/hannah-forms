@@ -107,6 +107,28 @@ class PermissionSeedParityTest
         );
     }
 
+    /**
+     * `approver` es el tercer rol por defecto y el que fallaría en silencio: sin
+     * la fila de la BD la revisión de F3 se queda sin quien apruebe, y sin
+     * `dashboard.view` en el seed el rol recibe un 403 en la puerta de entrada.
+     * El error se ve antes, que en producción.
+     */
+    public function testLosRolesPorDefectoDeApproverCoinciden(): void
+    {
+        $catalogApprover = array_keys(array_filter(self::catalog(), static fn($c) => in_array('approver', $c['roles'], true)));
+        sort($catalogApprover);
+        assertSame(
+            ['dashboard.view', 'forms.review'],
+            $catalogApprover,
+            'approver debe recibir por defecto forms.review (aprobar) y dashboard.view (poder entrar al panel); ni una más'
+        );
+        assertSame(
+            $catalogApprover,
+            self::seedRoleKeys('approver'),
+            'seed.sql debe otorgar a approver exactamente lo que declara el catálogo'
+        );
+    }
+
     public function testAdminRecibeTodasLasClaves(): void
     {
         $sql = self::seedSql();

@@ -86,6 +86,66 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                     </p>
                 </div>
             </div>
+
+            <?php // La baja de roles va AQUÍ y no en la cabecera de la matriz porque
+                  // el botón necesita su propio `form`, y un `form` dentro del
+                  // `form` de «Guardar matriz» es HTML inválido que los navegadores
+                  // resuelven como les apetece. ?>
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-trash-can me-1 text-primary"></i>Baja de roles</h3>
+                    <p class="form-text">
+                        Se borran los roles que creaste tú y que no lleva nadie. Los del sistema
+                        (<code>admin</code>, <code>user</code>, <code>editor</code>, <code>approver</code>)
+                        no se pueden borrar: sin ellos la instalación se queda sin panel, sin rol por
+                        defecto o sin quien pueda aprobar.
+                    </p>
+                    <ul class="list-group list-group-flush">
+                        <?php foreach ($roles as $rol): ?>
+                            <?php
+                            $rid = (int) $rol['id'];
+                            $delSistema = \App\Models\Role::isSystem((string) $rol['name']);
+                            $conGente = (int) ($userCounts[$rid] ?? 0);
+                            $borrable = !$delSistema && $conGente === 0;
+                            ?>
+                            <li class="list-group-item px-0 d-flex align-items-center justify-content-between gap-2">
+                                <span class="small text-truncate">
+                                    <strong><?= View::escape($rol['name']) ?></strong>
+                                    <span class="text-muted">
+                                        <?php if ($delSistema): ?>
+                                            · del sistema
+                                        <?php else: ?>
+                                            · <?= $conGente === 1 ? '1 persona' : $conGente . ' personas' ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </span>
+                                <?php if ($borrable): ?>
+                                    <?php // `data-confirm` va en el FORM, no en el botón: el
+                                          // listener de app.js busca
+                                          // `form[data-confirm]`. ?>
+                                    <form method="post" action="/admin/roles/delete" class="d-inline"
+                                          data-confirm="¿Borrar el rol '<?= View::escape($rol['name']) ?>'? Se quitará también de los grupos que lo confieran.">
+                                        <?= \App\Core\Csrf::field() ?>
+                                        <input type="hidden" name="role_id" value="<?= $rid ?>">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                title="Borrar el rol"
+                                                aria-label="Borrar el rol <?= View::escape($rol['name']) ?>">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <?php // Sin botón y con el motivo al lado. Un botón
+                                          // deshabilitado con un `title` largo es un
+                                          // botón que hay que descubrir con el ratón. ?>
+                                    <span class="badge text-bg-light text-muted" title="<?= $delSistema ? 'Es un rol del sistema' : 'Sácale antes el rol a sus ' . ($conGente === 1 ? 'persona' : $conGente . ' personas') ?>">
+                                        <?= $delSistema ? 'Sistema' : 'En uso' ?>
+                                    </span>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-8">

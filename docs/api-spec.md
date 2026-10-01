@@ -192,6 +192,7 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 | POST | `/admin/groups/delete` | auth, admin, csrf | Borrar grupo |
 | GET | `/admin/roles` | auth, admin | Matriz de permisos por rol |
 | POST | `/admin/roles/create` | auth, admin, csrf | Crear rol (nace sin permisos) |
+| POST | `/admin/roles/delete` | auth, admin, csrf | Borrar un rol (`role_id`); 403 sin `admin.roles`, reductor si es del sistema o tiene personas |
 | POST | `/admin/roles/save` | auth, admin, csrf | Guardar la matriz (`perms[<role>][]`; admin conserva `admin.access`) |
 | GET | `/admin/security-log` | auth, admin | Auditoría de eventos |
 

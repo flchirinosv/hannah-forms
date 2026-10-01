@@ -224,10 +224,21 @@ cuenta: eso es distinto del panel.
 | `admin` | Todo, incluido el panel de administración. |
 | `user` | Uso normal: sus formularios, respuestas, analítica y exportaciones. |
 | `editor` | Igual que `user`, pero **sin** permiso de borrar sus propios formularios. |
+| `approver` | Revisa y aprueba: entra al panel y a la bandeja de revisión, y no puede crear ni editar formularios. Es el rol para que quien aprueba **no** sea quien puede cambiar el formulario. |
 
 Un rol nuevo se crea sin permisos: la matriz es la que decide qué puede hacer.
 Los permisos efectivos de alguien son **su rol + los roles de sus grupos**, así
 que puedes darle a un grupo entero una capacidad sin tocar a cada persona.
+
+**Los cuatro roles de la tabla son del sistema y no se pueden borrar**: sin
+`admin` la instalación se queda sin panel, sin `user` no hay rol por defecto en
+el alta de cuentas, sin `editor` nadie tiene el perfil de editor, y sin
+`approver` la revisión de formularios no tiene a quién enviarlos. En la tarjeta
+**Baja de roles** los verás marcados como «Sistema», y los roles que hayas
+creado tú con el resto de la instalación aparecen con el número de personas que
+los llevan: solo se pueden borrar los que están a cero. Borrar uno también lo
+quita de los grupos que lo confieran, así que sus miembros pierden lo que ese
+rol les traía.
 
 ### 4.5 Los permisos que importan
 

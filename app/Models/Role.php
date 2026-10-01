@@ -9,9 +9,34 @@ use App\Core\Database;
 
 class Role
 {
+    /**
+     * Roles del SISTEMA: los que la app da por buenos y nadie borra.
+     *
+     * Vive en el código y no en una columna de `roles` a propósito. Una columna
+     * `is_system` parecería más limpia, pero no se puede rellenar en el DDL: el
+     * conjunto depende de lo que la aplicación sepa hacer (el `approver` existe
+     * por la revisión de F3), y sembrarla desde la migración obligaría a una
+     * migración nueva cada vez que se añadiera un rol, además de a un
+     * `UPDATE` para los que ya estuvieran. Con la lista en el código, la
+     * comparación es la fuente y no hay dos verdades que sincronizar.
+     *
+     * Por qué importa: los tres primeros son los que el resto del código
+     * asume. Sin `admin` no hay panel; sin `user` no hay rol por defecto en el
+     * alta de cuentas; sin `editor` el editor de F5.2 se queda sin su persona.
+     * Y `approver` sin `forms.review` es un rol que no puede hacer nada, y
+     * borrarlo deja la revisión de F3 sin destino.
+     */
+    public const SYSTEM_ROLES = ['admin', 'user', 'editor', 'approver'];
+
     private static function db(): Database
     {
         return Database::getInstance(Config::db());
+    }
+
+    /** ¿Es un rol del sistema (no se borra desde la UI)? */
+    public static function isSystem(?string $name): bool
+    {
+        return $name !== null && in_array(mb_strtolower(trim($name)), self::SYSTEM_ROLES, true);
     }
 
     public static function all(): array
@@ -146,6 +171,61 @@ class Role
             ),
             'key'
         );
+    }
+
+    /**
+     * Cuántas personas llevan este rol.
+     *
+     * Es el dato que decide si un rol se puede borrar, y va en su propia
+     * consulta (y no como un `COUNT` en `all()`) porque solo lo necesita la
+     * pantalla de la matriz, que tiene una fila por rol.
+     */
+    public static function userCount(int $roleId): int
+    {
+        return (int) (self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM users WHERE role_id = :role',
+            ['role' => $roleId]
+        )['c'] ?? 0);
+    }
+
+    /**
+     * Baja de un rol propio y sin usuarios.
+     *
+     * Las dos condiciones NO son la misma y por eso se comprueban por
+     * separado, para poder decir cuál falló:
+     *
+     * - `users.role_id` es `ON DELETE RESTRICT`, así que la base ya impide
+     *   borrar un rol con gente; aquí se comprueba antes para poder responder
+     *   «tiene N personas» en vez de un error de integridad.
+     * - Los roles del sistema no se borran aunque estén vacíos. Borrar `admin`
+     *   dejaría la instalación sin panel, y borrar `approver` dejaría la
+     *   revisión sin nadie que apruebe.
+     *
+     * Los `role_permissions` y `role_group_roles` se van por CASCADE, que es lo
+     * correcto: un rol que ya no existe no puede tener permisos.
+     *
+     * @return bool `false` con el motivo en el segundo parámetro
+     */
+    public static function delete(int $roleId, ?string &$motivo = null): bool
+    {
+        $rol = self::find($roleId);
+        if ($rol === null) {
+            $motivo = 'El rol no existe.';
+            return false;
+        }
+        if (self::isSystem((string) $rol['name'])) {
+            $motivo = 'Es un rol del sistema y no se puede borrar.';
+            return false;
+        }
+        $usuarios = self::userCount($roleId);
+        if ($usuarios > 0) {
+            $motivo = 'Hay ' . $usuarios . ($usuarios === 1 ? ' persona' : ' personas') . ' con ese rol.';
+            return false;
+        }
+
+        self::db()->execute('DELETE FROM roles WHERE id = :id', ['id' => $roleId]);
+
+        return true;
     }
 
     /**
