@@ -107,7 +107,7 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - [x] Plan registrado
 - [x] 1 · Tooltips
 - [x] 2 · Merge + mudanza de ajustes
-- [ ] 3 · Acceso sin recarga
+- [x] 3 · Acceso sin recarga
 - [ ] 4 · Registro global
 - [ ] 5 · Rol `approver` + borrable
 - [ ] 6 · Limpieza visual
@@ -164,3 +164,30 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
   `dashboard.js`, que es quien pinta ahora esos ajustes. Se comprueba también
   que el JS los escriba: un hint presente en el HTML y sin `textContent` es un
   hueco que pasa desapercibido.
+
+### Notas del bloque 3
+
+- **El partial lo pinta el servidor y el JS no sabe qué es una fila.** El POST
+  devuelve `html` con el partial `views/dashboard/forms/_access_list.php`
+  renderizado, y `dashboard.js` solo hace `box.innerHTML = res.data.html`. La
+  alternativa (devolver la lista de correos en JSON y construir la fila en el
+  navegador) deja dos definiciones de «qué se ve en la allowlist»: añadir por
+  fetch y recargar mostraría cosas distintas, y el fallo solo aparecería en uno
+  de los dos caminos.
+- **`X-Requested-With` como discriminador, no un `?json=1`.** Es el mismo rótulo
+  que ya manda `dashboard.js` en `/access/link`, así que no hay un discriminador
+  nuevo que aprender. Y como el `form` conserva `method`/`action`, un POST normal
+  de navegador (que no lo lleva) sigue en el camino de siempre: el alta funciona
+  sin JavaScript y el fallback del `catch` es un `form.submit()` de verdad.
+- **La misma puerta, no una segunda.** El JSON usa los mismos i18n, el mismo
+  `FormAccess::addEmail()` y los mismos cortes (modo `allowlist`, email válido,
+  no duplicado). Un `fetch` que aceptara lo que el formulario rechaza dejaría el
+  camino raro como el único sin probar; `testElCaminoJsonAplicaLasMismasReglas
+  QueElFormulario` ata las dos mitades.
+- **Los status del JSON no son un invento:** `419` para el CSRF (el mismo código
+  que ya usa el resto de la app) y `422` para «no aplica». Lo que cambia no es la
+  validación sino que el error se devuelve en el cuerpo: con 200 y texto vacío
+  el `fetch` no tenía nada que enseñar y el usuario creería que se guardó.
+- El aviso de lista vacía vive en el partial, así que el rerenderizado lo quita
+  solo al añadir el primero. El mensaje de éxito se escribe en el `role="alert"`
+  de la caja: sin recargar, no hay flash que lo anuncie.

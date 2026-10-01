@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**195 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
+**199 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -253,6 +253,11 @@ Para no perderte, prepara esto antes de empezar:
 | I7 | Quitar un email de la lista y usar su enlace ya activating | El enlace deja de servir en la petición siguiente | A | |
 | I8 | Abrir el formulario en una ventana privada y usar un enlace válido | El acceso depende de la sesión del navegador, no solo del enlace | M | |
 | I9 | Ver el enlace copiado y el QR de un formulario con acceso restringido | Ambos funcionan como el enlace, sin trampas | M | |
+| I10 | Ficha en modo `allowlist`, escribir un correo y pulsar *Añadir* | La fila aparece **sin recargar**, la caja queda vacía y con el foco dentro, y el aviso de lista vacía desaparece | M | |
+| I11 | En la misma caja, escribir un correo ya presente y pulsar *Añadir* | No aparece una segunda fila; el motivo sale debajo de la caja | M | |
+| I12 | Escribir un correo sin formato y pulsar *Añadir* | No se añade nada y el motivo dice que el correo no es válido (no un error de red) | M | |
+| I13 | Añadir con el teclado (Enter en la caja) | Funciona igual que con el botón, sin recargar | M | |
+| I14 | Abrir la ficha con JavaScript deshabilitado y añadir un correo | El alta funciona con el POST normal y avisa con un flash | M | |
 
 ---
 

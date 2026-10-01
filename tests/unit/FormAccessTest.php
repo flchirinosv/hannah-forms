@@ -100,6 +100,10 @@ class FormAccessTest
         PublicUrl::setBaseForTesting(null);
         Response::setRecordHalt(false);
         unset($_GET['t'], $_POST, $_SERVER['HTTP_X_CSRF_TOKEN'], $_SERVER['REQUEST_METHOD']);
+        // El rótulo decide si `addEmail()` responde en JSON; si se quedara puesto,
+        // el test siguiente que espere un 302 vería un 200 y el fallo aparecería
+        // en otro sitio.
+        unset($_SERVER['HTTP_X_REQUESTED_WITH']);
         Auth::forgetCache();
         Session::destroy();
         self::cleanupResiduals();
@@ -446,6 +450,115 @@ class FormAccessTest
         assertSame(1, FormAccess::allowlistCount((int) self::$formId));
     }
 
+    // =============================================================
+    // El alta sin recarga (fetch)
+    // =============================================================
+
+    /**
+     * El camino JSON devuelve el HTML de la lista ya rerenderizado, no la lista
+     * de correos: así el JS no sabe cómo es una fila y el partial es el único
+     * sitio donde se pinta.
+     */
+    public function testElAltaPorFetchDevuelveElHtmlDeLaListaYElContador(): void
+    {
+        $this->setMode('allowlist');
+
+        $r = $this->postOwner('addEmail', ['email' => 'ana@ejemplo.com'], true);
+
+        assertSame(200, $r['status'], 'responde JSON en vez de redirigir');
+        $data = json_decode((string) $r['body'], true);
+        assertTrue(is_array($data), 'el cuerpo es JSON: ' . substr((string) $r['body'], 0, 200));
+        assertSame(true, $data['ok'] ?? null);
+        assertSame(1, $data['count'] ?? null, 'y el contador nuevo');
+        assertTrue(
+            str_contains((string) ($data['html'] ?? ''), 'ana@ejemplo.com'),
+            'el html trae la fila recién añadida, escapada por el partial'
+        );
+        assertSame(1, FormAccess::allowlistCount((int) self::$formId));
+    }
+
+    /**
+     * El HTML que vuelve ya trae los controles de la fila (enlace, quitar), y
+     * el partial los pinta con `Csrf::field()`: si el partial no metiera el
+     * token, quitar un correo por la lista recién añadida no se enviaría.
+     */
+    public function testElHtmlDevueltoTraeElCsrfDeQuitar(): void
+    {
+        $this->setMode('allowlist');
+        FormAccess::addEmail((int) self::$formId, 'ana@ejemplo.com');
+
+        $r = $this->postOwner('addEmail', ['email' => 'beto@ejemplo.com'], true);
+        $data = json_decode((string) $r['body'], true);
+        $html = (string) ($data['html'] ?? '');
+
+        assertTrue(str_contains($html, 'name="_token"'), 'la fila trae token de CSRF para quitarla');
+        assertTrue(str_contains($html, '/access/email/remove'), 'y el endpoint de quitar');
+        assertTrue(str_contains($html, 'data-role="access-link"'), 'y el botón de emitir enlace');
+    }
+
+    /** Sin lista vacía, el partial devuelve el aviso en vez de un `<ul>` vacío. */
+    public function testElHtmlDevueltoAvisaCuandoLaListaSigueVacia(): void
+    {
+        $this->setMode('allowlist');
+
+        $r = $this->postOwner('addEmail', ['email' => 'no-es-un-correo'], true);
+
+        $data = json_decode((string) $r['body'], true);
+        assertSame(false, $data['ok'] ?? null, 'rechazado');
+        assertTrue(($data['error'] ?? '') !== '', 'con el motivo: un fetch que devuelve 200 sin texto no dice nada');
+        assertSame(0, FormAccess::allowlistCount((int) self::$formId));
+    }
+
+    /**
+     * Las reglas son las mismas por los dos caminos. Si el JSON validara otra
+     * cosa, el formulario sin JavaScript aceptaría lo que el fetch rechaza (o al
+     * revés), y el camino «raro» sería el que nadie prueba.
+     */
+    public function testElCaminoJsonAplicaLasMismasReglasQueElFormulario(): void
+    {
+        // Modo equivocado: `email` no tiene lista.
+        $this->setMode('email');
+        $r1 = $this->postOwner('addEmail', ['email' => 'ana@ejemplo.com'], true);
+        $d1 = json_decode((string) $r1['body'], true);
+        assertSame(422, $r1['status'], 'mismo status que el 302 con flash de error');
+        assertTrue(($d1['error'] ?? '') !== '', 'y el mismo motivo');
+        assertSame(0, FormAccess::allowlistCount((int) self::$formId));
+
+        // Duplicado.
+        $this->setMode('allowlist');
+        FormAccess::addEmail((int) self::$formId, 'ana@ejemplo.com');
+        $r2 = $this->postOwner('addEmail', ['email' => 'ANA@ejemplo.com'], true);
+        $d2 = json_decode((string) $r2['body'], true);
+        assertSame(422, $r2['status'], 'el duplicado se rechaza también por fetch');
+        assertSame(1, FormAccess::allowlistCount((int) self::$formId));
+
+        // Sin token.
+        $r3 = $this->postOwner('addEmail', ['email' => 'beto@ejemplo.com'], true, ['_token' => 'incorrecto']);
+        $d3 = json_decode((string) $r3['body'], true);
+        assertSame(419, $r3['status'], 'sin CSRF, 419 como en el resto de la app');
+        assertSame(1, FormAccess::allowlistCount((int) self::$formId), 'y no añade nada');
+    }
+
+    /** El `form` conserva method/action: sin JavaScript, el alta sigue funcionando. */
+    public function testElFormularioDelAltaFuncionaSinJavaScript(): void
+    {
+        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/dashboard/forms/show.php');
+
+        assertTrue(
+            str_contains($vista, 'method="post" action="/forms/<?= (int) $form[\'id\'] ?>/access/email"'),
+            'el form apunta a la puerta con method y action de verdad'
+        );
+        assertTrue(str_contains($vista, 'Csrf::field()'), 'con su token CSRF');
+
+        $js = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/dashboard.js');
+        assertTrue(str_contains($js, "e.preventDefault();"), 'el fetch anula el submit');
+        assertTrue(str_contains($js, 'form.submit();'), 'y el fallo de red cae al POST normal en vez de tragarse el alta');
+        assertTrue(
+            str_contains($js, "box.innerHTML = res.data.html"),
+            'el HTML lo sustituye el servidor: el JS no construye filas'
+        );
+    }
+
     public function testCopiarEnlaceSoloParaAlguienDeLaLista(): void
     {
         $this->setMode('allowlist');
@@ -580,13 +693,27 @@ class FormAccessTest
     }
 
     /** Acción del dueño: `addEmail`, `removeEmail` o `copyLink`. */
-    private function postOwner(string $action, array $post = []): array
+    /**
+     * @param bool $json envía el rótulo `X-Requested-With`, que es lo que hace
+     *                   que `addEmail()` responda en JSON en vez de redirigir.
+     * @param array<string, mixed>|null $override sustituye campos del POST
+     *                                   (para probar el CSRF inválido).
+     */
+    private function postOwner(string $action, array $post = [], bool $json = false, ?array $override = null): array
     {
         $_GET = [];
         $_POST = $post + ['_token' => Csrf::token()];
+        if ($override !== null) {
+            $_POST = array_merge($_POST, $override);
+        }
         $_SERVER['REQUEST_METHOD'] = 'POST';
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
         $_SERVER['HTTP_X_CSRF_TOKEN'] = Csrf::token();
+        if ($json) {
+            $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+        } else {
+            unset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        }
         Request::setRequestBodyForTests(null);
 
         $halt = $this->run(static function () use ($action): void {

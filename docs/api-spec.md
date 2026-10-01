@@ -125,9 +125,17 @@ aprobado lo devuelve a la cola.
 |--------|------|------------|-------------|
 | POST | `/f/{slug}/access` | csrf | Pedir acceso (403 si el formulario está en `email`/`allowlist` sin token). Respuesta uniforme |
 | POST | `/f/{slug}/access/embed` | csrf | Ídem para el iframe de embed |
-| POST | `/forms/{int}/access/email` | auth, csrf | Añadir un email a la allowlist (modo `allowlist`) |
+| POST | `/forms/{int}/access/email` | auth, csrf | Añadir un email a la allowlist (modo `allowlist`). Con `X-Requested-With: XMLHttpRequest` responde JSON (`ok`, `email`, `message`, `html`, `count`) en vez del 302 con flash |
 | POST | `/forms/{int}/access/email/remove` | auth, csrf | Quitar email y revocar sus tokens (transacción) |
 | POST | `/forms/{int}/access/link` | auth, csrf-header | Emitir/copiar enlace de acceso para un email de la lista (JSON) |
+
+La respuesta JSON del alta lleva el HTML del partial
+`views/dashboard/forms/_access-list.php`, el mismo que pinta el GET de
+`/forms/{id}`, para que el JS sustituya el contenedor sin saber qué es una fila.
+El `form` conserva `method`/`action`, así que sin JavaScript el alta sigue
+funcionando. Los status son `200` (añadido), `419` (CSRF) y `422` (modo que no
+es `allowlist`, email inválido o duplicado); el camino sin `fetch` responde 302
+con el mismo texto en flash.
 
 ## Llenado público
 

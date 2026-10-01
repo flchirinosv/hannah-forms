@@ -399,6 +399,27 @@ Grupos y valores por defecto:
 | Anti-bot | Constructor | Honeypot, Turnstile | Honeypot **activado** |
 | Analítica | — | Qué se guarda y durante cuánto | — |
 
+### La lista de correos con acceso
+
+Cuando el modo de acceso es **Solo la lista**, la tarjeta *Acceso* de la ficha
+tiene el alta de correos. Escribes el correo y pulsas *Añadir*: la lista se
+actualiza en el sitio, sin recargar, y la caja queda lista para el siguiente. Si
+el correo no es válido, ya estaba en la lista o el formulario no está en modo
+*Solo la lista*, el motivo sale debajo de la caja y **no** se añade nada.
+
+Dos botones accompany a cada correo de la lista: el de **enlace** genera y copia
+el enlace de acceso de esa persona, y el de **quitar** la saca de la lista.
+Quitar **invalida los enlaces que ya se le hayan enviado**: no es solo borrar una
+fila. Los dos piden confirmación.
+
+La caja se queda con el foco al añadir, así que se pueden encadenar varios
+correos sin volver al ratón. Sin JavaScript, el alta sigue funcionando igual:
+el formulario se envía y la página se recarga.
+
+> El enlace se genera **al vuelo**: el token de acceso solo existe en claro en
+> el momento de emitirlo, así que si el portapapeles falla, la caja de texto que
+> aparece debajo de la tarjeta es la única forma de recuperarlo.
+
 ### 7.0 Cómo leer estas pantallas
 
 En el constructor, los ajustes vienen apagados y **se guardan con la

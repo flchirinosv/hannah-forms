@@ -462,13 +462,23 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                             <strong>invalida los enlaces que ya se le hayan enviado</strong>.
                         </p>
 
-                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email" class="mb-3">
+                        <?php // El alta se hace por fetch (`dashboard.js`): con
+                              // recarga, añadir diez correos obligaba a diez
+                              // viajes y la lista se recolocaba sola al scroll.
+                              // El `method`/`action` siguen ahí a propósito, así
+                              // que SIN JavaScript el formulario funciona igual
+                              // (la misma puerta responde en HTML o en JSON). ?>
+                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email"
+                              class="mb-3" id="accessAddForm" data-role="access-add-form">
                             <?= \App\Core\Csrf::field() ?>
                             <div class="input-group input-group-sm">
-                                <input type="email" name="email" class="form-control" required maxlength="190"
+                                <input type="email" name="email" id="accessAddEmail" class="form-control" required maxlength="190"
                                        placeholder="nombre@ejemplo.com" aria-label="Correo con acceso">
-                                <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-plus me-1"></i>Añadir</button>
+                                <button type="submit" class="btn btn-outline-primary" id="accessAddBtn">
+                                    <i class="fa-solid fa-plus me-1"></i>Añadir
+                                </button>
                             </div>
+                            <p class="small mb-0 mt-1" id="accessAddError" role="alert"></p>
                         </form>
 
                         <?php // F4 — Salida del enlace recién emitido. Se rellena por JS y
@@ -494,47 +504,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                             Al pedir otro enlace para el mismo correo, este deja de funcionar.</p>
                         </div>
 
-                        <?php if ($accessCount === 0): ?>
-                            <div class="alert alert-warning d-flex gap-2 mb-0 py-2 px-3 small" role="alert">
-                                <i class="fa-solid fa-triangle-exclamation mt-1"></i>
-                                <span>La lista está vacía: ahora mismo <strong>nadie</strong> puede responder a este
-                                formulario, ni siquiera quien ya tenía un enlace.</span>
-                            </div>
-                        <?php else: ?>
-                            <ul class="list-group list-group-flush app-field-list mb-0">
-                                <?php foreach ($accessList as $entry): ?>
-                                <li class="list-group-item d-flex align-items-center justify-content-between px-0">
-                                    <span class="small app-truncate-1"><?= View::escape($entry['email']) ?></span>
-                                    <span class="d-flex gap-1">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                data-role="access-link" data-email="<?= View::escape($entry['email']) ?>"
-                                                title="Generar y copiar el enlace de acceso para este correo"
-                                                aria-label="Generar y copiar el enlace de acceso para <?= View::escape($entry['email']) ?>">
-                                            <i class="fa-solid fa-link"></i>
-                                        </button>
-                                        <?php // `d-inline` es lo que hace que el botón se alinee con
-                                              // el de al lado: sin él, este <form> es un bloque dentro
-                                              // del `d-flex` de la fila y el botón se queda arriba
-                                              // con el interlineado del form debajo, un píxel o dos
-                                              // más bajo que su hermano. ?>
-                                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email/remove" class="d-inline">
-                                            <?= \App\Core\Csrf::field() ?>
-                                            <input type="hidden" name="email" value="<?= View::escape($entry['email']) ?>">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                    data-confirm="¿Quitar <?= View::escape($entry['email']) ?> de la lista? Los enlaces que ya se le hayan enviado dejarán de funcionar."
-                                                    title="Quitar de la lista y revocar sus enlaces"
-                                                    aria-label="Quitar <?= View::escape($entry['email']) ?> de la lista">
-                                                <i class="fa-solid fa-xmark"></i>
-                                            </button>
-                                        </form>
-                                    </span>
-                                </li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <?php if ($accessCount > count($accessList)): ?>
-                                <p class="small text-muted mb-0 mt-2">y <?= (int) $accessCount - count($accessList) ?> más…</p>
-                            <?php endif; ?>
-                        <?php endif; ?>
+                        <?php // La lista es un partial porque el alta por fetch
+                              // devuelve este MISMO HTML ya escapado (ver
+                              // `AccessController::addEmail()`): con dos copias,
+                              // añadir un email y recargar mostraría listas
+                              // distintas según por dónde se mirara. ?>
+                        <div id="accessList">
+                            <?= View::partial('dashboard/forms/_access_list', [
+                                'accessList'  => $accessList,
+                                'accessCount' => $accessCount,
+                                'formId'      => (int) $form['id'],
+                            ]) ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>

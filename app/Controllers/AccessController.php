@@ -205,7 +205,21 @@ class AccessController
     // Parte del dueño: la allowlist
     // =====================================================================
 
-    /** POST /forms/{id}/access/email — añade un email a la lista. */
+    /**
+     * POST /forms/{id}/access/email — añade un email a la lista.
+     *
+     * Es bimodal a propósito: si el POST viene de `fetch` (el rótulo
+     * `X-Requested-With`) devuelve JSON con el HTML de la lista ya rerenderizado
+     * y el contador; si no, el 302 con flash de siempre. La misma puerta, el
+     * mismo mensaje y las mismas reglas en los dos caminos: el `fetch` es una
+     * comodidad, no una segunda puerta con su propia validación (que es como
+     * aparecerían dos definiciones de «email válido» divergiendo).
+     *
+     * Devolver el HTML y no la lista de emails en JSON es lo que evita que el
+     * JS tenga que saber cómo se pinta una fila: el partial
+     * `dashboard/forms/_access_list` es el único sitio, y el GET y el POST lo
+     * comparten.
+     */
     public function addEmail(int $id): void
     {
         $form = $this->ownedForm($id, 'add_email');
@@ -215,9 +229,14 @@ class AccessController
 
         $settings = Form::settings($id);
         $locale = I18n::forRequest($settings);
+        $json = self::wantsJson();
 
         if (!Csrf::verifyRequest()) {
-            $this->back($id, 'error', I18n::t('err.csrf', $locale));
+            if ($json) {
+                Response::json(['ok' => false, 'error' => I18n::t('err.csrf', $locale)], 419);
+            } else {
+                $this->back($id, 'error', I18n::t('err.csrf', $locale));
+            }
             return;
         }
         // Solo en `allowlist`. En modo `email` la lista no es la puerta: aceptar
@@ -225,21 +244,65 @@ class AccessController
         // cerrado de lo que es, que es el error justo contra el que existe esta
         // opción.
         if (FormAccess::mode($settings) !== FormSettings::ACCESS_ALLOWLIST) {
-            $this->back($id, 'error', I18n::t('access.not_allowlist_mode', $locale));
+            $error = I18n::t('access.not_allowlist_mode', $locale);
+            if ($json) {
+                Response::json(['ok' => false, 'error' => $error], 422);
+            } else {
+                $this->back($id, 'error', $error);
+            }
             return;
         }
 
         $email = FormAccess::normalizeEmail((string) Request::post('email', ''));
         if (!FormAccess::isValidEmail($email)) {
-            $this->back($id, 'error', I18n::t('access.invalid_email', $locale));
+            $error = I18n::t('access.invalid_email', $locale);
+            if ($json) {
+                Response::json(['ok' => false, 'error' => $error], 422);
+            } else {
+                $this->back($id, 'error', $error);
+            }
             return;
         }
         if (!FormAccess::addEmail($id, $email)) {
-            $this->back($id, 'error', I18n::t('access.already_added', $locale, ['email' => $email]));
+            $error = I18n::t('access.already_added', $locale, ['email' => $email]);
+            if ($json) {
+                Response::json(['ok' => false, 'error' => $error], 422);
+            } else {
+                $this->back($id, 'error', $error);
+            }
             return;
         }
 
-        $this->back($id, 'success', I18n::t('access.added', $locale, ['email' => $email]));
+        if (!$json) {
+            $this->back($id, 'success', I18n::t('access.added', $locale, ['email' => $email]));
+            return;
+        }
+
+        Response::json([
+            'ok'      => true,
+            'email'   => $email,
+            'message' => I18n::t('access.added', $locale, ['email' => $email]),
+            'html'    => View::partial('dashboard/forms/_access_list', [
+                'accessList'  => FormAccess::allowlistFor($id, '', 200),
+                'accessCount' => FormAccess::allowlistCount($id),
+                'formId'      => $id,
+            ]),
+            'count'   => FormAccess::allowlistCount($id),
+        ]);
+    }
+
+    /**
+     * ¿El POST viene de un `fetch` de nuestra casa?
+     *
+     * El rótulo `X-Requested-With` es lo que ya manda `dashboard.js` al pedir un
+     * enlace (`/access/link`), así que no hay un discriminador nuevo que
+     * aprender: la misma señal distingue «responde en JSON» de «responde con el
+     * 302 de siempre». Un POST normal de navegador NO lo lleva, que es lo que
+     * mantiene el camino sin JavaScript.
+     */
+    public static function wantsJson(): bool
+    {
+        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
     }
 
     /** POST /forms/{id}/access/email/remove — quita un email y revoca sus enlaces. */
