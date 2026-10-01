@@ -186,6 +186,65 @@ class ThemeFontCssInjectionTest
         assertTrue(FormSettings::isValidFontFamily($larga), 'el patrón debe admitir la longitud que deja normalize()');
     }
 
+    /**
+ * La otra mitad del tema: lo que `themeCss()` EMITE tiene que LEERSE.
+ *
+ * Este archivo nació por la puerta de entrada, y mientras miraba esa puerta
+ * apareció el otro fallo, del mismo género y bastante más tonto: «Color de
+ * fondo» y «Fuente» se guardaban, se validaban y se emitían como
+ * `--vf-background` y `--vf-font`, y en `app.css` esas dos variables NO
+ * aparecían ni una vez. De los tres ajustes de «Diseño» solo funcionaba el
+ * color principal. El color de página era un gradiente escrito a mano dos
+ * veces en el archivo (la segunda ganaba por orden y la primera era código
+ * muerto) y la fuente la ponía `body` a pelo.
+ *
+ * Un ajuste que se guarda bien y no se ve no da ningún error, que es
+ * exactamente por lo que hace falta el test: que toda variable que el tema
+ * emite tenga un consumidor, para que la próxima no pase en silencio.
+ */
+    public function testTodaVariableDelTemaTieneUnConsumidorEnElCss(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/app.css');
+
+        $emitido = FormSettings::themeCss(FormSettings::normalize([
+            'theme' => ['primary' => '#123456', 'background' => '#fedcba', 'font' => 'Georgia, serif'],
+        ]));
+        preg_match_all('/(--vf-[a-z-]+)\s*:/', $emitido, $m);
+        $variables = array_values(array_unique($m[1]));
+
+        assertTrue($variables !== [], 'el tema debe emitir variables: ' . $emitido);
+
+        $huerfanas = [];
+        foreach ($variables as $v) {
+            if (!str_contains($css, 'var(' . $v)) {
+                $huerfanas[] = $v;
+            }
+        }
+        assertTrue(
+            $huerfanas === [],
+            'estas variables las emite themeCss() y no las lee nadie en app.css, así que el ajuste se '
+                . 'guarda y no se aplica: ' . implode(', ', $huerfanas)
+        );
+    }
+
+/**
+ * Y que la del fondo se aplique al fondo de la PÁGINA, no a la tarjeta: con un
+ * color oscuro de fondo, la tarjeta en blanco es lo que mantiene legible el
+ * formulario.
+ */
+    public function testElColorDeFondoSeAplicaAlFondoDeLaPaginaYLaTarjetaSigueBlanca(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/app.css');
+        assertTrue(
+            preg_match('/\.fill-body\s*\{[^}]*background:\s*var\(--vf-background\)/s', $css) === 1,
+            '.fill-body tiene que tomar --vf-background: es el «fondo de la página del formulario» que promete el control'
+        );
+        assertTrue(
+            preg_match('/\.app-fill-card \.card-body\s*\{[^}]*background:\s*#fff/s', $css) === 1,
+            'la tarjeta del formulario se queda en blanco'
+        );
+    }
+
     private function assertStringContains(string $needle, string $haystack): void
     {
         assertTrue(

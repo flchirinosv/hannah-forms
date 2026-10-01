@@ -23,6 +23,8 @@ framework: son custom properties nativas sobre Bootstrap 5.
 | `--vf-primary-dark` | `#4f46e5` | Estado hover/focus de la marca |
 | `--vf-primary-light` | `#eef2ff` | Fondos de realce suave, iconos, chips |
 | `--vf-bg` | `#f4f5fb` | Fondo de página |
+| `--vf-background` | gradiente de `.fill-body` | **Lo emite el tema**: «Color de fondo» del builder. Sin ajuste es el gradiente; con él, el color elegido |
+| `--vf-font` | (sin valor) | **Lo emite el tema**: «Fuente». `body` la usa con `fallback` a Inter |
 | `--vf-surface` | `#ffffff` | Tarjetas, paneles, campos |
 | `--vf-text` | `#1e293b` | Texto principal |
 | `--vf-text-muted` | `#64748b` | Texto secundario, labels |
