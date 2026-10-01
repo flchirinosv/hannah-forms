@@ -12,6 +12,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
+use App\Models\Field;
 use App\Models\Form;
 use App\Models\FormAccess;
 use App\Services\FormSettings;
@@ -168,7 +169,37 @@ class FormController
             'accessCount'    => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
                 ? FormAccess::allowlistCount($id)
                 : 0,
+            // Las etiquetas de los campos de tipo email alimentan el datalist de
+            // la confirmación: `notify.confirmation.to_field` se resuelve por
+            // etiqueta EXACTA y `Notifier` se come el fallo en silencio (una
+            // línea de log, ningún aviso), así que la lista es lo que quita la
+            // adivinanza. El builder lo sacaba de su estado en memoria; aquí se
+            // lee de la BD, que es donde están de verdad.
+            'emailFieldLabels' => $this->emailFieldLabels($id),
         ]);
+    }
+
+    /**
+     * Etiquetas de los campos que pueden recoger un correo. Se excluyen
+     * secciones y páginas por el mismo motivo que en el builder: no guardan
+     * respuestas, así que no sirven de destinatario.
+     *
+     * @return array<int, string>
+     */
+    private function emailFieldLabels(int $formId): array
+    {
+        $campos = Field::byForm($formId);
+        $etiquetas = [];
+        foreach ($campos as $campo) {
+            if (($campo['type'] ?? '') !== 'email') {
+                continue;
+            }
+            $etiqueta = trim((string) ($campo['label'] ?? ''));
+            if ($etiqueta !== '') {
+                $etiquetas[] = $etiqueta;
+            }
+        }
+        return $etiquetas;
     }
 
     public function update(int $id): void
@@ -229,6 +260,118 @@ class FormController
             : 'Formulario actualizado.');
         Response::redirect('/forms/' . $id);
         return;
+    }
+
+    /**
+     * Ajustes OPERATIVOS del formulario (ficha `/forms/{id}`), en un POST aparte
+     * del que ya existe para título y descripción.
+     *
+     * El motivo de que sean un POST propio y no campos más de `update()` es
+     * `FormSettings::merge()`: cada puerta escribe solo los bloques que trae
+     * (aquí los operativos, en el builder los de diseño), y `normalize()` —que
+     * es el que limpia y sanea— arranca de los defaults. Sin el parche, guardar
+     * el cupo volvería a su valor de fábrica el color del tema.
+     *
+     * La lista de bloques es `FormSettings::DASHBOARD_BLOCKS`: el recorte es la
+     * puerta, no una comprobación posterior, así que un campo manipulative de
+     * más en el POST se queda sin guardar.
+     */
+    public function updateSettings(int $id): void
+    {
+        $form = Form::find($id);
+        $user = Auth::user();
+
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+        if ($user === null) {
+            Response::redirect('/login');
+            return;
+        }
+        if (!$this->canEdit($form, (int) $user['id'])) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/forms/' . $id);
+            return;
+        }
+
+        $actuales = Form::settings($id);
+
+        $errores = [];
+
+        // El modo crudo se valida AQUÍ y no solo dentro de
+        // `FormSettings::validate()` porque hace falta el valor saneado para
+        // fusionar: `validate()` recibe el resultado, así que no puede
+        // devolver «el modo no es válido» si antes lo cambiamos por `public`, y
+        // quien lo escribió se quedaría creyendo que su formulario sigue
+        // cerrado para todo el mundo.
+        $modo = trim((string) Request::post('access_mode', (string) $actuales['access']['mode']));
+        if (!in_array($modo, FormSettings::ACCESS_MODES, true)) {
+            $errores[] = 'El modo de acceso no es válido.';
+            $modo = (string) $actuales['access']['mode'];
+        }
+
+        $parche = FormSettings::fromDashboardPost(Request::postAll());
+        $parche['access'] = ['mode' => $modo];
+
+        $fusionado = FormSettings::merge($actuales, $parche, FormSettings::DASHBOARD_BLOCKS);
+
+        // Se valida DOS veces y no por redundancia: el parche crudo es lo que
+        // conserva los valores que `normalize()` ya saneó (un color que no es
+        // hex, un modo inventado) y que por eso hay que mirar antes de
+        // fusionar; y el resultado fusionado es lo único que puede detectar las
+        // combinaciones con lo que ya había guardado (cerrar antes de abrir,
+        // dejar los avisos sin destinatario con los de antes puestos).
+        $errores[] = FormSettings::validate($parche);
+        $errores[] = FormSettings::validate($fusionado);
+        $errores = array_values(array_unique(array_filter($errores)));
+
+        if ($errores !== []) {
+            Session::flash('error', implode(' ', $errores));
+            Response::redirect('/forms/' . $id);
+            return;
+        }
+
+        Form::saveSettings($id, $fusionado);
+
+        // F3 — mismo criterio que `update()` y que el builder: cambiar la
+        // agenda, el acceso o el webhook de un formulario ya publicado lo
+        // devuelve a la cola si exige revisión. Si no lo exigiera, publicar
+        // «cerrado hasta el lunes» sin que nadie lo mire sería exactamente el
+        // agujero que la revisión existe para cerrar.
+        $requeued = self::reviewRequired($form)
+            && $form['status'] === 'published'
+            && self::publishedChangesMatter($actuales, $fusionado);
+
+        if ($requeued) {
+            Form::submitForReview($id);
+        }
+
+        Session::flash('success', $requeued
+            ? 'Ajustes guardados. Como exige revisión, el formulario ha vuelto a la cola.'
+            : 'Ajustes guardados.');
+        Response::redirect('/forms/' . $id);
+        return;
+    }
+
+    /**
+     * F3 — ¿Alguno de los ajustes de esta puerta cambia lo que un visitante se
+     * encuentra? Un cambio de color o de idioma no re-puta en cola nada: lo que
+     * justifica la revisión es tocar la oferta (acceso, agenda, cupo) o cómo
+     * se recoge lo que se manda (avisos, webhook, gracias).
+     */
+    private static function publishedChangesMatter(array $antes, array $despues): bool
+    {
+        foreach (['access', 'schedule', 'quota', 'notify', 'webhook', 'thanks'] as $bloque) {
+            if (($antes[$bloque] ?? null) !== ($despues[$bloque] ?? null)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function delete(int $id): void

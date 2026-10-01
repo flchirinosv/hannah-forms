@@ -367,13 +367,29 @@ class BuilderController
                     Response::json(['ok' => false, 'error' => 'Configuración inválida.'], 422);
                     return;
                 }
+                // El RAW primero, porque `validate()` mira a propósito los valores
+                // que `normalize()` ya saneó (una tipografía que no cumple el
+                // patrón se descartaría en silencio sin este aviso).
                 $settingsError = \App\Services\FormSettings::validate($rawSettings);
                 if ($settingsError !== null) {
                     $db->rollBack();
                     Response::json(['ok' => false, 'error' => $settingsError], 422);
                     return;
                 }
-                Form::saveSettings((int) $form['id'], $rawSettings);
+                // Y luego un PARCHE, no el array entero: los ajustes operativos
+                // (acceso, agenda, cupo, avisos, webhook, gracias, revisión e
+                // idioma) se editan en la ficha del formulario, y `normalize()`
+                // arranca de los defaults, así que guardar aquí solo el diseño
+                // dejaría todo lo operativo en sus valores de fábrica cada vez
+                // que se guardase la estructura.
+                Form::saveSettings(
+                    (int) $form['id'],
+                    \App\Services\FormSettings::merge(
+                        Form::settings((int) $form['id']),
+                        $rawSettings,
+                        \App\Services\FormSettings::BUILDER_BLOCKS
+                    )
+                );
             }
 
             $db->commit();

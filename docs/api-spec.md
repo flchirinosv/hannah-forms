@@ -46,6 +46,7 @@ Longitud mínima de contraseña: **10** (`Auth::PASSWORD_MIN`), en los tres siti
 | POST | `/forms` | auth, csrf | Crear (body `title`, `description`; `settings` opcional). 302 → builder. Título ≤ 190. Rate limit `dash:create` por usuario |
 | GET | `/forms/{int}` | auth | Detalle del formulario + ficha (permite editar la allowlist F4) |
 | POST | `/forms/{int}/update` | auth, csrf | Actualizar título/descripción |
+| POST | `/forms/{int}/settings` | auth, csrf | Ajustes **operativos** (acceso, agenda, cupo, avisos, webhook, mensaje final, revisión, idioma). Fusiona con `FormSettings::merge()` y solo escribe `FormSettings::DASHBOARD_BLOCKS` |
 | POST | `/forms/{int}/delete` | auth, csrf | Eliminar formulario y respuestas |
 | POST | `/forms/{int}/publish` | auth, csrf | Cambiar estado a `published` |
 | POST | `/forms/{int}/close` | auth, csrf | Cambiar estado a `closed` |
@@ -53,6 +54,24 @@ Longitud mínima de contraseña: **10** (`Auth::PASSWORD_MIN`), en los tres siti
 | GET | `/forms/{int}/qr.svg` | auth | QR público del enlace (sale de `PublicUrl`) |
 | GET | `/forms/{int}/print` | auth | Vista imprimible |
 | GET | `/forms/{int}/export-structure.json` | auth | Estructura (título + campos) listos para reimportar |
+
+### Reparto de `forms.settings` entre las dos puertas
+
+`normalize()` arranca de `defaults()`, así que **ninguna** de las dos puertas
+manda el array entero: cada una manda un parche y el servidor lo fusiona con lo
+que había (`FormSettings::merge()`). Las dos listas son complemento y cubren
+todos los bloques; `FormSettingsMergeTest` lo ata.
+
+| Puerta | Bloques (`FormSettings::*_BLOCKS`) |
+|--------|-------------------------------------|
+| `POST /forms/{int}/builder/save` | `theme`, `quiz`, `randomize`, `advance`, `embed`, `honeypot`, `anti_bot` |
+| `POST /forms/{int}/settings` | `access`, `schedule`, `quota`, `notify`, `webhook`, `thanks`, `review`, `locale` |
+
+El constructor manda el JSON tal cual (`FormSettings::BUILDER_BLOCKS` es lo que
+recorta); la ficha traduce campos planos (`access_mode`, `open_at`…) con
+`fromDashboardPost()`, donde **el ausente y el vacío no son lo mismo**: una
+casilla desmarcada solo envía `0` si delante hay un `<input type=hidden>` con el
+mismo `name`.
 
 Acceso efectivo por permisos (RBAC), no por `role_name`: editar = `forms.edit_own`
 (dueño) o `forms.manage_all`.

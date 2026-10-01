@@ -1,5 +1,9 @@
 <?php
 use App\Core\View;
+
+// Botón `?` de ayuda, el mismo helper que usa el builder: aquí lo necesitan
+// los ajustes operativos, que se editan en la ficha y no en el modal.
+$helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): string => View::help($html, $label);
 ?>
 <div class="container px-lg-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 app-page-head">
@@ -197,7 +201,7 @@ use App\Core\View;
                                 <a href="<?= View::escape($embedUrl) ?>" target="_blank" class="small text-decoration-none d-inline-block mt-1"><i class="fa-solid fa-up-right-from-square me-1"></i>Ver página de embed</a>
                             </div>
                         <?php else: ?>
-                            <p class="text-muted small mt-3 mb-0"><i class="fa-solid fa-circle-info me-1"></i>El embed está desactivado. Actívalo en <em>Configuración</em> para obtener el código iframe.</p>
+                            <p class="text-muted small mt-3 mb-0"><i class="fa-solid fa-circle-info me-1"></i>El embed está desactivado. Actívalo en la <em>Configuración</em> del constructor para obtener el código iframe.</p>
                         <?php endif; ?>
                     <?php else: ?>
                         <p class="text-muted small mb-3">Publica el formulario para obtener el enlace de respuesta.</p>
@@ -206,6 +210,219 @@ use App\Core\View;
                             <button type="submit" class="btn btn-success btn-sm w-100"><i class="fa-solid fa-globe me-1"></i>Publicar ahora</button>
                         </form>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <?php // Ajustes operativos: acceso, agenda, cupo, avisos, webhook,
+                  // gracias, revisión e idioma. Se editan aquí y NO en el builder.
+                  // Cada puerta escribe solo sus bloques con
+                  // `FormSettings::merge()`: si el constructor guardara el array
+                  // entero, cada pulsación de «Guardar» en el builder dejaría
+                  // estos ocho ajustes en sus valores de fábrica. ?>
+            <?php $emailFieldLabels = $emailFieldLabels ?? []; ?>
+            <div class="card border-0 shadow-sm mb-4" id="settings">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h3 class="h6 fw-bold m-0"><i class="fa-solid fa-sliders me-2 text-primary"></i>Ajustes del formulario</h3>
+                        <span class="small text-muted">operativos</span>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Quién responde, cuándo, cuánto, qué se avisa y qué ve al terminar. El tema, el quiz y el resto
+                        de comportamiento siguen en <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
+                    </p>
+
+                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/settings" id="formSettings">
+                        <?= \App\Core\Csrf::field() ?>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-lock me-1"></i>Acceso</legend>
+                            <div class="mb-2">
+                                <label for="access_mode" class="form-label small fw-semibold">Quién puede responder</label>
+                                <select class="form-select form-select-sm" id="access_mode" name="access_mode">
+                                    <option value="public"<?= (($settings['access']['mode'] ?? 'public') === 'public') ? ' selected' : '' ?>>Cualquiera con el enlace</option>
+                                    <option value="email"<?= (($settings['access']['mode'] ?? 'public') === 'email') ? ' selected' : '' ?>>Cualquiera que verifique su correo</option>
+                                    <option value="allowlist"<?= (($settings['access']['mode'] ?? 'public') === 'allowlist') ? ' selected' : '' ?>>Solo los correos de la lista</option>
+                                </select>
+                                <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace» y «solo los correos de la lista», que se edita más abajo en la tarjeta de Acceso.') ?>
+                            </div>
+                            <p class="small text-muted mb-0" id="stAccessHint" role="status"></p>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-calendar-days me-1"></i>Programación y cupo</legend>
+                            <div class="row g-2">
+                                <div class="col">
+                                    <label for="open_at" class="form-label small fw-semibold">Abre el</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="open_at" name="open_at"
+                                           value="<?= View::escape(View::datetimeLocal($settings['schedule']['open_at'] ?? null)) ?>">
+                                    <?= $helpButton('Antes de esta fecha el formulario no acepta envíos. Vacío = desde ya.') ?>
+                                </div>
+                                <div class="col">
+                                    <label for="close_at" class="form-label small fw-semibold">Cierra el</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="close_at" name="close_at"
+                                           value="<?= View::escape(View::datetimeLocal($settings['schedule']['close_at'] ?? null)) ?>">
+                                    <?= $helpButton('Después de esta fecha deja de aceptarlos. Vacío = sin fecha de cierre. Lo que ya se envió se conserva.') ?>
+                                </div>
+                            </div>
+                            <p class="small text-muted mt-2 mb-2">
+                                <i class="fa-solid fa-globe me-1"></i>Se interpretan en la zona horaria de la instalación
+                                (<code>APP_TIMEZONE</code>), no en la de quien responde. Si <em>Abre</em> es posterior a
+                                <em>Cierra</em>, el ajuste se rechaza al guardar.
+                            </p>
+                            <div class="form-check form-switch mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="quota_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" id="quota_enabled" name="quota_enabled" value="1"<?= !empty($settings['quota']['enabled']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="quota_enabled">Limitar respuestas<?= $helpButton('Al llegar al máximo, el formulario deja de aceptar envíos. Lo que ya se envió se conserva.') ?></label>
+                            </div>
+                            <div class="mt-2">
+                                <label for="quota_max" class="form-label small fw-semibold">Máximo de respuestas</label>
+                                <input type="number" class="form-control form-control-sm" id="quota_max" name="quota_max" min="1" placeholder="Ej: 100"
+                                       value="<?= (int) ($settings['quota']['max'] ?? 0) > 0 ? (int) $settings['quota']['max'] : '' ?>">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-envelope me-1"></i>Notificaciones</legend>
+                            <div class="form-check form-switch mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="notify_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" id="notify_enabled" name="notify_enabled" value="1"<?= !empty($settings['notify']['enabled']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="notify_enabled">Notificar al recibir<?= $helpButton('Te avisa a ti de cada envío.') ?></label>
+                            </div>
+                            <div class="mb-3 mt-2">
+                                <label for="notify_emails" class="form-label small fw-semibold">Correos (separados por coma)</label>
+                                <input type="text" class="form-control form-control-sm" id="notify_emails" name="notify_emails"
+                                       value="<?= View::escape(implode(', ', (array) ($settings['notify']['emails'] ?? []))) ?>"
+                                       placeholder="Ej:RRHH@empresa.com, datos@empresa.com">
+                                <?= $helpButton('Hasta 10, separados por coma. Los que no sean un correo válido se descartan solos, sin aviso.') ?>
+                            </div>
+                            <div class="form-check form-switch mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="confirm_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" id="confirm_enabled" name="confirm_enabled" value="1"<?= !empty($settings['notify']['confirmation']['enabled']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="confirm_enabled">Enviar confirmación a quien responde<?= $helpButton('Necesita un campo de tipo email en el formulario (lista de abajo) y que el correo saliente esté configurado en el servidor.') ?></label>
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-4">
+                                    <label for="confirm_to_field" class="form-label small fw-semibold">Campo email</label>
+                                    <input type="text" class="form-control form-control-sm" id="confirm_to_field" name="confirm_to_field"
+                                           list="confirmFieldList" placeholder="Ej: Correo electrónico">
+                                    <datalist id="confirmFieldList">
+                                        <?php foreach ($emailFieldLabels as $label): ?>
+                                            <option value="<?= View::escape($label) ?>"></option>
+                                        <?php endforeach; ?>
+                                    </datalist>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="confirm_subject" class="form-label small fw-semibold">Asunto</label>
+                                    <input type="text" class="form-control form-control-sm" id="confirm_subject" name="confirm_subject"
+                                           value="<?= View::escape($settings['notify']['confirmation']['subject'] ?? '') ?>"
+                                           placeholder="Ej: Recibimos tu respuesta">
+                                </div>
+                                <div class="col-md-12">
+                                    <label for="confirm_message" class="form-label small fw-semibold">Mensaje</label>
+                                    <textarea class="form-control form-control-sm" id="confirm_message" name="confirm_message" rows="2" placeholder="Vacío = mensaje por defecto"><?= View::escape($settings['notify']['confirmation']['message'] ?? '') ?></textarea>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-link me-1"></i>Webhook</legend>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label for="webhook_url" class="form-label small fw-semibold">Webhook (URL)</label>
+                                    <input type="url" class="form-control form-control-sm" id="webhook_url" name="webhook_url"
+                                           value="<?= View::escape($settings['webhook']['url'] ?? '') ?>" placeholder="https://ejemplo.com/hook">
+                                    <?= $helpButton('Si se llena, cada envío se manda por HTTP a esa URL. Debe ser <code>http</code> o <code>https</code> y alcanzable desde el servidor.') ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="webhook_kind" class="form-label small fw-semibold">Formato</label>
+                                    <select class="form-select form-select-sm" id="webhook_kind" name="webhook_kind">
+                                        <option value="generic"<?= (($settings['webhook']['kind'] ?? 'generic') === 'generic') ? ' selected' : '' ?>>JSON</option>
+                                        <option value="slack"<?= (($settings['webhook']['kind'] ?? 'generic') === 'slack') ? ' selected' : '' ?>>Slack</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="webhook_secret" class="form-label small fw-semibold">Secreto (firma)</label>
+                                    <input type="text" class="form-control form-control-sm" id="webhook_secret" name="webhook_secret"
+                                           value="<?= View::escape($settings['webhook']['secret'] ?? '') ?>" placeholder="Opcional" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-check form-switch mt-2 mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="webhook_allow_private" value="0">
+                                <input class="form-check-input" type="checkbox" id="webhook_allow_private" name="webhook_allow_private" value="1"<?= !empty($settings['webhook']['allow_private_hosts']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="webhook_allow_private">Permitir destinos internos<?= $helpButton('Hacen falta <strong>los dos</strong> opt-ins: este y <code>WEBHOOK_ALLOW_PRIVATE_HOSTS</code> en el servidor. Con el servidor sin él, esta casilla no habilita nada.') ?></label>
+                            </div>
+                            <p class="small text-muted mb-0">
+                                <i class="fa-solid fa-shield-halved me-1"></i>Por seguridad, las direcciones internas
+                                (<code>localhost</code>, <code>192.168.x.x</code>, <code>10.x.x.x</code>) están bloqueadas.
+                                Quien administra el servidor las habilita con <code>WEBHOOK_ALLOW_PRIVATE_HOSTS</code>.
+                            </p>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-flag-checkered me-1"></i>Mensaje final</legend>
+                            <div class="mb-3">
+                                <label for="thanks_message" class="form-label small fw-semibold">Mensaje de gracias</label>
+                                <textarea class="form-control form-control-sm" id="thanks_message" name="thanks_message" rows="2" placeholder="En blanco = mensaje por defecto"><?= View::escape($settings['thanks']['message'] ?? '') ?></textarea>
+                                <?= $helpButton('Lo que ve la persona al terminar. En blanco se usa el mensaje por defecto de la instalación.') ?>
+                            </div>
+                            <div>
+                                <label for="thanks_redirect" class="form-label small fw-semibold">URL de redirección tras enviar</label>
+                                <input type="url" class="form-control form-control-sm" id="thanks_redirect" name="thanks_redirect"
+                                       value="<?= View::escape($settings['thanks']['redirect_url'] ?? '') ?>" placeholder="https://… (opcional)">
+                                <?= $helpButton('A dónde se le lleva al terminar, <em>después</em> de ver el mensaje. Solo se sigue si el dominio está permitido por el servidor (<code>APP_REDIRECT_ALLOWLIST</code>).') ?>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4">
+                            <legend class="app-settings-group-title"><i class="fa-solid fa-user-check me-1"></i>Revisión</legend>
+                            <div class="form-check form-switch mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="review_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" id="review_enabled" name="review_enabled" value="1"<?= !empty($settings['review']['enabled']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="review_enabled">Exigir revisión antes de publicar<?= $helpButton('Si está activa, el botón «Publicar» desaparece y el formulario espera en la bandeja de revisión.') ?></label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
+                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
+                                          // vacío justamente para esto. ?>
+                                <input type="hidden" name="review_notify_email" value="0">
+                                <input class="form-check-input" type="checkbox" id="review_notify_email" name="review_notify_email" value="1"<?= !empty($settings['review']['notify_email']) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="review_notify_email">Avisar por correo a los revisores<?= $helpButton('El aviso lleva al panel de revisión, nunca al enlace público.') ?></label>
+                            </div>
+                            <p class="small text-muted mb-0 mt-2" id="stReviewHint" role="status"></p>
+                        </fieldset>
+
+                        <div class="mb-3">
+                            <label for="locale" class="form-label small fw-semibold">Idioma público</label>
+                            <select class="form-select form-select-sm" id="locale" name="locale">
+                                <option value="es"<?= (($settings['locale']['code'] ?? 'es') === 'es') ? ' selected' : '' ?>>Español</option>
+                                <option value="en"<?= (($settings['locale']['code'] ?? 'es') === 'en') ? ' selected' : '' ?>>English</option>
+                            </select>
+                            <?= $helpButton('Idioma con el que se presenta el formulario. Quien responda puede cambiarlo con <code>?lang=</code> en el enlace.') ?>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes</button>
+                    </form>
                 </div>
             </div>
 
@@ -231,13 +448,13 @@ use App\Core\View;
                     <?php if ($accessMode === 'public'): ?>
                         <p class="text-muted small mb-0">
                             <i class="fa-solid fa-circle-info me-1"></i>Cualquiera con el enlace puede responder.
-                            Cambia el modo en <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
+                            Cambia el modo en <em>Ajustes del formulario</em>, más abajo.
                         </p>
                     <?php elseif ($accessMode === 'email'): ?>
                         <p class="text-muted small mb-0">
                             <i class="fa-solid fa-circle-info me-1"></i>Cualquiera que escriba un correo recibe un
                             enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
-                            <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
+                            <em>Ajustes del formulario</em>, más abajo.
                         </p>
                     <?php else: ?>
                         <p class="text-muted small">

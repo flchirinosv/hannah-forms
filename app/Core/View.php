@@ -76,6 +76,26 @@ class View
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
     }
 
+    /**
+     * Botón `?` de ayuda con tooltip. Vive aquí y no en cada vista para que el
+     * contrato sea uno solo: el texto se escapa con `ENT_QUOTES` para el
+     * atributo y se marca `data-bs-html="true"` para que `<code>` y `<strong>`
+     * se pinten como tales dentro del tooltip.
+     *
+     * El texto lleva HTML a propósito, y por eso NUNCA se le pasa contenido
+     * de usuario: solo literales de la propia vista. `app.js` inicializa estos
+     * tooltips una vez para todas las páginas de `main.php`.
+     */
+    public static function help(string $html, ?string $label = null): string
+    {
+        $aria = $label !== null && $label !== '' ? $label : 'Qué hace este ajuste';
+
+        return '<button type="button" class="app-help" data-bs-toggle="tooltip" data-bs-html="true"'
+            . ' data-bs-title="' . self::escape($html) . '"'
+            . ' aria-label="' . self::escape($aria) . '">'
+            . '<i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>';
+    }
+
     public static function asset(string $path): string
     {
         $path = ltrim($path, '/');
@@ -114,6 +134,28 @@ class View
     public static function datetime(?string $utc): string
     {
         return Clock::format($utc, 'd/m/Y H:i');
+    }
+
+    /**
+     * Valor para un `<input type="datetime-local">`: `2026-10-03T14:30`.
+     *
+     * NO es una conversión de zona horaria. `schedule.open_at/close_at` son
+     * muros de reloj de un `datetime-local`, no instantes: se interpretan en
+     * `app.timezone` (ver `FormSettings::validate()`). Por eso aquí solo se
+     * cambia el separador y se recortan los segundos — el `T` es lo que pide
+     * el input y un `strtotime()` por el camino devolvería `false` en vez de un
+     * valor, dejando el campo en blanco sin decir por qué.
+     */
+    public static function datetimeLocal(?string $stored): string
+    {
+        $v = trim((string) $stored);
+        if ($v === '') {
+            return '';
+        }
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/', $v, $m) === 1) {
+            return $m[1] . 'T' . $m[2];
+        }
+        return '';
     }
 
     /**

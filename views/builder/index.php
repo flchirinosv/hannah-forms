@@ -340,12 +340,7 @@ $fieldTypes = [
       // de interrogación seguido de «mayor que») dentro del comentario: cerraría
       // el bloque y la closure de abajo se imprimiría como texto en el HTML en
       // vez de definirse.
-$helpButton = static function (string $html, string $label = 'Qué hace este ajuste'): void {
-    echo '<button type="button" class="app-help" data-bs-toggle="tooltip" data-bs-html="true"'
-        . ' data-bs-title="' . View::escape($html) . '"'
-        . ' aria-label="' . View::escape($label) . '">'
-        . '<i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>';
-};
+$helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): string => \App\Core\View::help($html, $label);
 ?>
 
 <div class="modal fade" id="formSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="formSettingsTitle">
@@ -361,6 +356,7 @@ $helpButton = static function (string $html, string $label = 'Qué hace este aju
             <div class="modal-body p-4">
                 <div class="alert alert-light border small mb-4" role="note">
                     <p class="mb-0"><strong>Todo es opcional.</strong> Los ajustes vienen apagados y se guardan con la estructura. Si algo tiene un <span class="app-help-inline"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> <strong>?</strong></span>, su explicación está ahí: pásale por encima, o tócalo si estás en el móvil.</p>
+                    <p class="mb-0 mt-1">Aquí van los que cambian el <strong>relleno</strong>: tema, quiz, orden de las preguntas, avance automático, embed y anti-spam. Los que cambian <em>quién responde y cuándo</em> (acceso, fechas, cupo, avisos, webhook, mensaje final, revisión e idioma) están en la ficha del formulario.</p>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-palette me-1"></i>Tema</h6>
@@ -396,110 +392,6 @@ $helpButton = static function (string $html, string $label = 'Qué hace este aju
                     </div>
                 </div>
 
-                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-calendar-days me-1"></i>Programación y cupo</h6>
-                <p class="text-muted small mb-3">Cuándo y cuántas veces se puede responder. Con las fechas vacías el formulario acepta envíos siempre.</p>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label for="stOpenAt" class="form-label small fw-semibold">Abre el</label>
-                        <input type="datetime-local" class="form-control form-control-sm" id="stOpenAt">
-                        <p class="form-text mb-0">Antes de esta fecha el formulario no acepta envíos. Vacío = desde ya.</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="stCloseAt" class="form-label small fw-semibold">Cierra el</label>
-                        <input type="datetime-local" class="form-control form-control-sm" id="stCloseAt">
-                        <p class="form-text mb-0">Después de esta fecha deja de aceptarlos. Vacío = sin fecha de cierre. Lo que ya se envió se conserva.</p>
-                    </div>
-                    <div class="col-md-12">
-                        <p class="form-text mb-0"><i class="fa-solid fa-globe me-1"></i>Se interpretan en la zona horaria de la instalación (<code>APP_TIMEZONE</code>), no en la de quien responde. Si <em>Abre</em> es posterior a <em>Cierra</em>, el formulario no tendrá ninguna ventana y el ajuste se rechaza al guardar.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="stQuotaEnabled">
-                            <label class="form-check-label small fw-semibold" for="stQuotaEnabled">Limitar respuestas</label>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="stQuotaMax" class="form-label small fw-semibold">Máximo de respuestas</label>
-                        <input type="number" class="form-control form-control-sm" id="stQuotaMax" min="1" placeholder="Ej: 100">
-                        <p class="form-text mb-0">Solo cuenta si el interruptor de la izquierda está encendido. Al llegar al máximo, el formulario deja de aceptar envíos.</p>
-                    </div>
-                </div>
-
-                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-envelope me-1"></i>Notificaciones</h6>
-                <p class="text-muted small mb-3">A quién se avisa cuando alguien envía el formulario, y quién recibe una copia de su propia respuesta.</p>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="stNotifyEnabled">
-                            <label class="form-check-label small fw-semibold" for="stNotifyEnabled">Notificar al recibir</label>
-                        </div>
-                        <p class="form-text mb-0">Te avisa a ti de cada envío.</p>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="stNotifyEmails" class="form-label small fw-semibold">Correos (separados por coma)</label>
-                        <input type="text" class="form-control form-control-sm" id="stNotifyEmails" placeholder="Ej:RRHH@empresa.com, datos@empresa.com">
-                        <p class="form-text mb-0">Hasta 10, separados por coma. Los que no sean un correo válido se descartan solos, sin aviso.</p>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="stConfirmEnabled">
-                            <label class="form-check-label small fw-semibold" for="stConfirmEnabled">Enviar confirmación a quien responde</label>
-                        </div>
-                        <p class="form-text mb-0">Necesita un campo de tipo email en el formulario (abajo) y que el correo saliente esté configurado en el servidor.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="stConfirmToField" class="form-label small fw-semibold">Campo email</label>
-                        <input type="text" class="form-control form-control-sm" id="stConfirmToField" list="stConfirmFieldList" placeholder="Ej: Correo electrónico">
-                        <datalist id="stConfirmFieldList"></datalist>
-                        <p class="form-text mb-0">La <strong>etiqueta exacta</strong> de la pregunta que recoge el correo. Si no coincide con ninguna, el correo no se envía y no sale ningún aviso en pantalla: elige una de la lista.</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="stConfirmSubject" class="form-label small fw-semibold">Asunto</label>
-                        <input type="text" class="form-control form-control-sm" id="stConfirmSubject" placeholder="Ej: Recibimos tu respuesta">
-                        <p class="form-text mb-0">Texto literal, se usa tal cual. Vacío = «Recibimos tu respuesta: <em>título del formulario</em>».</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="stConfirmMessage" class="form-label small fw-semibold">Mensaje</label>
-                        <textarea class="form-control form-control-sm" id="stConfirmMessage" rows="2" placeholder="Vacío = mensaje por defecto"></textarea>
-                    </div>
-                </div>
-
-                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-link me-1"></i>Integraciones y final</h6>
-                <p class="text-muted small mb-3">Avisa a otro sistema de cada envío, y qué se muestra cuando la persona ya envió el formulario.</p>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label for="stWebhookUrl" class="form-label small fw-semibold">Webhook (URL)</label>
-                        <input type="url" class="form-control form-control-sm" id="stWebhookUrl" placeholder="https://ejemplo.com/hook">
-                        <p class="form-text mb-0">Si se llena, cada envío se manda por HTTP a esa URL. Debe ser <code>http</code> o <code>https</code> y alcanzable desde el servidor. Los reintentos no se repiten si la respuesta no es 2xx.</p>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="stWebhookKind" class="form-label small fw-semibold">Formato</label>
-                        <select class="form-select form-select-sm" id="stWebhookKind">
-                            <option value="generic">JSON</option>
-                            <option value="slack">Slack</option>
-                        </select>
-                        <p class="form-text mb-0"><strong>JSON</strong>: el envío entero. <strong>Slack</strong>: solo un texto para un canal.</p>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="stWebhookSecret" class="form-label small fw-semibold">Secreto (firma)</label>
-                        <input type="text" class="form-control form-control-sm" id="stWebhookSecret" placeholder="Opcional" autocomplete="off">
-                        <p class="form-text mb-0">Si lo pones, cada petición lleva la firma <code>X-VF-Signature</code> para que el receptor verifique que el envío es auténtico.</p>
-                    </div>
-                    <div class="col-md-12">
-                        <p class="form-text mb-0"><i class="fa-solid fa-shield-halved me-1"></i>Por seguridad, las direcciones internas (<code>localhost</code>, <code>192.168.x.x</code>, <code>10.x.x.x</code>) están bloqueadas. Si necesitas una de ellas, quien administra el servidor tiene que activarlo con <code>WEBHOOK_ALLOW_PRIVATE_HOSTS</code>: desde el formulario no se puede.</p>
-                    </div>
-                    <div class="col-md-12">
-                        <label for="stThanksMessage" class="form-label small fw-semibold">Mensaje de gracias personalizado</label>
-                        <textarea class="form-control form-control-sm" id="stThanksMessage" rows="2" placeholder="En blanco = mensaje por defecto"></textarea>
-                        <p class="form-text mb-0">Lo que ve la persona al terminar. En blanco se usa el mensaje por defecto de la instalación.</p>
-                    </div>
-                    <div class="col-md-12">
-                        <label for="stThanksRedirect" class="form-label small fw-semibold">URL de redirección tras enviar</label>
-                        <input type="url" class="form-control form-control-sm" id="stThanksRedirect" placeholder="https://… (opcional)">
-                        <p class="form-text mb-0">A dónde se le lleva al terminar, <em>después</em> de ver el mensaje de gracias. Solo se sigue si el dominio está permitido por el servidor (<code>APP_REDIRECT_ALLOWLIST</code>); si no, se muestra la página de gracias y a secas.</p>
-                    </div>
-                </div>
-
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-toggle-on me-1"></i>Comportamiento</h6>
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -514,16 +406,14 @@ $helpButton = static function (string $html, string $label = 'Qué hace este aju
                             <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas<?= $helpButton('Cada persona ve las preguntas en un orden distinto.') ?></label>
                         </div>
                     </div>
-                    <?php // F5 — Avance automático entre páginas. Va junto al resto de
-                          // interruptores de comportamiento del relleno, con su
-                          // explicación al lado: es el ajuste que más sorprende si
-                          // se activa sin querer, y solo tiene efecto en
-                          // formularios CON páginas. ?>
+                    <?php // F5 — mismo criterio que el avance automático: su texto
+                          // depende del interruptor, así que es estado y se queda
+                          // a la vista. ?>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stAdvanceAuto">
                             <label class="form-check-label small fw-semibold" for="stAdvanceAuto">Avanzar solo al responder</label>
-                            <p class="small text-muted mb-0 mt-1" id="stAdvanceHint"></p>
+                            <p class="small text-muted mb-0 mt-1" id="stAdvanceHint" role="status"></p>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -544,63 +434,14 @@ $helpButton = static function (string $html, string $label = 'Qué hace este aju
                             <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)<?= $helpButton('<strong>Actívalo solo si ya hay claves de Cloudflare en el servidor.</strong> Sin ellas el formulario deja de mostrarse a todo el mundo, no solo a los bots.') ?></label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <label for="stLocale" class="form-label small fw-semibold">Idioma público</label>
-                        <select class="form-select form-select-sm" id="stLocale">
-                            <option value="es">Español</option>
-                            <option value="en">English</option>
-                        </select>
-                        <p class="form-text mb-0">Idioma con el que se presenta el formulario. Quien responda puede cambiarlo con <code>?lang=</code> en el enlace.</p>
-                    </div>
                 </div>
-                <?php // F4 — Acceso. Es un SELECT y no un interruptor porque hay tres
-                      // modos y un interruptor no puede decir «cualquiera con un
-                      // correo» frente a «solo los de la lista»: confundirlos sería
-                      // un fallo de acceso, no una manía de la interfaz. La lista de
-                      // emails NO se edita aquí sino en la ficha del formulario
-                      // (`#access`), que es donde se ven los enlaces emitidos. ?>
-                <hr class="my-3">
-                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-lock me-1"></i>Acceso</h6>
-                <p class="text-muted small mb-3">Quién puede abrir y enviar el formulario. Por defecto, cualquiera que tenga el enlace.</p>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="stAccessMode" class="form-label small fw-semibold">Quién puede responder</label>
-                        <select class="form-select form-select-sm" id="stAccessMode">
-                            <option value="public">Cualquiera con el enlace</option>
-                            <option value="email">Cualquiera que verifique su correo</option>
-                            <option value="allowlist">Solo los correos de la lista</option>
-                        </select>
-                    </div>
-                    <div class="col-md-8">
-                        <p class="small text-muted mb-0 pt-md-4" id="stAccessHint"></p>
-                    </div>
-                </div>
-                <?php // F3 — Revisión/aprobación. Va al final, en su propia fila y con
-                      // su explicación, porque es el único ajuste de este panel que
-                      // cambia QUIÉN puede publicar el formulario. ?>
-                <hr class="my-3">
-                <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-user-check me-1"></i>Revisión</h6>
-                <p class="text-muted small mb-3">Si activada, el formulario no se publica hasta que alguien con permiso lo apruebe.</p>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="stReviewEnabled">
-                            <label class="form-check-label small fw-semibold" for="stReviewEnabled">Exigir revisión antes de publicar</label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="stReviewNotifyEmail">
-                            <label class="form-check-label small fw-semibold" for="stReviewNotifyEmail">Avisar por correo a los revisores</label>
-                        </div>
-                        <p class="form-text mb-0">El aviso lleva al panel de revisión, nunca al enlace público.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <p class="small text-muted mb-0" id="stReviewHint"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer border-0">
+                <?php // Lo que falta aquí a propósito: acceso, agenda, cupo, avisos,
+                      // webhook, mensaje final, revisión e idioma. Se editan en la
+                      // ficha del formulario (`/forms/{id}`), que es donde se ven
+                      // sus consecuencias (a quién llega el aviso, si la lista está
+                      // vacía, si el formulario vuelve a la cola). El constructor se
+                      // queda con lo que cambia el RELLENO, que es otra cosa. ?>
+                <div class="modal-footer border-0">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success app-btn-primary" id="btnSaveSettings"><i class="fa-solid fa-check me-1"></i>Guardar configuración</button>
             </div>

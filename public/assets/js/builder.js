@@ -2062,21 +2062,6 @@
             st('stPrimary').value = (s.theme && s.theme.primary) || '#0d6efd';
             st('stBackground').value = (s.theme && s.theme.background) || '#f6f6f6';
             st('stFont').value = (s.theme && s.theme.font) || '';
-            st('stOpenAt').value = toLocalInput(s.schedule && s.schedule.open_at);
-            st('stCloseAt').value = toLocalInput(s.schedule && s.schedule.close_at);
-            st('stQuotaEnabled').checked = !!(s.quota && s.quota.enabled);
-            st('stQuotaMax').value = (s.quota && s.quota.max) || '';
-            st('stNotifyEnabled').checked = !!(s.notify && s.notify.enabled);
-            st('stNotifyEmails').value = ((s.notify && s.notify.emails) || []).join(', ');
-            st('stConfirmEnabled').checked = !!(s.notify && s.notify.confirmation && s.notify.confirmation.enabled);
-            st('stConfirmSubject').value = (s.notify && s.notify.confirmation && s.notify.confirmation.subject) || '';
-            st('stConfirmMessage').value = (s.notify && s.notify.confirmation && s.notify.confirmation.message) || '';
-            st('stConfirmToField').value = (s.notify && s.notify.confirmation && s.notify.confirmation.to_field) || '';
-            st('stWebhookUrl').value = (s.webhook && s.webhook.url) || '';
-            st('stWebhookKind').value = (s.webhook && s.webhook.kind === 'slack') ? 'slack' : 'generic';
-            st('stWebhookSecret').value = (s.webhook && s.webhook.secret) || '';
-            st('stThanksMessage').value = (s.thanks && s.thanks.message) || '';
-            st('stThanksRedirect').value = (s.thanks && s.thanks.redirect_url) || '';
             st('stQuizEnabled').checked = !!(s.quiz && s.quiz.enabled);
             st('stRandQuestions').checked = !!(s.randomize && s.randomize.questions);
             // F5 — la clave del bloque es `auto`, no `enabled`: no entra en el
@@ -2085,20 +2070,8 @@
             st('stEmbedEnabled').checked = !!(s.embed && s.embed.enabled);
             st('stHoneypotEnabled').checked = !!(s.honeypot && s.honeypot.enabled);
             st('stAntiBotEnabled').checked = !!(s.anti_bot && s.anti_bot.enabled);
-            st('stLocale').value = (s.locale && s.locale.code) || 'es';
-            st('stReviewEnabled').checked = !!(s.review && s.review.enabled);
-            st('stReviewNotifyEmail').checked = !!(s.review && s.review.notify_email);
-            // F4 — un valor desconocido cae a 'public' (mismo criterio que
-            // FormSettings::normalize()): es el default historico y el que deja
-            // el formulario sirviendo en vez de cerrarlo por un dato raro.
-            st('stAccessMode').value = (s.access && ['public', 'email', 'allowlist'].indexOf(s.access.mode) !== -1)
-                ? s.access.mode
-                : 'public';
-            updateAccessHint();
             updateAdvanceHint();
-            updateReviewHint();
             paintThemePreview();
-            fillEmailFieldDatalist();
         }
 
         // P1 — Vista previa del tema dentro de la propia modal. Los dos colores
@@ -2150,29 +2123,15 @@
             note.className = 'form-text mb-0 text-danger fw-semibold';
         }
 
-        // P7 — `to_field` se resuelve por la ETIQUETA del campo y, si no
-        // encuentra ninguna, Notifier se lo come en silencio (solo escribe una
-        // línea en el log). Ofrecer la lista de etiquetas reales quita la
-        // adivinaría, que es el error típico de este ajuste.
-        function fillEmailFieldDatalist() {
-            const dl = st('stConfirmFieldList');
-            if (!dl) return;
-            dl.textContent = '';
-            fields
-                .filter((f) => {
-                    if (!f || f.type !== 'email' || !f.label) return false;
-                    const info = typeInfo[f.type];
-                    // Una sección o una página no guardan respuestas, así que no
-                    // sirven de destinatario. Mismo criterio que applySettings().
-                    return !info || (!info.isSection && !info.isPage);
-                })
-                .forEach((f) => {
-                    const opt = document.createElement('option');
-                    opt.value = f.label;
-                    dl.appendChild(opt);
-                });
-        }
-
+        /* Solo los bloques de DISEÑO. Los operativos (acceso, agenda, cupo,
+         * avisos, webhook, gracias, revisión e idioma) se editan en la ficha del
+         * formulario, con su propio POST.
+         *
+         * Y aquí está la razón de que sea una lista y no el objeto entero: el
+         * servidor guarda con `FormSettings::merge(..., BUILDER_BLOCKS)`, y
+         * `normalize()` arranca de los defaults. Si esto mandara el array
+         * completo, cada «Guardar estructura» del constructor pondría los ocho
+         * ajustes operativos de la ficha en sus valores de fábrica. */
         function collectSettingsFromModal() {
             const g = (id) => st(id);
             FORM_SETTINGS = {
@@ -2180,30 +2139,6 @@
                     primary: g('stPrimary').value || null,
                     background: g('stBackground').value || null,
                     font: g('stFont').value.trim() || null,
-                },
-                schedule: {
-                    open_at: fromLocalInput(g('stOpenAt').value),
-                    close_at: fromLocalInput(g('stCloseAt').value),
-                },
-                quota: { enabled: g('stQuotaEnabled').checked, max: Number(g('stQuotaMax').value) || 0 },
-                notify: {
-                    enabled: g('stNotifyEnabled').checked,
-                    emails: g('stNotifyEmails').value.split(',').map((e) => e.trim()).filter(Boolean),
-                    confirmation: {
-                        enabled: g('stConfirmEnabled').checked,
-                        subject: g('stConfirmSubject').value.trim(),
-                        message: g('stConfirmMessage').value.trim(),
-                        to_field: g('stConfirmToField').value.trim() || null,
-                    },
-                },
-                webhook: {
-                    url: g('stWebhookUrl').value.trim(),
-                    kind: g('stWebhookKind').value === 'slack' ? 'slack' : 'generic',
-                    secret: g('stWebhookSecret').value.trim(),
-                },
-                thanks: {
-                    message: g('stThanksMessage').value.trim(),
-                    redirect_url: g('stThanksRedirect').value.trim(),
                 },
                 quiz: { enabled: g('stQuizEnabled').checked },
                 randomize: { questions: g('stRandQuestions').checked },
@@ -2213,33 +2148,9 @@
                 embed: { enabled: g('stEmbedEnabled').checked },
                 honeypot: { enabled: g('stHoneypotEnabled').checked },
                 anti_bot: { enabled: g('stAntiBotEnabled').checked },
-                locale: { code: g('stLocale').value },
-                // F3 — dos claves y no una, asi que no entra en el patron de los
-                // toggles de una clave de arriba.
-                review: {
-                    enabled: g('stReviewEnabled').checked,
-                    notify_email: g('stReviewNotifyEmail').checked,
-                },
-                // F4 — el modo de acceso. La lista de emails va aparte, en
-                // form_access_emails: se edita en la ficha del formulario y no
-                // aqui, porque revocar tiene que borrar sus enlaces.
-                access: {
-                    mode: ['public', 'email', 'allowlist'].indexOf(g('stAccessMode').value) !== -1
-                        ? g('stAccessMode').value
-                        : 'public',
-                },
             };
         }
 
-        /**
-         * F4 — Explica el modo de acceso en el sitio, porque los tres no se
-         * distinguen solos: 'email' y 'allowlist' los dos piden un correo y
-         * mandan un enlace, y la diferencia (si el correo tiene que estar en una
-         * lista) es justo la que decide si alguien se queda esperando un correo
-         * que no va a llegar. El aviso de que cambiar el modo NO abre el
-         * formulario al que ya estaba restringido viene en los dos modos
-         * cerrados, que es donde se puede cambiar sin querer.
-         */
         /**
          * F5 — Explica cuando el ajuste hace algo y cuando no. Importa porque
          * un formulario de una sola pagina (que es el caso mas comun) tiene el
@@ -2256,57 +2167,6 @@
             }
             hint.textContent = 'Salta al siguiente paso al completar sus preguntas obligatorias. '
                 + 'Solo en formularios con paginas.';
-        }
-
-        function updateAccessHint() {
-            const hint = st('stAccessHint');
-            const sel = st('stAccessMode');
-            if (!hint || !sel) return;
-            if (sel.value === 'public') {
-                hint.textContent = 'Sin identificacion: cualquiera con el enlace responde.';
-                return;
-            }
-            if (sel.value === 'email') {
-                hint.textContent = 'Pide un correo y envia un enlace. No hay lista: cualquier correo valido entra. '
-                    + 'Quitar el modo deja de exigir el enlace de inmediato.';
-                return;
-            }
-            hint.textContent = 'Solo los correos de la lista (se edita en la ficha del formulario) reciben un enlace. '
-                + 'La lista vacia cierra el formulario a todo el mundo.';
-        }
-
-        /**
-         * F3 — Explica el efecto de la revision sin pedir que lo lean las notas.
-         * El aviso por correo se explica aparte porque es el que mas sorprende:
-         * activar la revision y no enterarse de que no hay aviso por correo es
-         * como se queda un formulario esperando a un revisor que nunca sabe.
-         */
-        function updateReviewHint() {
-            const hint = st('stReviewHint');
-            if (!hint) return;
-            const on = st('stReviewEnabled').checked;
-            if (!on) {
-                hint.textContent = 'Desactivado: publicas directamente, como hasta ahora.';
-                return;
-            }
-            const mail = st('stReviewNotifyEmail').checked
-                ? 'Se avisara por correo a quien tenga el permiso de revision.'
-                : 'Solo aparecera en la bandeja de revision del panel, sin correo.';
-            hint.textContent = 'El boton Publicar desaparece y el formulario espera en la bandeja. Editarlo de nuevo lo devuelve a la cola. ' + mail;
-        }
-
-        function toLocalInput(iso) {
-            if (!iso) return '';
-            const d = new Date(String(iso).replace(' ', 'T'));
-            if (isNaN(d.getTime())) return String(iso);
-            const p = (n) => String(n).padStart(2, '0');
-            return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
-                + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
-        }
-
-        function fromLocalInput(v) {
-            if (!v) return null;
-            return String(v).replace('T', ' ');
         }
 
         // Vista previa del tema y aviso de la fuente. Se engancha una sola vez al
@@ -2341,18 +2201,13 @@
                 markDirty();
                 showToast('Configuración aplicada. Se guardará en el siguiente guardado.', 'success');
             });
-            // F3 — el texto de ayuda cambia con el toggle, asi que se escucha el
-            // checkbox y no solo se pinta al abrir el modal.
+            // F5 — el texto de estado del avance automático cambia con el
+            // toggle, asi que se escucha el checkbox y no solo se pinta al
+            // abrir el modal. Los equivalentes de acceso y revisión viven en
+            // `dashboard.js`, que es quien pinta ahora esos ajustes.
             if (st('stAdvanceAuto')) {
                 st('stAdvanceAuto').addEventListener('change', updateAdvanceHint);
             }
-            if (st('stAccessMode')) {
-                st('stAccessMode').addEventListener('change', updateAccessHint);
-            }
-
-            ['stReviewEnabled', 'stReviewNotifyEmail'].forEach((id) => {
-                if (st(id)) st(id).addEventListener('change', updateReviewHint);
-            });
         }
 
         bindAddFieldModal();

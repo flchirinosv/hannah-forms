@@ -327,3 +327,74 @@
             });
     });
 })();
+
+/* Ficha del formulario (`views/dashboard/forms/show.php`): los ajustes
+ * operativos se editan aquí, no en el modal del builder, así que sus textos
+ * de estado los pinta este archivo.
+ *
+ * Son ESTADO, no explicación: el texto depende del interruptor y de si el
+ * formulario está en revisión, y quien acaba de cambiarlo lo necesita ver sin
+ * tener que volver a pasar el ratón por encima. Por eso NO son tooltips y por
+ * eso el constructor (`builder.js`) ya no los escribe. */
+(function () {
+    'use strict';
+
+    const accessSel = document.getElementById('access_mode');
+    const reviewBox = document.getElementById('review_enabled');
+    const reviewMail = document.getElementById('review_notify_email');
+
+    if (!accessSel && !reviewBox) {
+        return;
+    }
+
+    /* F4 — Los tres modos de acceso no se distinguen solos: 'email' y
+     * 'allowlist' los dos piden un correo y mandan un enlace, y lo único que
+     * los separa es si el correo tiene que estar en una lista. Sin esta frase
+     * alguien elige 'email' pensando que es la lista y se queda con un
+     * formulario abierto a cualquiera que escriba un correo. */
+    function updateAccessHint() {
+        const hint = document.getElementById('stAccessHint');
+        if (!hint || !accessSel) {
+            return;
+        }
+        if (accessSel.value === 'public') {
+            hint.textContent = 'Sin identificación: cualquiera con el enlace responde.';
+        } else if (accessSel.value === 'email') {
+            hint.textContent = 'Pide un correo y envía un enlace. No hay lista: cualquier correo válido entra.';
+        } else {
+            hint.textContent = 'Solo los correos de la lista reciben un enlace. La lista vacía cierra el formulario a todo el mundo.';
+        }
+    }
+
+    /* F3 — Explica el efecto sin pedir que lean las notas. El aviso por correo
+     * va aparte porque es el que más sorprende: activar la revisión y no
+     * enterarse de que no hay correo es como se queda un formulario esperando a
+     * un revisor que nunca se entera. */
+    function updateReviewHint() {
+        const hint = document.getElementById('stReviewHint');
+        if (!hint || !reviewBox) {
+            return;
+        }
+        if (!reviewBox.checked) {
+            hint.textContent = 'Desactivado: publicas directamente, como hasta ahora.';
+            return;
+        }
+        const mail = reviewMail && reviewMail.checked
+            ? 'Se avisará por correo a quien tenga el permiso de revisión.'
+            : 'Solo aparecerá en la bandeja de revisión del panel, sin correo.';
+        hint.textContent = 'El botón Publicar desaparece y el formulario espera en la bandeja. '
+            + 'Editarlo de nuevo lo devuelve a la cola. ' + mail;
+    }
+
+    if (accessSel) {
+        accessSel.addEventListener('change', updateAccessHint);
+        updateAccessHint();
+    }
+    if (reviewBox) {
+        reviewBox.addEventListener('change', updateReviewHint);
+        updateReviewHint();
+    }
+    if (reviewMail) {
+        reviewMail.addEventListener('change', updateReviewHint);
+    }
+})();

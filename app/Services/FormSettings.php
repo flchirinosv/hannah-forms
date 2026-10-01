@@ -15,6 +15,7 @@ namespace App\Services;
  *
  * normalize(): limpia/coeerciona contra un whitelist y aplica defaults.
  * validate():   devuelve el primer error de entrada como string (o null).
+ * merge():      fusiona un PARCHE sobre lo que ya había, por bloques.
  */
 final class FormSettings
 {
@@ -224,6 +225,208 @@ final class FormSettings
         }
 
         return $out;
+    }
+
+    /**
+     * Fusiona un PARCHE sobre los ajustes que ya había, por bloques de primer
+     * nivel, y devuelve el resultado normalizado.
+     *
+     * Existe porque hay DOS puertas que escriben `forms.settings` y ninguna de
+     * las dos se traga el array entero:
+     *
+     *  - el builder, con la estructura y la pestaña de ajustes abiertos, y
+     *  - la ficha del formulario (`POST /forms/{id}/settings`), que solo trae
+     *    los bloques operativos: acceso, agenda, cupo, avisos, webhook, gracias,
+     *    revisión e idioma.
+     *
+     * `normalize()` arranca siempre de `defaults()`, así que guardar un
+     * subconjunto con `Form::saveSettings()` PONDRÍA EN DEFAULT todo lo demás: el
+     * color del tema volvería al de fábrica al cambiar el cupo. Con este
+     * `array_replace_recursive` el parche solo pisa lo que trae.
+     *
+     * El parche se RECORTA a `$allowed` antes de fusionar, y no después: es la
+     * puerta, no una comprobación de TResultado. Un bloque que no esté en la
+     * lista no se guarda aunque venga en el POST.
+     *
+     * @param array<string> $allowed bloques que esta puerta puede escribir
+     */
+    public static function merge(array $current, array $patch, array $allowed = []): array
+    {
+        $recortado = [];
+        foreach ($patch as $bloque => $valor) {
+            if (!is_array($valor)) {
+                continue;
+            }
+            if ($allowed !== [] && !in_array((string) $bloque, $allowed, true)) {
+                continue;
+            }
+            $recortado[$bloque] = $valor;
+        }
+
+        $base = is_array($current) ? $current : [];
+        foreach ($recortado as $bloque => $valor) {
+            $previo = $base[$bloque] ?? null;
+            $base[$bloque] = is_array($previo)
+                ? array_replace_recursive($previo, $valor)
+                : $valor;
+        }
+
+        return self::normalize($base);
+    }
+
+    /** Bloques que escribe la ficha del formulario (`/forms/{id}`). */
+    public const DASHBOARD_BLOCKS = [
+        'access', 'schedule', 'quota', 'notify', 'webhook', 'thanks', 'review', 'locale',
+    ];
+
+    /**
+     * Bloques que escribe el constructor. Los operativos se editan en la ficha
+     * del formulario, así que la lista es la complemento de `DASHBOARD_BLOCKS`
+     * y entre las dos cubren `defaults()`: lo que se guarda es siempre el
+     * conjunto completo, solo que repartido en dos POST.
+     */
+    public const BUILDER_BLOCKS = [
+        'theme', 'quiz', 'randomize', 'advance', 'embed', 'honeypot', 'anti_bot',
+    ];
+
+    /**
+     * Los mismos bloques, pero traducidos desde campos planos de un formulario
+     * HTML (`access_mode`, `open_at`…). Un POST de navegador manda
+     * `notify[confirmation][to_field]`, así que los nombres del DOM son los del
+     * esquema: no hace falta un mapa de sinónimos y cada anidamiento es el que
+     * lee `normalize()`.
+     *
+     * Solo se traduce lo que VIENE en el POST: una casilla sin marcar no es un
+     * «vacío» que apagaría el bloque, es una clave que no existe. Por eso el
+     * `<input type=checkbox>` del constructor es un `hidden` con el mismo
+     * `name` delante — sin él, desmarcar una casilla no enviaría nada y el
+     * ajuste se quedaría como estaba en vez de apagarse.
+     */
+    public static function fromDashboardPost(array $post): array
+    {
+        $enviado = static function (string $key) use ($post): bool {
+            return array_key_exists($key, $post);
+        };
+
+        $patch = [];
+
+        // --- acceso ---
+        if ($enviado('access_mode')) {
+            $patch['access'] = ['mode' => (string) ($post['access_mode'] ?? '')];
+        }
+
+        // --- programación y cupo ---
+        // El `datetime-local` del navegador manda `2026-11-01T09:00` y lo
+        // guardado lleva espacio. Se traduce aquí y no en `normalize()` porque
+        // es un formato de TRANSPORTE (el `T` es del input), no del esquema.
+        $reloj = static function (string $v): string {
+            return trim(str_replace('T', ' ', $v));
+        };
+
+        $schedule = [];
+        if ($enviado('open_at')) {
+            $schedule['open_at'] = $reloj((string) ($post['open_at'] ?? ''));
+        }
+        if ($enviado('close_at')) {
+            $schedule['close_at'] = $reloj((string) ($post['close_at'] ?? ''));
+        }
+        if ($schedule !== []) {
+            $patch['schedule'] = $schedule;
+        }
+
+        $quota = [];
+        if ($enviado('quota_enabled')) {
+            $quota['enabled'] = (string) ($post['quota_enabled'] ?? '') === '1';
+        }
+        if ($enviado('quota_max')) {
+            $quota['max'] = trim((string) ($post['quota_max'] ?? '')) === ''
+                ? 0
+                : (int) $post['quota_max'];
+        }
+        if ($quota !== []) {
+            $patch['quota'] = $quota;
+        }
+
+        // --- avisos y confirmación ---
+        $notify = [];
+        if ($enviado('notify_enabled')) {
+            $notify['enabled'] = (string) ($post['notify_enabled'] ?? '') === '1';
+        }
+        if ($enviado('notify_emails')) {
+            // El campo es un texto con comas; `normalize()` es quien descarta los
+            // que no son correos válidos y corta a los 10 primeros.
+            $partes = preg_split('/[,;\s]+/', (string) ($post['notify_emails'] ?? '')) ?: [];
+            $notify['emails'] = array_values(array_filter(
+                array_map('trim', $partes),
+                static fn(string $e): bool => $e !== ''
+            ));
+        }
+        if ($enviado('confirm_enabled')) {
+            $notify['confirmation'] = [
+                'enabled' => (string) ($post['confirm_enabled'] ?? '') === '1',
+            ];
+        }
+        if ($enviado('confirm_to_field')) {
+            $notify['confirmation']['to_field'] = trim((string) ($post['confirm_to_field'] ?? ''));
+        }
+        if ($enviado('confirm_subject')) {
+            $notify['confirmation']['subject'] = (string) ($post['confirm_subject'] ?? '');
+        }
+        if ($enviado('confirm_message')) {
+            $notify['confirmation']['message'] = (string) ($post['confirm_message'] ?? '');
+        }
+        if ($notify !== []) {
+            $patch['notify'] = $notify;
+        }
+
+        // --- webhook ---
+        $webhook = [];
+        if ($enviado('webhook_url')) {
+            $webhook['url'] = trim((string) ($post['webhook_url'] ?? ''));
+        }
+        if ($enviado('webhook_kind')) {
+            $webhook['kind'] = (string) ($post['webhook_kind'] ?? '');
+        }
+        if ($enviado('webhook_secret')) {
+            $webhook['secret'] = (string) ($post['webhook_secret'] ?? '');
+        }
+        if ($enviado('webhook_allow_private')) {
+            $webhook['allow_private_hosts'] = (string) ($post['webhook_allow_private'] ?? '') === '1';
+        }
+        if ($webhook !== []) {
+            $patch['webhook'] = $webhook;
+        }
+
+        // --- final ---
+        $thanks = [];
+        if ($enviado('thanks_message')) {
+            $thanks['message'] = (string) ($post['thanks_message'] ?? '');
+        }
+        if ($enviado('thanks_redirect')) {
+            $thanks['redirect_url'] = trim((string) ($post['thanks_redirect'] ?? ''));
+        }
+        if ($thanks !== []) {
+            $patch['thanks'] = $thanks;
+        }
+
+        // --- revisión ---
+        $review = [];
+        if ($enviado('review_enabled')) {
+            $review['enabled'] = (string) ($post['review_enabled'] ?? '') === '1';
+        }
+        if ($enviado('review_notify_email')) {
+            $review['notify_email'] = (string) ($post['review_notify_email'] ?? '') === '1';
+        }
+        if ($review !== []) {
+            $patch['review'] = $review;
+        }
+
+        // --- idioma ---
+        if ($enviado('locale')) {
+            $patch['locale'] = ['code' => (string) ($post['locale'] ?? '')];
+        }
+
+        return $patch;
     }
 
     /**

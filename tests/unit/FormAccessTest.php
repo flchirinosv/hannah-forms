@@ -132,14 +132,37 @@ class FormAccessTest
         assertTrue(str_contains((string) $err, 'allowlist'), 'el error nombra los valores válidos: ' . $err);
     }
 
-    public function testElBuilderEnviaElModoDeAccesoYElServidorLoAcepta(): void
+    /**
+     * Frontera JS⇄PHP del modo de acceso, que ahora vive en la ficha del
+     * formulario y no en el builder.
+     *
+     * Los dos lados de la frontera se comprueban por separado porque fallan de
+     * forma distinta: si el `<select>` no estuviera en la ficha, el modo se
+     * quedaría siempre en el que ya había; y si la ficha no lo tradujera al
+     * bloque `access`, el POST se guardaría sin tocar nada y tampoco habría
+     * error. Un test que solo mirara el PHP daría verde con el campo ausente.
+     */
+    public function testElModoDeAccesoSeEditaEnLaFichaYElServidorLoAcepta(): void
     {
-        // Frontera JS⇄PHP: sin esto, el select del builder no llegaría nunca al
-        // settings y el formulario se quedaría público con el modo «elegido».
-        $js = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/builder.js');
-        assertTrue(str_contains($js, 'access: {'), 'buildPayload/collectSettings serializa el bloque access');
-        assertTrue(str_contains($js, "mode: g('stAccessMode').value") || str_contains($js, "g('stAccessMode').value\n"),
-            'y manda el valor del select');
+        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/dashboard/forms/show.php');
+        assertTrue(str_contains($vista, 'name="access_mode"'), 'la ficha tiene el select del modo');
+        assertTrue(
+            str_contains($vista, '/forms/<?= (int) $form[\'id\'] ?>/settings'),
+            'y el form apunta a la puerta de ajustes'
+        );
+
+        $js = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/dashboard.js');
+        assertTrue(
+            str_contains($js, "getElementById('access_mode')"),
+            'el texto de estado del modo se pinta en la ficha'
+        );
+
+        // Y el builder ya NO manda `access`: si lo mandara, su `merge()` con
+        // BUILDER_BLOCKS lo recortaría igual, pero dejaría un bloque muerto que
+        // sugiere que se guarda desde allí.
+        $builderJs = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/builder.js');
+        assertFalse(str_contains($builderJs, 'access: {'), 'el builder ya no serializa el bloque access');
+        assertFalse(str_contains($builderJs, 'stAccessMode'), 'ni tiene el select');
     }
 
     // =============================================================

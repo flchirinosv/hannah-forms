@@ -20,34 +20,56 @@ namespace Tests\Unit;
  *  1. La EXPLICACIÓN se esconde: la ayuda está en `data-bs-title` y se inicializa
  *     con `hover focus click` (el `click` es lo que la hace alcanzable en un
  *     móvil, donde no hay hover).
- *  2. El ESTADO NO se esconde: `stFontNote`, `stAdvanceHint`, `stAccessHint` y
- *     `stReviewHint` los escribe la aplicación al vuelo para decir si el ajuste
+ *  2. El ESTADO NO se esconde: `stFontNote` y `stAdvanceHint` (en el modal) y
+ *     `stAccessHint` / `stReviewHint` (en la ficha, que se pintan desde
+ *     `dashboard.js`) los escribe la aplicación al vuelo para decir si el ajuste
  *     sirve. Si un refactor los metiera en un tooltip, quien no pasara el ratón
  *     por encima creería que un ajuste guardado funciona cuando no es así.
+ *
+ * El nombre de la clase se quedó en «Builder» aunque la mitad de los ajustes se
+ * mudara a la ficha: la regla que fija estos tests es de las dos pantallas.
  *
  * Sin BD: solo lee archivos.
  */
 class BuilderHelpTooltipTest
 {
     private const VISTA_BUILDER = 'views/builder/index.php';
+    private const VISTA_FICHA = 'views/dashboard/forms/show.php';
     private const JS_APP = 'public/assets/js/app.js';
+    private const JS_DASHBOARD = 'public/assets/js/dashboard.js';
     private const CSS_APP = 'public/assets/css/app.css';
 
-    /** El `?` se pinta desde una closure de la vista, no desde un Partial. */
+    /**
+     * El `?` se pinta con UN helper (`View::help()`), no con una closure por
+     * vista: hay dos pantallas con ajustes y dos copias del botón divergen.
+     * Aquí se comprueba el helper (que es donde vive el HTML) y que las dos
+     * vistas lo usen.
+     */
     public function testLaAyudaSeGeneraConUnBotonDataBsToggle(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_BUILDER);
+        $helper = (string) file_get_contents(dirname(__DIR__, 2) . '/app/Core/View.php');
 
-        assertTrue(str_contains($vista, '$helpButton ='), 'la vista declara la closure de ayuda');
+        assertTrue(str_contains($helper, 'public static function help('), 'el helper vive en View');
         assertTrue(
-            str_contains($vista, "class=\"app-help\" data-bs-toggle=\"tooltip\" data-bs-html=\"true\""),
+            str_contains($helper, "class=\"app-help\" data-bs-toggle=\"tooltip\" data-bs-html=\"true\""),
             'el botón lleva data-bs-toggle=tooltip y data-bs-html (para que <code> siga siendo código)'
         );
-        assertTrue(str_contains($vista, 'data-bs-title=' . '"'), 'y el texto viaja en data-bs-title');
+        assertTrue(str_contains($helper, 'data-bs-title="'), 'y el texto viaja en data-bs-title');
         assertTrue(
-            str_contains($vista, 'aria-label=' . '"'),
+            str_contains($helper, 'aria-label="'),
             'el botón tiene nombre accesible: en un móvil es la única etiqueta que hay'
         );
+        assertTrue(
+            str_contains($helper, 'self::escape($html)'),
+            'el texto se escapa al meterlo en el atributo'
+        );
+
+        foreach ([self::VISTA_BUILDER, self::VISTA_FICHA] as $vista) {
+            $contenido = (string) file_get_contents(dirname(__DIR__, 2) . '/' . $vista);
+            assertTrue(str_contains($contenido, '$helpButton ='), $vista . ' declara $helpButton');
+            assertTrue(str_contains($contenido, 'View::help('), $vista . ' y delega en View::help()');
+            assertTrue(str_contains($contenido, '$helpButton('), $vista . ' lo usa en algún ajuste');
+        }
     }
 
     /** Los tooltips se inician en app.js, que se carga en todas las páginas. */
@@ -77,14 +99,30 @@ class BuilderHelpTooltipTest
         assertTrue(str_contains($js, 'e.stopPropagation();'), 'y la propagación, que el modal usa para cerrar');
     }
 
-    /** La mitad que se rompe en silencio: el estado no puede acabar en un tooltip. */
+    /**
+     * La mitad que se rompe en silencio: el estado no puede acabar en un tooltip.
+     *
+     * Se comprueba en las DOS pantallas y además que cada hint lo pinte el JS
+     * que corresponde. Un `stAccessHint` que se quedara en el modal (obsoleto,
+     * sin listener) o que viviera en la ficha sin su `textContent` aparecerían
+     * igual de bien en el HTML: el aviso es solo para quien cambia el ajuste y
+     * mira, así que un hueco vacío pasa desapercibido.
+     */
     public function testLosHintsDeEstadoSiguenVisibles(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_BUILDER);
+        $builder = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_BUILDER);
+        $ficha = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_FICHA);
 
-        foreach (['stFontNote', 'stAdvanceHint', 'stAccessHint', 'stReviewHint'] as $id) {
+        $donde = [
+            'stFontNote'     => [$builder, 'en el modal'],
+            'stAdvanceHint'  => [$builder, 'en el modal'],
+            'stAccessHint'   => [$ficha, 'en la ficha'],
+            'stReviewHint'   => [$ficha, 'en la ficha'],
+        ];
+
+        foreach ($donde as $id => [$vista, $dondeEsta]) {
             $pos = strpos($vista, 'id="' . $id . '"');
-            assertTrue($pos !== false, 'el hint ' . $id . ' sigue en el modal');
+            assertTrue($pos !== false, 'el hint ' . $id . ' sigue ' . $dondeEsta);
             if ($pos === false) {
                 continue;
             }
@@ -96,38 +134,93 @@ class BuilderHelpTooltipTest
                 str_contains($trozo, 'data-bs-title'),
                 $id . ' es estado (lo escribe la aplicación), no explicación: no va en un tooltip'
             );
+            assertTrue(
+                str_contains($trozo, 'role="status"'),
+                $id . ' se anuncia a un lector de pantalla: es un mensaje, no una etiqueta'
+            );
+        }
+
+        // Y que de verdad se pinten: el hint sin `textContent` es un hueco.
+        $jsBuilder = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/builder.js');
+        $jsFicha = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::JS_DASHBOARD);
+
+        assertTrue(str_contains($jsBuilder, "st('stFontNote')"), 'el builder escribe el aviso de la fuente');
+        assertTrue(str_contains($jsBuilder, "st('stAdvanceHint')"), 'y el del avance automático');
+        assertTrue(str_contains($jsFicha, "getElementById('stAccessHint')"), 'la ficha escribe el del modo de acceso');
+        assertTrue(str_contains($jsFicha, "getElementById('stReviewHint')"), 'y el de la revisión');
+    }
+
+    /**
+     * Y que el texto que sí era explicación haya salido del CUERPO de los dos
+     * paneles de ajustes, no solo del modal: los operativos se mudaron a la
+     * ficha y sus párrafos se mudaron con ellos.
+     *
+     * Se recorta a los paneles (`#formSettingsModal` y la tarjeta `#settings`) y
+     * no a la vista entera a propósito: el resto del builder es el panel de la
+     * pregunta, donde un `form-text` sí es legitimately explicación (los formatos
+     * de un adjunto, p. ej.), y la tarjeta de Acceso tiene los suyos. Un
+     * `role="status"` obligatorio en toda la vista sería una regla falsa; y sin
+     * recorte, este test no distinguiría los ajustes de una explicación suelta.
+     */
+    public function testLosTextosDeAyudaYaNoEstanSueltosEnLosPanelesDeAjustes(): void
+    {
+        $paneles = [
+            self::VISTA_BUILDER => ['<div class="modal fade" id="formSettingsModal"', '<div class="modal-footer border-0">'],
+            self::VISTA_FICHA   => ['<div class="card border-0 shadow-sm mb-4" id="settings"', '<div class="card border-0 shadow-sm mb-4" id="access"'],
+        ];
+
+        foreach ($paneles as $ruta => [$ini, $fin]) {
+            $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/' . $ruta);
+            $desde = strpos($vista, $ini);
+            $hasta = $desde === false ? false : strpos($vista, $fin, $desde);
+
+            assertTrue($desde !== false && $hasta !== false, 'se recorta el panel de ajustes de ' . $ruta);
+            if ($desde === false || $hasta === false) {
+                continue;
+            }
+
+            $bloque = substr($vista, $desde, $hasta - $desde);
+            assertTrue(str_contains($bloque, '$helpButton('), $ruta . ': hay botones de ayuda');
+
+            foreach (explode("\n", $bloque) as $linea) {
+                if (!str_contains($linea, '<p class="form-text')) {
+                    continue;
+                }
+                assertTrue(
+                    str_contains($linea, 'role="status"'),
+                    $ruta . ': todo `form-text` del panel es estado (lo escribe la aplicación): ' . trim($linea)
+                );
+            }
         }
     }
 
     /**
-     * Y que el texto que sí era explicación haya salido del cuerpo del modal.
-     *
-     * Solo se miran los grupos que el modal CONSERVA (tema y comportamiento): los
-     * operativos salen de aquí en el bloque siguiente del plan, y cuando se
-     * quiten esta comprobación pasa a abarcar el modal entero.
+     * La partición de los ajustes. Si alguien devuelve el acceso al builder, o
+     * mete el tema en la ficha, las dos listas de `FormSettings` dejan de cubrir
+     * `defaults()` y un ajuste se queda sin puerta que lo escriba.
      */
-    public function testLosTextosDeAyudaYaNoEstanSueltosEnLosGruposQueQuedan(): void
+    public function testCadaAjusteOperativoSeEditaEnLaFichaYNingunoEnElBuilder(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_BUILDER);
-        $ini = strpos($vista, '>Tema</h6>');
-        $fin = strpos($vista, '>Programación y cupo</h6>', $ini === false ? 0 : $ini);
-        assertTrue($ini !== false && $fin !== false, 'se localizan los dos grupos que quedan en el modal');
-        if ($ini === false || $fin === false) {
-            return;
+        $builder = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_BUILDER);
+        $ficha = (string) file_get_contents(dirname(__DIR__, 2) . '/' . self::VISTA_FICHA);
+
+        foreach ([
+            'access_mode', 'open_at', 'close_at', 'quota_max', 'notify_emails',
+            'confirm_to_field', 'webhook_url', 'thanks_message', 'review_enabled',
+            'locale',
+        ] as $campo) {
+            assertTrue(str_contains($ficha, 'name="' . $campo . '"'), $campo . ' se edita en la ficha');
+            assertFalse(
+                str_contains($builder, 'id="' . $campo . '"'),
+                $campo . ' ya no está en el modal del constructor'
+            );
         }
-        $bloque = substr($vista, $ini, $fin - $ini);
-        // Lo único que puede seguir siendo un `<p class="form-text">` en este
-        // bloque es `#stFontNote`, que lleva `role="status"` porque lo escribe
-        // la aplicación al validar la fuente.
-        foreach (explode("\n", $bloque) as $linea) {
-            if (str_contains($linea, '<p class="form-text')) {
-                assertTrue(
-                    str_contains($linea, 'role="status"'),
-                    'todo `form-text` que queda en el bloque es estado: ' . trim($linea)
-                );
-            }
+
+        // Y al revés: los de diseño no se han colado en la ficha.
+        foreach (['stPrimary', 'stBackground', 'stFont', 'stQuizEnabled', 'stEmbedEnabled'] as $campo) {
+            assertTrue(str_contains($builder, 'id="' . $campo . '"'), $campo . ' sigue en el constructor');
+            assertFalse(str_contains($ficha, 'id="' . $campo . '"'), $campo . ' no está en la ficha');
         }
-        assertTrue(str_contains($bloque, '$helpButton('), 'y en su lugar hay botones de ayuda');
     }
 
     /** El CSS del botón: existe y no depende de nada que no esté en el repo. */

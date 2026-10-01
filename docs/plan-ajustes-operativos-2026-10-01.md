@@ -106,7 +106,7 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 
 - [x] Plan registrado
 - [x] 1 · Tooltips
-- [ ] 2 · Merge + mudanza de ajustes
+- [x] 2 · Merge + mudanza de ajustes
 - [ ] 3 · Acceso sin recarga
 - [ ] 4 · Registro global
 - [ ] 5 · Rol `approver` + borrable
@@ -129,3 +129,38 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - En el bloque 1 solo se convierten los grupos que el modal **conserva** (tema y
   comportamiento); los operativos salen en el bloque 2 y el test de completitud
   pasa entonces a abarcar el modal entero.
+
+### Notas del bloque 2
+
+- **`merge()` recorta ANTES de fusionar.** `FormSettings::merge($current, $patch,
+  $allowed)` es la puerta: un bloque que no esté en `$allowed` no se guarda
+  aunque venga en el POST. Si el recorte fuera posterior al `normalize()`, un
+  `theme` colado por la ficha se habría guardado dos veces de-normalizado y el
+  test de la allowlist no vería nada.
+- **El presente y el vacío no son lo mismo en un formulario HTML.** Una casilla
+  sin marcar no llega en el POST, así que `fromDashboardPost()` mira
+  `array_key_exists()` y solo traduce lo que viene. Las seis casillas de la ficha
+  llevan un `<input type="hidden" name="…" value="0">` delante: sin eso, desmarcar
+  «notificar al recibir» no llegaría al servidor y el ajuste seguiría encendido.
+- **La `T` del `datetime-local` se traduce en `fromDashboardPost()`, no en
+  `normalize()`.** Es un formato de transporte del input, no del esquema; y
+  `schedule.open_at/close_at` son muros de reloj en `app.timezone`, no instantes
+  (por eso `View::datetimeLocal()` tampoco convierte zonas: solo cambia el
+  separador y recorta los segundos).
+- **Dos validaciones y no una.** `validate()` mira a propósito el valor CRUDO
+  para el color de la tipografía y el modo de acceso, porque `normalize()` ya los
+  saneó y comprobarlos después no detectaría nada. En la ficha se valida el
+  parche (lo que conserva los valores crudos) **y** el resultado fusionado (lo
+  único que ve combinaciones con lo que ya había: cerrar antes de abrir, avisos
+  sin destinatario). Los mensajes se deduplican con `array_unique`.
+- **Revisión al cambiar lo operativo.** Con revisión activa y formulario
+  publicado, tocar acceso/agenda/cupo/avisos/webhook/gracias lo devuelve a la
+  cola (`Form::submitForReview()`), igual que ya hacía el builder. Solo lo que
+  cambia la OFERTA, no el color ni el idioma: `publishedChangesMatter()`.
+- `View::help()` sustituye a la closure por vista. Con dos pantallas de ajustes,
+  dos copias del botón divergen; el nombre de `BuilderHelpTooltipTest` se quedó
+  atrás y ahora cubre las dos.
+- Los hints de acceso y revisión (`stAccessHint`, `stReviewHint`) se mudaron a
+  `dashboard.js`, que es quien pinta ahora esos ajustes. Se comprueba también
+  que el JS los escriba: un hint presente en el HTML y sin `textContent` es un
+  hueco que pasa desapercibido.

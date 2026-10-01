@@ -44,6 +44,10 @@ $router->get('/', [DashboardController::class, 'index'], ['auth']);
 $router->post('/forms', [FormController::class, 'create'], ['auth', 'csrf']);
 $router->get('/forms/{id}', [FormController::class, 'show'], ['auth']);
 $router->post('/forms/{id}/update', [FormController::class, 'update'], ['auth', 'csrf']);
+// Ajustes operativos del formulario (acceso, agenda, cupo, avisos, webhook,
+// gracias, revisión, idioma). POST aparte de `/update` porque escribe con
+// FormSettings::merge(): cada puerta toca solo los bloques que trae.
+$router->post('/forms/{id}/settings', [FormController::class, 'updateSettings'], ['auth', 'csrf']);
 $router->post('/forms/{id}/delete', [FormController::class, 'delete'], ['auth', 'csrf']);
 $router->post('/forms/{id}/publish', [FormController::class, 'publish'], ['auth', 'csrf']);
 $router->post('/forms/{id}/close', [FormController::class, 'close'], ['auth', 'csrf']);

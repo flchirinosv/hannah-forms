@@ -44,6 +44,17 @@ class Request
         return array_merge($_GET, $_POST);
     }
 
+    /**
+     * Solo el cuerpo del POST, sin la query. Para los formularios que se
+     * traducen a un mapa de ajustes: `all()` mezclaría los dos y un `?locale=en`
+     * pegado a la URL podría pasar por un campo enviado, que es justo la
+     * diferencia entre «el usuario cambió el idioma» y «venía en la dirección».
+     */
+    public static function postAll(): array
+    {
+        return is_array($_POST) ? $_POST : [];
+    }
+
     public static function input(string $key, $default = null)
     {
         return $_POST[$key] ?? $_GET[$key] ?? $default;

@@ -263,8 +263,13 @@ El constructor tiene tres zonas:
   pestañas **Contenido** / **Lógica**, su comportamiento.
 
 El botón **Guardar** (barra superior) persiste la estructura: campos, orden,
-opciones y ajustes. El botón **Guardar configuración** (abajo) persiste los
-ajustes de la pestaña abierta.
+opciones y los ajustes del modal **Configuración** (tema, quiz, orden de las
+preguntas, avance automático, embed y anti-bot). El botón **Guardar
+configuración** (abajo del modal) aplica esos ajustes al formulario en memoria:
+no los persiste por sí solo, los persiste el *Guardar* de la barra superior.
+
+Los ajustes que cambian **quién responde y cuándo** no están aquí: están en la
+ficha del formulario, en la tarjeta *Ajustes del formulario* (ver §7).
 
 **Cada ajuste lleva un `?` al lado.** Al pasar el ratón por encima aparece qué
 hace ese ajuste y un ejemplo; en el móvil, tócalo. Los textos que aparecen solos
@@ -365,28 +370,46 @@ aparece, porque no guardan respuestas.
 
 ## 7. Ajustes del formulario
 
-Todos en la ficha del formulario (la pestaña **Configuración**), o en el
-constructor. Grupos y valores por defecto:
+Están repartidos en **dos sitios**, según lo que cambia el ajuste:
 
-| Grupo | Qué hace | Por defecto |
-|---|---|---|
-| Contenido | Título, descripción, texto del botón de envío | — |
-| Tema | Color primario, color de fondo, tipografía | Sin personalización |
-| Comportamiento | Acceso, cupo, programación, embed, barajado | Público |
-| Multipágina | Separadores de paso, avance automático | Sin avance automático |
-| Confirmación | Mensaje de gracias, redirección | Sin redirección |
-| Correo | Aviso al dueño, confirmación al que responde | Desactivado |
-| Anti-bot | Honeypot, Turnstile | Honeypot **activado** |
-| Integraciones | Webhook (genérico o Slack) con firma HMAC | Desactivado |
-| Revisión | Revisión antes de publicar + aviso por correo | Desactivado |
-| Analítica | Qué se guarda y durante cuánto | — |
-| Idioma | `es` o `en` | `es` |
+| Dónde | Qué se edita allí |
+|---|---|
+| **Ficha del formulario** (`/forms/{id}`) — tarjeta *Ajustes del formulario* | Acceso (quién responde), programación, cupo, avisos y confirmación, webhook, mensaje final, revisión e idioma |
+| **Constructor** — botón *Configuración* | Tema, quiz, orden de las preguntas, avance automático, embed y anti-bot |
 
-### 7.0 Cómo leer esta pantalla
+La regla es qué cambia el ajuste: los de la ficha cambian **a quién llega el
+formulario y cuándo** (y ahí se ven las consecuencias: si la lista de correos
+está vacía, a quién le llega el aviso, si el formulario vuelve a la cola de
+revisión), y los del constructor cambian **cómo se rellena**.
 
-Todos los ajustes vienen apagados y se guardan solos al cerrar. Los que tienen
-un texto gris debajo dicen qué hacen y dan un ejemplo; los que no, es porque se
-explican solos.
+Grupos y valores por defecto:
+
+| Grupo | Dónde | Qué hace | Por defecto |
+|---|---|---|---|
+| Contenido | Ficha | Título, descripción, texto del botón de envío | — |
+| Acceso | Ficha | Quién puede responder: cualquiera, por correo, o solo la lista | Público |
+| Programación y cupo | Ficha | Ventana de fechas y máximo de respuestas | Siempre, sin tope |
+| Correo | Ficha | Aviso al dueño, confirmación al que responde | Desactivado |
+| Webhook | Ficha | Endpoint (JSON o Slack) con firma HMAC | Desactivado |
+| Mensaje final | Ficha | Mensaje de gracias y redirección | Sin redirección |
+| Revisión | Ficha | Revisión antes de publicar + aviso por correo | Desactivado |
+| Idioma | Ficha | `es` o `en` | `es` |
+| Tema | Constructor | Color primario, color de fondo, tipografía | Sin personalización |
+| Comportamiento | Constructor | Quiz, barajado, avance automático, embed | Desactivado |
+| Anti-bot | Constructor | Honeypot, Turnstile | Honeypot **activado** |
+| Analítica | — | Qué se guarda y durante cuánto | — |
+
+### 7.0 Cómo leer estas pantallas
+
+En el constructor, los ajustes vienen apagados y **se guardan con la
+estructura** (el botón *Guardar*). En la ficha hay un botón *Guardar ajustes*.
+
+Los ajustes con un botón <kbd>?</kbd> al lado de la etiqueta esconden su
+explicación ahí: se lee al pasar el ratón por encima, al enfocarlo con el
+teclado o al tocarlo en el móvil. Los que tienen un texto gris **visible** no
+son explicación, son el estado del ajuste en este momento (si la tipografía es
+válida, si el aviso de revisión se manda por correo, qué modo de acceso hace el
+formulario ahora mismo), y ese texto cambia según lo que marques.
 
 Cinco cosas que la pantalla avisa por ti porque fallan en silencio:
 
