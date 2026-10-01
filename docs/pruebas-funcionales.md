@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada en el commit `751602c`).
 
-No sustituye a la suite automática (`php scripts/test.php`, 725 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 727 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.

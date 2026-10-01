@@ -2079,9 +2079,19 @@
         ['quizAnswer', 'valFileAccept', 'valFileMaxSize'].forEach((k) => {
             if (el[k]) el[k].addEventListener('input', applySettings);
         });
-        // Las casillas no relied en 'input' para el guardado: 'change' es el
-        // evento canónico del checkbox.
-        ['fieldShuffleOps', 'valFileMultiple'].forEach((k) => {
+        // Las casillas no dependen de 'input' para el guardado: 'change' es el
+        // evento canónico del checkbox. `fieldPii` y `fieldPageHeader` son los
+        // DOS interruptores de applySettings() que faltaban aquí, y los dos
+        // fallaban igual: el interruptor se movía en el input, applySettings()
+        // no corría, `f.<flag>` conservaba el valor del servidor y el autosave
+        // guardaba exactamente lo que ya había. PII solo se guardaba si se
+        // pulsaba el botón «Sí, es dato personal» (que sí llama a
+        // applySettings), y el interruptor del salto de página no tenía
+        // ninguna otra vía: no se guardaba nunca. Sin error, sin aviso y sin
+        // diferencia en el payload — el peor sitio para un fallo de guardado.
+        // La lista de flags con su control está en `TOP_LEVEL_FLAG_CONTROL`,
+        // y `BuilderValidationsContractTest` ata las dos direcciones.
+        ['fieldShuffleOps', 'valFileMultiple', 'fieldPii', 'fieldPageHeader'].forEach((k) => {
             if (el[k]) el[k].addEventListener('change', applySettings);
         });
 
@@ -2284,5 +2294,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-09-29a (F0.3: los controles que escriben una validación ya disparan applySettings — la respuesta correcta, la aleatorización y los límites de archivo se guardaban sin listener)');
+    console.log('[builder] v2026-10-01a (F0.3+flags: los dos interruptores que faltaban — «dato personal» y «mostrar cabecera del paso» — ya disparan applySettings en change; sin eso el ajuste se movía en pantalla y se guardaba el valor viejo)');
 })();

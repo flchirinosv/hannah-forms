@@ -85,6 +85,38 @@ class BuilderValidationsContractTest
         'randomize'   => ['fieldShuffleOps'],
     ];
 
+    /**
+     * Flag de nivel superior => id del interruptor que lo escribe. Los MISMOS
+     * tres de `CONTROL_FOR_KEY` pero para lo que NO va en `validations`: el
+     * estado que viaja en la fila de `fields` y que decide si un campo es
+     * obligatorio, si enmascara sus respuestas o si el salto de página
+     * publica su cabecera.
+     *
+     * Existence: 2026-10-01, «el ajuste de mostrar u ocultar el elemento página
+     * no funciona». El interruptor estaba en el panel, `applySettings()` lo
+     * leía y `buildPayload()` lo enviaba — las tres piezas existían y el
+     * round trip por PHP estaba probado (`MultiStepTest`) — pero **nadie
+     * escuchaba el `change`**. El efecto: la casilla se movía, `f.show_header`
+     * conservaba el valor cargado del servidor, el autosave guardaba ese mismo
+     * valor y el payload salía idéntico byte a byte. Cero errores, cero avisos
+     * y un ajuste que «no hace nada», que es la forma más difícil de detectar
+     * sin abrir la consola. El mismo hueco tenía `fieldPii`: el marcado se
+     * guardaba solo si se pulsaba el botón de la sugerencia, no al mover el
+     * interruptor.
+     *
+     * El síntoma es indistinguible del de un servidor que ignorase el campo, y
+     * por eso el contrato se mide aquí y no en el controller: lo que se
+     * comprueba es que cada flag tenga su control **escuchado**, que es la
+     * condición que faltaba.
+     *
+     * @var array<string, string[]>
+     */
+    private const TOP_LEVEL_FLAG_CONTROL = [
+        'is_required' => ['fieldRequired'],
+        'is_pii'      => ['fieldPii'],
+        'show_header' => ['fieldPageHeader'],
+    ];
+
     /* ---------- el invariante central ---------- */
 
     public function testCadaClavePreservadaPorElPanelTieneUnControlQueLaEscriba(): void
@@ -188,6 +220,48 @@ class BuilderValidationsContractTest
             'applySettings() escribe estas validaciones sin control declarado en '
                 . 'CONTROL_FOR_KEY: ' . implode(', ', $unmapped)
                 . '. Declara el control (y su listener) o quítalo de MANAGED_VALIDATION_KEYS.'
+        );
+    }
+
+    public function testCadaInterruptorDeUnFlagEstaEscuchado(): void
+    {
+        $wired = $this->wiredControls();
+        $dead = [];
+
+        foreach (self::TOP_LEVEL_FLAG_CONTROL as $flag => $ids) {
+            $alive = array_values(array_filter($ids, static fn(string $id): bool => in_array($id, $wired, true)));
+            if ($alive === []) {
+                $dead[] = $flag . ' (' . implode('/', $ids) . ')';
+            }
+        }
+
+        assertTrue(
+            $dead === [],
+            'estos flags se escriben en applySettings() pero su interruptor no tiene listener: '
+                . implode(', ', $dead)
+                . '. El interruptor se mueve en pantalla, applySettings() no corre, el estado en '
+                . 'memoria conserva el valor del servidor y el autosave guarda lo mismo de antes. '
+                . 'Enlázalos con applySettings (\'change\' para casillas).'
+        );
+    }
+
+    public function testNingunFlagSeEscribeSinUnControlDeclaradoAqui(): void
+    {
+        $body = $this->applySettingsBody();
+        preg_match_all('/\bf\.([a-z_]+)\s*=[^=]/', $body, $m);
+        $written = array_values(array_unique($m[1]));
+
+        // Solo los escalares de la fila del campo: `options`, `validations` y
+        // `logic` tienen su propio contrato (`options` se deriva de la lista,
+        // `validations` de CONTROL_FOR_KEY, `logic` del drawer).
+        $otros = ['options', 'validations', 'logic', 'label', 'placeholder', 'help_text', 'type', 'id', 'parent_id'];
+        $flags = array_values(array_diff($written, $otros, array_keys(self::TOP_LEVEL_FLAG_CONTROL)));
+
+        assertTrue(
+            $flags === [],
+            'applySettings() escribe estos flags sin control declarado en TOP_LEVEL_FLAG_CONTROL: '
+                . implode(', ', $flags)
+                . '. Declara el control (y su listener) o quita la asignación.'
         );
     }
 

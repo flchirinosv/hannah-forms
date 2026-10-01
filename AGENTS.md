@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 72 archivos, 725 métodos, ~4 min;
+- Suite completa: `php scripts/test.php` → 72 archivos, 727 métodos, ~4 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -482,6 +482,14 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `preservedValidations(f)`. Regla dura: **toda clave en `MANAGED_VALIDATION_KEYS`
   necesita control Y listener** (el par clave→control está en `CONTROL_FOR_KEY`, de
   `BuilderValidationsContractTest`).
+- **Un flag necesita control Y listener, igual que una validación**: que
+  `applySettings()` escriba `f.<flag>` y que `buildPayload()` lo mande no basta si el
+  interruptor no dispara `applySettings` (`change`). Sin eso el interruptor se mueve
+  en pantalla, el estado en memoria conserva el valor del servidor y el autosave
+  guarda lo mismo de antes: el payload sale idéntico y sin error. Pasó con
+  `fieldPii` y con el interruptor del salto de página (`show_header`); el par
+  flag→control está en `TOP_LEVEL_FLAG_CONTROL` de `BuilderValidationsContractTest`,
+  que barre los listeners con el mismo `wiredControls()`.
 - Ocultar tiles estructurales dentro de una sección es
   `setAttribute('data-vf-structural-hidden','1')` + selector
   `[data-vf-structural-hidden]` **por presencia**: `toggleAttribute()` deja el valor
