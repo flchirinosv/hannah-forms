@@ -231,11 +231,19 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         de comportamiento siguen en <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
                     </p>
 
-                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/settings" id="formSettings">
+                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/settings" id="formSettings"
+                          data-vf-form-id="<?= (int) $form['id'] ?>">
                         <?= \App\Core\Csrf::field() ?>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-lock me-1"></i>Acceso</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-acceso"
+                                        aria-expanded="true" aria-controls="grp-acceso">
+                                    <span><i class="fa-solid fa-lock me-1"></i>Acceso</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-acceso">
                             <div class="mb-2">
                                 <label for="access_mode" class="form-label small fw-semibold">Quién puede responder</label>
                                 <select class="form-select form-select-sm" id="access_mode" name="access_mode">
@@ -246,10 +254,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace» y «solo los correos de la lista», que se edita más abajo en la tarjeta de Acceso.') ?>
                             </div>
                             <p class="small text-muted mb-0" id="stAccessHint" role="status"></p>
+                            </div>
                         </fieldset>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-calendar-days me-1"></i>Programación y cupo</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-agenda"
+                                        aria-expanded="true" aria-controls="grp-agenda">
+                                    <span><i class="fa-solid fa-calendar-days me-1"></i>Programación y cupo</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-agenda">
                             <div class="row g-2">
                                 <div class="col">
                                     <label for="open_at" class="form-label small fw-semibold">Abre el</label>
@@ -283,10 +299,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 <input type="number" class="form-control form-control-sm" id="quota_max" name="quota_max" min="1" placeholder="Ej: 100"
                                        value="<?= (int) ($settings['quota']['max'] ?? 0) > 0 ? (int) $settings['quota']['max'] : '' ?>">
                             </div>
+                            </div>
                         </fieldset>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-envelope me-1"></i>Notificaciones</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-avisos"
+                                        aria-expanded="true" aria-controls="grp-avisos">
+                                    <span><i class="fa-solid fa-envelope me-1"></i>Notificaciones</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-avisos">
                             <div class="form-check form-switch mb-1">
                                 <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
                                           // casilla no enviaría nada y el ajuste se quedaría como estaba en
@@ -334,10 +358,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                     <textarea class="form-control form-control-sm" id="confirm_message" name="confirm_message" rows="2" placeholder="Vacío = mensaje por defecto"><?= View::escape($settings['notify']['confirmation']['message'] ?? '') ?></textarea>
                                 </div>
                             </div>
+                            </div>
                         </fieldset>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-link me-1"></i>Webhook</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-webhook"
+                                        aria-expanded="true" aria-controls="grp-webhook">
+                                    <span><i class="fa-solid fa-link me-1"></i>Webhook</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-webhook">
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <label for="webhook_url" class="form-label small fw-semibold">Webhook (URL)</label>
@@ -372,10 +404,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 (<code>localhost</code>, <code>192.168.x.x</code>, <code>10.x.x.x</code>) están bloqueadas.
                                 Quien administra el servidor las habilita con <code>WEBHOOK_ALLOW_PRIVATE_HOSTS</code>.
                             </p>
+                            </div>
                         </fieldset>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-flag-checkered me-1"></i>Mensaje final</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-gracias"
+                                        aria-expanded="true" aria-controls="grp-gracias">
+                                    <span><i class="fa-solid fa-flag-checkered me-1"></i>Mensaje final</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-gracias">
                             <div class="mb-3">
                                 <label for="thanks_message" class="form-label small fw-semibold">Mensaje de gracias</label>
                                 <textarea class="form-control form-control-sm" id="thanks_message" name="thanks_message" rows="2" placeholder="En blanco = mensaje por defecto"><?= View::escape($settings['thanks']['message'] ?? '') ?></textarea>
@@ -387,10 +427,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                        value="<?= View::escape($settings['thanks']['redirect_url'] ?? '') ?>" placeholder="https://… (opcional)">
                                 <?= $helpButton('A dónde se le lleva al terminar, <em>después</em> de ver el mensaje. Solo se sigue si el dominio está permitido por el servidor (<code>APP_REDIRECT_ALLOWLIST</code>).') ?>
                             </div>
+                            </div>
                         </fieldset>
 
-                        <fieldset class="mb-4">
-                            <legend class="app-settings-group-title"><i class="fa-solid fa-user-check me-1"></i>Revisión</legend>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-revision"
+                                        aria-expanded="true" aria-controls="grp-revision">
+                                    <span><i class="fa-solid fa-user-check me-1"></i>Revisión</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-revision">
                             <div class="form-check form-switch mb-1">
                                 <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
                                           // casilla no enviaría nada y el ajuste se quedaría como estaba en
@@ -410,16 +458,28 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 <label class="form-check-label small fw-semibold" for="review_notify_email">Avisar por correo a los revisores<?= $helpButton('El aviso lleva al panel de revisión, nunca al enlace público.') ?></label>
                             </div>
                             <p class="small text-muted mb-0 mt-2" id="stReviewHint" role="status"></p>
+                            </div>
                         </fieldset>
 
-                        <div class="mb-3">
-                            <label for="locale" class="form-label small fw-semibold">Idioma público</label>
-                            <select class="form-select form-select-sm" id="locale" name="locale">
-                                <option value="es"<?= (($settings['locale']['code'] ?? 'es') === 'es') ? ' selected' : '' ?>>Español</option>
-                                <option value="en"<?= (($settings['locale']['code'] ?? 'es') === 'en') ? ' selected' : '' ?>>English</option>
-                            </select>
-                            <?= $helpButton('Idioma con el que se presenta el formulario. Quien responda puede cambiarlo con <code>?lang=</code> en el enlace.') ?>
-                        </div>
+                        <fieldset class="app-settings-group mb-3">
+                            <legend class="app-settings-group-title">
+                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-idioma"
+                                        aria-expanded="true" aria-controls="grp-idioma">
+                                    <span><i class="fa-solid fa-language me-1"></i>Idioma público</span>
+                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                                </button>
+                            </legend>
+                            <div class="collapse show" id="grp-idioma">
+                                <div class="mb-3">
+                                    <label for="locale" class="form-label small fw-semibold">Idioma del formulario</label>
+                                    <select class="form-select form-select-sm" id="locale" name="locale">
+                                        <option value="es"<?= (($settings['locale']['code'] ?? 'es') === 'es') ? ' selected' : '' ?>>Español</option>
+                                        <option value="en"<?= (($settings['locale']['code'] ?? 'es') === 'en') ? ' selected' : '' ?>>English</option>
+                                    </select>
+                                    <?= $helpButton('Idioma con el que se presenta el formulario. Quien responda puede cambiarlo con <code>?lang=</code> en el enlace.') ?>
+                                </div>
+                            </div>
+                        </fieldset>
 
                         <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes</button>
                     </form>

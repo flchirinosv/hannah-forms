@@ -25,21 +25,10 @@ return [
     'ui.file_types_all'    => 'los permitidos por el servidor',
     'ui.nada_probable'   => 'Nada probable',
     'ui.muy_probable'    => 'Muy probable',
-    'ui.shown_if'        => 'Se muestra si: ',
-    'ui.unknown_field'   => 'campo desconocido',
-    'ui.and_join'        => 'y',
-    'ui.or_join'         => 'o',
     'ui.leave_empty'     => 'Deja este campo vacío',
     'ui.form'            => 'El formulario',
     'ui.questions_count' => '{n} preguntas',
     'ui.est_minutes'     => '~{n} min',
-
-    // Etiquetas de operadores (régimen) en el chip de condición
-    'op.contains'     => 'contiene',
-    'op.not_contains' => 'no contiene',
-    'op.filled'       => 'tiene valor',
-    'op.empty'        => 'está vacío',
-    'op.matches'      => 'coincide con',
 
     // Validación (server y cliente del fill — mismo texto)
     'val.required'          => 'Este campo es obligatorio.',

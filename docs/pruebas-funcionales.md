@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada en el commit `751602c`).
 
-No sustituye a la suite automática (`php scripts/test.php`, 694 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 725 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,8 +23,8 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**221 pruebas** en 18 bloques (A–Q), más un bloque de regresiones (R) con las
-que comprueban fallos que ya existieron y se corrigieron.
+**245 pruebas** en 19 bloques: A–Q, las regresiones (R) de fallos que ya
+existieron y se corrigieron, y la tanda visual (S) de esta última ronda.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -423,6 +423,34 @@ Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
 | R4 | Botón verde en cualquier vista | Sale **verde**, no índigo (`.app-btn-primary` ya no pisa el color de la variante) | A | |
 | R5 | Ficha de un formulario con revisión | Una acción primaria, las de siempre y un menú «más»; «Guardar» no compite con «Publicar» | M | |
 | R6 | Escala, NPS y estrellas con el teclado | Un tabulador por control y anillo de foco visible (antes no eran alcanzables) | A | |
+
+---
+
+## S. Tanda visual del constructor, el fill y la ficha (2026-10-01)
+
+Compruebas de lo que se ve y de lo que se guarda. Los fallos que había aquí
+eran de la clase «se guarda bien y no se ve»: un ajuste que se aplica a nada y
+una constante de maquetación que nadie sabe por qué está puesta.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| S1 | En el constructor, un salto de página → «Configuración» | El interruptor «Mostrar cabecera del paso» aparece **solo** en páginas y secciones, no en los demás campos | M | |
+| S2 | Publicar con el interruptor apagado | El paso **no** muestra icono, título ni descripción; el bloque, la etiqueta accesible del paso, el progreso y el pie («Paso 2 de 3») siguen ahí | A | |
+| S3 | Recargar el paso sin cabecera | Sigue sin cabecera: no reaparece el título ni aunque se re-pinte el paso | A | |
+| S4 | Volver a encender el interruptor y guardar | La cabecera reaparece con el separador fino y el icono ámbar, sin caja ni fondo de color | M | |
+| S5 | Formulario publicado con **secciones** con preguntas dentro | Los campos van sin tinte de fondo: la sección ya trae su encabezado y su línea, y el tinte encima solo hacía parecer el formulario partido en dos | M | |
+| S6 | Constructor → lienzo, entre dos tarjetas | La línea y el «+» arrancan en el borde de la tarjeta, no desplazados a la derecha | M | |
+| S7 | «Agregar dentro» en una sección del constructor | El botón ocupa el ancho de la tarjeta, alineado con las de arriba | M | |
+| S8 | Publicar un formulario con reglas de visibilidad | No sale el texto «Se muestra si: …» ni en los campos ni en las secciones; las reglas siguen funcionando (se omiten los campos y las secciones que no aplican) | A | |
+| S9 | Constructor → un campo con condición | El editor **sí** sigue viendo su insignia con la regla: es información de quien edita, no de quien responde | M | |
+| S10 | Ficha del formulario → «Ajustes del formulario» | Siete grupos plegables (Acceso, Programación y cupo, Notificaciones, Webhook, Mensaje final, Revisión e Idioma), con el chevron apuntando al grupo abierto | M | |
+| S11 | Plegar dos grupos, recargar y abrir otro formulario | Cada formulario **recuerda los suyos**: los grupos de este no se mueven al abrir otra ficha | A | |
+| S12 | Plegar un grupo y **guardar con un error** (por ejemplo una fecha de cierre anterior a la de apertura) | Salen todos los grupos abiertos: el aviso está arriba y el ajuste que falló no puede quedar escondido | A | |
+| S13 | Recorrer los grupos con el teclado | El título de cada grupo es un botón enfocable, con anillo de foco visible, y `Enter`/`Espacio` lo pliegan sin enviar nada | A | |
+| S14 | Ficha → Constructor → «Diseño» → poner un **color de fondo** y publicar | La página del formulario toma ese color y la tarjeta se queda **blanco** (no se tiñe) | M | |
+| S15 | Con el mismo formulario abierto, cambiar el color a uno oscuro | Se lee el formulario con normalidad sobre el fondo oscuro | M | |
+| S16 | «Diseño» → cambiar la **fuente** y publicar | El formulario sale con esa tipografía; el panel y la ficha **no** cambian | M | |
+| S17 | Dejar el fondo y la fuente sin tocar (o en el valor de fábrica) | Se ve el gradiente y la tipografía de siempre: los dos ajustes tienen valor por defecto | M | |
 
 ---
 

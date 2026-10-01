@@ -312,6 +312,51 @@ body {
     margin-top: 0;
 }
 
+/* ---------- Grupos colapsables de «Ajustes del formulario» ----------
+   Siete grupos plegables (acceso, agenda, avisos, webhook, gracias, revisión
+   e idioma) porque con los siete abiertos el formulario entero ocupaba más
+   de tres pantallas y el ajuste que se busca casi nunca está en el primero.
+   El plegado lo trae Bootstrap Collapse sobre un `<button>` dentro del
+   `<legend>`: el `legend` conserva el nombre accesible del `fieldset` y el
+   botón es el único control con `aria-expanded`/`aria-controls`. El estado lo
+   recuerda `dashboard.js` por formulario (`localStorage`), no el navegador. */
+.app-settings-group .app-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: .15rem;
+    width: 100%;
+    margin: 0;
+    padding: .5rem .6rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+.app-settings-group .app-group-toggle:hover {
+    background: #f1f5f9;
+}
+/* Teclado: el anillo del panel, no `outline: none` (el botón es el control). */
+.app-settings-group .app-group-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--vf-focus-ring);
+}
+.app-group-caret {
+    flex: 0 0 auto;
+    font-size: .8rem;
+    color: var(--vf-text-muted);
+    transition: transform .2s ease;
+}
+/* El estado legible es el del botón: se lee por `aria-expanded` y se ve aquí.
+   El `transform` va en el icono y no en el grupo entero porque el icono es lo
+   único que rota — el texto debe quedarse quieto. */
+.app-group-toggle[aria-expanded="true"] .app-group-caret {
+    transform: rotate(180deg);
+}
+
 /* ---------- Builder ---------- */
 .builder-layout { align-items: stretch; }
 .app-builder-panel { border-radius: var(--vf-radius-lg); position: sticky; top: 86px; }
@@ -1255,15 +1300,16 @@ body {
 .vf-preview-dim { opacity: .55; filter: grayscale(.3); }
 
 /* ---- Hijos de una sección en la página pública ----
- * Mismo criterio que `.app-section-children` del builder: los hijos van sobre
- * el fondo de la sección y SIN la línea vertical de la izquierda. El borde de
+ * Mismo criterio que `.app-section-children` del builder, con UNA diferencia
+ * deliberada: los hijos van SIN la línea vertical de la izquierda (el borde de
  * 3px con su hueco de 1rem se confundía con el de la propia tarjeta y hacía
- * doble escalón; el fondo y el radio son los que separan el bloque. */
+ * doble escalón) y además SIN fondo. El lienzo del builder conserva su fondo
+ * porque ahí el bloque es la zona de trabajo y hay que ver dónde acaba; en el
+ * formulario publicado la sección ya tiene su encabezado y su línea, y un tinte
+ * encima solo hacía que el formulario pareciera dividido en dos. */
 .vf-section-children {
     margin: .6rem 0 0;
     padding: 0 0 .4rem;
-    background: rgba(245, 247, 255, .55);
-    border-radius: 8px;
 }
 
 /* ---- Drawer de condiciones en el builder ---- */
@@ -1381,8 +1427,8 @@ body {
    abre el modal con la cuadrícula, igual que los «+»). */
 .app-add-control {
     flex: 1 0 100%;
-    max-width: calc(100% - 2.35rem);
-    margin: .25rem 0 0 2.35rem;
+    max-width: 100%;
+    margin: .25rem 0 0;
 }
 .app-add-control .app-btn-add-child { min-height: var(--vf-ctrl-h); }
 
@@ -1471,7 +1517,11 @@ body {
 .app-canvas-add {
     position: absolute;
     top: 100%;
-    left: 2.35rem;
+    /* Alineado al borde de la tarjeta (antes 2.35rem, el ancho del icono que
+       lleva la tarjeta): la línea y el «+» arrancaban a la derecha de las
+       tarjetas sin nada que los justificara, y con el fondo de la sección fuera
+       ya no hay ni un elemento al que alinear. */
+    left: 0;
     right: 0;
     height: var(--vf-icon-btn);
     display: flex;

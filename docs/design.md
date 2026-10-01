@@ -118,6 +118,15 @@ Contrato de implementación, no negociable:
 - Los `section` y `page` solo son insertables en la raíz; dentro de una
   sección quedan excluidos (validado también en servidor:
   `BuilderController.php:123-133`).
+- **La banda ocupa todo el ancho de la tarjeta (`left: 0`)**, no el ancho
+  menos el hueco de las herramientas (`2.35rem`, que es lo que mide
+  `.app-canvas-tools`). La constante se heredaba de la cabecera y, con
+  la línea y el botón colgando de la derecha, no había nada que la
+  justificara: se veía el «+» desplazado. Por el mismo motivo
+  `.app-add-control` («Agregar dentro») es `max-width: 100%` y
+  `margin: .25rem 0 0`, sin el `2.35rem` de margen ni del ancho. Las
+  dos reglas miden la misma constante: se mueven a la vez o se
+  desincronizan.
 
 ### 3.3 Cuadrícula de tipos (`.app-type-grid`)
 
@@ -175,7 +184,7 @@ miniaturas van en `em` sobre el tamaño de fuente de la tarjeta, que es lo
 que hace que escalen con ella.
 
 
-### 3.9 Cabecera de salto de página (`.vf-page-head`)
+### 3.6 Cabecera de salto de página (`.vf-page-head`)
 
 - Es la caja con icono, título y descripción que abre un paso. **Sin
   fondo ni caja**: se separa con la misma línea fina que usa
@@ -184,7 +193,7 @@ que hace que escalen con ella.
   aviso.
 - Icono de 40px con su ámbar (`#fef3c7` / `#d97706`) y título a
   `1.1rem`/700: mismo tamaño que `.vf-section-icon` y `.vf-section-title`
-  para que ambos encabezados midieran igual, con el color como única
+  para que ambos encabezados midan igual, con el color como única
   diferencia —un paso no es una sección y tiene que poder distinguirse.
 - El builder reutiliza este markup en el preview (`BuilderPreviewCssTest`
   lo ata), y con `fields.show_header` apagado no lo pinta ni el
@@ -194,7 +203,7 @@ que hace que escalen con ella.
   pintaba la insignia centrada del preview: una sola clase para dos
   formas que no se parecían en nada.
 
-### 3.6 Roles y grupos (`app-rbac-*`)
+### 3.7 Roles y grupos (`app-rbac-*`)
 
 Fuera del builder, pero con el mismo lenguaje visual.
 
@@ -218,6 +227,40 @@ Dos reglas que nacen de no haber sido designed antes:
   solo responde «en qué grupos está», y la pregunta del día a día es qué
   permisos le da a esa persona estar en ese grupo. Por eso el grupo pinta su
   unión de permisos.
+
+### 3.8 Grupos plegables de la ficha (`app-settings-group`)
+
+Los siete bloques de «Ajustes del formulario» (acceso, programación y cupo,
+notificaciones, webhook, mensaje final, revisión e idioma) se pliegan: con los
+siete abiertos la tarjeta ocupaba más de tres pantallas y el ajuste que se
+busca casi nunca está en el primero.
+
+| Clase | Qué es |
+|---|---|
+| `.app-settings-group` | El `<fieldset>` del grupo. Bootstrap ya pone `min-width: 0` |
+| `.app-group-toggle` | El `<button type="button">` del título: `flex`, ancho completo, `cursor: pointer` y anillo de `:focus-visible` (`--vf-focus-ring`) |
+| `.app-group-caret` | El chevron a la derecha (`ms-auto`); gira con `transform` cuando `aria-expanded="true"` |
+
+Contrato de implementación, no negociable:
+
+- El botón va dentro del `<legend>`: el `fieldset` conserva su nombre
+  accesible y el botón es el único control con `aria-expanded` y
+  `aria-controls` apuntando al `id` real del panel. `type="button"` es
+  obligatorio — sin él, pulsar el título **envía el formulario de ajustes**.
+- El plegado es de Bootstrap (`data-bs-toggle="collapse"`), no propio: no
+  hay `hidden` en el markup, así que sin JavaScript el formulario se ve
+  entero. Todos los paneles salen `collapse show`.
+- El estado se recuerda en `localStorage` **por formulario**
+  (`vf:grp:<id>`, leído de `data-vf-form-id`), no por el navegador: el
+  mismo usuario pasa por varias fichas. Con un `alert-danger.app-alert` en
+  la página —un guardado fallido— se **abren todos**, porque el aviso está
+  arriba y el ajuste que falló no puede quedar escondido.
+- Los hijos de una sección (`vf-section-children` en el fill,
+  `app-section-children` en el builder) comparten la ausencia de `border-left`,
+  pero **no** el fondo: en el builder es la zona de trabajo y el tinte dice
+  dónde acaba la sección; en el formulario publicado la sección ya trae
+  encabezado y línea, y el tinte encima solo lo hacía parecer partido en
+  dos. Los dos lados están atados por el mismo test.
 
 ---
 

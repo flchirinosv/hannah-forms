@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 72 archivos, 715 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 72 archivos, 725 métodos, ~4 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -127,10 +127,30 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - El **builder y el fill comparten CSS, no clases**: `.app-section-children` (lienzo)
   y `.vf-section-children` (página pública) existen por la misma razón, así que la
   invariant se ata a **las dos** en `BuilderPreviewCssTest`; corregir una y dejar
-  la otra deja el formulario igual que estaba. Y un `<span>` con `width`/`height`
+  la otra deja el formulario igual que estaba. Lo que **no** se comparte es el
+  fondo: solo el lienzo lo lleva (es la zona de trabajo y el tinte dice dónde acaba
+  la sección), porque en el formulario publicado la sección ya trae encabezado y
+  línea y el tinte encima lo hacía parecer partido en dos. Y un `<span>` con `width`/`height`
   no tiene caja: `.scale-btn` necesita `display` (el del NPS nunca lo tuvo, así
   que sus 40px no se aplicaban y salía el número suelto), que es lo que separa
   un botón de un dígito con un borde alrededor.
+- **`fields.show_header` es del SALTO DE PÁGINA y nada más**: el servidor lo
+  fuerza a `true` en cualquier otro tipo, y apagado apaga `.vf-page-head` (icono,
+  título y descripción) **sin** quitar el paso: bloque, `aria-label` del paso,
+  progreso y la insignia del pie («Paso 2 de 3») siguen, porque quitar la
+  cabecera no es quitar el paso. En el builder sale el interruptor solo en páginas
+  y secciones, pero en secciones el servidor también lo fuerza: no guardan
+  respuestas.
+- **El texto de las reglas es del editor, nunca del visitante**: «Se muestra si: …»
+  solo se pinta en `builder.js` (`data-vf-logic` se queda en el fill, que es lo que
+  la ejecuta). Si vuelve al fill, hay que devolver también las nueve claves que se
+  borraron (cuatro `ui.*` y cinco `op.*`, en `es.php` **y** `en.php`).
+- Los **grupes plegables de la ficha** son de Bootstrap, no propios: `type="button"`
+  (sin él el título envía el formulario), `aria-expanded`/`aria-controls` al `id`
+  real del panel, y todos `collapse show` en el servidor para que sin JS se vea
+  entero. El estado se guarda en `localStorage['vf:grp:<formId>']` (de
+  `data-vf-form-id`), **por formulario**, y con un `.alert-danger.app-alert` se
+  abren todos: el aviso del guardado fallido está arriba del formulario.
 - **`fields.label` es contenido, no un rótulo de editor**: un salto de página nace
   SIN etiqueta —que la invente el builder la convierte en título publicado— y la
   migración **0012** limpia el `Página N` que las instalaciones anteriores ya
@@ -533,6 +553,14 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   valida en **las dos puertas**, `normalize()` (lo que entra) y `themeCss()` (lo
   que sale), porque puede haber filas ya guardadas con valores inválidos;
   `validate()` mira el valor **crudo**, no el normalizado.
+- **Toda variable que emite `themeCss()` tiene que tener un consumidor en
+  `app.css`** (`ThemeFontCssInjectionTest` lo recorre y falla si alguna no
+  aparece). `--vf-background` va a `.fill-body` **y solo a él** (la tarjeta se
+  queda blanca: con un color de página oscuro, teñirla también la haría
+  ilegible) y `--vf-font` entra por `body`; los dos declaran su valor por
+  defecto en `:root`, así que sin ajuste se ve el gradiente y la Inter de
+  siempre. Un ajuste que se guarda bien y no se ve no da ningún error, ni en
+  el navegador ni en el log.
 - Los límites del dashboard son **por usuario** (`App\Core\DashboardLimit`, scopes
   `dash:create` / `dash:export`) y se comprueban **antes** de hacer el trabajo.
 - `SecurityLog::record()` y `Cache::remember()` nunca rompen el request (el
@@ -563,10 +591,10 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 218 comprobaciones manuales en 18 bloques (A–Q)
-  más regresiones (R), para detectar problemas que la suite no ve (teclado,
-  maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
-  la lista mínima.
+- `docs/pruebas-funcionales.md`: 245 comprobaciones manuales en 19 bloques (A–Q,
+  las regresiones R y la tanda visual S), para detectar problemas que la suite no
+  ve (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
+  panel, R y S son la lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.

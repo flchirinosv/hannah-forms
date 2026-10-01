@@ -24,21 +24,12 @@ return [
     'ui.file_types_all'    => 'the ones allowed by the server',
     'ui.nada_probable'   => 'Not at all likely',
     'ui.muy_probable'    => 'Extremely likely',
-    'ui.shown_if'        => 'Shown if: ',
-    'ui.unknown_field'   => 'unknown field',
-    'ui.and_join'        => 'and',
-    'ui.or_join'         => 'or',
     'ui.leave_empty'     => 'Leave this field empty',
     'ui.form'            => 'The form',
     'ui.questions_count' => '{n} questions',
     'ui.est_minutes'     => '~{n} min',
 
     // Condition operator labels
-    'op.contains'     => 'contains',
-    'op.not_contains' => 'does not contain',
-    'op.filled'       => 'has a value',
-    'op.empty'        => 'is empty',
-    'op.matches'      => 'matches',
 
     // Validation (server + fill client, same copy)
     'val.required'          => 'This field is required.',

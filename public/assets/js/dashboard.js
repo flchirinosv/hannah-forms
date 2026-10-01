@@ -561,3 +561,78 @@
             });
     });
 })();
+
+/* ---- Grupos colapsables de la ficha del formulario (views/dashboard/forms/show.php)
+ * Siete grupos plegables porque, con los siete abiertos, «Ajustes del formulario»
+ * ocupaba más de tres pantallas y el ajuste que se busca casi nunca está en el
+ * primero. El plegado es de Bootstrap (`data-bs-toggle="collapse"`), así que esto
+ * solo recuerda en qué estado quedó cada uno: el estado va en `localStorage` POR
+ * FORMULARIO (`vf:grp:<id>`) y no en el del navegador, porque el mismo usuario
+ * pasa por varias fichas y cerrarlos todos en cada una era más ruido que el que
+ * arreglaba.
+ *
+ * `bootstrap.bundle` viene en el layout y este script va con `defer`, así que el
+ * global existe cuando esto corre; aun así se resuelve en `window.bootstrap` como en
+ * builder.js, para que el archivo siga siendo inocuo si se carga antes.
+ */
+(function () {
+    'use strict';
+
+    const form = document.getElementById('formSettings');
+    if (!form || !form.dataset.vfFormId) { return; }
+
+    const KEY = 'vf:grp:' + form.dataset.vfFormId;
+    const toggles = Array.prototype.slice.call(form.querySelectorAll('.app-group-toggle'));
+
+    /* Un error de guardado sale en el aviso de arriba, no dentro del grupo que lo
+     * provocó: si el grupo estaba plegado, el aviso no señala dónde está el problema
+     * y quien guarda tiene que abrir los siete a ciegas. Con error, se ignoran los
+     * estados guardados y se abren todos. */
+    const hayError = !!document.querySelector('.alert-danger.app-alert');
+
+    let estado = {};
+    if (!hayError) {
+        try {
+            const crudo = window.localStorage.getItem(KEY);
+            const parsed = crudo ? JSON.parse(crudo) : null;
+            if (parsed && typeof parsed === 'object') { estado = parsed; }
+        } catch (e) {
+            estado = {}; // Almacenamiento lleno o bloqueado: los grupos funcionan igual.
+        }
+    }
+
+    function guardar() {
+        try {
+            window.localStorage.setItem(KEY, JSON.stringify(estado));
+        } catch (e) { /* sin persistencia no se rompe nada más */ }
+    }
+
+    const guardado = function (slug) {
+        return Object.prototype.hasOwnProperty.call(estado, slug);
+    };
+
+    if (window.bootstrap && bootstrap.Collapse) {
+        toggles.forEach(function (btn) {
+            const panel = document.getElementById(btn.getAttribute('aria-controls'));
+            if (!panel) { return; }
+            const slug = panel.id.replace(/^grp-/, '');
+            const visible = panel.classList.contains('show');
+            const abierto = guardado(slug) ? estado[slug] !== false : true;
+            const col = bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false });
+            if (abierto && !visible) { col.show(); }
+            if (!abierto && visible) { col.hide(); }
+        });
+    }
+
+    toggles.forEach(function (btn) {
+        const panel = document.getElementById(btn.getAttribute('aria-controls'));
+        if (!panel) { return; }
+        const slug = panel.id.replace(/^grp-/, '');
+        const persistir = function (abierto) {
+            estado[slug] = abierto;
+            guardar();
+        };
+        panel.addEventListener('shown.bs.collapse', function () { persistir(true); });
+        panel.addEventListener('hidden.bs.collapse', function () { persistir(false); });
+    });
+})();

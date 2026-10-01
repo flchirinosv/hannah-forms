@@ -12,7 +12,7 @@ use App\Core\Database;
  * salto: hay pasos que solo son un cambio de pantalla y una cabecera encima no
  * dice nada. Ocultarla NO oculta el paso — el bloque, su `aria-label`, la barra de
  * progreso y la insignia del pie se siguen pintando —, así que el paso sigue
- * existento y nombrándose igual.
+ * existiendo y nombrándose igual.
  *
  * `DEFAULT 1` a propósito: es lo que hace esta migración inocua. No hay backfill
  * porque no hay nada que rellenar; las filas existentes se quedan como estaban

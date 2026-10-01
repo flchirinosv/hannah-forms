@@ -127,7 +127,10 @@ class BuilderPreviewCssTest
         if (preg_match($patron, self::css(), $m) !== 1) {
             return null;
         }
-        return $m[1];
+        // Se quitan los comentarios de bloque: el por qué de cada cambio va escrito
+        // dentro de la regla (aquí, «antes 2.35rem…»), y un test que busca «¿esta
+        // declara esto?» tiene que leer las DECLARACIONES, no la explicación.
+        return (string) preg_replace('#/\*.*?\*/#s', '', $m[1]);
     }
 
     /**
@@ -297,11 +300,92 @@ class BuilderPreviewCssTest
                     $selector . ' (' . $donde . ') no declara ' . $propiedad . ': el borde de 3px con su hueco de 1rem se confundía con el de la tarjeta de la sección'
                 );
             }
+        }
+
+        // El fondo queda SOLO en el lienzo del builder. Ahí el bloque es la zona
+        // de trabajo y el tinte dice dónde acaba la sección; en el formulario
+        // publicado la sección ya trae su encabezado y su línea, y encima el tinte
+        // solo hacía que el formulario pareciera dividido en dos.
+        assertTrue(
+            str_contains((string) self::bloqueCss('.app-section-children'), 'background'),
+            'el lienzo del builder conserva el fondo, que es lo que separa el bloque de la tarjeta'
+        );
+        assertTrue(
+            !preg_match('/(?:^|;|\s)background\s*:/', (string) self::bloqueCss('.vf-section-children')),
+            'los hijos en la página pública NO llevan fondo: la sección ya tiene su encabezado y su línea'
+        );
+    }
+
+    /**
+     * La banda que dibuja el «+» de inserción entre tarjetas estaba desplazada
+     * `2.35rem` a la derecha, que es el hueco reservado en la cabecera para las
+     * herramientas (duplicar, configurar, eliminar): la línea y el botón se
+     * colgaban del borde derecho de las tarjetas sin nada que lo justificara, y
+     * se notaba sobre todo en el lienzo del builder, que sí tiene fondo.
+     *
+     * Se ata el `left: 0` del `.app-canvas-add` y que el «Agregar dentro» ya no
+     * reste ni mida el ancho del hueco, porque los dos medían la misma
+     * constante y por eso hay que moverlos a la vez.
+     */
+    public function testLaBandaDeInsercionNoSeDesplazaDelBordeDeLaTarjeta(): void
+    {
+        $banda = self::bloqueCss('.app-canvas-add');
+        assertTrue($banda !== null, 'app.css declara .app-canvas-add');
+        assertTrue(
+            preg_match('/(?:^|;|\s)left:\s*0\s*;/', (string) $banda) === 1,
+            'la banda arranca en el borde de la tarjeta (`left: 0`), no en el hueco de las herramientas'
+        );
+        assertTrue(
+            !str_contains((string) $banda, '2.35rem'),
+            'y no lleva el desplazamiento de 2.35rem en ninguna propiedad'
+        );
+
+        $control = self::bloqueCss('.app-add-control');
+        assertTrue($control !== null, 'app.css declara .app-add-control');
+        assertTrue(
+            str_contains((string) $control, 'max-width: 100%;'),
+            '«Agregar dentro» ocupa el ancho de la tarjeta (`max-width: 100%`)'
+        );
+        assertTrue(
+            !str_contains((string) $control, '2.35rem'),
+            'y no descuenta el hueco de las herramientas'
+        );
+    }
+
+    /**
+     * Los siete grupos de «Ajustes del formulario» se pliegan con un botón que
+     * lleva `aria-expanded`, así que el estado se ve en el icono del chevron: sin
+     * esa regla el caret se queda apuntando hacia abajo con el grupo abierto y
+     * no hay forma de distinguir un estado del otro en la pantalla.
+     *
+     * Es el mismo contrato que el resto del archivo, aplicado al lado del panel:
+     * lo que el marcado emite tiene que existir como selector en `app.css`.
+     */
+    public function testLosGruposColapsablesTienenBotonYCaretConEstado(): void
+    {
+        $boton = self::bloqueCss('.app-settings-group .app-group-toggle');
+        assertTrue($boton !== null, 'app.css declara .app-settings-group .app-group-toggle');
+        foreach (['display: flex', 'width: 100%', 'cursor: pointer'] as $declaracion) {
             assertTrue(
-                str_contains((string) $bloque, 'background'),
-                $selector . ' conserva el fondo, que es lo que separa el bloque de la tarjeta'
+                str_contains((string) $boton, $declaracion),
+                'el botón del grupo declara ' . $declaracion . ' (es el único control del plegado)'
             );
         }
+        assertTrue(
+            preg_match('/\.app-group-toggle:focus-visible\s*\{[^}]*box-shadow/s', self::css()) === 1,
+            'el botón de un grupo se puede usar con teclado: :focus-visible con anillo, no outline:none a secas'
+        );
+
+        $caret = self::bloqueCss('.app-group-caret');
+        assertTrue($caret !== null, 'app.css declara .app-group-caret');
+        assertTrue(
+            str_contains((string) $caret, 'transition: transform'),
+            'el chevron anima su giro en vez de saltar de golpe'
+        );
+        assertTrue(
+            preg_match('/aria-expanded="true"[^}]*\.app-group-caret\s*\{[^}]*transform/s', self::css()) === 1,
+            'y hay una regla que gira el chevron cuando `aria-expanded="true"`: el icono dice en qué estado está el grupo'
+        );
     }
 
     /**

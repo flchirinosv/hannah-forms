@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-10-01
 **Estado:** en ejecución, un commit por bloque.
-**Alcance:** seis bloques independientes, en el orden en que se listan porque cada uno
+**Alcance:** seis bloques independientes (más una ronda visual posterior, bloque 7), en el orden en que se listan porque cada uno
 depende del anterior (el bloque 2 crea la puerta por la que entra el ajuste de acceso
 del bloque 3).
 
@@ -177,6 +177,34 @@ flash con el motivo) y botón con `data-confirm` solo donde se puede.
 `.vf-section-inner` con `.vf-section-icon { margin: auto .5rem }`, CSS de los previews de
 NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 
+### 7 · Ronda visual posterior
+
+No estaba en el plan original; salió de la revisión manual de esta tanda y va en
+tres commits (página / tema / limpieza de la ficha).
+
+- **El elemento página se puede ocultar y deja de ser una caja de color.** El
+  salto de paso era el único bloque del formulario con fondo propio, así que se
+  leía como un aviso dentro del formulario. Ahora el interruptor «Mostrar
+  cabecera del paso» (migración **0013**, `fields.show_header`) apaga icono,
+  título y descripción **sin** tocar el paso: bloque, `aria-label`, progreso y
+  la insignia del pie («Paso 2 de 3») siguen: quitar la cabecera no es quitar
+  el paso. Y en lugar de una caja de color, `.vf-page-head` usa el mismo
+  separador fino de `.vf-section-block`.
+- **«Color de fondo» y «Fuente» ya se aplican.** Los dos ajustes se guardaban
+  bien y no se veían: `themeCss()` emitía `--vf-background` y `--vf-font` y en
+  `app.css` no aparecían. El fondo va a `.fill-body` (y solo a él: la tarjeta
+  se queda blanca) y la fuente entra por `body` con el gradiente y la Inter
+  como valores por defecto.
+- **Alineaciones del lienzo.** La banda del «+» y «Agregar dentro» medían el
+  hueco de las herramientas (`2.35rem`) que no tenía nada que ver con ellos.
+- **Fuera del fill, el texto «Se muestra si: …».** Las reglas son del editor; al
+  visitante le bastaba con encontrar su campo, y cuando el campo se ocultaba
+  por su propia condición el texto se quedaba solo en pantalla. El `data-vf-logic`
+  y la insignia del builder no se tocan.
+- **Los siete grupos de ajustes se pliegan** y recuerdan su estado por
+  formulario en `localStorage`; con un error de guardado se abren todos, porque
+  el aviso vive arriba del formulario.
+
 ## Invariantes que este lote no puede romper
 
 - CSP `script-src 'self'`: nada de `<script>` inline ni `on*=`; todo JS en `public/assets/js/`.
@@ -204,6 +232,7 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - [x] 4 · Registro global
 - [x] 5 · Rol `approver` + borrable
 - [x] 6 · Limpieza visual
+- [x] 7 · Ronda visual (página, tema, alineaciones, condición y grupos)
 - [x] Suite completa verde
 
 ### Notas de ejecución

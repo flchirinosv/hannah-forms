@@ -18,12 +18,6 @@ $vfI18n = array_filter(
 );
 $vfI18nJson = json_encode($vfI18n, JSON_UNESCAPED_UNICODE);
 
-// Mapa por id para etiquetas de fuentes de condición.
-$fieldById = [];
-foreach ($fields as $f) {
-    $fieldById[(int) $f['id']] = $f;
-}
-
 // Gap sin JavaScript: visibilidad resuelta en el servidor (FillController
 // ::initialVisibility). Se marca con `vf-hidden`, la misma clase que usa
 // fill.js, de modo que el cliente puede revelar en vivo al cambiar una
@@ -42,37 +36,7 @@ $logicAttr = static function (array $field): string {
     return ' data-vf-logic="' . View::escape(json_encode($logic, JSON_UNESCAPED_UNICODE)) . '"';
 };
 
-$condSummary = static function (array $field) use ($fieldById, $t): string {
-    $logic = $field['logic'] ?? null;
-    if (!is_array($logic) || empty($logic['rules']) || !is_array($logic['rules'])) {
-        return '';
-    }
-    $opLabels = [
-        'eq' => '=', 'neq' => '≠', 'contains' => $t('op.contains'), 'not_contains' => $t('op.not_contains'),
-        'gt' => '>', 'gte' => '≥', 'lt' => '<', 'lte' => '≤', 'filled' => $t('op.filled'), 'empty' => $t('op.empty'),
-        'matches' => $t('op.matches'),
-    ];
-    $join = ($logic['operator'] ?? 'all') === 'any'
-        ? ' ' . $t('ui.or_join') . ' '
-        : ' ' . $t('ui.and_join') . ' ';
-    $parts = [];
-    foreach ($logic['rules'] as $r) {
-        if (!is_array($r)) {
-            continue;
-        }
-        $src = $fieldById[(int) ($r['field_id'] ?? 0)] ?? null;
-        $srcLabel = ($src['label'] ?? '') !== '' ? $src['label'] : $t('ui.unknown_field');
-        $opLabel = $opLabels[$r['op'] ?? ''] ?? (string) ($r['op'] ?? '');
-        $val = (string) ($r['value'] ?? '');
-        $parts[] = trim($srcLabel . ' ' . $opLabel . ($val !== '' && !in_array($r['op'] ?? '', ['filled', 'empty'], true) ? ' "' . $val . '"' : ''));
-    }
-    if ($parts === []) {
-        return '';
-    }
-    return $t('ui.shown_if') . implode($join, $parts);
-};
-
-$renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr, $hiddenAttr, $condSummary, $t): void {
+$renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr, $hiddenAttr, $t): void {
     $fieldKey = 'field_' . $field['id'];
     $inputId = 'field_' . (int) $field['id'];
     $oldValue = isset($old[$fieldKey]) ? $old[$fieldKey] : '';
@@ -97,7 +61,6 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
     $fileMaxFiles = $isFile ? \App\Services\Uploader::maxFiles($validations) : 0;
     $fileAccept = $isFile ? \App\Services\Uploader::acceptAttr($validations) : '';
     $hasMaxLen = !empty($validations['max_length']);
-    $summary = $condSummary($field);
     // data-vf-min/max: el cliente replica las cotas antes de enviar (UX); el
     // servidor las vuelve a validar. `scale` siempre mide 1..max aunque el
     // validador no haya persistido `min`.
@@ -122,10 +85,6 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                      <?= $isFile ? 'data-vf-file-max-size="' . ($fileMaxMb * 1024 * 1024) . '"' : '' ?>
                      <?= $isFile && \App\Services\Uploader::isMultiple($validations) ? 'data-vf-file-multiple="1"' : '' ?>
                      <?= $isFile ? 'data-vf-file-max-files="' . $fileMaxFiles . '"' : '' ?>>
-
-                <?php if ($summary !== ''): ?>
-                    <div class="vf-cond-chip" title="<?= View::escape($summary) ?>"><i class="fa-solid fa-code-branch me-1"></i><?= View::escape($summary) ?></div>
-                <?php endif; ?>
 
                 <?php if ($isFile): ?>
                     <fieldset class="vf-fieldset">
@@ -610,10 +569,6 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                     </div>
                     <?php if ($field['help_text']): ?>
                         <p class="vf-section-desc text-muted mt-1 mb-0"><?= nl2br(View::escape($field['help_text'])) ?></p>
-                    <?php endif; ?>
-                    <?php $summary = $condSummary($field); ?>
-                    <?php if ($summary !== ''): ?>
-                        <div class="vf-cond-chip" title="<?= View::escape($summary) ?>"><i class="fa-solid fa-code-branch me-1"></i><?= View::escape($summary) ?></div>
                     <?php endif; ?>
                     <div class="vf-section-children">
                         <?php while ($i < $n && (int) $fields[$i]['parent_id'] === (int) $field['id']): ?>
