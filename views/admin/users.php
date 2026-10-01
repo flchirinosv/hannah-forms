@@ -46,8 +46,8 @@ $roles = $roles ?? [];
         <div class="card-body">
             <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-plus me-2 text-primary"></i>Nuevo usuario</h3>
             <p class="text-muted small mb-3">
-                Crea una cuenta con su rol desde aquí. No hace falta que el registro público esté
-                abierto: eso solo controla el alta desde <code>/register</code>.
+                Crea una cuenta con su rol desde aquí. Funciona con el registro público abierto o
+                cerrado: eso solo controla el alta desde <code>/register</code>.
             </p>
             <form method="post" action="/admin/users/create">
                 <?= Csrf::field() ?>
@@ -96,6 +96,36 @@ $roles = $roles ?? [];
             </form>
         </div>
     </div>
+
+    <?php // El interruptor de registro es de la INSTALACIÓN, así que va fuera de
+          // la tabla de usuarios y con su propio permiso (`admin.access`): quien
+          // gestiona la instalación lo abre, pero no necesita poder tocar la
+          // cuenta de nadie. Solo se pinta con ese permiso, y no por ser admin,
+          // porque el panel entero ya lo exige. ?>
+    <?php if ($canManageInstance ?? false): ?>
+    <div class="card border-0 shadow-sm mb-4" id="instance"
+         data-csrf="<?= View::escape(Csrf::token()) ?>"
+         data-registration-endpoint="/admin/settings/registration">
+        <div class="card-body">
+            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
+            <p class="text-muted small mb-3">
+                El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
+                se crean solo desde esta pantalla.
+            </p>
+            <div class="form-check form-switch d-flex align-items-center gap-2">
+                <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
+                       <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
+                       aria-describedby="registrationHint">
+                <label class="form-check-label fw-semibold" for="registrationToggle">
+                    <span data-role="registration-state">
+                        <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
+                    </span>
+                </label>
+            </div>
+            <p class="form-text mb-0" id="registrationHint" role="status"></p>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if (empty($users)): ?>
         <div class="card border-0 shadow-sm">
@@ -238,3 +268,7 @@ $roles = $roles ?? [];
     </div>
     <?php endif; ?>
 </div>
+
+<?php // `dashboard.js` con `defer`, igual que en el resto del panel: sus bloques
+      // se guardan uno detrás de otro y aquí solo vive el del interruptor. ?>
+<script src="<?= View::asset('js/dashboard.js') ?>" defer></script>

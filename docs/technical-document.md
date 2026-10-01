@@ -100,7 +100,8 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 Todo lo demás son tablas soporte: `rate_limits` (anti-abuso), `migrations`
 (qué migraciones se aplicaron), `password_resets` (F2),
 `form_access_emails`/`form_access_tokens` (F4), `security_log` (auditoría que
-nunca rompe el request) y `cache` (caché TTL del dashboard).
+nunca rompe el request), `cache` (caché TTL del dashboard) y `app_settings`
+(interruptores de la instalación).
 
 ### Tablas
 
@@ -199,6 +200,20 @@ UNIQUE (token_hash), índice (form_id, email). F4. **No lleva FK a
 `form_access_emails`**: en modo `email` hay tokens sin fila en la allowlist, y la
 revocación es explícita (transacción en `removeEmail()`). El `form_id` va en el
 WHERE de `findValidToken()`: es la mitad de la autorización.
+
+#### app_settings
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| key_name | VARCHAR(64) PK | p. ej. `registration_enabled` |
+| value | TEXT NULL | lo que se guardó; la fila ausente deja mandar al `.env` |
+| updated_at | TIMESTAMP | se actualiza sola |
+
+Migración 0010. Clave-valor y **sin fila inicial**: el patrón es «la fila
+guardada gana; si no hay fila, manda el `.env`», y sembrarla con el valor del
+`.env` congelaría el estado de la instalación el día de la migración. La lee
+`App\Core\AppSettings` (con `try/catch`: una instancia sin la migración
+aplicada no puede caer en 500) a través de
+`AuthController::registrationEnabled()`.
 
 #### password_resets
 | Campo | Tipo | Notas |

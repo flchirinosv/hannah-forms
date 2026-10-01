@@ -112,6 +112,7 @@ $router->post('/admin/users/create', [AdminController::class, 'createUser'], ['a
 $router->post('/admin/users/role', [AdminController::class, 'updateRole'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/groups', [AdminController::class, 'updateUserGroups'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/settings/registration', [AdminController::class, 'updateRegistration'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

@@ -490,3 +490,74 @@
             });
     });
 })();
+
+/* Interruptor del registro público (`/admin`).
+ *
+ * Es de la instalación, no de la cuenta de nadie, así que va con su propio
+ * permiso y su propio endpoint. El interruptor NO se reposiciona al terminar:
+ * si el guardado fallara, moverlo sería mentir sobre el estado real (que es
+ * justo lo que haría creerse al que cerrara el registro y lo dejara abierto).
+ * El servidor devuelve el `enabled` que ha quedado guardado y se pinta ese. */
+(function () {
+    'use strict';
+
+    const card = document.getElementById('instance');
+    if (!card) {
+        return;
+    }
+
+    const toggle = document.getElementById('registrationToggle');
+    const state = card.querySelector('[data-role="registration-state"]');
+    const hint = document.getElementById('registrationHint');
+    if (!toggle || typeof window.fetch !== 'function') {
+        return;
+    }
+
+    toggle.addEventListener('change', function () {
+        const body = new URLSearchParams();
+        body.set('_token', card.dataset.csrf || '');
+        body.set('enabled', toggle.checked ? '1' : '0');
+
+        toggle.disabled = true;
+        if (hint) {
+            hint.textContent = 'Guardando…';
+            hint.className = 'form-text mb-0 text-muted';
+        }
+
+        fetch(card.dataset.registrationEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: body.toString(),
+        })
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    return { ok: r.ok && data.ok, data: data };
+                });
+            })
+            .then(function (res) {
+                const enabled = !!(res.data && res.data.enabled);
+                // Siempre: también en error, porque `enabled` es lo que hay en la
+                // BD ahora mismo y la casilla tiene que decir la verdad.
+                toggle.checked = enabled;
+                if (state) {
+                    state.textContent = enabled ? 'Registro público abierto' : 'Registro público cerrado';
+                }
+                if (hint) {
+                    const ok = res.ok;
+                    hint.textContent = ok
+                        ? (res.data.message || '')
+                        : ((res.data && res.data.error) || 'No se pudo guardar el ajuste.');
+                    hint.className = 'form-text mb-0 ' + (ok ? 'text-success' : 'text-danger fw-semibold');
+                }
+            })
+            .catch(function () {
+                if (hint) {
+                    hint.textContent = 'No se pudo contactar con el servidor: el ajuste sigue como estaba.';
+                    hint.className = 'form-text mb-0 text-danger fw-semibold';
+                }
+            })
+            .then(function () {
+                toggle.disabled = false;
+            });
+    });
+})();

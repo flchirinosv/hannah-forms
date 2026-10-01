@@ -141,6 +141,12 @@ final class SecurityLog
             'admin.group_delete',
             'admin.role_matrix',
             'admin.role_create',
+            // Ajustes de la instalación que cambian QUIÉN PUEDE ENTRAR. Van con
+            // prefijo `instance.` y no `admin.` porque no son de una cuenta ni de
+            // un formulario: son de la instalación entera, y en el filtro del
+            // panel «admin» significaría algo distinto.
+            'instance.registration_on',
+            'instance.registration_off',
             'form.delete',
             'form.duplicate',
             'form.review_request',

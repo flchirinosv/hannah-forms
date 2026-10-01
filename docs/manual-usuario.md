@@ -127,11 +127,25 @@ Ya lo hiciste en el paso 4 con `create-admin.php`.
 pública esto es lo que quieres: nadie se registra solo, y las cuentas las crea
 quien administra desde el panel.
 
-Si en algún momento quieres abrirlo, ponlo en `.env` y reinicia:
+Hay dos maneras de abrirlo, y se pueden pisar:
 
-```ini
-REGISTRATION_ENABLED=true
+| Dónde | Cómo | Cuándo gana |
+|---|---|---|
+| `.env` | `REGISTRATION_ENABLED=true` y reiniciar PHP | Mientras nadie lo toque en el panel |
+| `/admin` — tarjeta **Acceso de cualquiera** | El interruptor *Registro público* | A partir de ese momento |
+
+Lo que se guarda es el interruptor que se ha marcado, no el valor del `.env`:
+así el fichero sigue siendo la referencia de un despliegue limpio y quien
+administra la instancia puede cambiarlo sin acceso al servidor. Para volver a
+que mande el `.env`, borra la fila:
+
+```sql
+DELETE FROM app_settings WHERE key_name = 'registration_enabled';
 ```
+
+Ojo con el orden: la fila **gana** al `.env`, en los dos sentidos. Si el
+`.env` dice `true` y el interruptor del panel está apagado, el registro está
+**cerrado**.
 
 Con el registro abierto, cualquiera que llegue a `/register` puede crear una
 cuenta y entrar al panel. **No hay verificación por correo**: una cuenta queda
@@ -188,8 +202,13 @@ hay que usar `/admin`.
 
 | Valor | `/register` | Quién puede crear cuentas |
 | --- | --- | --- |
-| `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien tenga `admin.users`, desde `/admin` |
-| `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio, y quien tenga `admin.users` |
+| Sin fila en `app_settings` y `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien tenga `admin.users`, desde `/admin` |
+| Sin fila en `app_settings` y `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio, y quien tenga `admin.users` |
+| Con fila en `app_settings` | Lo que diga la fila, en los dos sentidos | Igual, según la fila |
+
+> La tabla de arriba es el camino largo. El corto es el interruptor de la
+> tarjeta **Acceso de cualquiera** en `/admin`: escribe la fila, y a partir de
+> ahí manda ella sobre el `.env`.
 
 > Si además quieres que la ruta devuelva 403 **antes** de que PHP la vea
 > (por ejemplo, en un despliegue con la aplicación en otro servidor), puedes

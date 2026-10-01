@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
@@ -195,21 +196,26 @@ class AuthController
     }
 
     /**
-     * El registro público es opt-in (REGISTRATION_ENABLED, default false).
+     * El registro público es opt-in, y hay dos fuentes.
      *
-     * El gate va en las DOS rutas, GET y POST, y en el action va ANTES del
-     * csrf: apagar la puerta en el formulario pero no en el POST dejaría un
-     * endpoint vivo que responde «token inválido» en vez de «no hay registro»,
-     * que es justo la respuesta que hace perder el tiempo a quien depura.
+     * `AppSettings::REGISTRATION` manda si alguien lo escribió desde el panel
+     * (`POST /admin/settings/registration`); si no hay fila, manda
+     * `REGISTRATION_ENABLED` del `.env`. Ese orden es el que deja el control
+     * donde estaba: el `.env` es lo que gobierna un despliegue, y el panel solo
+     * lo sustituye cuando alguien lo toca a propósito.
+     *
+     * Es `public` y no `private` porque la resuelve el panel para pintar el
+     * interruptor: si cada sitio leyera laBD por su cuenta, el interruptor
+     * podría enseñar un estado distinto del que realmente aplica.
      */
-    private function registrationEnabled(): bool
+    public static function registrationEnabled(): bool
     {
-        return (bool) Config::get('app.registration_enabled', false);
+        return AppSettings::bool(AppSettings::REGISTRATION, (bool) Config::get('app.registration_enabled', false));
     }
 
     public function showRegister(): void
     {
-        if (!$this->registrationEnabled()) {
+        if (!self::registrationEnabled()) {
             Response::abort(403, 'El registro público está desactivado en esta instalación.');
             return;
         }
@@ -226,7 +232,12 @@ class AuthController
 
     public function register(): void
     {
-        if (!$this->registrationEnabled()) {
+        // El gate va en las DOS rutas, GET y POST, y en el action va ANTES del
+        // csrf: apagar la puerta en el formulario pero no en el POST dejaría un
+        // endpoint vivo que responde «token inválido» en vez de «no hay
+        // registro», que es justo la respuesta que hace perder el tiempo a
+        // quien depura.
+        if (!self::registrationEnabled()) {
             Response::abort(403, 'El registro público está desactivado en esta instalación.');
             return;
         }

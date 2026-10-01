@@ -108,7 +108,7 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - [x] 1 · Tooltips
 - [x] 2 · Merge + mudanza de ajustes
 - [x] 3 · Acceso sin recarga
-- [ ] 4 · Registro global
+- [x] 4 · Registro global
 - [ ] 5 · Rol `approver` + borrable
 - [ ] 6 · Limpieza visual
 - [ ] Suite completa verde
@@ -191,3 +191,44 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - El aviso de lista vacía vive en el partial, así que el rerenderizado lo quita
   solo al añadir el primero. El mensaje de éxito se escribe en el `role="alert"`
   de la caja: sin recargar, no hay flash que lo anuncie.
+
+### Notas del bloque 4
+
+- **El fichero se llama `0010_app_settings.php`, no `…_registration`.** La tabla
+  es clave-valor genérica a propósito: sembrarla con el valor del `.env`
+  congelaría el estado de esta instalación el día de la migración, y con el
+  nombre de un ajuste ya no se lee como lo que es. La clave concreta es
+  `AppSettings::REGISTRATION`.
+- **La fila gana al `.env` en los dos sentidos.** Si solo ganara para
+  «encendido», el interruptor no podría cerrar un registro que el `.env` tiene
+  abierto, y sería un adorno. Y lo que se guarda es `0`/`1`, **no** el valor
+  resuelto: guardar el default convertiría la tabla en una segunda fuente de
+  verdad que el despliegue ya no controla.
+- **`Config::setForTesting()` no alcanza para cerrar el registro.** Ese override
+  vive debajo de `AppSettings`, que gana: un test que pone
+  `app.registration_enabled = false` y no neutraliza la fila
+  (`AppSettings::setForTesting([])`) está probando el estado de la máquina.
+  `ControllerActionsTest` lo hace, y además **guarda y devuelve** la fila de
+  `registration_enabled` en `cleanupResiduals()`: `app_settings` es de la
+  instalación, y una corrida de tests no puede dejar el registro abierto o
+  cerrado por sorpresa.
+- **Un valor que no se entiende vale `false`.** La columna es `TEXT` y cualquiera
+  puede escribir «quiza» con un `INSERT`; eso no puede ser un 500 en
+  `/register`.
+- **El interruptor NO se reposiciona al terminar.** Es lo contrario de lo
+  habitual y está atado a propósito: si el guardado falla, dejar la casilla como
+  el usuario la dejó sería mostrar un estado que no es el real, y el estado que
+  importa es «¿puede cualquiera crear su cuenta?». El JS se repinta con el
+  `enabled` que devuelve el servidor, también en error.
+- La respuesta es JSON y no un 302 porque un `fetch` que recibe un 302 sigue la
+  redirección y se baja el HTML entero de la ficha de usuarios: el JS vería un
+  `200` con la página dentro y no sabría que el guardado falló.
+- `dashboard.js` se carga también en `/admin` (`defer`, como en el resto del
+  panel). Todos sus bloques están guardados por `if (!elemento) return`, y el
+ delegado de «copiar enlace» vive antes del `return` a propósito: así también
+  funciona en las páginas que no tienen `#dashGrid`.
+- El permiso es `admin.access`, no `admin.users`: abrir el registro no es tocar
+  la cuenta de nadie, y es el mismo permiso que ya exige el middleware `admin`
+  de la ruta. `createUser()` sigue SIN mirar el interruptor, que es la
+  independencia que evita que cerrar el registro deje la instalación sin forma
+  de dar de alta a nadie.

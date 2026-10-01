@@ -279,3 +279,18 @@ CREATE TABLE IF NOT EXISTS cache (
 
 CREATE INDEX idx_cache_expires ON cache (expires_at);
 CREATE INDEX idx_cache_key_like ON cache (cache_key);
+
+-- ===========================================================================
+-- Ajustes de la instalación (migración 0010)
+-- ===========================================================================
+
+-- Interruptores que se cambian desde el panel sin tocar el servidor. Tabla
+-- clave-valor y NO una fila por ajuste porque el patrón es «la fila guardada
+-- gana; si no hay fila, manda el .env»: sembrarla con el valor del .env
+-- congelaría el estado de esta instalación el día de la migración.
+-- Sin fila inicial a propósito, también.
+CREATE TABLE IF NOT EXISTS app_settings (
+    key_name   VARCHAR(64) NOT NULL PRIMARY KEY COMMENT 'Clave del ajuste (p. ej. registration_enabled)',
+    value      TEXT DEFAULT NULL COMMENT 'Valor guardado; NULL = usa el valor por defecto',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Cuándo se escribió por última vez'
+) ENGINE=InnoDB;

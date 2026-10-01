@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
@@ -46,6 +47,72 @@ class AdminController
             'userGroups'    => User::groupsMap(),
             'canEditGroups' => Auth::can('admin.groups'),
             'csrf'          => Csrf::token(),
+            // El interruptor de registro es de la INSTALACIÓN, no de esta
+            // lista de usuarios: se pinta solo con `admin.access` (que es el
+            // permiso del panel), y con el valor ya resuelto para que el
+            // interruptor no tenga que preguntar nada por su cuenta.
+            'registrationEnabled' => AuthController::registrationEnabled(),
+            'canManageInstance'    => Auth::can('admin.access'),
+        ]);
+    }
+
+    /**
+     * POST /admin/settings/registration — abre o cierra el registro público.
+     *
+     * El interruptor se guarda por fetch, así que esta acción responde JSON.
+     * Y responde JSON con `ok: false` en vez de un flash porque un fetch que
+     * recibe un 302 sigue la redirección y descarga el HTML entero de la ficha
+     * de usuarios en el proceso: el JS vería un `200` con la página dentro y
+     * no sabría que el guardado falló.
+     *
+     * El permiso es `admin.access`, no `admin.users`: quien puede entrar al
+     * panel administra la instalación, y abrir el registro no es tocar la
+     * cuenta de nadie. Es también el mismo permiso que exige el middleware
+     * `admin` de la ruta, así que no hay forma de llegar aquí con menos.
+     *
+     * Va al log de seguridad porque es la puerta que decide si cualquiera puede
+     * crear una cuenta en la instalación: es de las pocas escrituras de
+     * configuración con consecuencias sobre el acceso de terceros.
+     */
+    public function updateRegistration(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::json(['ok' => false, 'error' => 'No tienes permiso para cambiar los ajustes de la instalación.'], 403);
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+            return;
+        }
+
+        // Ausente = no marcado. No se mira `Request::post('enabled')` con un
+        // default: una casilla desmarcada no llega, y `post('enabled', '0')`
+        // daría a entender que siempre hay un valor enviado.
+        $enabled = (string) Request::post('enabled', '0') === '1';
+
+        if (!AppSettings::setBool(AppSettings::REGISTRATION, $enabled)) {
+            Response::json([
+                'ok'     => false,
+                'error'  => 'No se pudo guardar el ajuste. ¿Falta ejecutar las migraciones?',
+                'enabled' => AuthController::registrationEnabled(),
+            ], 500);
+            return;
+        }
+
+        // El detalle es texto plano (el `user_id` lo pone `SecurityLog` solo):
+        // el evento ya dice QUIÉN lo hizo, porque `record()` guarda el usuario
+        // de la sesión.
+        SecurityLog::record(
+            $enabled ? 'instance.registration_on' : 'instance.registration_off',
+            'registro público ' . ($enabled ? 'abierto' : 'cerrado') . ' desde el panel'
+        );
+
+        Response::json([
+            'ok'      => true,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'Registro público abierto: cualquiera con la dirección puede crear su cuenta.'
+                : 'Registro público cerrado. Las cuentas se crean desde aquí.',
         ]);
     }
 

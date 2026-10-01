@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada en el commit `751602c`).
 
-No sustituye a la suite automática (`php scripts/test.php`, 642 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 694 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**199 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
+**203 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -258,6 +258,10 @@ Para no perderte, prepara esto antes de empezar:
 | I12 | Escribir un correo sin formato y pulsar *Añadir* | No se añade nada y el motivo dice que el correo no es válido (no un error de red) | M | |
 | I13 | Añadir con el teclado (Enter en la caja) | Funciona igual que con el botón, sin recargar | M | |
 | I14 | Abrir la ficha con JavaScript deshabilitado y añadir un correo | El alta funciona con el POST normal y avisa con un flash | M | |
+| I15 | `/admin` con un `user` normal | No aparece la tarjeta *Acceso de cualquiera* | A | |
+| I16 | `/admin` con un admin: mover el interruptor del registro | El estado cambia al instante, sin recargar, y el texto de al lado se actualiza | M | |
+| I17 | El interruptor, sin red (parar MySQL o cortar la conexión) | La casilla **vuelve** a lo que dice el servidor y sale un aviso rojo: no se queda marcada sin guardar | M | |
+| I18 | Poner `REGISTRATION_ENABLED=true` en `.env` con el interruptor apagado y abrir `/register` | 403: la fila de `app_settings` gana al `.env` | A | |
 
 ---
 

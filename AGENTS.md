@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 67 archivos, 642 métodos, ~2.6 min;
+- Suite completa: `php scripts/test.php` → 71 archivos, 694 métodos, ~3 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -83,7 +83,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **39 de los 67 archivos tocan la BD real** (los que llaman
+- **41 de los 71 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -267,6 +267,20 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   CSRF inválido» en vez de «el registro está cerrado». Cerrar `/register` **no**
   afecta al alta por panel (`/admin`), que es la vía de las cuentas de una
   instalación normal.
+- **El registro tiene DOS fuentes y la tabla gana**: `app_settings` (fila
+  `registration_enabled`, migración **0010**, leída por `App\Core\AppSettings` con
+  `try/catch`) sobre `REGISTRATION_ENABLED` del `.env`, y `registrationEnabled()`
+  —`public` y `static` porque la resuelve el panel para pintar el interruptor—
+  decide. Gana en **los dos** sentidos (si no, el interruptor no podría cerrar
+  un registro que el `.env` tiene abierto) y lo que se guarda es `0`/`1`, nunca
+  el valor resuelto del `.env`. Sin fila, manda el `.env`.
+- **`Config::setForTesting()` no alcanza para el registro**: `AppSettings` está
+  por encima y una fila viva se lo traga. Un test que quiera el estado del
+  `.env` tiene que poner además `AppSettings::setForTesting([])` y
+  `forgetForTesting()` en el `tearDown`. Y `app_settings` es de la
+  INSTALACIÓN, no un fixture: `ControllerActionsTest` guarda la fila previa y
+  la devuelve en `cleanupResiduals()`, porque el smoke recorre
+  `POST /admin/settings/registration` y escribiría de verdad.
 - Cerrar el registro **crea un agujero de arranque** que hay que cubrir siempre
   con algo: sin `AdminController::createUser()`, la única vía para un `user` o un
   `editor` sería abrir el registro, dejarse apuntar y cerrarlo. `createUser()` es
@@ -515,14 +529,14 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 199 comprobaciones manuales en 17 bloques (A–P)
+- `docs/pruebas-funcionales.md`: 203 comprobaciones manuales en 17 bloques (A–P)
   más regresiones (R), para detectar problemas que la suite no ve (teclado,
   maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
   la lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
-- `docs/technical-document.md`: arquitectura y modelo de datos (16 tablas, con
+- `docs/technical-document.md`: arquitectura y modelo de datos (17 tablas, con
   F2/F3/F4 y RBAC).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
   P1–P10 con su diagnóstico; los mapas de estado quedaron al día el 2026-09-29.

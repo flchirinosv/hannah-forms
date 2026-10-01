@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Database;
@@ -41,6 +42,19 @@ class ControllerActionsTest
     private static string $adminEmail = '';
     private static string $slug = '';
 
+    /**
+     * Fila `registration_enabled` tal y como estaba ANTES del smoke.
+     *
+     * El smoke recorre `POST /admin/settings/registration`, y esa acción escribe
+     * en `app_settings` de verdad: es una tabla de la instalación, no un fixture.
+     * Sin guardar el valor previo y devolverlo en `cleanupResiduals()`, una
+     * corrida de tests dejaría el registro de esta instancia abierto (o
+     * cerrado, si el `.env` lo tuviera abierto) y el cambio no se vería hasta
+     * que alguien mirara.
+     */
+    private static ?string $savedRegistration = null;
+    private static bool $savedRegistrationExists = false;
+
     public function setUp(): void
     {
         self::ensureCleanupHook();
@@ -59,6 +73,12 @@ class ControllerActionsTest
         // un 403, que es la mitad fácil. Con el registro abierto, el POST de
         // humo llega de verdad al alta de cuenta.
         Config::setForTesting('app.registration_enabled', true);
+
+        // La fila de `app_settings` GANA sobre ese override (es lo que significa
+        // «el panel ha tocado este ajuste»), así que para que el smoke vea el
+        // estado que dice el `.env` hay que neutralizarla mientras corre.
+        AppSettings::setForTesting([]);
+        self::snapshotRegistration($db);
 
         self::$adminEmail = 'smoke-' . bin2hex(random_bytes(3)) . '@test.local';
         self::$adminId = User::create('Smoke Admin', self::$adminEmail, 'clave-smoke-123', 1);
@@ -226,6 +246,11 @@ class ControllerActionsTest
     public function testElRegistroApagadoCierraGetYPost(): void
     {
         Config::setForTesting('app.registration_enabled', false);
+        // Y la fila de `app_settings` fuera: GANA sobre ese override (es lo que
+        // significa «el panel ha tocado este ajuste»), así que un `1` que se
+        // hubiera quedado de otra prueba dejaría `/register` abierto y este test
+        // probaría el estado de la máquina, no el del `.env`.
+        AppSettings::setForTesting([]);
 
         $router = new Router();
         require dirname(__DIR__, 2) . '/config/routes.php';
@@ -257,6 +282,9 @@ class ControllerActionsTest
         }
 
         Config::forgetForTesting();
+        // El override de `AppSettings` también es static: sin `forget` el
+        // siguiente test leería un `null` de mentira aunque haya fila en la BD.
+        AppSettings::forgetForTesting();
     }
 
     public function tearDown(): void
@@ -392,6 +420,11 @@ class ControllerActionsTest
             // "sácalo de todos los grupos": con un body vacío el smoke
             // comprobaría el POST vacío y no el camino que de verdad usa la UI.
             $post['user_id'] = (string) (int) self::$otherId;
+        } elseif ($path === '/admin/settings/registration') {
+            // Sin `enabled` el POST sería el camino de «cerrar», que también
+            // escribe; se manda explícito para que el smoke ejercite el
+            // `INSERT ... ON DUPLICATE KEY` (la fila no existe todavía).
+            $post['enabled'] = '1';
         } elseif (str_contains($path, '/admin/roles/create')) {
             // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
             // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol
@@ -454,6 +487,27 @@ class ControllerActionsTest
         }
     }
 
+    /** Lee la fila del interruptor ANTES de que el smoke la pise. */
+    private static function snapshotRegistration(Database $db): void
+    {
+        self::$savedRegistrationExists = false;
+        self::$savedRegistration = null;
+
+        try {
+            $row = $db->fetch(
+                "SELECT value FROM app_settings WHERE key_name = 'registration_enabled' LIMIT 1"
+            );
+        } catch (\Throwable $e) {
+            // Sin la migración 0010 no hay nada que guardar.
+            return;
+        }
+
+        if ($row !== null) {
+            self::$savedRegistrationExists = true;
+            self::$savedRegistration = $row['value'] === null ? null : (string) $row['value'];
+        }
+    }
+
     private static function cleanupResiduals(): void
     {
         $db = Database::getInstance(Config::db());
@@ -465,6 +519,18 @@ class ControllerActionsTest
         // no se autolimpia y cada corrida añadiría una columna más a la matriz.
         // Los CASCADE de role_permissions/role_group_roles se llevan lo suyo.
         $db->execute("DELETE FROM roles WHERE name LIKE 'humo-rol-%'");
+
+        // `app_settings` es de la INSTALACIÓN: el smoke la escribe de verdad, así
+        // que se devuelve el estado previo en vez de borrarlo a lo bruto.
+        $db->execute("DELETE FROM app_settings WHERE key_name = 'registration_enabled'");
+        if (self::$savedRegistrationExists) {
+            $db->execute(
+                "INSERT INTO app_settings (key_name, value) VALUES ('registration_enabled', :v)",
+                ['v' => (string) self::$savedRegistration]
+            );
+        }
+        self::$savedRegistrationExists = false;
+        self::$savedRegistration = null;
         self::$adminId = null;
         self::$otherId = null;
         self::$formId = 0;

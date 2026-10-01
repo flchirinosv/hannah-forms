@@ -184,6 +184,7 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 | POST | `/admin/users/role` | auth, admin, csrf | Cambiar rol (no permite auto-degradar admin) |
 | POST | `/admin/users/groups` | auth, admin, csrf | Grupos de un usuario (`groups[]` = lista completa; vacíos lo sacan de todos) |
 | POST | `/admin/users/toggle` | auth, admin, csrf | Activar/desactivar usuario (no sobre sí mismo) |
+| POST | `/admin/settings/registration` | auth, admin, csrf | Abrir/cerrar el registro público (`admin.access`, JSON: `ok`, `enabled`, `message`) |
 | GET | `/admin/forms` | auth, admin | Lista global de formularios |
 | GET | `/admin/groups` | auth, admin | Grupos de roles (RBAC) |
 | POST | `/admin/groups/create` | auth, admin, csrf | Crear grupo |
@@ -193,6 +194,15 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 | POST | `/admin/roles/create` | auth, admin, csrf | Crear rol (nace sin permisos) |
 | POST | `/admin/roles/save` | auth, admin, csrf | Guardar la matriz (`perms[<role>][]`; admin conserva `admin.access`) |
 | GET | `/admin/security-log` | auth, admin | Auditoría de eventos |
+
+### Registro público
+
+`GET /register` y `POST /register` cortan con 403 cuando
+`AuthController::registrationEnabled()` es `false`. El valor sale de
+`AppSettings::bool('registration_enabled', …)`: **la fila de `app_settings` gana
+si existe**; si no hay fila, manda `REGISTRATION_ENABLED` del `.env` (default
+`false`). La escritura va al log de seguridad como `instance.registration_on` /
+`instance.registration_off`.
 
 ## Códigos de error
 
