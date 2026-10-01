@@ -29,7 +29,6 @@ return [
     'ui.unknown_field'   => 'campo desconocido',
     'ui.and_join'        => 'y',
     'ui.or_join'         => 'o',
-    'ui.page_title'      => 'Paso {n}',
     'ui.leave_empty'     => 'Deja este campo vacío',
     'ui.form'            => 'El formulario',
     'ui.questions_count' => '{n} preguntas',

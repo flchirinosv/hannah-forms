@@ -1464,12 +1464,17 @@
                 if (!pmr.length || !pmc.length) {
                     return '<p class="text-muted small mb-0">Configura filas y columnas en el panel.</p>';
                 }
-                return '<div class="vf-matrix-preview">' +
-                    '<table class="table table-sm vf-matrix-table align-middle mb-0">' +
-                        '<thead><tr><th></th>' + pmc.map(c => '<th class="small fw-semibold text-center">' + esc(c) + '</th>').join('') + '</tr></thead>' +
+                return '<div class="vf-matrix-table-wrap table-responsive">' +
+                    '<table class="table table-sm mb-0 vf-matrix-table">' +
+                        '<thead><tr><th class="vf-matrix-empty"></th>' +
+                            pmc.map(c => '<th scope="col" class="small fw-semibold text-center">' + esc(c) + '</th>').join('') +
+                        '</tr></thead>' +
                         '<tbody>' + pmr.map(r =>
-                            '<tr><th class="small fw-normal text-start">' + esc(r) + '</th>' +
-                            pmc.map(() => '<td class="text-center"><input type="radio"></td>').join('') +
+                            '<tr><th scope="row" class="small fw-normal text-start">' + esc(r) + '</th>' +
+                            pmc.map(c => '<td class="text-center">' +
+                                '<label class="vf-matrix-cell" title="' + esc(c) + '">' +
+                                '<input type="radio" name="pv' + f._uid + '" disabled></label>' +
+                            '</td>').join('') +
                             '</tr>'
                         ).join('') + '</tbody>' +
                     '</table></div>';
@@ -1483,24 +1488,35 @@
                     (fv.accept ? ' · ' + esc(fv.accept) : '') + '</p>';
             }
             case 'nps':
-                return '<div class="d-flex flex-wrap gap-1">' + [0,1,2,3,4,5,6,7,8,9,10].map(i =>
-                    '<span class="vf-nps-num btn btn-outline-primary btn-sm" style="min-width:34px">' + i + '</span>'
+                // Las previews de NPS, estrella, matriz y ranking reutilizan el
+                // markup del fill (`nps-option`/`scale-btn`, `star-option`/
+                // `star-btn`, `vf-matrix-cell`, `vf-ranking-*`). Antes cada una
+                // traía su propio HTML —con estilos inline y clases que no
+                // existían, como `vf-nps-num` o `vf-matrix-preview`— así que la
+                // preview se veía distinta del formulario real en los cuatro
+                // tipos, que son justo los que más cambian de aspecto.
+                return '<div class="nps-selector d-flex flex-wrap gap-1">' + [0,1,2,3,4,5,6,7,8,9,10].map(i =>
+                    '<label class="nps-option">' +
+                    '<input type="radio" name="pv' + f._uid + '" class="visually-hidden" disabled>' +
+                    '<span class="scale-btn" tabindex="-1">' + i + '</span></label>'
                 ).join('') + '</div>';
             case 'star':
                 const pms = Number(f.validations.max) || 5;
-                return '<div class="d-flex gap-1 fs-5">' + Array.from({length: pms}, () =>
-                    '<i class="fa-solid fa-star text-warning"></i>'
+                return '<div class="star-selector d-flex gap-1">' + Array.from({length: pms}, () =>
+                    '<label class="star-option">' +
+                    '<input type="radio" name="pv' + f._uid + '" class="visually-hidden" disabled>' +
+                    '<i class="fa-solid fa-star star-btn" tabindex="-1"></i></label>'
                 ).join('') + '</div>';
             case 'ranking':
                 const prk = f.options.map(o => o.value);
                 if (!prk.length) {
                     return '<p class="text-muted small mb-0">Agrega opciones en el panel.</p>';
                 }
-                return '<div class="d-flex flex-column gap-2">' + prk.map((o, i) =>
+                return '<div class="vf-ranking-list d-flex flex-column gap-2">' + prk.map((o, i) =>
                     '<div class="d-flex align-items-center gap-2">' +
-                        '<span class="badge text-bg-secondary" style="min-width:26px">' + (i + 1) + '</span>' +
-                        '<span class="small">' + esc(o) + '</span>' +
-                        '<input type="number" class="form-control form-control-sm" style="max-width:70px" min="1" max="' + prk.length + '" placeholder="#' + (i + 1) + '" disabled>' +
+                        '<span class="badge text-bg-secondary vf-ranking-pos">' + (i + 1) + '</span>' +
+                        '<span class="small flex-grow-1">' + esc(o) + '</span>' +
+                        '<input type="number" class="form-control form-control-sm vf-ranking-input" min="1" max="' + prk.length + '" placeholder="1..' + prk.length + '" disabled>' +
                     '</div>'
                 ).join('') + '</div>';
             default:
@@ -1545,10 +1561,18 @@
                 return;
             }
             if (f.type === 'section') {
-                html += '<div class="vf-section text-center my-2' + (f.logic && f.logic.rules && f.logic.rules.length ? ' vf-preview-dim' : '') + '">' +
-                    '<div class="vf-section-icon"><i class="fa-solid fa-heading"></i></div>' +
-                    '<h2 class="vf-section-title h5 fw-bold mb-1">' + esc(f.label || 'Sin título') + '</h2>' +
-                    (f.help_text ? '<p class="vf-section-desc text-muted mb-0">' + esc(f.help_text) + '</p>' : '') +
+                // Misma estructura que el encabezado del fill (`.vf-section-inner`
+                // con título a la izquierda e icono a la derecha). El preview
+                // iba centrado con el icono encima, que es justo lo que hace
+                // distinto al formulario que se va a ver.
+                html += '<div class="vf-section my-2' + (f.logic && f.logic.rules && f.logic.rules.length ? ' vf-preview-dim' : '') + '">' +
+                    '<div class="vf-section-inner">' +
+                        '<div>' +
+                            '<h2 class="vf-section-title h5 fw-bold mb-1">' + esc(f.label || 'Sin título') + '</h2>' +
+                            (f.help_text ? '<p class="vf-section-desc text-muted mb-0">' + esc(f.help_text) + '</p>' : '') +
+                        '</div>' +
+                        '<span class="vf-section-icon"><i class="fa-solid fa-heading"></i></span>' +
+                    '</div>' +
                     previewCondNote(f) +
                     '<div class="d-flex flex-column gap-3 mt-3">' +
                         (childrenOf[f._uid] || []).map((child) => previewCard(child, f)).join('') +

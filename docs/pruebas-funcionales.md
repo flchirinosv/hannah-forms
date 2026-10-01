@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**209 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
+**218 pruebas** en 18 bloques (A–Q), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -388,6 +388,22 @@ Para no perderte, prepara esto antes de empezar:
 | P6 | Escribir una tipografía inválida | `#stFontNote` aparece **visible**, sin pasar el ratón: es estado, no explicación | A | |
 | P7 | Guardar y recargar: ¿sigue el `?` con el mismo texto? | Sí, y el ajuste guardado no se ha movido de sitio | A | |
 | P8 | El `?` mide 14 px: intentar pulsarlo con el dedo | Se pulsa igual: el área táctil está ampliada con `::after` | M | |
+
+---
+
+## Q. Limpieza visual del constructor y del fill (bloque 6)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| Q1 | Paleta → *Agrega elementos* → **Estructura** | *Sección* y *Página* son dos tarjetas separadas por un hueco, no un bloque pegado | M | |
+| Q2 | En el lienzo, una sección con preguntas dentro | Los campos van sobre el fondo de la sección **sin** la línea vertical de la izquierda: no hay doble escalón | M | |
+| Q3 | Una sección vacía | Se ve el recuadro punteado con la pista, no un hueco invisible | M | |
+| Q4 | Añadir un campo NPS o de estrellas a la lienzo | La miniatura se ve como una tira de botones o de estrellas con su forma, no como texto suelto | M | |
+| Q5 | Lo mismo con escala, ranking y matriz | Cada miniatura se distingue de las demás y cabe en la tarjeta sin scroll | M | |
+| Q6 | Abrir el **preview en vivo** con una sección | El título sale a la izquierda con el icono a la derecha, igual que en el formulario | M | |
+| Q7 | Preview en vivo con NPS, estrellas, matriz y ranking | Se ven como en el fill: los mismos botones, celdas y posiciones | M | |
+| Q8 | Publicar un formulario con un salto de página **sin** etiqueta | No sale un «Página N» inventado; el pie sigue diciendo «Paso 2 de 3» | M | |
+| Q9 | El mismo salto **con** descripción y sin etiqueta | Sale la cabecera con la descripción y sin título inventado | M | |
 
 ---
 

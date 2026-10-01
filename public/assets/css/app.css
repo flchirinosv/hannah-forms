@@ -438,6 +438,50 @@ body {
     border-radius: 12px;
     padding: .75rem 1rem;
 }
+
+/* El botón de «Quitar» solo lleva un icono: sin tamaño fijo sale un rectángulo
+   de la altura de su contenido y descuadra la fila de opciones, cuyo input sí
+   tiene altura de control. */
+.btn-remove-option {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.35rem; height: 2.35rem; padding: 0; flex: 0 0 auto;
+}
+
+/* ---- Previews de la TARJETA del lienzo (NPS, escala, estrellas, ranking) ----
+   `cardBodyHtml()` emite estas clases para los cuatro tipos de encuesta y no
+   tenían ninguna regla: salían como texto suelto («0 1 2 3 … 10» y una fila de
+   estrellas del tamaño por defecto) y la tarjeta parecía un error de maquetación
+   en vez de una miniatura del campo. Se dimensionan con `em` sobre el tamaño de
+   fuente de la tarjeta, que es lo que hace que la miniatura escale con ella. */
+.app-field-body .nps-dot,
+.app-field-body .scale-dot {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.55em; height: 1.55em; padding: 0 .25em;
+    font-size: .68rem; font-weight: 600; line-height: 1;
+    color: var(--vf-primary);
+    background: var(--vf-primary-light);
+    border: 1px solid #e0e7ff;
+    border-radius: 6px;
+}
+/* El hueco entre botones lo pone la utilidad de Bootstrap del markup
+   (`gap-1`, `gap-2`); aquí solo la forma, para que no haya dos reglas de gap
+   peleándose por la misma propiedad. */
+.app-field-body .scale-dot { border-radius: 50%; }
+/* 0-10 en la tarjeta es la prueba de que la escala llega hasta el 10: sin
+   distinguir los extremos sale una tira idéntica a la de una escala 1-5. */
+.app-field-body .nps-dot:first-child,
+.app-field-body .nps-dot:last-child {
+    color: #fff; background: var(--vf-primary); border-color: var(--vf-primary);
+}
+.app-field-body .star-icon { color: #fbbf24; font-size: .95rem; }
+.app-field-body .ranking-pos { min-width: 1.4em; font-size: .68rem; }
+.app-field-body .ranking-preview { padding: .1rem 0; }
+/* La matriz de la tarjeta cabe en su ancho: con el borde que usa la del fill la
+   tabla se sale de la tarjeta y hay que hacer scroll para ver la última columna. */
+.app-field-body .vf-matrix-preview { overflow: hidden; border-radius: 8px; }
+.app-field-body .vf-matrix-preview .vf-matrix-table th,
+.app-field-body .vf-matrix-preview .vf-matrix-table td { padding: .25rem .2rem; }
+.app-field-body .vf-matrix-preview input[type="radio"] { transform: scale(.8); }
 .app-field-body { flex: 1; min-width: 0; }
 
 .app-ghost { opacity: .35; background: var(--vf-primary-light); border-style: dashed; }
@@ -479,9 +523,13 @@ body {
 /* ---------- Vista previa en vivo ---------- */
 .vf-preview-scroll { max-height: 74vh; overflow-y: auto; }
 .vf-preview-scroll .fill-body { padding: 0 !important; background: #fff; }
+/* Icono de sección: `margin: auto .5rem` lo empuja a la derecha de la fila
+   (`.vf-section-inner` es flex) con un margen simétrico. Es la MISMA regla que
+   produce el encabezado del fill, así que la preview y el formulario salen
+   iguales; con `margin: 0 auto` el icono se centaba y el título bailaba. */
 .vf-section-icon {
     width: 44px; height: 44px;
-    margin: 0 auto .5rem;
+    margin: auto .5rem;
     display: flex; align-items: center; justify-content: center;
     background: var(--vf-primary-light);
     color: var(--vf-primary);
@@ -489,6 +537,17 @@ body {
     font-size: 1.1rem;
 }
 .vf-section { border-top: 1px solid var(--vf-border); border-bottom: 1px solid var(--vf-border); padding: 1rem 0; }
+.vf-title { line-height: 1.25; }
+.vf-fields { margin-top: .5rem; }
+/* Escala: los botones se dimensionan por contenido y con números de una cifra
+   el salto de «9» a «10» mueve la fila entera; ancho mínimo para que no baile. */
+.vf-scale-num { min-width: 2.2rem; font-weight: 600; }
+/* Separador de salto de página en el preview: el form lo muestra como un
+   bloque con cabecera propia, así que aquí solo hace falta la línea. */
+.vf-preview-scroll .vf-page-divider {
+    border-top: 1px dashed var(--vf-border);
+    color: #94a3b8;
+}
 .vf-range-val { min-width: 2.6rem; text-align: center; font-weight: 600; color: var(--vf-primary); background: var(--vf-primary-light); border-radius: 8px; padding: .25rem .5rem; font-size: .85rem; }
 
 /* ---------- Fill (front público) ---------- */
@@ -1236,19 +1295,20 @@ body {
     border-color: #fcd34d;
     background: linear-gradient(180deg, #fffbeb 0%, #fff 30%);
 }
+/* Los hijos van sobre el fondo de la sección y SIN la línea vertical de la
+   izquierda: el borde de 3px con su hueco de 1rem se confundía
+   con el borde de la propia tarjeta de la sección y hacía doble escalón. Se
+   conserva el fondo y el radio, que son los que separan el bloque. */
 .app-section-children {
     flex: 1 0 100%;
     display: flex; flex-direction: column; gap: 1.5rem;
-    border-left: 3px solid #e0e7ff;
     margin: .6rem 0 0;
-    padding: .2rem 0 .2rem 1rem;
-    border-radius: 0 8px 8px 0;
+    border-radius: 8px;
     min-height: 2.75rem;
     background: rgba(245, 247, 255, .55);
 }
 .app-section-children:empty {
-    border-color: #cbd5e1;
-    border-style: dashed;
+    border: 1px dashed #cbd5e1;
     background: transparent;
 }
 .app-section-children:empty::before {
@@ -1471,7 +1531,9 @@ body {
 /* ---- Paleta compacta: rejilla de 2 columnas ---- */
 .app-palette-group { margin-top: .7rem; }
 .app-palette-group:first-child { margin-top: 0; }
-.app-palette-static { margin: .35rem 0 0; }
+/* `Sección` y `Página` son dos tarjetas apiladas: sin `gap` se tocan y parece
+   una sola pieza de dos líneas. */
+.app-palette-static { display: flex; flex-direction: column; gap: .55rem; margin: .35rem 0 0; }
 .app-palette-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1514,6 +1576,12 @@ body {
 .star-option:hover .star-btn, .star-option input:checked + .star-btn { color: #fbbf24; }
 
 .vf-matrix-table-wrap { border: 1px solid var(--vf-border); border-radius: 12px; }
+/* La miniatura de la matriz usa la misma celda que el fill, pero sin radio
+   interactivo: el borde gris es lo que se ve en el lienzo y sin él la tabla
+   parece una rejilla suelta. */
+.vf-matrix-preview .vf-matrix-table th:first-child { color: #475569; font-weight: 600; }
+.vf-matrix-preview .vf-matrix-table input[type="radio"] { pointer-events: none; }
+.vf-matrix-empty { width: 1%; }
 .vf-matrix-table { --bs-table-bg: transparent; }
 .vf-matrix-table td { padding: .3rem; vertical-align: middle; }
 .vf-matrix-table th { padding: .55rem .5rem; }

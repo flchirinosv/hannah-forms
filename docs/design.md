@@ -135,6 +135,9 @@ el modal de alta:
 - Dos grupos: **Estructura** (`section`, `page`) y **Tipos de pregunta**.
 - Ambos grupos usan el mismo tile; cambia la retícula (fila vs. 2
   columnas), nunca la altura del ítem.
+- Los dos tiles de «Estructura» van apilados (`.app-palette-static` es
+  una columna con `gap`): sin separación parecían una sola pieza de dos
+  líneas.
 
 ### 3.5 Estados lógicos (insignias y notices)
 
@@ -145,6 +148,29 @@ el modal de alta:
 - Un campo con condición lleva chip de lógica en la tarjeta; una sección
   con condición debe marcar también a sus hijas como heredadas (F3,
   pendiente).
+
+### 3.5b Miniatura del campo en la tarjeta (`.app-field-body`)
+
+Los cuatro tipos de encuesta (NPS, escala, estrellas, ranking) y la matriz
+se dibujan en la tarjeta del lienzo con clases propias, y esas clases
+**tienen** reglas: sin ellas la miniatura salía como texto suelto
+(«0 1 2 3 … 10», una fila de estrellas del tamaño por defecto) y la
+tarjeta parecía un error de maquetación.
+
+| Clase | Qué es |
+|---|---|
+| `.nps-dot` | Botón de la escala 0–10 de la miniatura, con los extremos resaltados |
+| `.scale-dot` | Botón circular de una escala 1..N |
+| `.star-icon` | Estrella de la miniatura (`#fbbf24`) |
+| `.ranking-pos` | Insignia de posición de una opción del ranking |
+| `.vf-matrix-preview` | Contenedor de la matriz en miniatura, con `overflow: hidden` |
+
+El preview en vivo del modal (`previewBody()` en `builder.js`) **no** usa
+estas: reutiliza el markup del fill (`nps-option`/`scale-btn`,
+`star-option`/`star-btn`, `vf-matrix-cell`, `vf-ranking-*`), para que lo
+que se ve antes de publicar se parezca a lo que se verá después. Las
+miniaturas van en `em` sobre el tamaño de fuente de la tarjeta, que es lo
+que hace que escalen con ella.
 
 ### 3.6 Roles y grupos (`app-rbac-*`)
 

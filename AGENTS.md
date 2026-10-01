@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 71 archivos, 705 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 72 archivos, 711 métodos, ~3 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -453,6 +453,17 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `setAttribute('data-vf-structural-hidden','1')` + selector
   `[data-vf-structural-hidden]` **por presencia**: `toggleAttribute()` deja el valor
   `""` y el selector nunca casa.
+- **TODA clase de la app que `builder.js` emite tiene que existir como selector
+  en `app.css`**, y lo vigila `BuilderPreviewCssTest` cruzando las dos. Salieron
+  trece sin definir (`.nps-dot`, `.scale-dot`, `.star-icon`, `.ranking-pos`,
+  `.vf-matrix-preview`…), y el síntoma era la miniatura de la tarjeta hecha texto
+  suelto. Los ganchos de JS que no llevan estilo se declaran **explícitamente** en
+  ese test: o es estilo, o es gancho, y la lista corta es lo que lo hace
+  auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
+  reutiliza el markup del fill** (`nps-option`/`scale-btn`, `star-option`/
+  `star-btn`, `vf-matrix-cell`, `vf-ranking-*`): su HTML propio lo hacía ver
+  distinto del formulario que iba a salir, y cada cambio obligaba a tocarlo dos
+  veces.
 - El engranaje de cada tarjeta **reubica la misma** instancia de `#settingsForm`
   (`moveSettingsTo`), no la duplica; como `openFieldSettings` redibuja el lienzo, el
   opener se localiza por `[data-uid]` al cerrar. Spec de UI: `docs/design.md`.
@@ -539,7 +550,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 203 comprobaciones manuales en 17 bloques (A–P)
+- `docs/pruebas-funcionales.md`: 218 comprobaciones manuales en 18 bloques (A–Q)
   más regresiones (R), para detectar problemas que la suite no ve (teclado,
   maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
   la lista mínima.

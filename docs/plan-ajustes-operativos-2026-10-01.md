@@ -125,6 +125,45 @@ flash con el motivo) y botón con `data-confirm` solo donde se puede.
   `forms.review` al rol, es su decisión y la matriz es el sitio para tomarla; no
   hace falta una regla más.
 
+### Notas del bloque 6
+
+- **`.app-section-children` pierde el `border-left` y el `padding-left`, y gana
+  el borde del estado vacío.** El borde de 3px con su hueco de 1rem se confundía
+  con el de la propia tarjeta de la sección y hacía un doble escalón. Se conserva
+  el fondo y el radio, que son los que separan el bloque. Y `:empty` ahora trae
+  `border: 1px dashed`, que antes no pintaba nada (el `border-style: dashed` de
+  un `border-left` que ya no existe es un borde de 0): la pista de «arrastra
+  aquí» salía sin recuadro.
+- **La miniatura de la tarjeta y el preview en vivo usan dos markup distintos, y es a propósito.** La miniatura del lienzo (`cardBodyHtml()`)
+  emite `.nps-dot`, `.scale-dot`, `.star-icon`, `.ranking-pos` y
+  `.vf-matrix-preview`, que **no tenían ninguna regla**: salían como texto
+  suelto («0 1 2 3 … 10», estrellas del tamaño por defecto) y la tarjeta parecía
+  un error de maquetación. Se les ha dado forma en `em` sobre el tamaño de
+  fuente de la tarjeta, que es lo que hace que la miniatura escale con ella. El
+  preview en vivo, en cambio, ahora **reutiliza el markup del fill**
+  (`nps-option`/`scale-btn`, `star-option`/`star-btn`, `vf-matrix-cell`,
+  `vf-ranking-*`): antes traía el suyo, con estilos inline y clases
+  inexistentes, así que se veía distinto del formulario que iba a salir. Dos
+  miniatura distintas sí: una es una foto del campo dentro de una tarjeta
+  estrecha, la otra es el formulario entero.
+- **`.vf-section-icon { margin: auto .5rem }` y no `0 auto`.** Con `0 auto` el
+  icono se centraba y el título bailaba. `auto .5rem` lo empuja a la derecha de
+  la fila (`.vf-section-inner` es flex), que es como se ve el encabezado del
+  fill. El preview de sección se ha reconstruido con esa misma estructura
+  (`.vf-section-inner` con el título a la izquierda y el icono a la derecha, sin
+  `text-center`).
+- **El salto de página sin etiqueta NO inventa «Página N».** Se fue
+  `ui.page_title` (en `es.php`, `en.php` y en el `emitPageHeader()` del fill):
+  el `aria-label` del bloque y el badge del pie ya dicen «Paso 2 de 3», así que
+  un encabezado de relleno dice lo mismo dos veces y ninguna vez el contenido.
+  Si hay descripción, la cabecera se queda con ella; sin título ni descripción,
+  no se pinta cabecera. La clave i18n se **borra** en los dos idiomas y no
+  estaba en `FALLBACK_I18N`, así que no hay un tercer sitio que tocar.
+- `.vf-scale-num` recibe `min-width`: los botones se dimensionan por contenido y
+  al pasar de «9» a «10» la fila entera se movía.
+- Huecos de la paleta y tamaño del botón de «Quitar» opción: dos cosas que solo
+  se ven en pantalla, sin contrato de datos detrás.
+
 ### 6 · Limpieza visual
 `.app-section-children` sin `padding-left` ni `border-left` (fondo conservado),
 `.app-palette-static` con `gap` (separar Sección de Página), preview de sección en
@@ -157,7 +196,7 @@ NPS/estrella/matriz/ranking, y `views/fill/show.php` sin «Página N».
 - [x] 3 · Acceso sin recarga
 - [x] 4 · Registro global
 - [x] 5 · Rol `approver` + borrable
-- [ ] 6 · Limpieza visual
+- [x] 6 · Limpieza visual
 - [x] Suite completa verde
 
 ### Notas de ejecución

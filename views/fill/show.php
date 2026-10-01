@@ -533,20 +533,28 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                 }
             }
             echo '<section class="vf-page-block flip-in"' . $blockAttrs . '>';
+            // Un salto de página SIN etiqueta no inventa un título. Antes caía en
+            // «Página N» (`ui.page_title`), que es un encabezado que no dice nada
+            // de la página cuando el pie ya lleva «Paso 2 de 3» y el `aria-label`
+            // del bloque lo nombra igual: dos veces lo mismo y ninguna vez el
+            // contenido. Con descripción, la cabecera se queda con ella; sin
+            // título ni descripción, no se pinta cabecera.
             if ($pageField !== null) {
                 $title = trim((string) ($pageField['label'] ?? ''));
-                if ($title === '') {
-                    $title = $t('ui.page_title', ['n' => $pageBlockIdx]);
+                $desc = trim((string) ($pageField['help_text'] ?? ''));
+                if ($title !== '' || $desc !== '') {
+                    echo '<header class="vf-page-head">';
+                    echo '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>';
+                    echo '<div>';
+                    if ($title !== '') {
+                        echo '<h2 class="vf-page-title h4 fw-bold mb-0">' . View::escape($title) . '</h2>';
+                    }
+                    if ($desc !== '') {
+                        echo '<p class="vf-page-desc text-muted mt-1 mb-0">' . nl2br(View::escape($desc)) . '</p>';
+                    }
+                    echo '</div>';
+                    echo '</header>';
                 }
-                echo '<header class="vf-page-head">';
-                echo '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>';
-                echo '<div>';
-                echo '<h2 class="vf-page-title h4 fw-bold mb-0">' . View::escape($title) . '</h2>';
-                if (!empty($pageField['help_text'])) {
-                    echo '<p class="vf-page-desc text-muted mt-1 mb-0">' . nl2br(View::escape((string) $pageField['help_text'])) . '</p>';
-                }
-                echo '</div>';
-                echo '</header>';
             }
         };
 

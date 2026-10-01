@@ -28,7 +28,6 @@ return [
     'ui.unknown_field'   => 'unknown field',
     'ui.and_join'        => 'and',
     'ui.or_join'         => 'or',
-    'ui.page_title'      => 'Step {n}',
     'ui.leave_empty'     => 'Leave this field empty',
     'ui.form'            => 'The form',
     'ui.questions_count' => '{n} questions',
