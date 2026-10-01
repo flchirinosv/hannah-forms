@@ -172,6 +172,26 @@ que se ve antes de publicar se parezca a lo que se verá después. Las
 miniaturas van en `em` sobre el tamaño de fuente de la tarjeta, que es lo
 que hace que escalen con ella.
 
+
+### 3.9 Cabecera de salto de página (`.vf-page-head`)
+
+- Es la caja con icono, título y descripción que abre un paso. **Sin
+  fondo ni caja**: se separa con la misma línea fina que usa
+  `.vf-section-block` (`border-top: 1px solid var(--vf-border)`), porque
+  una caja de color dentro de un formulario publicado se lee como un
+  aviso.
+- Icono de 40px con su ámbar (`#fef3c7` / `#d97706`) y título a
+  `1.1rem`/700: mismo tamaño que `.vf-section-icon` y `.vf-section-title`
+  para que ambos encabezados midieran igual, con el color como única
+  diferencia —un paso no es una sección y tiene que poder distinguirse.
+- El builder reutiliza este markup en el preview (`BuilderPreviewCssTest`
+  lo ata), y con `fields.show_header` apagado no lo pinta ni el
+  formulario ni el preview.
+- El separador «— siguiente paso —» del preview es `.vf-page-break`, con
+  línea a ambos lados. Antes era `.vf-page-divider`, la clase de la que
+  pintaba la insignia centrada del preview: una sola clase para dos
+  formas que no se parecían en nada.
+
 ### 3.6 Roles y grupos (`app-rbac-*`)
 
 Fuera del builder, pero con el mismo lenguaje visual.

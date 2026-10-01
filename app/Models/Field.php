@@ -112,11 +112,12 @@ class Field
         int $position = 0,
         ?int $parentId = null,
         ?array $logic = null,
-        bool $isPii = false
+        bool $isPii = false,
+        bool $showHeader = true
     ): int {
         self::db()->execute(
-            'INSERT INTO fields (form_id, type, label, placeholder, help_text, is_required, is_pii, options, validations, position, parent_id, logic)
-             VALUES (:form_id, :type, :label, :placeholder, :help_text, :is_required, :is_pii, :options, :validations, :position, :parent_id, :logic)',
+            'INSERT INTO fields (form_id, type, label, placeholder, help_text, is_required, is_pii, show_header, options, validations, position, parent_id, logic)
+             VALUES (:form_id, :type, :label, :placeholder, :help_text, :is_required, :is_pii, :show_header, :options, :validations, :position, :parent_id, :logic)',
             [
                 'form_id'     => $formId,
                 'type'        => $type,
@@ -125,6 +126,7 @@ class Field
                 'help_text'   => $helpText,
                 'is_required' => $required ? 1 : 0,
                 'is_pii'      => $isPii ? 1 : 0,
+                'show_header' => $showHeader ? 1 : 0,
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,
@@ -148,12 +150,14 @@ class Field
         int $position = 0,
         ?int $parentId = null,
         ?array $logic = null,
-        bool $isPii = false
+        bool $isPii = false,
+        bool $showHeader = true
     ): void {
         self::db()->execute(
             'UPDATE fields
              SET type = :type, label = :label, placeholder = :placeholder, help_text = :help_text,
-                 is_required = :is_required, is_pii = :is_pii, options = :options, validations = :validations,
+                 is_required = :is_required, is_pii = :is_pii, show_header = :show_header,
+                 options = :options, validations = :validations,
                  position = :position, parent_id = :parent_id, logic = :logic
              WHERE id = :id',
             [
@@ -164,6 +168,7 @@ class Field
                 'help_text'   => $helpText,
                 'is_required' => $required ? 1 : 0,
                 'is_pii'      => $isPii ? 1 : 0,
+                'show_header' => $showHeader ? 1 : 0,
                 'options'     => json_encode($options),
                 'validations' => json_encode($validations),
                 'position'    => $position,

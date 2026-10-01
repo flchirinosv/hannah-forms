@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Controllers\BuilderController;
 use App\Controllers\FillController;
 use App\Models\Answer;
 use App\Models\Field;
@@ -168,7 +169,100 @@ class MultiStepTest
         assertSame(0, count($subs));
     }
 
+    /**
+     * `fields.show_header` (0013): el salto de página decide si publica su
+     * cabecera, y apagarla NO desaparece el paso.
+     *
+     * Se mira el HTML renderizado y no el estado en memoria porque lo que importa
+     * es lo que ve quien responde: la caja con icono y título. El bloque, su
+     * `aria-label` y la insignia del pie se siguen pintando, así que el paso
+     * cuenta igual — que es justo lo que ata la segunda aserción.
+     */
+    public function testElSaltoDePaginaPuedeOcultarSuCabecera(): void
+    {
+        Field::create(self::$formId, 'page', 'Paso 1', '', '', false, [], [], 1);
+        Field::create(self::$formId, 'text', 'Primera', '', '', false, [], [], 2);
+        $page2 = Field::create(self::$formId, 'page', 'Paso 2', '', '', false, [], [], 3, null, null, false, false);
+        Field::create(self::$formId, 'text', 'Segunda', '', '', false, [], [], 4);
+        Form::update(self::$formId, 'Form Cabecera', '', 'published');
+
+        assertSame(0, (int) (Field::find($page2)['show_header'] ?? -1), 'show_header debe volver como 0');
+
+        $html = $this->renderShow();
+        // Se cuenta la CAJA, no el texto: `aria-label="Paso 2 de 2"` también
+        // contiene «Paso 2», y buscar la cadena daba verde con la cabecera
+        // pintada y por el motivo equivocado.
+        assertSame(1, substr_count($html, 'class="vf-page-head"'), 'solo el paso 1 publica su caja');
+        assertTrue(
+            str_contains($html, 'aria-label="Paso 2 de 2"'),
+            'el paso sigue existiendo y nombrándose aunque su cabecera esté apagada'
+        );
+
+        // Y al revés: el flag es lo único que decide, no el contenido.
+        Field::updateField($page2, 'page', 'Paso 2', '', '', false, [], [], 3, null, null, false, true);
+        $html = $this->renderShow();
+        assertSame(2, substr_count($html, 'class="vf-page-head"'), 'con show_header=1 la caja vuelve');
+    }
+
+    /**
+ * La otra mitad del ajuste: el payload del constructor → la columna.
+ *
+ * `show_header` no cabe en `validations` ni en `options`, así que viaja por su
+ * propia columna (0013), y el servidor tiene que distinguir quién la consulta:
+ * el salto de página sí, el resto de tipos no (para un texto no hay cabecera que
+ * apagar, y guardar el flag ahí sería un dato que nada lee).
+ */
+    public function testElAjusteDeCabeceraLlegaPorElGuardadoDelConstructor(): void
+    {
+        \App\Core\Auth::assumeLoggedIn((int) self::$userId);
+        $token = 'multi-step-cabecera';
+        \App\Core\Session::set('_csrf_token', $token);
+        $_SERVER['HTTP_X_CSRF_TOKEN'] = $token;
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = [];
+        \App\Core\Request::setRequestBodyForTests(json_encode([
+            'title'  => 'Form Cabecera',
+            'status' => 'draft',
+            'fields' => [
+                ['_uid' => 'field-1', 'type' => 'page', 'label' => 'Paso 1', 'show_header' => false],
+                ['_uid' => 'field-2', 'type' => 'text', 'label' => 'Pregunta', 'show_header' => false],
+            ],
+        ]));
+        \App\Core\Request::resetJsonState();
+
+        \App\Core\Response::setRecordHalt(true);
+        ob_start();
+        try {
+            (new BuilderController())->saveStructure((int) self::$formId);
+        } finally {
+            $out = (string) ob_get_clean();
+            \App\Core\Response::setRecordHalt(false);
+        }
+        $json = json_decode($out, true);
+        assertTrue((bool) ($json['ok'] ?? false), 'el guardado debe salir bien: ' . substr($out, 0, 160));
+
+        $rows = Field::byForm((int) self::$formId);
+        $porTipo = [];
+        foreach ($rows as $r) {
+            $porTipo[(string) $r['type']] = (int) ($r['show_header'] ?? -1);
+        }
+        assertSame(0, $porTipo['page'] ?? -2, 'el salto de página guarda el ajuste');
+        assertSame(1, $porTipo['text'] ?? -2, 'un texto lo ignora: siempre con cabecera');
+
+        \App\Core\Auth::forgetCache();
+        \App\Core\Session::destroy();
+    }
+
     /* ---------- Helpers ---------- */
+
+    private static function renderShow(): string
+    {
+        $controller = new FillController();
+        ob_start();
+        $controller->show(self::$slug);
+        return (string) ob_get_clean();
+    }
 
     private static function cleanupResiduals(): void
     {

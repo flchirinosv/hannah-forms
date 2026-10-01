@@ -154,6 +154,7 @@ nunca rompe el request), `cache` (caché TTL del dashboard) y `app_settings`
 | parent_id | INT UNSIGNED FK→fields NULL | sección contenedora (NULL = nivel superior) |
 | logic | JSON NULL | condición de visibilidad (operador + reglas) |
 | is_pii | TINYINT(1) | F1: el dueño marca el campo como personal |
+| show_header | TINYINT(1) | solo `page`: pintar su cabecera en el formulario (0013, DEFAULT 1) |
 
 #### submissions
 | Campo | Tipo | Notas |

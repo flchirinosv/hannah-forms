@@ -196,6 +196,13 @@ class BuilderController
                 // exportación, porque se filtran por la lista de ids marcados).
                 $isPii = $isStructural ? false : (bool) ($item['is_pii'] ?? false);
 
+                // `fields.show_header` (0013): solo el salto de página publica una
+                // cabecera —icono, título y descripción— y solo él decide si la
+                // publica. En el resto de tipos se fuerza a `true` igual que
+                // `is_pii`: un texto no tiene cabecera que apagar, y dejar que el
+                // cliente lo apague significaría guardar un flag que nada lee.
+                $showHeader = $type === 'page' ? (bool) ($item['show_header'] ?? true) : true;
+
                 // M3: longitud máx. según el esquema (label/placeholder VARCHAR(190),
                 // help_text VARCHAR(255)) para evitar 500 silenciosos.
                 $label = (string) ($item['label'] ?? '');
@@ -227,7 +234,8 @@ class BuilderController
                         $position,
                         $parentIdResolved,
                         null,
-                        $isPii
+                        $isPii,
+                        $showHeader
                     );
                     $finalId = (int) $item['id'];
                 } else {
@@ -243,7 +251,8 @@ class BuilderController
                         $position,
                         $parentIdResolved,
                         null,
-                        $isPii
+                        $isPii,
+                        $showHeader
                     );
                 }
 

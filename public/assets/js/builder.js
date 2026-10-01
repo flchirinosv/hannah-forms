@@ -95,6 +95,10 @@
         help_text: f.help_text || '',
         is_required: Boolean(f.is_required),
         is_pii: Boolean(f.is_pii),
+        // `fields.show_header` (0013). Ausente = visible, que es lo que había
+        // antes de que el ajuste existiera: un payload viejo no puede convertir
+        // un salto de página en una caja invisible sin que nadie lo pidiera.
+        show_header: f.show_header == null ? true : Boolean(Number(f.show_header)),
         options: Array.isArray(f.options) ? f.options : [],
         validations: f.validations && typeof f.validations === 'object' ? f.validations : {},
         parentId: f.parent_id ? (initIds[Number(f.parent_id)] || null) : null,
@@ -215,6 +219,8 @@
         fieldRequired: document.getElementById('fieldRequired'),
         fieldPii: document.getElementById('fieldPii'),
         fieldPiiWrap: document.getElementById('fieldPiiWrap'),
+        fieldPageHeader: document.getElementById('fieldPageHeader'),
+        fieldPageHeaderWrap: document.getElementById('fieldPageHeaderWrap'),
         btnApply: null, // se eliminó el botón «Aplicar»: la edición es en vivo
         btnDelete: document.getElementById('btnDeleteField'),
         btnUndo: document.getElementById('btnUndo'),
@@ -846,6 +852,7 @@
         el.fieldHelp.value = f.help_text || '';
         el.fieldRequired.checked = Boolean(f.is_required);
         el.fieldPii.checked = Boolean(f.is_pii);
+        el.fieldPageHeader.checked = f.show_header !== false;
 
         el.fieldPlaceholderWrap.classList.toggle('d-none', !info.hasPlaceholder);
         el.fieldHelpWrap.classList.toggle('d-none', !info.hasHelp);
@@ -869,6 +876,9 @@
         // muerto es una pregunta que el dueño se hace y no puede responder.
         el.fieldPiiWrap.classList.toggle('d-none', isStructural);
         el.fieldPii.disabled = isStructural;
+        // El ajuste de cabecera es al revés que el de PII: solo el salto de
+        // página lo tiene, y solo para él se muestra.
+        el.fieldPageHeaderWrap.classList.toggle('d-none', !info.isPage);
         if (isStructural) {
             el.fieldRequired.checked = false;
             el.fieldPii.checked = false;
@@ -1175,6 +1185,9 @@
         if (info.hasHelp) f.help_text = el.fieldHelp.value.trim();
         f.is_required = isStructural ? false : el.fieldRequired.checked;
         f.is_pii = isStructural ? false : el.fieldPii.checked;
+        // Un salto de página nuevo nace con cabecera visible: es lo que había
+        // siempre, y además sin título ni descripción no se pintaría igual.
+        f.show_header = info.isPage ? el.fieldPageHeader.checked : true;
 
         if (info.hasOptions) {
             f.options = Array.from(el.optionsList.querySelectorAll('.option-input'))
@@ -1392,6 +1405,7 @@
             help_text: '',
             is_required: false,
             is_pii: false,
+            show_header: true,
             options: info && info.hasOptions ? [{ value: 'Opción 1' }, { value: 'Opción 2' }] : [],
             validations: (type === 'scale' || type === 'star') ? { max: 5 } : (type === 'nps' ? { min: 0, max: 10 } : {}),
             parentId: parentUid || null,
@@ -1563,11 +1577,24 @@
 
         roots.forEach((f) => {
             if (f.type === 'page') {
-                html += '<div class="vf-page-divider text-center my-2 py-2">' +
-                    '<span class="badge text-bg-light text-muted text-uppercase small mb-1"><i class="fa-solid fa-file-lines me-1"></i>' + esc(f.label || 'Página') + '</span>' +
-                    (f.help_text ? '<div class="vf-page-desc text-muted small">' + esc(f.help_text) + '</div>' : '') +
-                    '<div class="small text-muted">— siguiente paso —</div>' +
-                    '</div>';
+                // El preview reutiliza el markup del fill (`.vf-page-head`), como
+                // ya hacía con el de sección: aquí era una insignia centrada, un
+                // tercer diseño que no se parecía en nada a lo que sale publicado.
+                // Y con `show_header` apagado no se pinta, que es lo que hace el
+                // formulario final: el preview no puede prometer una cabecera que
+                // luego no aparece.
+                if (f.show_header === false) {
+                    html += '<div class="vf-page-break"></div>';
+                    return;
+                }
+                html += '<div class="vf-page-head">' +
+                    '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>' +
+                    '<div>' +
+                        (f.label ? '<h2 class="vf-page-title h5 fw-bold mb-0">' + esc(f.label) + '</h2>' : '') +
+                        (f.help_text ? '<p class="vf-page-desc text-muted mt-1 mb-0">' + esc(f.help_text) + '</p>' : '') +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="vf-page-break"><span class="text-muted small">— siguiente paso —</span></div>';
                 return;
             }
             if (f.type === 'section') {
@@ -1656,6 +1683,7 @@
                 help_text: f.help_text || '',
                 is_required: Boolean(f.is_required),
                 is_pii: Boolean(f.is_pii),
+                show_header: Boolean(f.show_header),
                 options: Array.isArray(f.options) ? f.options : [],
                 validations: f.validations && typeof f.validations === 'object' ? f.validations : {},
                 parent_id: f.parentId || null,

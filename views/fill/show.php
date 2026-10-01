@@ -539,7 +539,12 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
             // del bloque lo nombra igual: dos veces lo mismo y ninguna vez el
             // contenido. Con descripción, la cabecera se queda con ella; sin
             // título ni descripción, no se pinta cabecera.
-            if ($pageField !== null) {
+            //
+            // Y `fields.show_header` (0013) apaga la caja entera cuando quien
+            // edita decide que ese paso no necesita una: el bloque, su
+            // `aria-label`, la barra de progreso y el pie se siguen pintando, así
+            // que el paso no desaparece, solo su cabecera.
+            if ($pageField !== null && (int) ($pageField['show_header'] ?? 1) === 1) {
                 $title = trim((string) ($pageField['label'] ?? ''));
                 $desc = trim((string) ($pageField['help_text'] ?? ''));
                 if ($title !== '' || $desc !== '') {

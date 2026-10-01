@@ -225,6 +225,11 @@ $fieldTypes = [
                             <input class="form-check-input" type="checkbox" id="fieldRequired">
                             <label class="form-check-label small" for="fieldRequired">Campo obligatorio</label>
                         </div>
+                        <div class="form-check form-switch mb-3 d-none" id="fieldPageHeaderWrap">
+                            <input class="form-check-input" type="checkbox" id="fieldPageHeader">
+                            <label class="form-check-label small" for="fieldPageHeader">Mostrar la cabecera de esta p&aacute;gina</label>
+                            <div class="text-muted mt-1" style="font-size:.72rem">Es el bloque con icono, t&iacute;tulo y descripci&oacute;n que abre el paso. Si lo desactivas, el paso se sigue existiendo y sigue contando en la barra de progreso y en el pie: lo que no se pinta es esa cabecera.</div>
+                        </div>
                         <div class="form-check form-switch mb-3" id="fieldPiiWrap">
                             <input class="form-check-input" type="checkbox" id="fieldPii">
                             <label class="form-check-label small" for="fieldPii">Contiene datos personales</label>

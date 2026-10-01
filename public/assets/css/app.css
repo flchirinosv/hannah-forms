@@ -542,12 +542,21 @@ body {
 /* Escala: los botones se dimensionan por contenido y con números de una cifra
    el salto de «9» a «10» mueve la fila entera; ancho mínimo para que no baile. */
 .vf-scale-num { min-width: 2.2rem; font-weight: 600; }
-/* Separador de salto de página en el preview: el form lo muestra como un
-   bloque con cabecera propia, así que aquí solo hace falta la línea. */
-.vf-preview-scroll .vf-page-divider {
-    border-top: 1px dashed var(--vf-border);
+/* Separador de salto de página del preview: el formulario final dibuja un
+   bloque entero con cabecera, así que aquí solo hace falta la línea y el texto
+   que dice que lo que viene es otro paso. */
+.vf-page-break {
+    display: flex; align-items: center; justify-content: center;
+    margin: 1.25rem 0 .25rem;
     color: #94a3b8;
+    font-size: .8rem;
 }
+.vf-page-break::before, .vf-page-break::after {
+    content: "";
+    flex: 1;
+    border-top: 1px dashed var(--vf-border);
+}
+.vf-page-break > span { padding: 0 .6rem; }
 .vf-range-val { min-width: 2.6rem; text-align: center; font-weight: 600; color: var(--vf-primary); background: var(--vf-primary-light); border-radius: 8px; padding: .25rem .5rem; font-size: .85rem; }
 
 /* ---------- Fill (front público) ---------- */
@@ -926,22 +935,24 @@ body {
 /* ---- P4: bloques de página (multi-paso) ---- */
 .vf-page-block { scroll-margin-top: 2rem; }
 .vf-page-block.vf-step-hidden { display: none !important; }
+/* Sin fondo: el salto de página se separa igual que una sección, con una línea
+   fina. La caja crema con borde punteado que tenía era un aviso («esto es un
+  ») y hacía que el formulario final pareciera un borrador con notas. Se conserva
+   el ámbar del icono porque un paso y una sección no son lo mismo. */
 .vf-page-head {
-    display: flex; align-items: center; gap: .8rem;
-    background: #fffbeb;
-    border: 1px dashed #fcd34d;
-    border-radius: var(--vf-radius-lg);
-    padding: 1.1rem 1.4rem;
-    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: .7rem;
+    border-top: 1px solid var(--vf-border);
+    padding: 1rem .25rem .25rem;
+    margin-bottom: 1rem;
 }
 .vf-page-icon {
-    width: 42px; height: 42px; flex-shrink: 0;
+    width: 40px; height: 40px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: #fef3c7; color: #d97706;
-    border-radius: 12px; font-size: 1.05rem;
+    border-radius: 12px; font-size: 1rem;
 }
-.vf-page-title { color: #78350f; font-size: 1.1rem; font-weight: 700; }
-.vf-page-desc { font-size: .9rem; }
+.vf-page-title { color: #0f172a; font-size: 1.1rem; font-weight: 700; }
+.vf-page-desc { font-size: .92rem; padding-left: 0; margin-top: .4rem !important; }
 .vf-page-footer {
     margin: .5rem 0 1.25rem;
     padding: 1rem 0 .1rem;

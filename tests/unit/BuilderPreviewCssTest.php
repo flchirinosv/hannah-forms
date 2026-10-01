@@ -389,6 +389,54 @@ class BuilderPreviewCssTest
         }
     }
 
+    /**
+     * El elemento página es la caja con icono, título y descripción (`.vf-page-head`)
+     * y tenía una caja crema con borde punteado encima: un aviso («esto es un
+     * separador») dentro del formulario publicado. Se separa ahora como una
+     * sección, con su línea fina, y se conserva el ámbar del icono porque un paso
+     * y una sección no son lo mismo.
+     */
+    public function testLaCabeceraDePaginaNoTieneFondoNiCaja(): void
+    {
+        $bloque = self::bloqueCss('.vf-page-head');
+        assertTrue($bloque !== null, 'existe la regla de .vf-page-head');
+        $cuerpo = (string) $bloque;
+        assertTrue(!str_contains($cuerpo, 'background'), '.vf-page-head no pinta fondo');
+        assertTrue(!str_contains($cuerpo, 'border-radius'), 'sin radio: la caja ya no existe');
+        assertTrue(!preg_match('/border\s*:/', $cuerpo), 'sin caja: la separación la hace la línea de arriba');
+        assertTrue(
+            str_contains($cuerpo, 'border-top: 1px solid var(--vf-border)'),
+            'la cabecera de página se separa con la misma línea fina que la de sección'
+        );
+
+        $icono = self::bloqueCss('.vf-page-icon');
+        assertTrue($icono !== null && str_contains((string) $icono, '#fef3c7'), 'el icono conserva su ámbar: un paso no es una sección');
+    }
+
+    /**
+     * El preview del builder pintaba la página como una insignia centrada
+     * (`.vf-page-divider`), un tercer diseño que no se parecía en nada ni a la
+     * caja del formulario ni a la cabecera de sección. Ahora reutiliza el markup del
+     * fill, y con el ajuste apagado no pinta caja: el preview no puede prometer una
+     * cabecera que luego no aparece.
+     */
+    public function testElPreviewDelSaltoDePaginaReutilizaLaCabeceraDelFill(): void
+    {
+        $js = self::sinComentarios(self::js());
+        assertTrue(
+            !str_contains($js, 'vf-page-divider'),
+            'builder.js ya no emite .vf-page-divider: el preview usa el markup del formulario final'
+        );
+        assertTrue(!str_contains(self::sinComentarios(self::css()), 'vf-page-divider'), 'y su CSS sobra');
+
+        $ini = strpos($js, 'function buildPreviewHtml(');
+        assertTrue($ini !== false, 'el preview sigue dibujando el salto de página');
+        $bloque = (string) substr($js, (int) $ini, 1800);
+        assertTrue(str_contains($bloque, "class=\"vf-page-head\""), 'el preview emite la misma caja que el fill');
+        assertTrue(str_contains($bloque, 'f.show_header === false'), 'y respeta el ajuste de cabecera');
+        assertTrue(str_contains($bloque, 'vf-page-break'), 'el separador de paso es una clase con CSS, no texto suelto');
+    }
+
     private static function esDeLaApp(string $clase): bool
     {
         foreach (self::PREFIJOS_APP as $prefijo) {
