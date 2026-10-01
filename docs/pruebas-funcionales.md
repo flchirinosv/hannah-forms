@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**187 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
+**195 pruebas** en 17 bloques (A–P), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -358,6 +358,21 @@ Para no perderte, prepara esto antes de empezar:
 | O8 | many respuestas y filtrar por un rango sin resultados | Mensaje de «sin resultados», no una tabla vacía sin explicación | M | |
 | O9 | Navegar con el teclado por el panel | Foco visible en todos los botones; las imágenes con significado tienen texto | M | |
 | O10 | Reducir la ventana a 375 px y recorrer el panel y el constructor | Nada se desborda horizontalmente; las acciones principales se siguen viendo | M | |
+
+---
+
+## P. Ayuda con tooltip (`app-help`)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| P1 | Abrir **Configuración** en el constructor | Los ajustes se ven en fila, sin un párrafo gris debajo de cada control | A | |
+| P2 | Pasar el ratón por un `?` de tema o de comportamiento | Aparece el texto con `<code>` y `<strong>` bien formateados | A | |
+| P3 | En una pantalla de móvil (o con el ratón lejos), **tocar** el `?` | Aparece la ayuda: el `click` está en el trigger porque no hay hover | M | |
+| P4 | Con el teclado: tabular hasta un `?` y pulsar Intro | Se abre la ayuda y el anillo de foco se ve | A | |
+| P5 | Con un interruptor, tabular hasta su `?` y **pulsarlo** | Se abre la ayuda y **el interruptor no cambia**: el clic anula el reenvío del `<label>` | A | |
+| P6 | Escribir una tipografía inválida | `#stFontNote` aparece **visible**, sin pasar el ratón: es estado, no explicación | A | |
+| P7 | Guardar y recargar: ¿sigue el `?` con el mismo texto? | Sí, y el ajuste guardado no se ha movido de sitio | A | |
+| P8 | El `?` mide 14 px: intentar pulsarlo con el dedo | Se pulsa igual: el área táctil está ampliada con `::after` | M | |
 
 ---
 

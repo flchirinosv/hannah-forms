@@ -515,7 +515,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 187 comprobaciones manuales en 15 bloques (A–O)
+- `docs/pruebas-funcionales.md`: 195 comprobaciones manuales en 17 bloques (A–P)
   más regresiones (R), para detectar problemas que la suite no ve (teclado,
   maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
   la lista mínima.

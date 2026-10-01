@@ -322,6 +322,32 @@ $fieldTypes = [
     </div>
 </div>
 
+<?php // Ayuda del modal de configuración. Antes de los tooltips cada ajuste traía su
+      // texto gris debajo, y con doce ajustes el modal era una columna de párrafos
+      // en la que los controles quedaban separados de su etiqueta. Ahora el texto
+      // viaja en `data-bs-title` y lo muestra Bootstrap al pasar por encima (o al
+      // enfocar, o al tocar, que es como se ve en un móvil: el trigger lo pone
+      // `app.js`). El HTML va escapado con ENT_QUOTES y el tooltip se pinta con
+      // `data-bs-html="true"`, así que `<code>` y `<strong>` siguen siendo
+      // negritas y monoespaciada.
+      //
+      // Lo que NO se esconde aquí es el ESTADO: `stFontNote`, `stAdvanceHint`,
+      // `stAccessHint` y `stReviewHint` los escribe la aplicación al vuelo y
+      // depends de ellos para saber si el ajuste sirve. Regla: la explicación se
+      // esconde, el estado no.
+      //
+      // OJO: esta nota no puede escribir literalmente el cierre de PHP (el signo
+      // de interrogación seguido de «mayor que») dentro del comentario: cerraría
+      // el bloque y la closure de abajo se imprimiría como texto en el HTML en
+      // vez de definirse.
+$helpButton = static function (string $html, string $label = 'Qué hace este ajuste'): void {
+    echo '<button type="button" class="app-help" data-bs-toggle="tooltip" data-bs-html="true"'
+        . ' data-bs-title="' . View::escape($html) . '"'
+        . ' aria-label="' . View::escape($label) . '">'
+        . '<i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>';
+};
+?>
+
 <div class="modal fade" id="formSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="formSettingsTitle">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0">
@@ -334,25 +360,21 @@ $fieldTypes = [
             </div>
             <div class="modal-body p-4">
                 <div class="alert alert-light border small mb-4" role="note">
-                    <p class="mb-1"><strong>Todo es opcional.</strong> Los ajustes vienen apagados y se guardan con la estructura. Si no te hace falta algo, déjalo como está.</p>
-                    <p class="mb-0 text-muted">Los que tienen texto gris debajo son los que más confunden: explican qué hace el ajuste y te dan un ejemplo. Los que cambian el comportamiento de quien responde (<i>Comportamiento</i>, <i>Anti-spam</i>) conviene revisarlos dos veces.</p>
+                    <p class="mb-0"><strong>Todo es opcional.</strong> Los ajustes vienen apagados y se guardan con la estructura. Si algo tiene un <span class="app-help-inline"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> <strong>?</strong></span>, su explicación está ahí: pásale por encima, o tócalo si estás en el móvil.</p>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-palette me-1"></i>Tema</h6>
-                <p class="text-muted small mb-3">Colores y tipografía con los que se pinta el formulario. Sirven para que el formulario se vea como tu marca, no como el de por defecto.</p>
                 <div class="row g-3 mb-2">
                     <div class="col-md-4">
-                        <label for="stPrimary" class="form-label small fw-semibold">Color principal</label>
+                        <label for="stPrimary" class="form-label small fw-semibold">Color principal<?= $helpButton('Botón de enviar, barra de progreso y enlaces.') ?></label>
                         <input type="color" class="form-control form-control-color w-100" id="stPrimary" value="#0d6efd">
-                        <p class="form-text mb-0">Botón de enviar, barra de progreso y enlaces.</p>
                     </div>
                     <div class="col-md-4">
-                        <label for="stBackground" class="form-label small fw-semibold">Color de fondo</label>
+                        <label for="stBackground" class="form-label small fw-semibold">Color de fondo<?= $helpButton('El fondo de la página del formulario.') ?></label>
                         <input type="color" class="form-control form-control-color w-100" id="stBackground" value="#f6f6f6">
-                        <p class="form-text mb-0">El fondo de la página del formulario.</p>
                     </div>
                     <div class="col-md-4">
-                        <label for="stFont" class="form-label small fw-semibold">Fuente</label>
+                        <label for="stFont" class="form-label small fw-semibold">Fuente<?= $helpButton('Solo letras, números, espacios y <code>- _ . ,</code>. Se admiten alternativas separadas por coma. <strong>Sin comillas:</strong> escribe <code>Times New Roman, serif</code>, no <code>\'Times New Roman\', serif</code>. Y ten en cuenta que esto no descarga la fuente: si el visitante no la tiene instalada, se verá la que tenga.') ?></label>
                         <input type="text" class="form-control form-control-sm" id="stFont" list="stFontList" placeholder="Ej: Georgia, serif">
                         <datalist id="stFontList">
                             <option value="system-ui, sans-serif"></option>
@@ -362,7 +384,6 @@ $fieldTypes = [
                             <option value="Verdana, sans-serif"></option>
                             <option value="monospace"></option>
                         </datalist>
-                        <p class="form-text mb-0">Solo letras, números, espacios y <code>- _ . ,</code>. Se admiten alternativas separadas por coma. <strong>Sin comillas:</strong> escribe <code>Times New Roman, serif</code>, no <code>'Times New Roman', serif</code>. Y ten en cuenta que esto no descarga la fuente: si el visitante no la tiene instalada, se verá la que tenga.</p>
                         <p class="form-text mb-0" id="stFontNote" role="status"></p>
                     </div>
                 </div>
@@ -480,21 +501,18 @@ $fieldTypes = [
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-toggle-on me-1"></i>Comportamiento</h6>
-                <p class="text-muted small mb-3">Interruptores que cambian cómo se rellena el formulario. Todos vienen apagados.</p>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stQuizEnabled">
-                            <label class="form-check-label small fw-semibold" for="stQuizEnabled">Modo quiz</label>
+                            <label class="form-check-label small fw-semibold" for="stQuizEnabled">Modo quiz<?= $helpButton('Muestra la respuesta correcta y lleva la cuenta de aciertos al final.') ?></label>
                         </div>
-                        <p class="form-text mb-0">Muestra la respuesta correcta y lleva la cuenta de aciertos al final.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stRandQuestions">
-                            <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas</label>
+                            <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas<?= $helpButton('Cada persona ve las preguntas en un orden distinto.') ?></label>
                         </div>
-                        <p class="form-text mb-0">Cada persona ve las preguntas en un orden distinto.</p>
                     </div>
                     <?php // F5 — Avance automático entre páginas. Va junto al resto de
                           // interruptores de comportamiento del relleno, con su
@@ -511,23 +529,20 @@ $fieldTypes = [
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stEmbedEnabled">
-                            <label class="form-check-label small fw-semibold" for="stEmbedEnabled">Permitir embeber (iframe)</label>
+                            <label class="form-check-label small fw-semibold" for="stEmbedEnabled">Permitir embeber (iframe)<?= $helpButton('Habilita el código para insertar el formulario dentro de otra web.') ?></label>
                         </div>
-                        <p class="form-text mb-0">Habilita el código para insertar el formulario dentro de otra web.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stHoneypotEnabled">
-                            <label class="form-check-label small fw-semibold" for="stHoneypotEnabled">Anti-spam (honeypot)</label>
+                            <label class="form-check-label small fw-semibold" for="stHoneypotEnabled">Anti-spam (honeypot)<?= $helpButton('Una trampa invisible para los robots. Si la rellenan, el envío se acepta pero <strong>no se guarda</strong>, así que quien la rellenó no ve ningún error.') ?></label>
                         </div>
-                        <p class="form-text mb-0">Una trampa invisible para los robots. Si la rellenan, el envío se acepta pero <strong>no se guarda</strong>, así que quien la rellenó no ve ningún error.</p>
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stAntiBotEnabled">
-                            <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)</label>
+                            <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)<?= $helpButton('<strong>Actívalo solo si ya hay claves de Cloudflare en el servidor.</strong> Sin ellas el formulario deja de mostrarse a todo el mundo, no solo a los bots.') ?></label>
                         </div>
-                        <p class="form-text mb-0"><strong>Actívalo solo si ya hay claves de Cloudflare en el servidor.</strong> Sin ellas el formulario deja de mostrarse a todo el mundo, no solo a los bots.</p>
                     </div>
                     <div class="col-md-4">
                         <label for="stLocale" class="form-label small fw-semibold">Idioma público</label>

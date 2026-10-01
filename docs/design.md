@@ -211,7 +211,26 @@ válidos se calcula en un único lugar por contexto.
   larga: el menú vertical obligaba a hacer scroll para encontrar un tipo.
 - Foco, `Escape` y backdrop los trae Bootstrap; no se reimplementan.
 
-### 4.4 Accesibilidad
+### 4.4 Ayuda (tooltip `?`)
+
+Regla del proyecto, y la razón de que exista el botón `.app-help`:
+
+> **La explicación se esconde, el estado no.**
+
+- Cada ajuste lleva su explicación en un `button.app-help[data-bs-toggle=tooltip]`
+  colgado de la etiqueta, generado por la closure `$helpButton()` de la vista
+  (`views/builder/index.php`). El texto va en `data-bs-title` escapado con
+  `View::escape()` y `data-bs-html="true"`, para que `<code>` siga siendo código.
+- El tooltip lo inicializa `app.js` (`trigger: 'hover focus click'`). El `click`
+  no es opcional: en un móvil no hay hover y la ayuda sería inalcanzable.
+- Los hints que escribe la aplicación al vuelo (`#stFontNote`, `#stAdvanceHint`,
+  `#stAccessHint`, `#stReviewHint`) **no** van en tooltip: son estado, y quien
+  acaba de guardar necesita verlos sin tener que cazarlos con el puntero.
+- Un `?` dentro de un `<label for>` neutraliza el clic en JS (`app.js`), porque
+  el clic en un label reenvía al control y abrir la ayuda acabaría moviendo el
+  interruptor de al lado.
+
+### 4.5 Accesibilidad
 
 - Todo botón de icono lleva `aria-label` o `title` descriptivo.
 - Los toggles de tipo de filtro llevan `aria-pressed`.

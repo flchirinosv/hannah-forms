@@ -246,6 +246,58 @@ body {
 }
 .error-code { text-shadow: 0 4px 40px rgba(255,255,255,.3); }
 
+/* ---------- Ayuda con tooltip ---------- */
+/* El botón `?` que sustituye a los `<p class="form-text">` del modal de
+   configuración (y de la ficha del formulario). Se alinea con el `baseline` de
+   la etiqueta para que la `?` no levante la línea, y el área táctil se amplía
+   con un pseudo-elemento: el icono mide 14px y eso, con el dedo, no se pulsa. */
+.app-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 1.1rem;
+    height: 1.1rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--vf-text-muted);
+    font-size: .78rem;
+    line-height: 1;
+    vertical-align: baseline;
+    cursor: help;
+    transition: color .15s ease;
+}
+.app-help::after {
+    content: '';
+    position: absolute;
+    inset: -.45rem;
+}
+.app-help:hover,
+.app-help:focus-visible {
+    color: var(--vf-primary);
+}
+.app-help:focus-visible {
+    outline: 2px solid var(--vf-primary);
+    outline-offset: 2px;
+}
+/* La `?` dentro de un texto corrido (el aviso del modal), que no es un botón. */
+.app-help-inline {
+    color: var(--vf-text-muted);
+    white-space: nowrap;
+}
+/* Título de grupo del modal de configuración. Antes el espaciadoBelow lo daba el
+   `<p>` de introducción; al llevarlo todo a los tooltips, sin esto los grupos
+   quedan pegados al bloque de controles de arriba. */
+.app-settings-group-title {
+    margin-bottom: .75rem;
+}
+.app-settings-group-title + .row,
+.app-settings-group-title + .hr {
+    margin-top: 0;
+}
+
 /* ---------- Builder ---------- */
 .builder-layout { align-items: stretch; }
 .app-builder-panel { border-radius: var(--vf-radius-lg); position: sticky; top: 86px; }

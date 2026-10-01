@@ -2,6 +2,35 @@
 (function () {
     'use strict';
 
+    // ---- Ayuda con tooltip -----------------------------------------------------
+    // Un `button.app-help[data-bs-toggle="tooltip"]` pinta su `data-bs-title` al
+    // pasar por encima. Vive AQUÍ y no en builder.js/dashboard.js porque app.js
+    // se carga en todas las páginas de `main.php` (justo después de bootstrap,
+    // sin defer, con el DOM ya completo): un solo sitio que inicializa, sin
+    // tener que acordarse de llamarlo en cada script de página.
+    //
+    // El trigger incluye `click` porque en un móvil no hay hover: sin él la
+    // ayuda sería inalcanzable justo donde más se necesita. Y el clic se
+    // neutraliza cuando el botón va DENTRO de un `<label for=...>` (que es lo
+    // normal: la ayuda cuelga de la etiqueta del control), porque el clic en un
+    // label reenvía al control y abrir la ayuda acabaría encendiendo o apagando
+    // el interruptor de al lado.
+    document.querySelectorAll('.app-help[data-bs-toggle="tooltip"]').forEach(function (btn) {
+        if (!window.bootstrap || !bootstrap.Tooltip) return;
+        var opts = { trigger: 'hover focus click', container: 'body' };
+        try {
+            bootstrap.Tooltip.getOrCreateInstance(btn, opts);
+        } catch (err) {
+            /* sin tooltip no se rompe nada: el texto sigue en data-bs-title */
+        }
+        btn.addEventListener('click', function (e) {
+            if (btn.closest('label')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    });
+
     // Auto-ocultar alertas después de unos segundos
     document.querySelectorAll('.alert-dismissible.fade').forEach(function (alert) {
         setTimeout(function () {

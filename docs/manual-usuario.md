@@ -266,6 +266,11 @@ El botón **Guardar** (barra superior) persiste la estructura: campos, orden,
 opciones y ajustes. El botón **Guardar configuración** (abajo) persiste los
 ajustes de la pestaña abierta.
 
+**Cada ajuste lleva un `?` al lado.** Al pasar el ratón por encima aparece qué
+hace ese ajuste y un ejemplo; en el móvil, tócalo. Los textos que aparecen solos
+al escribir (por ejemplo, si la tipografía no es válida) son **estado**, no
+explicación: esos se ven siempre, sin pasar el ratón por ningún lado.
+
 **Guardar es explícito.** El constructor no guarda solo: hasta que pulsas
 **Guardar**, el servidor sigue con la estructura anterior. Cierra el navegador
 con cambios sin guardar y **se pierden sin aviso** (no hay aviso de salida).

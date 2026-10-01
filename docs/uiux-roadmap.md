@@ -63,6 +63,13 @@ Composer, CSP `script-src 'self'`, tests siempre verdes).
 Pagos/Stripe, investigación avanzada (conjoint/MaxDiff/panel de SurveyMonkey), IA generativa,
 colaboración real-time, idiomas extra (pt/fr) e integraciones OAuth (Sheets/CRM).
 
+## Lote siguiente
+
+[docs/plan-ajustes-operativos-2026-10-01.md](plan-ajustes-operativos-2026-10-01.md):
+ajustes operativos fuera del modal del builder, alta de accesos sin recarga, interruptor
+del registro público, rol `approver` con borrado de roles propios, y limpieza visual
+del lienzo (incluye el CSS que faltaba de los previews de NPS/estrella/matriz/ranking).
+
 ## Reglas transversales
 
 - Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (494+).
