@@ -9,11 +9,19 @@
  * obligaba a entrar en Grupos de roles y a buscarla en una lista de casillas.
  */
 use App\Core\Auth;
+use App\Core\Csrf;
 use App\Core\View;
+use App\Controllers\AuthController;
+
+// La MISMA constante que valida el registro público y que fija
+// `views/auth/register.php`: si aquí se escribiera un número, el navegador y el
+// servidor acabarían aceptando contraseñas distintas.
+$min = AuthController::PASSWORD_MIN;
 
 $grupos = $groups ?? [];
 $userGroups = $userGroups ?? [];
 $canEditGroups = $canEditGroups ?? false;
+$roles = $roles ?? [];
 ?>
 <div class="container-fluid px-lg-4">
     <?= View::partial('admin/_nav', ['active' => 'users']) ?>
@@ -27,6 +35,66 @@ $canEditGroups = $canEditGroups ?? false;
             </p>
         </div>
         <a href="/admin/forms" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>
+    </div>
+
+    <?php // El alta va aquí, y no solo porque sea «lo primero»: con
+          // REGISTRATION_ENABLED cerrado (el default) es la ÚNICA forma de crear
+          // un `user` o un `editor`, ya que `scripts/create-admin.php` solo sabe
+          // hacer administradores. Por eso lleva su propia tarjeta y no es un
+          // botón escondido. ?>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-plus me-2 text-primary"></i>Nuevo usuario</h3>
+            <p class="text-muted small mb-3">
+                Crea una cuenta con su rol desde aquí. No hace falta que el registro público esté
+                abierto: eso solo controla el alta desde <code>/register</code>.
+            </p>
+            <form method="post" action="/admin/users/create">
+                <?= Csrf::field() ?>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
+                        <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
+                        <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
+                        <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
+                        <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                        <div class="form-text">Si no coinciden, el alta se rechaza.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
+                        <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
+                            <?php foreach ($roles as $rol): ?>
+                                <?php $rid = (int) $rol['id']; ?>
+                                <option value="<?= $rid ?>"<?= $rid === 2 ? ' selected' : '' ?>>
+                                    <?= View::escape((string) $rol['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Lo que la persona podrá hacer. Se puede cambiar después.</div>
+                    </div>
+                    <div class="col-md-9 d-flex align-items-center">
+                        <div class="form-text">
+                            Comunícale la contraseña por un canal que no sea el correo: al darle la cuenta
+                            tú, su email no está verificado.
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                            <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <?php if (empty($users)): ?>

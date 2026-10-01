@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**180 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
+**187 pruebas** en 15 bloques (A–O), más un bloque de regresiones (R) con las
 que comprueban fallos que ya existieron y se corrigieron.
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
@@ -100,6 +100,13 @@ Para no perderte, prepara esto antes de empezar:
 | B17 | Con el registro cerrado, entrar en `/register` | 403 con la página de error, **no** el formulario de alta | A | |
 | B18 | Con el registro cerrado, mandar un POST a `/register` a mano | 403, y **no** «token CSRF inválido» ni ningún mensaje de formulario | M | |
 | B19 | Crear un usuario desde `/admin` con el registro cerrado | Se puede entrar con esa cuenta: el alta por panel no depende del interruptor | A | |
+| B20 | Con el registro cerrado, en `/admin` → **Nuevo usuario**, crear una cuenta con rol `user` | Cuenta creada y se puede iniciar sesión con ella | A | |
+| B21 | Crear esa misma cuenta otra vez con el mismo email | Dice **«Ya hay una cuenta con ese email»**, no un error genérico | A | |
+| B22 | Crear una cuenta con contraseña de 9 caracteres | Rechazado por la misma longitud mínima que el registro público | A | |
+| B23 | Crear una cuenta con contraseñas que no coinciden | Rechazado, y no se crea la cuenta | A | |
+| B24 | Entrar en `/admin` con un rol que **no** tenga `admin.users` | No aparece la tarjeta de alta, y el POST directo responde 403 | M | |
+| B25 | Crear una cuenta desde `/admin` y luego mirar su ficha | Nace con el rol elegido y activa | M | |
+| B26 | Crear un admin desde `/admin` y entrar con él | Funciona: el alta del panel también puede crear administradores | M | |
 
 ---
 

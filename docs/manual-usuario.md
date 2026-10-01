@@ -142,12 +142,54 @@ Con el registro cerrado (el valor por defecto) pasan las dos cosas:
 
 - El enlace «Regístrate aquí» desaparece del formulario de acceso, y `/register`
   responde 403 tanto si se entra por GET como si se envía el formulario.
-- Las cuentas se crean desde el panel, en `/admin` → «Nuevo usuario».
+- Las cuentas se crean desde el panel.
+
+### 4.3 Crear cuentas desde el panel
+
+En `/admin` (pestaña **Usuarios**) está el alta, arriba de la lista, y funciona
+con el registro público cerrado: es lo contrario de lo que hace `/register`, y a
+propósito.
+
+Quién puede verlo: cualquiera con el permiso **`admin.users`**. Si no lo tienes,
+la pantalla no aparece y el POST responde 403 aunque la ruta exista.
+
+Para crear una cuenta:
+
+1. Abre `/admin` y busca **Nuevo usuario**.
+2. Nombre, email, contraseña y su repetición.
+3. Elige el **rol** (lo que podrá hacer) y pulsa **Crear cuenta**.
+
+La contraseña mínima es la misma que en el registro público (10 caracteres), y
+las cuentas que crees desde aquí son exactamente iguales que las que se
+registran solas: misma contraseña, mismo estado activo, mismo cambio de rol
+después.
+
+Al darle la cuenta tú, su email **no** queda verificado, así que comunícale la
+contraseña por un canal que no sea el correo.
+
+> **Ojo con esto:** el alta del panel existe porque cerrar el registro público
+> dejaba sin forma de crear un `user` o un `editor`. No es un atajo para saltarse
+> el registro: el rol lo eliges tú, así que es también la forma de crear
+> administradores. En una instalación normal, quien puede entrar en el panel ya
+> es alguien de confianza; en una abierta, el rol de la primera cuenta decide
+> cuánto puede hacer un desconocido.
+
+Para dar de alta a alguien **sin** sesión (por ejemplo, tras restaurar un
+backup, cuando todavía no hay ningún admin con quien entrar) el script:
+
+```bash
+php scripts/create-admin.php --email=admin@mi-dominio.com --name=Administración
+```
+
+Ese script **solo crea administradores**, y sin `--force` se niega a crear un
+segundo admin: si ya hay alguno, en realidad lo que hace es convertir esa cuenta
+en admin y cambiarle la contraseña. Para un `user` o un `editor` no hay script:
+hay que usar `/admin`.
 
 | Valor | `/register` | Quién puede crear cuentas |
 | --- | --- | --- |
-| `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien administra, desde `/admin` |
-| `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio |
+| `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien tenga `admin.users`, desde `/admin` |
+| `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio, y quien tenga `admin.users` |
 
 > Si además quieres que la ruta devuelva 403 **antes** de que PHP la vea
 > (por ejemplo, en un despliegue con la aplicación en otro servidor), puedes
@@ -156,7 +198,7 @@ Con el registro cerrado (el valor por defecto) pasan las dos cosas:
 Quien llega sin sesión a un enlace de formulario público **no** necesita
 cuenta: eso es distinto del panel.
 
-### 4.3 Roles
+### 4.4 Roles
 
 | Rol | Para qué |
 |---|---|
@@ -168,7 +210,7 @@ Un rol nuevo se crea sin permisos: la matriz es la que decide qué puede hacer.
 Los permisos efectivos de alguien son **su rol + los roles de sus grupos**, así
 que puedes darle a un grupo entero una capacidad sin tocar a cada persona.
 
-### 4.4 Los permisos que importan
+### 4.5 Los permisos que importan
 
 | Permiso | Qué abre |
 |---|---|
@@ -191,7 +233,7 @@ Poder editar tu propio formulario no te deja publicarlo si el formulario está
 en revisión; hace falta `forms.review`. Existe para que nadie pueda publicar un
 texto por su cuenta.
 
-### 4.5 Recuperar la contraseña
+### 4.6 Recuperar la contraseña
 
 En `/forgot-password` escribes tu email y recibes un enlace. El enlace es de
 un solo uso y caduca. Si alguien cambia la contraseña, **todas las sesiones

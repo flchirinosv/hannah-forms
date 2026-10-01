@@ -54,6 +54,58 @@ class AuthController
      */
     public const PASSWORD_MIN = 10;
 
+    /**
+     * Valida los datos de un alta de cuenta. Devuelve `null` si todo está bien,
+     * o el mensaje de error si no.
+     *
+     * Lo comparten `register()` (alta pública) y `AdminController::createUser()`
+     * (alta por panel) a propósito, por la misma razón que `PASSWORD_MIN` es
+     * `public`: si cada uno validara por su cuenta, la contraseña que acepta uno
+     * podría ser la que el otro rechaza, y aparecería un usuario creado por
+     * admin que el propio registro no habría dejado crear.
+     *
+     * Lo que NO está aquí, a propósito, es lo que depende de la puerta de
+     * entrada y no del formulario: el rate limit y el mensaje uniforme de
+     * «email ya existe» son de `register()` (un atacante que puebla el registro
+     * público no debe poder distinguir un email tomado de uno libre), y el
+     * alta por panel va detrás de `admin.users`, que ya es su propia puerta.
+     *
+     * M3: los topes de longitud evitan errores 500 silenciosos de la BD
+     * (users.name VARCHAR(100), users.email VARCHAR(190)).
+     */
+    public static function validateNewUser(
+        string $name,
+        string $email,
+        string $password,
+        string $passwordConfirm
+    ): ?string {
+        if ($name === '' || $email === '' || $password === '') {
+            return 'Todos los campos son obligatorios.';
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return 'Email no válido.';
+        }
+
+        if (mb_strlen($name) > 100) {
+            return 'El nombre no puede superar los 100 caracteres.';
+        }
+
+        if (mb_strlen($email) > 190) {
+            return 'El email no puede superar los 190 caracteres.';
+        }
+
+        if (strlen($password) < self::PASSWORD_MIN) {
+            return 'La contraseña debe tener al menos ' . self::PASSWORD_MIN . ' caracteres.';
+        }
+
+        if ($password !== $passwordConfirm) {
+            return 'Las contraseñas no coinciden.';
+        }
+
+        return null;
+    }
+
     public function showLogin(): void
     {
         View::render('auth/login', ['csrf' => Csrf::token()], 'guest');
@@ -198,40 +250,9 @@ class AuthController
         $password = (string) Request::post('password', '');
         $passwordConfirm = (string) Request::post('password_confirm', '');
 
-        if ($name === '' || $email === '' || $password === '') {
-            Session::flash('error', 'Todos los campos son obligatorios.');
-            Response::redirect('/register');
-            return;
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Session::flash('error', 'Email no válido.');
-            Response::redirect('/register');
-            return;
-        }
-
-        // M3: validar longitudes para evitar errores 500 silenciosos de la BD
-        // (users.name VARCHAR(100), users.email VARCHAR(190)).
-        if (mb_strlen($name) > 100) {
-            Session::flash('error', 'El nombre no puede superar los 100 caracteres.');
-            Response::redirect('/register');
-            return;
-        }
-
-        if (mb_strlen($email) > 190) {
-            Session::flash('error', 'El email no puede superar los 190 caracteres.');
-            Response::redirect('/register');
-            return;
-        }
-
-        if (strlen($password) < self::PASSWORD_MIN) {
-            Session::flash('error', 'La contraseña debe tener al menos ' . self::PASSWORD_MIN . ' caracteres.');
-            Response::redirect('/register');
-            return;
-        }
-
-        if ($password !== $passwordConfirm) {
-            Session::flash('error', 'Las contraseñas no coinciden.');
+        $invalid = self::validateNewUser($name, $email, $password, $passwordConfirm);
+        if ($invalid !== null) {
+            Session::flash('error', $invalid);
             Response::redirect('/register');
             return;
         }

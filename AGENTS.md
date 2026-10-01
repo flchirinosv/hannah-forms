@@ -267,6 +267,21 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   CSRF inválido» en vez de «el registro está cerrado». Cerrar `/register` **no**
   afecta al alta por panel (`/admin`), que es la vía de las cuentas de una
   instalación normal.
+- Cerrar el registro **crea un agujero de arranque** que hay que cubrir siempre
+  con algo: sin `AdminController::createUser()`, la única vía para un `user` o un
+  `editor` sería abrir el registro, dejarse apuntar y cerrarlo. `createUser()` es
+  el camino ese, y **no** lleva el gate de `registrationEnabled()` (sí lleva
+  `admin.users`): con la puerta cerrada tiene que seguir creando cuentas.
+- Las reglas de alta viven en **`AuthController::validateNewUser()`**, público y
+  compartido por `register()` y `createUser()`, por lo mismo que `PASSWORD_MIN`
+  es público: dos copias divergirían y aparecería una cuenta creada por panel
+  que el registro público rechazaría. Lo que **no** es compartible es lo que
+  depende de la puerta de entrada: el rate limit y el mensaje uniforme de «email
+  ya existe» son de `register()` (protege del sondeo del registro público), así
+  que `createUser()` dice «Ya hay una cuenta con ese email» y no usa
+  `RateLimiter`. Y valida `role_id` contra `Role::find()`, no contra una lista de
+  ids: un rol inventado deja una cuenta sin rol interpretable, en la que
+  `Auth::can()` da false para todo lo suyo sin decir nada.
 - `Config` tiene **un solo** seam, y es de test: `setForTesting()` /
   `forgetForTesting()`. Pisan `$overrides` y dejan `$config` a `null` para
   que `all()` vuelva a leer `.env` con ellos aplicados. Por eso el `tearDown`
@@ -362,6 +377,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   nombre de zona exige las tablas de zonas horarias del servidor y sin ellas
   devuelve `NULL` sin avisar). `schedule.open_at/close_at` son muros de reloj de un
   `datetime-local`: se interpretan en `app.timezone`.
+- **`Clock::dayStartUtc()`/`dayEndUtc()` toman un día de la ZONA DE PRESENTACIÓN,
+  no un día UTC**, aunque el nombre diga `Utc`: lo que devuelven es la medianoche
+  local *expresada* en UTC (Caracas = 04:00 UTC). Por eso un test que le pase
+  `todayUtc()` mezcla dos zonas y solo se rompe entre las 00:00 y las 04:00 UTC,
+  cuando el día local todavía es el anterior: el filtro arranca en el futuro y no
+  alcanza lo recién creado. Medio día pasa y medio falla, y como la suite dura
+  menos que la franja, el fallo sale de madrugada sin nada que lo dispare. Es la
+  clase de test que solo existe en el reloj de quien lo escribió:
+  `ExportStreamingTest::testElDiaDelFiltroEsElDeLaZonaDePresentacion` ata la
+  propiedad y `todayLocal()` da el día correcto.
 - `a.value` es TEXT, así que `MIN`/`MAX` SQL comparan como cadena: para números,
   castea (`MIN(a.value + 0)`).
 - `withAnswersByIds()` trocea en tandas de 5000 (techo de placeholders) y
@@ -490,7 +515,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 180 comprobaciones manuales en 15 bloques (A–O)
+- `docs/pruebas-funcionales.md`: 187 comprobaciones manuales en 15 bloques (A–O)
   más regresiones (R), para detectar problemas que la suite no ve (teclado,
   maquetación, flujo en pantalla). Al tocar el builder, el fill o el panel, R es
   la lista mínima.

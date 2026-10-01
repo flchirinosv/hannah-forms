@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Core\Auth;
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Database;
 use App\Core\Response;
@@ -95,7 +96,7 @@ class ExportStreamingTest
     {
         self::setUpData();
 
-        $today = self::todayUtc();
+        $today = self::todayLocal();
         $tomorrow = date('Y-m-d', strtotime($today . ' +1 day'));
 
         $ids = [];
@@ -115,11 +116,44 @@ class ExportStreamingTest
         assertSame([], $vacio, 'desde mañana no queda nada');
     }
 
+    /**
+     * Regresión del día/hora: el filtro por fechas se pasa un día de la zona de
+     * presentación, no un día UTC.
+     *
+     * La diferencia se nota solo en una franja del día, y por eso es un test
+     * aparte y no un comentario: entre las 00:00 y las 04:00 UTC el día local
+     * es el ANTERIOR (Caracas es UTC-4), así que pedir «hoy» como día UTC
+     * armaba la ventana en un punto del futuro y no alcanzaba nada de lo que se
+     * acababa de crear. La mitad del día pasaba, y la suite entera dura menos
+     * que la franja que falla, con lo que el fallo salía de madrugada sin nada
+     * que lo disparara.
+     *
+     * Se comprueba la propiedad que importa, no el resultado de una consulta: un
+     * `Y-m-d` de la zona de presentación tiene que caer DENTRO de sus propios
+     * límites, que es lo que el filtro da por hecho.
+     */
+    public function testElDiaDelFiltroEsElDeLaZonaDePresentacion(): void
+    {
+        $hoy = self::todayLocal();
+
+        // La medianoche local de «hoy» en UTC tiene que estar antes o en el
+        // propio instante de hoy, y el final exclusivo después.
+        assertTrue(
+            Clock::dayStartUtc($hoy) <= (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'),
+            'el inicio del día de presentación no puede estar en el futuro: el filtro '
+                . 'deja fuera lo que se acaba de crear. Día=' . $hoy
+        );
+        assertTrue(
+            Clock::dayEndUtc($hoy) > (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'),
+            'el final exclusivo del día de presentación tiene que caer después de ahora. Día=' . $hoy
+        );
+    }
+
     public function testCountByFilteredCoincideConByFormFiltered(): void
     {
         self::setUpData();
 
-        $today = self::todayUtc();
+        $today = self::todayLocal();
         $tomorrow = date('Y-m-d', strtotime($today . ' +1 day'));
 
         assertSame(25, Submission::countByFiltered((int) self::$formId));
@@ -221,11 +255,27 @@ class ExportStreamingTest
         Auth::forgetCache();
     }
 
-    /** Hoy en UTC: los timestamps de la BD viven en UTC (contrato horario). */
-    private static function todayUtc(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d');
-    }
+/**
+ * Hoy en la ZONA DE PRESENTACIÓN, que es como hay que pedirle el día a
+ * `exportBatches()`.
+ *
+ * Trampa: `from`/`to` son un `Y-m-d` en la zona de presentación, y
+ * `Clock::dayStartUtc()` lo traduce a la medianoche LOCAL expresada en UTC (para
+ * Caracas, UTC-4, el día empieza a las 04:00 UTC). Pedirle el día de UTC
+ * mezclaba dos zonas: el instante «ahora» cae en el día local de AYER cuando
+ * son menos de las 04:00 UTC, así que el filtro arrancaba en un punto del
+ * futuro y la ventana no alcanzaba las 25 filas de recién creadas.
+ *
+ * El fallo solo se veía una de cada seis horas (de 00:00 a 04:00 UTC), y
+ * como la suite completa dura unos minutos, se colaba en la corrida de la
+ * madrugada sin que nadie lo asociara a nada que se hubiera tocado. Por eso
+ * el nombre no dice «Utc»: para eso está `todayUtc()`, que sigue siendo el
+ * helper correcto para leer instantes UTC.
+ */
+private static function todayLocal(): string
+{
+    return Clock::format((new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s'), 'Y-m-d');
+}
 
     private static function ensureCleanupHook(): void
     {

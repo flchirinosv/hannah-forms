@@ -67,8 +67,157 @@ class ControllerActionsTest
         self::ensureForm();
     }
 
+/**
+     * El alta por panel tiene que CREAR la cuenta, no solo no quejar.
+     *
+     * El smoke de arriba recorre la ruta, pero «no se paró con un error» también
+     * lo diría de un POST que solo pintara un flash de «faltan campos». Aquí se
+     * comprueba la fila en `users` y su `role_id`, que es lo que después decide
+     * qué puede hacer la persona.
+     *
+     * Y se hace con el registro público APAGADO a propósito, que es el escenario
+     * para el que existe: si esta prueba pasara solo con el registro abierto,
+     * la acción podría estar heredando el gate y nadie se enteraría hasta que
+     * alguien cerrara el interruptor.
+     */
+    public function testElAltaPorPanelCreaLaCuentaConElRegistroPublicoCerrado(): void
+    {
+        Config::setForTesting('app.registration_enabled', false);
+
+        $db = Database::getInstance(Config::db());
+        $email = 'smoke-alta-' . bin2hex(random_bytes(3)) . '@test.local';
+
+        $router = new Router();
+        require dirname(__DIR__, 2) . '/config/routes.php';
+        $rp = new \ReflectionProperty(Router::class, 'routes');
+        $rp->setAccessible(true);
+        $ruta = null;
+        foreach ($rp->getValue($router) as $r) {
+            if ($r['path'] === '/admin/users/create' && $r['method'] === 'POST') {
+                $ruta = $r;
+                break;
+            }
+        }
+        assertNotNull($ruta, 'tiene que existir la ruta POST /admin/users/create');
+
+        // El cuerpo se pone a mano (no con `defaultPostBody`) porque aquí el
+        // email es el que se va a comprobar después en la BD.
+        $out = self::dispatchRouteConBody($ruta, '/admin/users/create', static function (array &$post) use ($email): void {
+            $post['name'] = 'Alta Panel';
+            $post['email'] = $email;
+            $post['password'] = 'clave-smoke-123';
+            $post['password_confirm'] = 'clave-smoke-123';
+            $post['role_id'] = '2';
+        });
+
+        // Un alta correcta responde con un REDIRECT a /admin (PRG: el POST no
+        // pinta nada). `lastHalt()` también registra los redirects, así que lo
+        // que se comprueba es el tipo y el destino, no que no haya halt.
+        $halt = $out['halt'];
+        assertTrue(
+            is_array($halt) && ($halt['type'] ?? '') === 'redirect' && ($halt['url'] ?? '') === '/admin',
+            'el alta válida debe redirigir a /admin: ' . json_encode($halt, JSON_UNESCAPED_UNICODE)
+        );
+
+        $fila = $db->fetch('SELECT role_id, is_active FROM users WHERE email = :e', ['e' => $email]);
+        assertNotNull($fila, 'la cuenta tiene que existir en users tras el alta por panel');
+        assertSame(2, (int) $fila['role_id'], 'el rol elegido en el POST es el que se guarda');
+        assertSame(1, (int) $fila['is_active'], 'la cuenta nace activa');
+
+        // Y la contraseña tiene que servir para entrar: si `User::create()` no
+        // la hasheara bien, el alta «funcionaría» y nadie podría iniciar sesión.
+        $user = User::findByEmail($email);
+        assertNotNull($user, 'no se encuentra por email');
+        assertTrue(
+            password_verify('clave-smoke-123', (string) $user['password_hash']),
+            'la contraseña del alta por panel debe servir para iniciar sesión'
+        );
+    }
+
     /**
-     * El registro público apagado tiene que cerrar GET y POST por igual.
+     * La regla compartida con el registro público se comprueba de verdad, no solo
+     * en el código: una contraseña de 9 caracteres tiene que ser rechazada
+     * aunque venga de un admin con permiso. Si `createUser()` validara por su
+     * cuenta (o nada), esto crearía una cuenta que el registro público jamás
+     * dejaría crear.
+     */
+    public function testElAltaPorPanelRespetaElMinimoDeContrasena(): void
+    {
+        $db = Database::getInstance(Config::db());
+        $email = 'smoke-corta-' . bin2hex(random_bytes(3)) . '@test.local';
+        $corta = '123456789'; // 9: uno por debajo de PASSWORD_MIN
+
+        $router = new Router();
+        require dirname(__DIR__, 2) . '/config/routes.php';
+        $rp = new \ReflectionProperty(Router::class, 'routes');
+        $rp->setAccessible(true);
+        $ruta = null;
+        foreach ($rp->getValue($router) as $r) {
+            if ($r['path'] === '/admin/users/create' && $r['method'] === 'POST') {
+                $ruta = $r;
+                break;
+            }
+        }
+        assertNotNull($ruta, 'tiene que existir la ruta POST /admin/users/create');
+
+        self::dispatchRouteConBody($ruta, '/admin/users/create', static function (array &$post) use ($email, $corta): void {
+            $post['name'] = 'Alta Corta';
+            $post['email'] = $email;
+            $post['password'] = $corta;
+            $post['password_confirm'] = $corta;
+            $post['role_id'] = '2';
+        });
+
+        assertNull(
+            $db->fetch('SELECT id FROM users WHERE email = :e', ['e' => $email]),
+            'una contraseña por debajo de PASSWORD_MIN no debe crear la cuenta'
+        );
+    }
+
+    /**
+     * El mismo helper de dispatch pero con un cuerpo POST propio, para las rutas
+     * cuyo resultado se comprueba después en la BD (y no en el HTML, que en un
+     * alta correcta es una redirección).
+     */
+    private static function dispatchRouteConBody(array $route, string $url, callable $cuerpo): array
+    {
+        $_SERVER['REQUEST_METHOD'] = $route['method'];
+        $_SERVER['REMOTE_ADDR'] = '198.51.100.88';
+        $_SERVER['HTTP_USER_AGENT'] = 'ControllerActionsTest';
+        unset($_SERVER['CONTENT_LENGTH'], $_SERVER['CONTENT_TYPE'], $_SERVER['HTTP_CONTENT_TYPE'], $_SERVER['HTTP_X_CSRF_TOKEN']);
+
+        Auth::assumeLoggedIn((int) self::$adminId);
+        Auth::forgetCache();
+
+        $token = 'smoke-token';
+        Session::set('_csrf_token', $token);
+
+        $_POST = ['_token' => $token];
+        $cuerpo($_POST);
+
+        Request::setRequestBodyForTests(null);
+        Request::resetJsonState();
+        Response::setRecordHalt(false);
+        Response::setRecordHalt(true);
+
+        $router = new Router();
+        require dirname(__DIR__, 2) . '/config/routes.php';
+
+        ob_start();
+        try {
+            $router->dispatch($route['method'], $url);
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+
+        $halt = Response::lastHalt();
+        Response::setRecordHalt(false);
+
+        return ['halt' => $halt, 'html' => $html];
+    }
+
+    /**
+     * El registro apagado tiene que cerrar GET y POST por igual.
      *
      * Se usa la tabla de rutas REAL (no una ruta escrita a mano) para que el
      * test no pueda quedarse comprobando un endpoint que ya no existe. Con el
@@ -224,6 +373,15 @@ class ControllerActionsTest
             $post['title'] = 'Form de humo';
         } elseif (str_contains($path, '/update')) {
             $post['title'] = 'Form actualizado';
+        } elseif (str_contains($path, '/admin/users/create')) {
+            // Con `role_id` explícito y un email de humo: sin ellos el POST sería
+            // el "todos los campos son obligatorios", que no es el camino real.
+            // El email entra en `cleanupResiduals()` por el prefijo `smoke-`.
+            $post['name'] = 'Smoke Creado';
+            $post['email'] = 'smoke-nuevo-' . bin2hex(random_bytes(3)) . '@test.local';
+            $post['password'] = 'clave-smoke-123';
+            $post['password_confirm'] = 'clave-smoke-123';
+            $post['role_id'] = '2';
         } elseif (str_contains($path, '/admin/users/role')) {
             $post['user_id'] = (string) (int) self::$otherId;
             $post['role_id'] = '2';

@@ -148,6 +148,76 @@ class AdminController
         return;
     }
 
+    /**
+     * Alta de cuenta desde el panel.
+     *
+     * Existe porque `REGISTRATION_ENABLED` está cerrado por defecto, y con esa
+     * puerta cerrada el único alta que quedaba era `scripts/create-admin.php`,
+     * que crea **administradores** y solo el primero. Sin esta acción, dar de
+     * alta un `user` o un `editor` exigía abrir el registro público un rato,
+     * dejar que la persona se apuntara y volverlo a cerrar: justo lo contrario
+     * de lo que se pidió al cerrar el interruptor.
+     *
+     * Deliberadamente NO lleva rate limit ni mensaje uniforme en el email ya
+     * ocupado: esas dos defensas son del alta pública, que es la puerta que un
+     * atacante puede golpear a saco. Aquí ya se ha pasado el permiso
+     * `admin.users`, así que el admin puede saber si el email está en uso.
+     */
+    public function createUser(): void
+    {
+        if (!Auth::can('admin.users')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        $name = trim(Request::post('name', ''));
+        $email = trim(Request::post('email', ''));
+        $password = (string) Request::post('password', '');
+        $passwordConfirm = (string) Request::post('password_confirm', '');
+        $roleId = (int) Request::post('role_id', 2);
+
+        $invalid = AuthController::validateNewUser($name, $email, $password, $passwordConfirm);
+        if ($invalid !== null) {
+            Session::flash('error', $invalid);
+            Response::redirect('/admin');
+            return;
+        }
+
+        // El rol se valida contra la tabla, no contra una lista de ids: un
+        // `role_id` invented (o de un rol borrado) dejaría una cuenta sin rol
+        // interpretable, y `Auth::can()` devolvería false para todo lo suyo sin
+        // que nada lo dijera.
+        $role = Role::find($roleId);
+        if ($role === null) {
+            Session::flash('error', 'El rol indicado no existe.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        if (User::findByEmail($email) !== null) {
+            Session::flash('error', 'Ya hay una cuenta con ese email.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        $userId = User::create($name, $email, $password, $roleId);
+        if ($userId === null) {
+            Session::flash('error', 'No se pudo crear la cuenta.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        SecurityLog::record('admin.user_create', 'usuario #' . $userId . ' rol ' . $role['name']);
+        Session::flash('success', 'Cuenta creada para ' . $email . ' (rol ' . $role['name'] . ').');
+        Response::redirect('/admin');
+        return;
+    }
+
     public function toggleActive(): void
     {
         if (!Auth::can('admin.users')) {

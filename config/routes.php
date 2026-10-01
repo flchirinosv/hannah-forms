@@ -104,6 +104,7 @@ $router->get('/attachments/{id}', [AttachmentController::class, 'download'], ['a
 
 // Admin
 $router->get('/admin', [AdminController::class, 'index'], ['auth', 'admin']);
+$router->post('/admin/users/create', [AdminController::class, 'createUser'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/role', [AdminController::class, 'updateRole'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/groups', [AdminController::class, 'updateUserGroups'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], ['auth', 'admin', 'csrf']);

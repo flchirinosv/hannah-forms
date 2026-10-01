@@ -199,6 +199,117 @@ class AuthHardeningTest
         );
     }
 
+    /* ---------- 2 bis. El alta por panel comparte reglas con el alta pública ---------- */
+
+    /**
+     * Con el registro público cerrado, `AdminController::createUser()` es la
+     * única vía para crear un `user` o un `editor`
+     * (`scripts/create-admin.php` solo hace administradores). Por eso sus reglas
+     * NO pueden ser una copia: si el alta por panel aceptara una contraseña más
+     * corta, existiría una cuenta creada por un admin que el registro público
+     * rechazaría, y el mismo número estaría en tres sitios.
+     *
+     * Se ata el mecanismo, no el mensaje: las dos acciones tienen que llamar a
+     * `AuthController::validateNewUser()` y ninguna a validar por su cuenta.
+     */
+    public function testElAltaPorPanelUsaLasMismasReglasQueElRegistroPublico(): void
+    {
+        $admin = (string) file_get_contents($this->path('app/Controllers/AdminController.php'));
+        $auth = (string) file_get_contents($this->path('app/Controllers/AuthController.php'));
+
+        assertTrue(
+            str_contains($auth, 'public static function validateNewUser('),
+            'las reglas de alta tienen que vivir en un método compartido y público: '
+                . 'AuthController::PASSWORD_MIN ya se exporta por el mismo motivo.'
+        );
+
+        $cuerpo = $this->cuerpoDelMetodo($admin, 'createUser');
+        assertTrue(
+            str_contains($cuerpo, 'AuthController::validateNewUser('),
+            'createUser() tiene que validar con AuthController::validateNewUser(): '
+                . 'una copia de las reglas divergiría en silencio.'
+        );
+
+        // Y al revés: el alta pública no puede quedarse con su copia inline.
+        $registro = $this->cuerpoDelMetodo($auth, 'register');
+        assertTrue(
+            str_contains($registro, 'self::validateNewUser('),
+            'register() tiene que pasar por el mismo método que el alta por panel.'
+        );
+
+        // La constante no puede volver a tener un número escrito a mano en el
+        // alta por panel: es el fallo que este test ya cazó una vez.
+        assertFalse(
+            (bool) preg_match('/strlen\(\$password\)\s*<\s*10/', $cuerpo),
+            'createUser() no debe comprobar la longitud contra un 10 literal.'
+        );
+    }
+
+    /**
+     * El interruptor del registro público no gobierna el alta por panel, y esa
+     * independencia es lo que hace que servir de camino a las cuentas. Si
+     * alguien metiera el gate dentro de `createUser()`, el panel se quedaría sin
+     * forma de dar de alta a nadie con la puerta cerrada, que es justo el
+     * escenario para el que existe.
+     */
+    public function testElAltaPorPanelNoDependeDelInterruptorDeRegistro(): void
+    {
+        $admin = (string) file_get_contents($this->path('app/Controllers/AdminController.php'));
+        $cuerpo = $this->cuerpoDelMetodo($admin, 'createUser');
+
+        assertFalse(
+            str_contains($cuerpo, 'registration_enabled') || str_contains($cuerpo, 'registrationEnabled'),
+            'createUser() no debe mirar el interruptor del registro público: con la '
+                . 'puerta cerrada tiene que seguir creando cuentas.'
+        );
+    }
+
+    /**
+     * El email ya ocupado aquí SÍ se puede nombrar, al revés que en el registro
+     * público. No es una inconsistencia: el mensaje uniforme protege contra que
+     * alguien sondee el registro público, y aquí quien pregunta ya tiene
+     * `admin.users`. Lo que no puede pasar es que el alta por panel herede el
+     * rate limit, que está pensado para una IP anónima y solo estorbaría.
+     */
+    public function testElAltaPorPanelDiceElEmailYaOcupadoYNoHeredaElRateLimit(): void
+    {
+        $admin = (string) file_get_contents($this->path('app/Controllers/AdminController.php'));
+        $cuerpo = $this->cuerpoDelMetodo($admin, 'createUser');
+
+        assertTrue(
+            str_contains($cuerpo, 'Ya hay una cuenta con ese email.'),
+            'el alta por panel puede nombrar el conflicto: quien pregunta ya tiene '
+                . 'el permiso admin.users, y un «algo falló» le haría buscar un email libre a ciegas.'
+        );
+        assertFalse(
+            str_contains($cuerpo, 'RateLimiter'),
+            'createUser() no debe usar RateLimiter: sus límites son para una IP anónima '
+                . 'y aquí solo permitiría que el propio admin se bloquee a sí mismo.'
+        );
+    }
+
+    /**
+     * El `role_id` del POST se contrasta con la tabla `roles`. Aceptarlo sin
+     * comprobar crearía una cuenta sin rol interpretable, en la que
+     * `Auth::can()` devuelve false para todo lo suyo sin decir nada: el síntoma
+     * sería «el usuario no ve nada», sin ningún error en ningún sitio.
+     */
+    public function testElAltaPorPanelValidaElRolContraLaTabla(): void
+    {
+        $admin = (string) file_get_contents($this->path('app/Controllers/AdminController.php'));
+        $cuerpo = $this->cuerpoDelMetodo($admin, 'createUser');
+
+        assertTrue(
+            str_contains($cuerpo, 'Role::find($roleId)'),
+            'el rol del POST tiene que validarse contra la tabla, no contra un id suelto.'
+        );
+        assertTrue(
+            str_contains($cuerpo, 'El rol indicado no existe.'),
+            'un rol inválido necesita un mensaje: si no, la cuenta se crearía igual y '
+                . 'el fallo aparecería como «no ve nada».'
+        );
+    }
+
     /* ---------- 3. Rehash oportunista ---------- */
 
     /**
