@@ -582,13 +582,16 @@ body {
 /* ---------- Vista previa en vivo ---------- */
 .vf-preview-scroll { max-height: 74vh; overflow-y: auto; }
 .vf-preview-scroll .fill-body { padding: 0 !important; background: #fff; }
-/* Icono de sección: `margin: auto .5rem` lo empuja a la derecha de la fila
-   (`.vf-section-inner` es flex) con un margen simétrico. Es la MISMA regla que
-   produce el encabezado del fill, así que la preview y el formulario salen
-   iguales; con `margin: 0 auto` el icono se centaba y el título bailaba. */
+/* Icono de sección: SIN margen propio. La alineación la lleva la fila, con
+   `justify-content: space-between` en `.vf-section-inner`, que es donde
+   pertenece: el icono se comía el hueco sobrante con `margin: auto .5rem`, lo
+   que además traía dos huecos que nadie había pedido — uno entre el icono y su
+   título (la fila ya pone `gap`) y otro hacia el borde — y como el `fill` y la
+   preview traen los hijos en orden distinto (icono primero el fill, título
+   primero la preview), era el margen el que los hacía salir iguales. La fila
+   alinea igual a los dos y ninguno depende del orden. */
 .vf-section-icon {
     width: 44px; height: 44px;
-    margin: auto .5rem;
     display: flex; align-items: center; justify-content: center;
     background: var(--vf-primary-light);
     color: var(--vf-primary);
@@ -975,7 +978,7 @@ body {
     padding: 1.25rem .25rem;
     scroll-margin-top: 2rem;
 }
-.vf-section-inner { display: flex; align-items: center; gap: .7rem; }
+.vf-section-inner { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
 .vf-section-icon {
     width: 40px; height: 40px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;

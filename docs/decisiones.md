@@ -140,3 +140,43 @@ comportamiento del fill (incluida la descripción sin título, y que espacios no
 son un título) y `BuilderPreviewCssTest::testElPreviewYElFillDecidenIgualCuandoPintaLaCabeceraDelPaso`
 ata los dos lados por predicado, para que no se puedan mover de uno en uno.
 Comprobado que el segundo no es vacío: deshaciendo el criterio del preview, cae.
+
+## F0.3-cuatro — El icono de la sección sin margen, y el salto de página vuelve a tener número
+
+Dos cosas en una, porque son la misma pregunta: **qué es de la fila y qué es del
+elemento**. La respuesta es que la alineación es de la fila.
+
+`.vf-section-icon` se comía el
+hueco sobrante con `margin: auto .5rem`, y con el `fill` y el preview trayendo
+los hijos en **orden distinto** (icono primero el fill, título primero la
+preview), ese margen era lo único que hacía que las dos superficies salieran
+igual. O sea: la posición dependía de un margen invisible, y tocar el orden
+movía el icono de lado en un sitio sin que se viera el motivo. Además el `.5rem`
+metía dos huecos que nadie había pedido — uno entre el icono y su título, que la
+fila ya cubre con `gap`, y otro hacia el borde. Ahora el icono no declara
+margen y `.vf-section-inner` reparte el sobrante con `justify-content: space-
+between`; el `fill` pasa a montar el título antes que el icono, que es el orden
+de la preview, así que los dos dependen de la fila y ninguno del orden. El test
+`testElIconoDeSeccionVaALaDerecha` fijaba el margen viejo: ahora fija la
+propiedad de posición en las dos superficies y que ninguna declare `margin`.
+
+Lo del salto de página es una decisión del editor, ya discutida: vuelve a nacer
+con **«Página N»** —el número de páginas que ya hay más uno, no la posición en el
+lienzo, que cuenta secciones y el bloque implícito—, igual que una sección nace
+con «Nueva sección». Se había quitado porque `fields.label` es contenido y lo que
+se guarda es lo que se publica, y un encabezado de relleno repetía lo que el
+`aria-label` del bloque ya decía. Vuelve porque en el constructor el paso se
+distingue de los demás campos por su número, y un nombre es más rápido de leer
+que un «Página» a secas.
+
+Lo que NO se deshace es el otro sentido, que es el que importaba: el **fill**
+sigue sin fabricar el título cuando el editor borra la etiqueta
+(`ui.page_title` sigue borrada, y su test también). Un relleno que pone el
+servidor no se puede quitar; uno que pone el builder al crear el elemento es un
+punto de partida y se sobrescribe. La migración **0012** se queda, con su patrón
+estrecho, limpiando el relleno de las instalaciones que llevan tiempo usando la
+app —su alcance son esas filas, no las nuevas—.
+
+Y el aviso de `pageHeaderHint` sigue en pie: pasa a ser más raro (un paso nuevo
+ya trae título) pero no es código muerto, porque sigue siendo el aviso para
+cuando el editor **borra** el título con el interruptor encendido.

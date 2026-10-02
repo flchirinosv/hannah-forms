@@ -564,8 +564,12 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                 <?php if ($hasPages && !$blockOpen) { $emitPageHeader(null); } ?>
                 <section class="vf-section-block flip-in<?= $hiddenAttr($field) ?>" data-vf-field-id="<?= (int) $field['id'] ?>"<?= $logicAttr($field) ?>>
                     <div class="vf-section-inner">
-                        <span class="vf-section-icon"><i class="fa-solid fa-heading"></i></span>
+                        <?php // Título antes que icono, como en el preview: la fila
+                              // reparte el sobrante con `space-between` y así el
+                              // icono queda a la derecha sin que ninguno de los dos
+                              // tenga que empujarse con un margen. ?>
                         <h2 class="vf-section-title h4 fw-bold mb-0"><?= View::escape($field['label']) ?></h2>
+                        <span class="vf-section-icon"><i class="fa-solid fa-heading"></i></span>
                     </div>
                     <?php if ($field['help_text']): ?>
                         <p class="vf-section-desc text-muted mt-1 mb-0"><?= nl2br(View::escape($field['help_text'])) ?></p>

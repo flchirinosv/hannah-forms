@@ -454,6 +454,9 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S18 | Un salto de página **sin título ni descripción** y con el interruptor encendido | En «Configuración» sale el aviso rojo de que la cabecera no tiene nada que mostrar, y el constructor **y** el publicado se ven igual: ni caja ni icono | A | |
 | S19 | Escribir el título del paso con el interruptor encendido | El aviso desaparece solo, y en el constructor aparece la cabecera con ese título | A | |
 | S20 | Poner solo la **descripción**, sin título | La cabecera sale igual, con el icono y la descripción | M | |
+| S21 | Constructor → agregar un salto de página | La tarjeta dice «Página 1», «Página 2»… según cuántas haya, y no «Página» a secas | M | |
+| S22 | Publicar con dos saltos recién creados y el interruptor encendido | Cada paso abre con su icono y su cabecera «Página 1» / «Página 2»; al borrar el título de un paso y guardar, ese paso deja de pintar cabecera y el panel avisa | M | |
+| S23 | Formulario publicado con una sección | El icono de la sección queda pegado a su título y a la derecha de la fila, sin el hueco de antes; en el constructor se ve igual | M | |
 
 ---
 

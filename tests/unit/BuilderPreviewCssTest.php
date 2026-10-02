@@ -227,13 +227,42 @@ class BuilderPreviewCssTest
      */
     public function testElIconoDeSeccionVaALaDerecha(): void
     {
+        $css = self::css();
+
+        // El icono no lleva margen propio: la alineación es de la fila, no del
+        // icono. Cuando la llevaba (`margin: auto .5rem`) la posición dependía de
+        // él, y como el `fill` y el preview traían los hijos en orden distinto
+        // (icono primero el fill, título primero el preview), el margen era lo
+        // que los hacía coincidir: se tocaba el orden y el icono cambiaba de
+        // lado en un sitio sin que se viera el motivo.
         assertTrue(
-            preg_match('/\.vf-section-icon\s*\{[^}]*margin:\s*auto\s+\.5rem;/', self::css()) === 1,
-            '.vf-section-icon lleva `margin: auto .5rem` (icono a la derecha, con margen simétrico)'
+            preg_match('/\.vf-section-icon\s*\{[^}]*margin:/', $css) !== 1,
+            '.vf-section-icon no declara margin: el hueco lo reparte la fila'
         );
         assertTrue(
-            preg_match('/\.vf-section-icon\s*\{[^}]*margin:\s*0\s+auto/', self::css()) !== 1,
-            'y NO `margin: 0 auto`, que lo centra'
+            preg_match('/\.vf-section-inner\s*\{[^}]*justify-content:\s*space-between/', $css) === 1,
+            '.vf-section-inner reparte el sobrante (space-between): título a la izquierda, icono a la derecha'
+        );
+
+        // Y el orden de los hijos, en las DOS superficies: con `space-between` lo
+        // que decide el lado es cuál va el último, así que el preview tiene que
+        // acabar en icono igual que el fill.
+        $fill = self::sinComentarios((string) file_get_contents(self::root() . '/views/fill/show.php'));
+        $ini = strpos($fill, 'class="vf-section-inner"');
+        assertTrue($ini !== false, 'el fill sigue montando la fila de la sección');
+        $fila = (string) substr($fill, (int) $ini, 400);
+        assertTrue(
+            strpos($fila, 'vf-section-title') < strpos($fila, 'vf-section-icon'),
+            'en el fill el título va antes que el icono'
+        );
+
+        $js = self::sinComentarios(self::js());
+        $ini = strpos($js, "if (f.type === 'section') {", (int) strpos($js, 'function buildPreviewHtml('));
+        assertTrue($ini !== false, 'sigue el preview de sección en buildPreviewHtml()');
+        $fila = (string) substr($js, (int) $ini, 1200);
+        assertTrue(
+            strpos($fila, 'vf-section-title') < strpos($fila, 'vf-section-icon'),
+            'y en el preview también: por eso los dos salen con el icono a la derecha'
         );
     }
 
@@ -415,33 +444,60 @@ class BuilderPreviewCssTest
     }
 
     /**
-     * Un salto de paso no lleva etiqueta: `fields.label` es contenido, y lo que
-     * el builder guarda es lo que se publica. Con «Página N» como etiqueta, el
-     * formulario final pintaba un encabezado que no decía el contenido del paso.
-     * El rótulo del editor lo pone el nombre del tipo al pintar la tarjeta.
+     * Un salto de paso nace con «Página N», como la sección con «Nueva sección».
+     *
+     * Se quitó y se ha vuelto a poner, así que vale la pena dejar por qué está:
+     * `fields.label` es contenido y lo que se guarda es lo que se publica, así
+     * que el número es un punto de partida para sobrescribir, no un rótulo que
+     * imponga el builder. Lo que NO se hace es lo contrario: el fill no vuelve a
+     * fabricar «Página N» cuando el editor borra el título
+     * (`testElSaltoDePaginaSinEtiquetaNoInventaTitulo`), porque entonces el
+     * relleno sería imposible de quitar.
+     *
+     * Y quien edita lo ve antes de publicar: en el constructor el paso se
+     * distingue de los demás campos por su número, no por un «Sin título» o un
+     * «Página» a secas.
      */
-    public function testElBuilderNoInventaLaEtiquetaDeUnSaltoDePaso(): void
+    public function testElSaltoDePasoNaceConSuNumeroDePagina(): void
     {
         $js = self::sinComentarios(self::js());
         assertTrue(
-            !str_contains($js, "'Página ' +"),
-            'builder.js no fabrica la etiqueta «Página N» de un salto de paso: se guardaba y salía como título en el formulario final'
+            str_contains($js, "'Página ' + (fields.filter((x) => x.type === 'page').length + 1)"),
+            'un salto de página nuevo nace con «Página N», como la sección con «Nueva sección»'
         );
 
+        // El N es el de páginas que YA hay, más uno. La alternativa —el número de
+        // posición en el formulario— cuenta cosas que no son pasos: las secciones
+        // se intercalan y el primer bloque es implícito, así que el orden del
+        // lienzo no es el número del paso.
+        assertTrue(
+            !str_contains($js, "'Página ' + (fields.length + 1)"),
+            'y no se confunde con la posición en el lienzo, que cuenta secciones y el bloque implícito'
+        );
+
+        // La tarjeta sigue cayendo en el nombre del tipo cuando el editor borra
+        // el título a mano: es el mismo dato, no un rótulo aparte.
         $ini = strpos($js, 'function cardHeadHtml(');
         assertTrue($ini !== false, 'sigue existiendo cardHeadHtml() en builder.js');
         $bloque = (string) substr($js, (int) $ini, 700);
         assertTrue(
             str_contains($bloque, "f.type === 'page'"),
-            'la tarjeta del salto de paso se identifica por el nombre del tipo («Página»), no por «Sin título»'
+            'la tarjeta del salto de paso se identifica por el nombre del tipo («Página») cuando no hay etiqueta'
         );
     }
 
     /**
-     * Corregir el builder solo afecta a los saltos NUEVOS: los formularios que ya
-     * tenían «Página N» guardado seguirían pintándolo. Esto ata la migración que
-     * limpia ese relleno, y sobre todo que el patrón sea estrecho: una etiqueta
-     * escrita a mano («Primera página») es contenido y se respeta.
+     * La migración 0012 se queda, aunque el builder vuelva a escribir «Página N».
+     * Antes limpiaba un relleno que el builder había retirado y ya no iba a
+     * aparecer nunca más; ahora limpia el que hay en las instalaciones que
+     * llevan tiempo usando la app, que es justo donde se accumulated. El patrón
+     * sigue siendo estrecho y es lo importante: una etiqueta escrita a mano
+     * («Primera página») es contenido y se respeta.
+     *
+     * Su alcance son las filas de siempre: los saltos que se creen después
+     * nacen con su número y no se vuelven a tocar. Por eso se documenta aquí y no
+     * se borra, para que nadie la lea como un sitio donde el builder ya no
+     * inventa nada.
      */
     public function testLaMigracionDelSaltoDePasoSoloBorraElRellenoDelBuilder(): void
     {

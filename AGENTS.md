@@ -163,11 +163,17 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `data-vf-form-id`), **por formulario**, y con un `.alert-danger.app-alert` se
   abren todos: el aviso del guardado fallido está arriba del formulario.
 - **`fields.label` es contenido, no un rótulo de editor**: un salto de página nace
-  SIN etiqueta —que la invente el builder la convierte en título publicado— y la
-  migración **0012** limpia el `Página N` que las instalaciones anteriores ya
-  tenían guardado, con un patrón estrecho que respeta lo escrito a mano y nunca
-  toca la descripción. El nombre del tipo lo pone el editor al pintar la tarjeta
-  y el divisor del preview.
+  con `Página N` —el número de páginas que ya hay más uno, no la posición en el
+  lienzo, que cuenta secciones y el bloque implícito—, igual que una sección nace
+  con `Nueva sección`. Es un punto de partida para sobrescribir, y por eso lo que
+  NO se hace es lo contrario: el **fill** no vuelve a fabricarlo cuando el editor
+  borra el título (`testElSaltoDePaginaSinEtiquetaNoInventaTitulo` y la clave de
+  i18n `ui.page_title`, borrada), porque un relleno que el servidor pone no se
+  puede quitar. La migración **0012** sigue limpiando el `Página N` que las
+  instalaciones anteriores ya tenían guardado, con un patrón estrecho que respeta
+  lo escrito a mano y nunca toca la descripción; su alcance son esas filas, no las
+  nuevas. El nombre del tipo lo pone el editor al pintar la tarjeta cuando no hay
+  etiqueta, y el divisor del preview.
 - Honeypot `_vf_hp`: se chequea **antes** del rate limit y **finge éxito sin
   persistir**. Turnstile va tras el honeypot y antes del rate limit; sin **las
   dos** claves de instancia el formulario **no se sirve** (403).

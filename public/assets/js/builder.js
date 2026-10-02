@@ -1394,13 +1394,21 @@
 
         let defaultLabel = 'Nueva pregunta (' + (info ? info.label : type) + ')';
         if (info && info.isSection) defaultLabel = 'Nueva sección';
-        // Un salto de paso NO lleva etiqueta: `label` es contenido, y lo que se
-        // guarda es lo que se publica. Con «Página N» el builder escribía un
-        // título de relleno que en el formulario final salía como encabezado
-        // (y repetía lo que el aria-label del bloque ya decía). El nombre del
-        // tipo lo pone el editor al pintar la tarjeta y el divisor del preview,
-        // no el dato.
-        if (isPage) defaultLabel = '';
+        // El salto de página vuelve a nacer con «Página N», como la sección nace
+        // con «Nueva sección»: quien edita necesita ver de qué paso se trata en
+        // el constructor y en el divisor del preview, y un nombre es más rápido
+        // de reconocer que «Página» a secas. El N es el de pages que ya hay más
+        // uno, no la posición en el formulario: las páginas también se
+        // intercalan con las secciones y con el bloque implícito del principio,
+        // así que el orden del lienzo no es el número del paso.
+        //
+        // Esto es contenido, no un rótulo del editor: se guarda y se publica
+        // como cabecera del paso (con el interruptor encendido, que es el estado
+        // por defecto). Por eso es un punto de partida para sobrescribir, no un
+        // rótulo que el builder imponga: `label` es lo que escribió quien edita
+        // y el fill no lo vuelve a fabricar. La migración 0012 sigue limpiando el
+        // relleno que las instalaciones anteriores tenían guardado.
+        if (isPage) defaultLabel = 'Página ' + (fields.filter((x) => x.type === 'page').length + 1);
 
         const f = {
             _uid: 'field-' + (nextUid++),
@@ -2346,5 +2354,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-10-01a (F0.3+flags: los dos interruptores que faltaban — «dato personal» y «mostrar cabecera del paso» — ya disparan applySettings en change; sin eso el ajuste se movía en pantalla y se guardaba el valor viejo)');
+    console.log('[builder] v2026-10-01b (F0.3+cabecera: el salto de página vuelve a nacer con «Página N»; el preview decide la cabecera igual que el fill; y «dato personal» y «mostrar cabecera» ya disparan applySettings en change)');
 })();
