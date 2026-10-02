@@ -229,6 +229,7 @@ $fieldTypes = [
                             <input class="form-check-input" type="checkbox" id="fieldPageHeader">
                             <label class="form-check-label small" for="fieldPageHeader">Mostrar la cabecera de esta p&aacute;gina</label>
                             <div class="text-muted mt-1" style="font-size:.72rem">Es el bloque con icono, t&iacute;tulo y descripci&oacute;n que abre el paso. Si lo desactivas, el paso se sigue existiendo y sigue contando en la barra de progreso y en el pie: lo que no se pinta es esa cabecera.</div>
+                            <div class="text-danger mt-1 d-none" id="pageHeaderHint" role="status" style="font-size:.72rem">Este paso todav&iacute;a no tiene t&iacute;tulo ni descripci&oacute;n, as&iacute; que la cabecera no tendr&iacute;a nada que mostrar y saldr&aacute; vac&iacute;a. El interruptor decide <em>si</em> se pinta, no <em>qu&eacute;</em> dice: escribe el t&iacute;tulo de la p&aacute;gina o a&ntilde;ade una descripci&oacute;n arriba para que se vea.</div>
                         </div>
                         <div class="form-check form-switch mb-3" id="fieldPiiWrap">
                             <input class="form-check-input" type="checkbox" id="fieldPii">

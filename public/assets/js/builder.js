@@ -931,6 +931,12 @@
         // el arranque del builder y aquí todavía no existiría (zona muerta).
         resetPiiSuggestion();
 
+        // El aviso de la cabecera del paso se repinta al abrir el panel por el
+        // mismo motivo: el interruptor se rellena desde el estado guardado, así
+        // que el aviso tiene que decidir sobre el título que viene del servidor
+        // y no sobre lo que hubiera quedado escrito de la última apertura.
+        if (typeof updatePageHeaderHint === 'function') updatePageHeaderHint();
+
         // P8 — Quiz: input de respuesta correcta visible solo con modo quiz,
         // en preguntas puntuables (no secciones/páginas/matriz/ranking).
         const quizOn = !!(FORM_SETTINGS.quiz && FORM_SETTINGS.quiz.enabled);
@@ -1583,18 +1589,28 @@
                 // Y con `show_header` apagado no se pinta, que es lo que hace el
                 // formulario final: el preview no puede prometer una cabecera que
                 // luego no aparece.
-                if (f.show_header === false) {
-                    html += '<div class="vf-page-break"></div>';
-                    return;
+                //
+                // Y el MISMO criterio que el fill, que es lo segundo que se
+                // olvidaba aquí: el formulario publicado solo pinta la cabecera si
+                // el paso tiene título o descripción, porque una caja con el icono
+                // y nada dentro no dice de qué paso se trata. Este preview pintaba
+                // la caja vacía igual, así que se veía el icono en el constructor y
+                // en el formulario publicado no había nada: el interruptor parecía
+                // no hacer nada. Se comparan los DOS con `trim()` porque el fill
+                // también los recorta: una etiqueta de solo espacios es sin título.
+                const titulo = String(f.label || '').trim();
+                const desc = String(f.help_text || '').trim();
+                const sinCabecera = f.show_header === false || (titulo === '' && desc === '');
+                if (!sinCabecera) {
+                    html += '<div class="vf-page-head">' +
+                        '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>' +
+                        '<div>' +
+                            (titulo ? '<h2 class="vf-page-title h5 fw-bold mb-0">' + esc(titulo) + '</h2>' : '') +
+                            (desc ? '<p class="vf-page-desc text-muted mt-1 mb-0">' + esc(desc) + '</p>' : '') +
+                        '</div>' +
+                        '</div>';
                 }
-                html += '<div class="vf-page-head">' +
-                    '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>' +
-                    '<div>' +
-                        (f.label ? '<h2 class="vf-page-title h5 fw-bold mb-0">' + esc(f.label) + '</h2>' : '') +
-                        (f.help_text ? '<p class="vf-page-desc text-muted mt-1 mb-0">' + esc(f.help_text) + '</p>' : '') +
-                    '</div>' +
-                    '</div>' +
-                    '<div class="vf-page-break"><span class="text-muted small">— siguiente paso —</span></div>';
+                html += '<div class="vf-page-break"><span class="text-muted small">— siguiente paso —</span></div>';
                 return;
             }
             if (f.type === 'section') {
@@ -2038,6 +2054,35 @@
 
         if (el.fieldLabel) el.fieldLabel.addEventListener('input', updatePiiSuggestion);
         if (el.fieldPii) el.fieldPii.addEventListener('change', updatePiiSuggestion);
+        /**
+         * El interruptor de la cabecera del paso solo decide SI se pinta, nunca
+         * QUÉ dice: el título y la descripción son contenido y salen de lo que
+         * escribió el editor. Un salto de página nace sin título, así que el
+         * caso por defecto —encendido y sin escribir nada— es exactamente el
+         * que no tiene nada que pintar, y se veía como un interruptor roto: se
+         * movía, se guardaba, y en el formulario publicado no había cabecera.
+         * Sin esta frase, la única pista es que el ajuste no hace nada.
+         *
+         * El preview y el fill aplican el MISMO criterio (ver `previewBody()`):
+         * sin título ni descripción no se pinta caja, ni con icono.
+         */
+        function updatePageHeaderHint() {
+            const hint = document.getElementById('pageHeaderHint');
+            if (!hint || !el.fieldPageHeader || !el.fieldPageHeaderWrap) return;
+            // El control entero se esconde en los tipos que no son salto de
+            // página, y en una sección no hay cabecera que apagar.
+            if (el.fieldPageHeaderWrap.classList.contains('d-none')) {
+                hint.classList.add('d-none');
+                return;
+            }
+            const sinContenido = el.fieldLabel.value.trim() === ''
+                && el.fieldHelp.value.trim() === '';
+            if (!el.fieldPageHeader.checked || !sinContenido) {
+                hint.classList.add('d-none');
+                return;
+            }
+            hint.classList.remove('d-none');
+        }
         const btnSuggest = document.getElementById('btnPiiSuggest');
         if (btnSuggest) {
             btnSuggest.addEventListener('click', () => {
@@ -2058,6 +2103,13 @@
         ['fieldLabel', 'fieldPlaceholder', 'fieldHelp'].forEach((k) => {
             el[k].addEventListener('input', applySettings);
         });
+        // El aviso de la cabecera depende del título y de la descripción, que se
+        // teclean: sin escucharlos solo se refrescaría al abrir el panel y se
+        // quedaría diciendo que no hay nada que mostrar con el título ya escrito.
+        ['fieldLabel', 'fieldHelp'].forEach((k) => {
+            el[k].addEventListener('input', updatePageHeaderHint);
+        });
+        if (el.fieldPageHeader) el.fieldPageHeader.addEventListener('change', updatePageHeaderHint);
         ['fieldScaleMax', 'valMin', 'valMax', 'valMinLen', 'valMaxLen'].forEach((k) => {
             el[k].addEventListener('input', applySettings);
         });        ['fieldMatrixRows', 'fieldMatrixCols'].forEach((k) => {

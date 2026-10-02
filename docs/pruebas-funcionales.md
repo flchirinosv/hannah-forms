@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada en el commit `751602c`).
 
-No sustituye a la suite automática (`php scripts/test.php`, 727 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 729 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -451,6 +451,9 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S15 | Con el mismo formulario abierto, cambiar el color a uno oscuro | Se lee el formulario con normalidad sobre el fondo oscuro | M | |
 | S16 | «Diseño» → cambiar la **fuente** y publicar | El formulario sale con esa tipografía; el panel y la ficha **no** cambian | M | |
 | S17 | Dejar el fondo y la fuente sin tocar (o en el valor de fábrica) | Se ve el gradiente y la tipografía de siempre: los dos ajustes tienen valor por defecto | M | |
+| S18 | Un salto de página **sin título ni descripción** y con el interruptor encendido | En «Configuración» sale el aviso rojo de que la cabecera no tiene nada que mostrar, y el constructor **y** el publicado se ven igual: ni caja ni icono | A | |
+| S19 | Escribir el título del paso con el interruptor encendido | El aviso desaparece solo, y en el constructor aparece la cabecera con ese título | A | |
+| S20 | Poner solo la **descripción**, sin título | La cabecera sale igual, con el icono y la descripción | M | |
 
 ---
 

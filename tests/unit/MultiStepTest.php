@@ -205,6 +205,54 @@ class MultiStepTest
     }
 
     /**
+     * La otra mitad del ajuste, y la que no se veía: el interruptor NO decide
+     * qué dice la cabecera, solo si se pinta. Un salto de página nace SIN
+     * título, así que «encendido y sin escribir nada» es el estado por defecto de
+     * cualquiera que active el interruptor y no escriba nada — y ahí no hay nada
+     * que pintar. La caja con el icono y el cuerpo vacío no dice de qué paso se
+     * trata, cuando el pie ya lleva «Paso 2 de 3» y el `aria-label` del bloque lo
+     * nombra igual.
+     *
+     * Se fija por qué NO se pinta una cabecera vacía y no solo que el flag manda:
+     * la tentación de «que el interruptor siempre se note» es pintarla igual, y
+     * entonces un constructor con el preview lleno de iconos enseñaría algo que
+     * el formulario publicado no tiene.
+     */
+    public function testLaCabeceraDelPasoNoSePintaSinTituloNiDescripcion(): void
+    {
+        Field::create(self::$formId, 'page', 'Paso 1', '', '', false, [], [], 1);
+        Field::create(self::$formId, 'text', 'Primera', '', '', false, [], [], 2);
+        // Sin título y sin descripción, pero con el interruptor ENCENDIDO.
+        $page2 = Field::create(self::$formId, 'page', '', '', '', false, [], [], 3, null, null, false, true);
+        Field::create(self::$formId, 'text', 'Segunda', '', '', false, [], [], 4);
+        Form::update(self::$formId, 'Form Cabecera', '', 'published');
+
+        assertSame(1, (int) (Field::find($page2)['show_header'] ?? -1), 'el interruptor está encendido');
+        $html = self::renderShow();
+        assertSame(1, substr_count($html, 'class="vf-page-head"'), 'sin contenido no se pinta una caja vacía');
+        assertTrue(
+            str_contains($html, 'aria-label="Paso 2 de 2"'),
+            'y el paso sigue existiendo: lo que falta es la cabecera, no el salto'
+        );
+
+        // Con descripción sí sale, aunque el título siga vacío: el interruptor
+        // permite cabecera con una sola de las dos cosas.
+        Field::updateField($page2, 'page', '', '', 'Solo la descripción', false, [], [], 3, null, null, false, true);
+        $html = self::renderShow();
+        assertSame(2, substr_count($html, 'class="vf-page-head"'), 'una descripción basta para que la caja salga');
+        assertTrue(str_contains($html, 'Solo la descripción'), 'y sale el texto de verdad');
+
+        // Y una etiqueta de solo espacios es un título vacío: el fill recorta, y
+        // el preview tiene que recortar igual (lo ata `BuilderPreviewParityTest`).
+        $page3 = Field::create(self::$formId, 'page', '   ', '', '', false, [], [], 5, null, null, false, true);
+        Field::create(self::$formId, 'text', 'Tercera', '', '', false, [], [], 6);
+        Form::update(self::$formId, 'Form Cabecera', '', 'published');
+        $html = self::renderShow();
+        assertSame(2, substr_count($html, 'class="vf-page-head"'), 'espacios no son un título');
+        unset($page3);
+    }
+
+    /**
  * La otra mitad del ajuste: el payload del constructor → la columna.
  *
  * `show_header` no cabe en `validations` ni en `options`, así que viaja por su

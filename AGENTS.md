@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 72 archivos, 727 métodos, ~4 min;
+- Suite completa: `php scripts/test.php` → 72 archivos, 729 métodos, ~4 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -134,6 +134,17 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   no tiene caja: `.scale-btn` necesita `display` (el del NPS nunca lo tuvo, así
   que sus 40px no se aplicaban y salía el número suelto), que es lo que separa
   un botón de un dígito con un borde alrededor.
+- **`fields.show_header` dice SI se pinta la cabecera, nunca QUÉ dice**: el título
+  y la descripción son contenido y los pone el editor, así que un salto de página
+  sin título ni descripción **no pinta caja** aunque el interruptor esté
+  encendido (una caja con el icono y el cuerpo vacío no dice de qué paso se
+  trata, cuando el pie ya lleva «Paso N de M» y el `aria-label` del bloque lo
+  nombra igual). Y el preview del builder decide **igual que el fill** —mismos tres
+  predicados y el mismo `trim()`—, o se ve el icono en el constructor y nada en
+  el publicado: dos pantallas con markup idéntico donde nada delata la
+  divergencia. Cuando no hay contenido, el panel lo **explica** con
+  `pageHeaderHint` (patrón `updateAdvanceHint()`): un ajuste que parece roto es
+  peor que un ajuste que avisa de cuándo es inaplicable.
 - **`fields.show_header` es del SALTO DE PÁGINA y nada más**: el servidor lo
   fuerza a `true` en cualquier otro tipo, y apagado apaga `.vf-page-head` (icono,
   título y descripción) **sin** quitar el paso: bloque, `aria-label` del paso,

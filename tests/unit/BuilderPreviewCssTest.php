@@ -515,10 +515,77 @@ class BuilderPreviewCssTest
 
         $ini = strpos($js, 'function buildPreviewHtml(');
         assertTrue($ini !== false, 'el preview sigue dibujando el salto de página');
-        $bloque = (string) substr($js, (int) $ini, 1800);
+        // Ventana generosa a propósito: el salto de página quedó más abajo en la
+        // función cuando se le añadió el criterio de contenido, y una ventana
+        // justa pasaba a mirar otro trozo sin avisar.
+        $bloque = (string) substr($js, (int) $ini, 4000);
         assertTrue(str_contains($bloque, "class=\"vf-page-head\""), 'el preview emite la misma caja que el fill');
         assertTrue(str_contains($bloque, 'f.show_header === false'), 'y respeta el ajuste de cabecera');
         assertTrue(str_contains($bloque, 'vf-page-break'), 'el separador de paso es una clase con CSS, no texto suelto');
+    }
+
+    /**
+     * El preview y el formulario publicado tienen que **decidir lo mismo** sobre
+     * la cabecera de un salto de página, no solo emitir las mismas clases.
+     *
+     * El segundo criterio es el que se olvidó: el fill solo pinta la caja si el
+     * paso tiene título o descripción, y el preview la pintaba siempre que el
+     * interruptor estuviera encendido. El síntoma era el peor posible para
+     * diagnosticar —el icono se veía en el constructor y en el formulario
+     * publicado no había nada—, porque las dos pantallas usan markup y clases
+     * idénticos y solo se diferencian en una condición que nadie compara.
+     *
+     * Se ata por predicado, no por texto: cada lado tiene que mencionar las tres
+     * cosas que deciden (el interruptor, el título y la descripción) en la misma
+     * rama del salto de página. El `trim()` va en la lista porque el fill recorta
+     * y una etiqueta de solo espacios es sin título; si un lado dejara de
+     * recortar, el otro volvería a prometer una caja vacía.
+     */
+    public function testElPreviewYElFillDecidenIgualCuandoPintaLaCabeceraDelPaso(): void
+    {
+        $js = self::sinComentarios(self::js());
+        $ini = strpos($js, 'function buildPreviewHtml(');
+        $bloque = (string) substr($js, (int) $ini, 4000);
+
+        assertTrue(str_contains($bloque, 'show_header === false'), 'el preview mira el interruptor');
+        assertTrue(str_contains($bloque, "String(f.label || '').trim()"), 'el preview recorta el título');
+        assertTrue(str_contains($bloque, "String(f.help_text || '').trim()"), 'y la descripción');
+        assertTrue(
+            str_contains($bloque, "titulo === '' && desc === ''"),
+            'la caja solo se pinta si hay título o descripción, igual que en el fill'
+        );
+
+        // Y el lado del fill, para que el par no se pueda mover de uno en uno.
+        $fill = self::sinComentarios((string) file_get_contents(self::root() . '/views/fill/show.php'));
+        assertTrue(
+            str_contains($fill, "trim((string) (\$pageField['label'] ?? ''))"),
+            'el fill recorta el título del salto de página'
+        );
+        assertTrue(
+            str_contains($fill, "\$title !== '' || \$desc !== ''"),
+            'y solo pinta la cabecera si hay algo que decir'
+        );
+
+        // El aviso del panel: el interruptor no inventa contenido, así que sin
+        // título ni descripción tiene que explicar por qué no se ve nada, en vez
+        // de dejar que parezca roto.
+        $panel = self::sinComentarios((string) file_get_contents(self::root() . '/views/builder/index.php'));
+        assertTrue(str_contains($panel, 'id="pageHeaderHint"'), 'el interruptor avisa de que no inventa el título');
+        assertTrue(
+            str_contains($js, 'function updatePageHeaderHint()'),
+            'y el aviso se recalcula en el cliente en vez de quedar pegado al primer pintado'
+        );
+        // El aviso depende del título y de la descripción: si no los escucha,
+        // seguiría diciendo «no hay nada que mostrar» con el título ya escrito, y
+        // al revés se callaría con la etiqueta recién borrada.
+        assertTrue(
+            str_contains($js, "['fieldLabel', 'fieldHelp'].forEach"),
+            'el aviso se refresca al escribir el contenido del que depende'
+        );
+        assertTrue(
+            str_contains($js, "el.fieldPageHeader.addEventListener('change', updatePageHeaderHint)"),
+            'y al mover el interruptor'
+        );
     }
 
     private static function esDeLaApp(string $clase): bool

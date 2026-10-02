@@ -96,3 +96,47 @@ Todo lo que sigue está **aplicado**; no hay nada pendiente aquí. Se archivó e
 - Dos ajustes de «Diseño» que se guardaban y no se aplicaban (2026-10-01): «Color de fondo» y «Fuente» salían de `themeCss()` como `--vf-background` y `--vf-font`, y **ninguna de las dos variables aparecía ni una vez en `app.css`** — de los tres ajustes del modal de diseño, solo el color principal funcionaba (89 usos). El valor no era el problema: `validate()` ya exigía `#RRGGBB`/`#RRGGBBAA` para los colores, y la tipografía tiene su lista blanca en las dos puertas (`ThemeFontCssInjectionTest`). El fondo de la página era un gradiente escrito a mano **dos veces** en el archivo, con la segunda ganando por orden y la primera siendo código muerto, y la fuente la fijaba `body` a pelo. Tres decisiones: (a) `--vf-background` se declara en `:root` **con el gradiente como valor por defecto** en vez de inventar un `fallback`: una custom property admite cualquier token, así que el color elegido lo sustituye y sin ajuste sigue viéndose lo de siempre; (b) el color se aplica a `.fill-body`, que es el fondo de la página, y la tarjeta se queda en **blanco a propósito** (`.app-fill-card .card-body`): con un color de página oscuro, teñir también la tarjeta dejaría el formulario ilegible, y el tooltip del control ya decía «El fondo de la página del formulario»; (c) `--vf-font` entra por `body` con `fallback` a Inter, y el `<style>` del tema solo se inyecta en `fill/show.php` y `fill/thanks.php`, así que el panel no se ve afectado. La regla general que sale de esto —y el test que la ata— es que **toda variable que emite el tema tiene que tener un consumidor en `app.css`**: un ajuste que se guarda bien y no se ve no produce ningún error, ni en el navegador ni en el log, y por eso llevaba años sin que nadie lo notara. Tests: `ThemeFontCssInjectionTest::testTodaVariableDelTemaTieneUnConsumidorEnElCss` y `testElColorDeFondoSeAplicaAlFondoDeLaPaginaYLaTarjetaSigueBlanca`.
 - La ficha se pliega y el fill deja de explicar las reglas (2026-10-01): cuatro cosas de la misma revisión manual, y las cuatro por el mismo motivo — **un dato que se guarda, se sirve y no se ve, o se ve donde no toca**. (a) «Se muestra si: …» sale del formulario publicado: las reglas son información del editor, y al visitante le bastaba con encontrar su pregunta; peor era que, con el campo oculto por su propia condición, el texto se quedaba solo en pantalla sin nada a lo que referirse. Se borran la closure `$condSummary`, el mapa `$fieldById` que solo la alimentaba y las **nueve** claves de i18n que quedan sin lector (cuatro `ui.*` y cinco `op.*`, en `es.php` y `en.php`): una traducción que nadie lee es ruido que además invita a mantenerla al día dos veces. Lo que NO se toca es `data-vf-logic` (sin él no hay omisión de campo en el cliente) ni la insignia del builder, porque quien edita sí necesita ver la regla. (b) `.vf-section-children` pierde el fondo, y `.app-section-children` lo conserva: son la misma idea con dos contextos, y en el builder el tinte dice dónde acaba la sección —es la zona de trabajo—, mientras que en el formulario publicado la sección ya trae encabezado y línea, así que el tinte encima solo hacía que el formulario pareciera partido en dos. El test ata los DOS lados por eso: corregir uno y dejar el otro deja la mitad del problema. (c) La banda del «+» (`left: 0`) y «Agregar dentro» (`max-width: 100%`) medían el hueco de `2.35rem` que reservan las herramientas de la cabecera, que no tiene nada que ver con insertar entre tarjetas: se venían directamente de la reserva de iconos y nadie sabe ya por qué están. (d) Los siete grupos de «Ajustes del formulario» se pliegan con Bootstrap Collapse, y aquí lo no negociable es el **triple** por grupo: `<button type="button">` (sin `type`, pulsar el título envía el formulario de ajustes), `aria-expanded` y `aria-controls` apuntando al `id` real del panel (Bootstrap no lanza si no encuentra destino, así que el clic no haría nada sin error visible). El estado se recuerda en `localStorage` **por formulario** (`vf:grp:<id>` desde `data-vf-form-id`) porque el mismo usuario pasa por varias fichas, y **con un `alert-danger.app-alert` se abren todos**: el aviso del guardado fallido vive arriba del formulario, y un ajuste que falló escondido en un grupo plegado obliga a abrir los siete a ciegas. Test de cada punto: `BuilderPreviewCssTest` (los tres CSS) y `FormSettingsMergeTest` (los dos de markup). Comprobaciones manuales nuevas: bloque S de `docs/pruebas-funcionales.md`.
 - F0.3-bis, el hueco que quedaba (2026-10-01, reportado como «el ajuste de mostrar u ocultar el elemento página no funciona»): el mismo descuido de F0.3, pero en los **flags de nivel superior** en vez de en las validaciones, y con el agravante de que el ajuste nuevo se anunciara funcionando. Las tres piezas existían y encajaban: el interruptor estaba en el panel, `applySettings()` leía `el.fieldPageHeader.checked` y lo escribía en `f.show_header`, y `buildPayload()` lo serializaba con el nombre que lee `BuilderController` (el round trip por PHP lo cubría `MultiStepTest::testElAjusteDeCabeceraLlegaPorElGuardadoDelConstructor`). Lo que **no** había era el `change`: sin listener, `applySettings()` no corría, el estado en memoria conservaba el valor cargado del servidor y el autosave guardaba exactamente lo mismo. El payload salía byte a byte idéntico, sin error ni aviso — indistinguible de un servidor que ignorase el campo, que es por eso que el contrato se mide en el JS. Y el hueco no era solo del ajuste nuevo: **`fieldPii` tampoco estaba enlazado**, así que mover el interruptor de «dato personal» no guardaba nada; solo se guardaba si se pulsaba el botón «Sí, es dato personal» de la sugerencia, que sí llama a `applySettings()`. Regla: **un flag necesita control Y listener, igual que una validación**, y el par flag→control va declarado en `TOP_LEVEL_FLAG_CONTROL` de `tests/unit/BuilderValidationsContractTest.php`, que barre los listeners con el mismo `wiredControls()` y comprueba también que ningún flag se escriba sin control declarado. Texto → `input`, casillas → `change`. `builder.js` bumpea a `v2026-10-01a`.
+
+## F0.3-tres — «El elemento página no aparece en el formulario final»
+
+Turno el otro, y no es un aviso de contenido: es que el interruptor se movía,
+se guardaba bien y aun así no se veía nada en el formulario publicado. Con la
+columna y el round trip por PHP ya en su sitio (y probados), la única variable
+que quedaba era qué decide cada lado.
+
+La respuesta son **tres** reglas, y solo funcionaba la primera:
+
+1. `fields.show_header` decide **si** se pinta la cabecera. No dice **qué** dice:
+   el título y la descripción son contenido y los pone el editor. Un salto de
+   página nace SIN título, así que el estado por defecto de quien activa el
+   interruptor y no escribe nada es «encendido y sin nada que pintar».
+2. El fill solo pinta la caja **si hay título o descripción**. Una caja con el
+   icono y el cuerpo vacío no dice de qué paso se trata, cuando el pie ya lleva
+   «Paso 2 de 3» y el `aria-label` del bloque lo nombra igual: tres formas de
+   decir el número y ninguna del contenido. Por eso un salto sin etiqueta **no**
+   inventa un título (migración 0012) y por eso aquí tampoco se inventa una caja.
+3. El preview del builder aplicaba **solo la primera**: pintaba la caja siempre
+   que el interruptor estuviera encendido. De ahí el síntoma — el icono se veía
+   en el constructor y en el publicado no había nada. Las dos pantallas usan
+   markup y clases idénticos, así que «se ve bien en el preview» no significaba
+   nada y nada delata la divergencia.
+
+Lo corregido: el preview decide igual que el fill (los tres predicados, con el
+mismo `trim()` que el fill, porque una etiqueta de solo espacios es sin título),
+y el panel **explica** el caso sin contenido con un aviso bajo el interruptor
+(`pageHeaderHint`), en vez de dejar un ajuste que parece roto. Es el mismo patrón
+que `updateAdvanceHint()` y que la sugerencia de PII: el builder avisa, no
+escribe contenido por el editor.
+
+Lo que **no** se hizo, y es la tentación natural: que el interruptor «siempre se
+note» pintando la caja aunque esté vacía. Se vería el ajuste funcionar, pero el
+formulario publicado ganaría un icono solo al principio de cada paso, que es
+decoración sin contenido — y el constructor volvería a mentir por el lado
+opuesto.
+
+Dos tests nuevos, y los dos por la parte que falla en silencio:
+`MultiStepTest::testLaCabeceraDelPasoNoSePintaSinTituloNiDescripcion` fija el
+comportamiento del fill (incluida la descripción sin título, y que espacios no
+son un título) y `BuilderPreviewCssTest::testElPreviewYElFillDecidenIgualCuandoPintaLaCabeceraDelPaso`
+ata los dos lados por predicado, para que no se puedan mover de uno en uno.
+Comprobado que el segundo no es vacío: deshaciendo el criterio del preview, cae.
