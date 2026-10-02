@@ -205,6 +205,34 @@ si existe**; si no hay fila, manda `REGISTRATION_ENABLED` del `.env` (default
 `false`). La escritura va al log de seguridad como `instance.registration_on` /
 `instance.registration_off`.
 
+## Respuestas bimodales (panel y `/admin`)
+
+Las acciones del panel y de la administración **no tienen ruta propia para el
+JavaScript**: es el mismo `<form method="post">` de siempre, y lo que decide es
+una cabecera.
+
+| Petición | Respuesta |
+|----------|-----------|
+| POST normal (navegador sin JS, o `curl`) | 302 a la ruta de siempre, con el aviso en la sesión |
+| POST con `X-Requested-With: XMLHttpRequest` | `200 application/json` con `{ok, message}` y, si hay algo que repintar, `html` |
+
+- Lo pone `window.vfPost()` (`app.js`), que es el único cliente: si falta la
+  cabecera, el POST es nativo y todo funciona igual.
+- **`html` es un mapa `id` → markup**, no un fragmento. El JS sustituye el
+  `innerHTML` de los ids que vienen, porque no sabe pintar una insignia ni un
+  botón: eso es de la vista. El `id` lo compone el POST y el servidor devuelve
+  ese mismo nombre (`vfUserGroups<uid>`).
+- Un `ok:false` (permiso, CSRF, rol o grupo que no existe) **también** es JSON en
+  el camino asíncrono, con su código HTTP (403/419/422) y sin redirección: un
+  fetch que se sigue un 302 se descarga la página entera dentro del fetch y no
+  sabría que el guardado falló.
+- Los huecos y de qué estado dependen: los cuatro de `forms.status`
+  (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare`) los
+  devuelve **toda** acción de estado; `vfSlotAccess` (la tarjeta de Acceso) solo
+  la manda el guardado de ajustes, que es lo único que cambia el modo.
+- Una acción sin nada que reponer devuelve `{ok, message}` **sin** `html`: el
+  `select` del rol ya está en el valor nuevo.
+
 ## Códigos de error
 
 | Código | Significado | Uso |

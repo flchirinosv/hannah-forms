@@ -1,8 +1,8 @@
 # Documento Tecnico - VanillaForms
 
 **Proyecto:** VanillaForms
-**Version:** 1.1.0
-**Fecha:** 2026-09-25 (revisión de auditoría)
+**Version:** 1.2.0
+**Fecha:** 2026-10-02 (panel sin recarga)
 **Estado:** Estable
 
 ---
@@ -13,7 +13,7 @@ VanillaForms es un sistema de formularios web self-hosted construido con PHP 8.2
 
 **Objetivo principal:** Sistema auto-hospedado de creacion y gestion de formularios con control total sobre datos y privacidad.
 
-**Estado actual:** Funcional con suite de tests (442) en verde y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Documento reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5).
+**Estado actual:** Funcional, con la suite en verde (**765 tests**) y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5) y el 2026-10-02 (F0.4-uno…cuatro: el panel y `/admin` contestan JSON por fetch y el camino sin JavaScript sigue siendo un POST normal, `docs/decisiones.md`).
 
 ---
 
@@ -66,6 +66,7 @@ HTTP Response
 | **Router** | Matching URL -> handler + middleware | `app/Core/Router.php` |
 | **Controllers** | Manejar request/response, validar, orquestar | `app/Controllers/` |
 | **Models** | Acceso a datos y logica de dominio | `app/Models/` |
+| **Services** | Reglas que no son de una tabla: PII, ajustes, webhook, agregados, **HTML de los huecos del panel** | `app/Services/` |
 | **Core** | Clases base (DB, Auth, Session, View, Request, Response, Csrf, Config) | `app/Core/` |
 | **Middleware** | Autenticacion, autorizacion, admin | `app/Core/Middleware/` |
 | **Views** | Rendering HTML | `views/` |
@@ -78,9 +79,10 @@ HTTP Response
 - `Session`: flash messages, CSRF token.
 - `Csrf`: generacion/verificacion de tokens.
 - `Request`: acceso a POST/GET params con defaults.
-- `Response`: redirect, notFound, forbidden.
+- `Response`: redirect, notFound, forbidden, y la parte **bimodal**: `wantsJson()` (mira `X-Requested-With`), `json()` y `html()` (mapa `id → markup`).
 - `View`: render de templates con escape.
 - `Config`: carga de parametros desde `config/config.php`.
+- `FormPanel` (servicio): los huecos del panel del formulario (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare` y `vfSlotAccess`), para que GET y el POST por fetch pinten **los mismos partials**.
 
 ---
 
@@ -399,7 +401,7 @@ Response: text/csv attachment (respeta el filtro de fechas)
 
 ### Estado actual
 - Runner propio creado en `scripts/test.php` (sin dependencias, no usa Composer/PHPUnit). Filtros con espacio: `--filter <substring del MÉTODO>`, `--path <directorio>` (un filtro que no casa con nada ejecuta 0 tests y sale verde — comprobar el contador).
-- Suite: `tests/unit/*.php` — **615 tests en verde** (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`). El detalle de fases vive en `docs/roadmap-encuesta.md`.
+- Suite: `tests/unit/*.php` — **765 tests en verde** en 76 archivos (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`, y `ViewStructureTest` sobre las 53 vistas). Además hay un arnés de JS sin dependencias (`tests/js/async-actions.js`, 93 casos) que **ejecuta el `app.js` real** contra un DOM mínimo: node es opcional y sin él el caso avisa y pasa. El detalle de fases vive en `docs/roadmap-encuesta.md`.
 
 ### Ejecucion
 ```bash
@@ -475,9 +477,13 @@ php scripts/test.php --path tests/unit
 | — | RBAC completo (fase 6, 2026-09-28): catálogo de permisos, matriz de roles editable, grupos de roles, `Auth::can()`/`Access` como puertas, middleware `admin` por permiso | ✅ (2026-09-28) |
 | — | Log de eventos de seguridad (fase 6, 2026-09-28): `security_log` + `/admin/security-log` + hooks en auth/CSRF/rate-limit/webhook/uploads/admin | ✅ (2026-09-28) |
 | — | Rendimiento (fase 6, 2026-09-28): caché del dashboard (`Cache::remember`, invalidación por prefijo) + tabla de analítica paginada EN EL SERVIDOR (`/analytics/rows`) + `defer` en scripts no críticos | ✅ (2026-09-28) |
+| — | F0.4-uno…cuatro (2026-10-02): panel y `/admin` sin recarga (`FormPanel`, bimodal en `Response`), diálogo de confirmación único, allowlist por fetch y auto-envío de rol/grupos | ✅ (2026-10-02, ver `docs/decisiones.md`) |
 
 ## Proximos Pasos
 
-1. Lazy loading del builder JS (cargar `builder.js`/`sortable` solo al entrar al builder)
-2. Verificación visual de la paginación server-side de analítica y de la matriz de roles en navegador
+1. **Verificación manual en navegador** de los bloques R, S, T y U de
+   `docs/pruebas-funcionales.md` (308 comprobaciones). Es lo único que la suite no
+   puede ver: maquetación, foco con teclado y flujo en pantalla. Con node
+   opcional, el arnés cubre el comportamiento del envío, no el pixel.
+2. Lazy loading del builder JS (cargar `builder.js`/`sortable` solo al entrar al builder)
 3. Re-evaluar con el orquestador

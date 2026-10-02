@@ -2,9 +2,9 @@
 
 Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
-(verificada en el commit `751602c`).
+(verificada contra el código, sin commit aún).
 
-No sustituye a la suite automática (`php scripts/test.php`, 730 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 765 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,8 +23,10 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**245 pruebas** en 19 bloques: A–Q, las regresiones (R) de fallos que ya
-existieron y se corrigieron, y la tanda visual (S) de esta última ronda.
+**308 pruebas** en 21 bloques: A–Q, las regresiones (R) de fallos que ya
+existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
+el fill, las acciones sin recarga (T), y el diálogo de confirmación con el alta
+de la lista de acceso (U).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -33,7 +35,7 @@ Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
 
 - Antes de un despliegue: A, B, N y O enteras.
 - Después de tocar el constructor: D, G y R enteras.
-- Después de tocar el fill o el panel: E, F, K y R enteras.
+- Después de tocar el fill o el panel: E, F, K, R, T y U enteras.
 - Después de tocar seguridad o permisos: M, N y O enteras.
 
 ---
@@ -356,6 +358,11 @@ Para no perderte, prepara esto antes de empezar:
 | N18 | Intentar borrar un rol propio que alguien lleva | No se borra y el motivo dice cuántas personas lo tienen | A | |
 | N19 | Borrar un rol propio que no lleva nadie | Se borra, avisa, y también desaparece de los grupos que lo confieran (con aviso previo al confirmar) | M | |
 | N20 | El mismo borrado con la confirmación rechazada | No pasa nada: el rol sigue ahí | M | |
+| N21 | Abrir `/admin` | El alta y «Acceso de cualquiera» están **en la misma fila** (2/3 y 1/3), y la tabla de usuarios debajo a todo el ancho | M | |
+| N22 | Entrar con un rol sin `admin.access` | Solo se pinta el alta, y ocupa las mismas 8 columnas: no queda un hueco a la derecha | M | |
+| N23 | Plegar «Nuevo usuario», recargar y volver a entrar en `/admin` | Sigue plegado **en esa pantalla**, y al abrir la ficha de un formulario sus siete grupos salen **abiertos**: el estado va por pantalla | A | |
+| N24 | Crear un usuario con el registro público **cerrado** | El alta se despliega y se puede enviar igual. Con el **JavaScript desactivado** el formulario también se ve y funciona: es la única vía para crear un `user` o un `editor` | A | |
+| N25 | Plegar «Nuevo usuario» y crear una cuenta con un email repetido | El aviso sale arriba y **el alta se abre sola**, para poder corregir sin desplegar a ciegas | A | |
 
 ---
 
@@ -460,6 +467,85 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S24 | Formulario publicado con un salto de página con título | El icono del paso queda a la derecha de la fila, como el de la sección, no a la izquierda | M | |
 | S25 | Publicar y pulsar «Enviar» | El texto del botón y el icono se leen en blanco sobre el degradado, no en negro | M | |
 | S26 | «Diseño» → poner un color **muy claro** como primario y publicar | El texto de «Enviar» se sigue leyendo sobre el degradado; si no se lee, es que el color de la izquierda del degradado no admite texto blanco | M | |
+| S27 | Constructor → «Agregar elemento» (regresión) | **Aparece el diálogo con sus 21 tipos.** Si se ve la pantalla oscurecida y ningún diálogo, es que `#addFieldModal` ha vuelto a quedar anidado dentro de otro `.modal`: lo delata `tests/unit/ViewStructureTest` | A | |
+| S28 | Constructor → «Agregar elemento» **en un móvil** (o con la ventana estrecha) | El diálogo entra entero en la pantalla, con **dos columnas** de tipos y el encabezado «Agregar elemento» arriba; no hay que recargar para cerrarlo | A | |
+| S29 | Constructor → vista previa del formulario, abajo del todo | El botón es el del formulario publicado: degradado morado con **«Enviar» en blanco**, no un botón blanco con el texto en negro | M | |
+| S30 | `/admin` en pantalla ancha | El alta ocupa 2/3 y «Acceso de cualquiera» 1/3, con el chevron de «Nuevo usuario» a la derecha de su título | M | |
+| S31 | `/admin` a 375 px | Las dos tarjetas se apilan y **ninguna** desborda; los cinco campos del alta se reparten en 3+2 sin cortes | M | |
+
+
+---
+
+## T. Acciones del panel sin recarga (2026-10-02)
+
+Comprueban que lo que cambia sin recargar cambia **del todo**: los cuatro huecos
+de la ficha se repintan a la vez, el estado que se ve es el que queda en la base
+de datos y el camino sin JS sigue siendo un POST que recarga. La columna «¿recarga?»
+es la que más se vigila: una mejora que quita la recarga en cuatro sitios y la
+deja en el quinto es un fallo de la misma clase que un `</div>` de más.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| T1 | Ficha de un formulario **borrador** → «Publicar» | No recarga. Se apaga el botón mientras vuela y salen juntos: la insignia «Publicado», los botones que tocan, y la tarjeta de compartir con enlace, QR e iframe | A | |
+| T2 | El mismo formulario → «Cerrar» (con confirmación) | Antes de salir: pregunta. Después, sin recarga, «Cerrado» en la insignia **y** desaparece la tarjeta de compartir (ya no hay enlace que repartir) | A | |
+| T3 | Publicar y cerrar dos veces seguidas en la misma pantalla | El estado que se ve es el que **queda**: nunca se ven a la vez «Publicado» y el QR, ni «Cerrado» con el botón de publicar | A | |
+| T4 | Ficha → «Ajustes del formulario» → cambiar el nombre y guardar | No recarga y el título nuevo se ve en el encabezado al instante; los siete grupos **no se repliegan** y el scroll no salta | M | |
+| T5 | Un formulario publicado **con revisión activa** → guardar cualquier ajuste | No recarga, y el aviso dice que volvió a la cola: la insignia pasa a «En revisión» y la aprobación anterior desaparece | A | |
+| T6 | Un formulario **aprobado** → cambiar algo en el constructor y guardar | La insignia pasa a «En revisión» y aparece la acción de aprobar (es la misma regla del builder, ahora también en la insignia) | A | |
+| T7 | Enviar a revisión → aprobar con otra cuenta | No recarga. La insignia pasa a «Publicado», sale la traza **nombrando al aprobador** y el botón es el de cerrar | A | |
+| T8 | Igual, pero **devuelto a borrador** | La insignia pasa a «Borrador», la traza registra que lo devolvió quién y vuelve la acción de publicar | A | |
+| T9 | Con el JS desactivado, cualquier acción de la ficha | Funciona **igual**, con su 302 y su aviso verde; nada depende del fetch | A | |
+| T10 | Con el JS desactivado, pulsar dos veces «Desactivar» en `/admin` | La segunda pulsación ya no procede (la página se fue), así que no hay doble cambio | A | |
+| T11 | `/admin` → desactivar un usuario y observar la fila | No recarga. Cambian los dos: la insignia y el botón (que pasa a «Activar», con su icono y su color) | A | |
+| T12 | `/admin` → **Guardar** los cambios de una fila recién desactivada | Se guardan sobre el estado nuevo: el `<select>` de rol y el desplegable de grupos **siguen abiertos y con lo que elegiste** | M | |
+| T13 | Un formulario con acceso por lista → «Acceso restringido» → quitar un email | No recarga. Desaparece esa fila de la lista y sale un aviso; **no** aparece el aviso verde de «quitado» por otra parte | M | |
+| T14 | Respuestas → borrar una | No recarga. Desaparece la fila, baja el contador del encabezado y sale el aviso | A | |
+| T15 | Borrar la **última** respuesta de un formulario | Desaparece la fila, el contador llega a 0 y la página **se recarga** una vez: sale el «aún no tiene respuestas» en vez de una tabla vacía | M | |
+| T16 | Con el JS desactivado, borrar una respuesta | Recarga con su aviso verde, como antes | A | |
+| T17 | Con el navegador en «sin conexión» o parando la petición con las herramientas de desarrollo | El formulario **se envía solo** y se ve la página de verdad (el rescate es un POST nativo). Si además el repintado falla, **no** se repite la operación: como mucho una vez | A | |
+| T18 | En la ficha, pulsar `Ctrl+S` (o `Cmd+S` en Mac) con el foco dentro de un formulario | Guarda ajustes (con el atajo del navegador desactivado por este formulario); en el resto de la página, `Ctrl+S` sigue guardando la página del navegador | M | |
+| T19 | En la ficha, con el foco en un campo de texto, `Ctrl+S` | Guarda ajustes en vez de guardar la página: solo aplica dentro del formulario | M | |
+| T20 | Volver a pulsar «Guardar» mientras la petición ya está volando | No se manda un segundo POST: el botón está apagado y el formulario queda bloqueado | A | |
+| T21 | Un formulario que devuelve **error** al guardar (una fecha de cierre anterior a la de apertura) | Salen todos los grupos abiertos con el motivo del error, los datos escritos siguen ahí y **no** aparece además el mensaje verde de «guardado» | A | |
+| T22 | Con el mismo formulario y una respuesta que dé error de validación | Se repinta el mensaje de error y los campos que fallen, sin recargar y sin perder lo escrito | M | |
+| T23 | Cualquier acción de la ficha con el teclado | El aviso que sale se anuncia (región `role="status"`) y el foco no se pierde: no estás en el primer punto de partida del documento | A | |
+| T24 | Ficha con un formulario en revisión → mirarla en `/dashboard` | La insignia dice «En revisión» (con espacio), no «In_review»; lo mismo en el listado de `/admin` | M | |
+
+---
+
+## U. El diálogo de confirmación y lo que recargaba (2026-10-02)
+
+Ninguna acción del panel vuelve a abrir el prompt gris del navegador: sale un
+diálogo de la casa, con su fondo oscurecido y **«Cancelar» enfocado**, no «Sí».
+Las tres cosas que hay que mirar con calma son la accesibilidad (este bloque es
+el único sitio donde se puede comprobar), que **alta y baja de la lista hagan lo
+mismo** y que **cada guardado sin recarga repinte lo que ese guardado cambió**:
+lo que se guardaba y no se veía, o la fila que se recargaba, es exactamente lo
+que se rompió.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| U1 | Ficha → «Eliminar formulario» | Sale el diálogo (no el prompt del navegador), con «Eliminar formulario» en el botón de confirmar, y el foco en «Cancelar» | A | |
+| U2 | Con el diálogo abierto, pulsa `Esc` | Se cierra **sin** borrar nada | A | |
+| U3 | Con el diálogo abierto, pulsa «Cancelar» y después «Eliminar formulario» otra vez | Dos veces pregunta; confirmar es lo único que borra | A | |
+| U4 | En el diálogo abierto, pulsa `Tab` varias veces | El foco da la vuelta dentro del diálogo: no se sale a la página de detrás | A | |
+| U5 | Con un lector de pantalla, abre cualquiera de los diez diálogos | Anuncia el título y **la pregunta** (p. ej. «¿Eliminar formulario?»), no solo «Confirmar» | M | |
+| U6 | Publicar / devolver a borrador / activar usuario | El botón de confirmar dice qué hace («Publicar», «Devolver a borrador», «Activar») y sale en azul, no en rojo | A | |
+| U7 | Desactivar usuario / eliminar / borrar respuesta | El botón dice la acción concreta y sale en rojo | A | |
+| U8 | Ficha → «Acceso restringido» → **añadir** un email a la lista | **No recarga.** La lista se reescribe abajo y sale el aviso, igual que al quitarlo | A | |
+| U9 | Añadir **dos** emails seguidos | Cada alta suma su fila; al terminar, el campo queda **vacío y con el foco dentro**, sin tabular | M | |
+| U10 | Añadir un email que **ya está** en la lista | El motivo sale **junto al campo** («Ese correo ya está en la lista»), no flotando arriba, y **no** sale dos veces | A | |
+| U11 | Tras el error de U10, escribir un email válido y añadirlo | Se borra el aviso anterior, la fila aparece y el contador sube | A | |
+| U12 | Acceso restringido en móvil (360 px) → añadir un email | El diálogo de confirmación cabe entero y los botones se ven los dos | M | |
+| U13 | Con el **JS desactivado**, añadir un email a la lista | Recarga con su aviso verde, como siempre | A | |
+| U14 | En `/dashboard`, borra una fila y añade un email a una lista en la misma pantalla | Ambas cosas: la fila se quita y la lista se reescribe, sin que una pise a la otra | M | |
+| U15 | Con el JS desactivado, borra un formulario | El `data-confirm` no se lee y se borra sin preguntar. Es lo que hay: el diálogo es una mejora, no una condición para no perder datos | A | |
+
+| U16 | Ficha → «Acceso restringido» → cambia el **modo** y guarda | **No recarga** y la tarjeta de debajo cambia: insignia «Solo la lista» con el alta y los correos, «Público» sin ellos | A | |
+| U17 | `/admin` → cambia el **rol** de una fila | **No recarga.** El desplegable se queda en el valor nuevo, sale el aviso verde y la tabla no da un salto de posición | A | |
+| U18 | `/admin` → despliega los **grupos** de esa misma fila y guarda | **No recarga.** Las insignias del botón se reescriben con el grupo elegido | A | |
+| U19 | `/admin` → guarda el rol de una persona **justo después** de abrir sus grupos | Las dos cosas se quedan: el desplegable de grupos que estaba abierto no se cierra ni se pierde lo que se estaba editando | M | |
+| U20 | Con el **JS desactivado**, cambia el rol y guarda un grupo de `/admin` | Recarga con su aviso verde y el cambio aplicado, como siempre | A | |
 
 ---
 

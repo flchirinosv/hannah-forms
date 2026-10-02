@@ -1,6 +1,6 @@
 # Roadmap UI/UX y cierre de brechas — VanillaForms
 
-**Fecha:** 2026-09-28
+**Fecha:** 2026-09-28 · **actualizado:** 2026-10-02 (lote de ajustes operativos y su seguimiento F0.4)
 **Referencia:** la matriz de brechas vive en [docs/posicionamiento-comparativa.md](posicionamiento-comparativa.md).
 **Decisión adoptada:** prioridad UI/UX; ítems realistas y cerrables en vanilla PHP/JS (sin
 Composer, CSP `script-src 'self'`, tests siempre verdes).
@@ -63,16 +63,29 @@ Composer, CSP `script-src 'self'`, tests siempre verdes).
 Pagos/Stripe, investigación avanzada (conjoint/MaxDiff/panel de SurveyMonkey), IA generativa,
 colaboración real-time, idiomas extra (pt/fr) e integraciones OAuth (Sheets/CRM).
 
-## Lote siguiente
+## Lotes cerrados
 
-[docs/plan-ajustes-operativos-2026-10-01.md](plan-ajustes-operativos-2026-10-01.md):
-ajustes operativos fuera del modal del builder, alta de accesos sin recarga, interruptor
-del registro público, rol `approver` con borrado de roles propios, y limpieza visual
-del lienzo (incluye el CSS que faltaba de los previews de NPS/estrella/matriz/ranking).
+[docs/plan-ajustes-operativos-2026-10-01.md](plan-ajustes-operativos-2026-10-01.md)
+— **HECHO** (los 7 bloques marcados en su propio apartado *Estado*): ajustes
+operativos fuera del modal del builder, `POST /forms/{id}/settings`, interruptor
+del registro público, rol `approver` con borrado de roles propios, y limpieza
+visual del lienzo (incluido el CSS que faltaba de los previews de
+NPS/estrella/matriz/ranking).
+
+Su seguimiento, también **HECHO** (2026-10-02), está en
+[docs/decisiones.md](decisiones.md) como **F0.4-uno…cuatro**: el panel y `/admin`
+contestan JSON por fetch (`FormPanel` + bimodal en `Response`), un único diálogo
+de confirmación, la allowlist sin recarga y el guardado de rol y grupos sin
+recargar. Lo que salió de ese lote era justo lo que la suite no ve: ajustes que
+se guardaban sin repintar su tarjeta y una fila que se recargaba entera.
+
+Pendiente de este frente: **solo** la verificación manual en navegador (bloques
+R, S, T y U de [docs/pruebas-funcionales.md](pruebas-funcionales.md)). El arnés de
+JS cubre el comportamiento del envío contra un DOM mínimo, no el píxel.
 
 ## Reglas transversales
 
-- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (494+).
+- Cada ítem que toca controladores/modelos lleva su test; la suite debe seguir en verde (765).
 - Todo JS nuevo va en archivos externos; carga con `defer` salvo que sea crítico (CSP).
 - No se introducen dependencias externas (ni Composer, ni npm, ni CDN).
-- Commit por fase cerrada.
+- Commit por fase cerrada (así se historiaron las cuatro de F0.4: cuatro commits, uno por tanda).

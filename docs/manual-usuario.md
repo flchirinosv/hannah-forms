@@ -50,7 +50,7 @@ correos.
 cp .env.example .env
 $EDITOR .env
 
-# 2. Base de datos (crea la BD y las 16 tablas)
+# 2. Base de datos (crea la BD y las 19 tablas)
 mysql < database/schema.sql
 
 # 3. Roles y permisos (NO crea usuarios)
@@ -216,6 +216,23 @@ hay que usar `/admin`.
 
 Quien llega sin sesión a un enlace de formulario público **no** necesita
 cuenta: eso es distinto del panel.
+
+### 4.3.1 En la tabla de personas
+
+El **rol** de una fila se cambia en su desplegable: se guarda solo, sin botón, y
+**no recarga la página** (sale el aviso verde y el desplegable se queda donde
+estaba). Los **grupos** se eligen en el botón de cada fila y se guardan con su
+propio botón: tampoco recargan, y las insignias del botón se reescriben con lo
+que acabas de marcar. Puedes tener un desplegable de grupos abierto y cambiar el
+rol de otra persona sin que se te cierre.
+
+Lo que **no** se puede es dejarte a ti mismo sin `admin`: el desplegable propio
+no se pinta y sale un aviso explicando por qué. Un rol o un grupo que ya no
+existen (por ejemplo, una pestaña que lleva mucho tiempo abierta) tampoco se
+aplican: sale el motivo junto a la celda y no se cambia nada.
+
+Sin JavaScript, los dos se guardan como formularios de toda la vida y la página
+se recarga.
 
 ### 4.4 Roles
 
@@ -446,6 +463,11 @@ La caja se queda con el foco al añadir, así que se pueden encadenar varios
 correos sin volver al ratón. Sin JavaScript, el alta sigue funcionando igual:
 el formulario se envía y la página se recarga.
 
+El **modo** se cambia en *Ajustes del formulario* (más abajo, en *Acceso
+restringido*), con su botón *Guardar ajustes*. Ese guardado tampoco recarga, y
+la tarjeta de arriba se entera: pasa a decir «Solo la lista» con el alta y los
+correos, o a «Público» sin ellos, sin tocar nada más.
+
 > El enlace se genera **al vuelo**: el token de acceso solo existe en claro en
 > el momento de emitirlo, así que si el portapapeles falla, la caja de texto que
 > aparece debajo de la tarjeta es la única forma de recuperarlo.
@@ -476,6 +498,19 @@ Bajo **Tema** hay una maqueta con el botón y la barra de progreso: cambia los
 dos colores y los ves al instante, sin abrir la vista previa aparte. La fuente
 no sale en la maqueta a propósito, porque el equipo de quien responde puede no
 tenerla instalada y el resultado real no sería el que ves.
+
+### 7.0.1 Antes de borrar algo
+
+Las acciones que se llevan algo —eliminar un formulario, una respuesta, un rol o
+un grupo, desactivar o cerrar— **no se ejecutan en el acto**: sale un diálogo con
+la pregunta y dos botones, y el que viene enfocado es **«Cancelar»**. El botón de
+confirmar dice **qué va a pasar** («Eliminar formulario», «Desactivar cuenta») y
+sale en rojo, salvo en lo que no destruye nada (publicar, devolver a borrador,
+activar), que sale en azul. `Esc` es cancelar.
+
+Si te aparece el diálogo, es que hay JavaScript. **Sin él no hay confirmación y
+tampoco hay acciones sin recarga**: el formulario se envía como un formulario y
+la página se recarga, que es lo que siempre ha pasado.
 
 ### 7.1 Honeypot
 

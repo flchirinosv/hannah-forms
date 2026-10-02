@@ -302,7 +302,7 @@ distinto, no una fase. |
 ## Documentación del repo
 
 Con F0–F5 cerradas, la higiene documental de esta tanda se hizo el 2026-09-29:
-`technical-document.md` §4 ya describe las 16 tablas, `api-spec.md` refleja
+`technical-document.md` §4 ya describe las 19 tablas, `api-spec.md` refleja
 `config/routes.php`, y `posicionamiento-comparativa.md` y
 `roadmap-encuesta.md` §Tier 3 dejaron de citar cifras y brechas obsoletas.
 

@@ -10,6 +10,11 @@ Se conserva tal cual se escribió en `AGENTS.md` antes de compactarlo.
 - Etiquetas: `P*` = fases del producto (roadmap de encuesta), `F*` = builder/UX,
   `D*` = capa de datos, `B*` = track B (Slack/Turnstile), `V*`/`Q*` = quick wins
   de UI, `2.x`/`3.x` = fases 2 y 3 del plan de remediación.
+- **Ojo con los nombres**: el `F0.4` de `docs/plan-remediacion-2026-09-27.md` (el
+  arreglo de `builder.js`, «v2026-09-27e») **no** es esta serie. Aquí `F0.4-uno`,
+  `F0.4-dos`, `F0.4-tres` y `F0.4-cuatro` son las cuatro tandas del panel sin
+  recarga del 2026-10-02, que son posteriores. Cuando una etiqueta aparezca en dos
+  documentos, el documento es el que la clarifies.
 
 Todo lo que sigue está **aplicado**; no hay nada pendiente aquí. Se archivó el
 2026-09-29 al compactar `AGENTS.md`.
@@ -208,3 +213,569 @@ morado oscuro: es el único color que se lee en toda la barra. La **otra** mitad
 del degradado es `var(--vf-primary)`, que el editor puede poner claro, y ahí el
 texto blanco se perdería: es el único caso de este cambio que no se puede
 comprobar con un test y toca mirarlo a mano si alguien pone un color muy claro.
+
+## F0.3-seis — El botón negro era el del preview, y el modal de tipos no cabía en un móvil
+
+Dos correcciones que salieron de la misma revisión visual, y una de ellas corrige
+la lectura del cambio anterior.
+
+### El botón de «Enviar» que se veía negro no era `.vf-submit`
+
+En F0.3-cinco se puso `color: #fff` en `.vf-submit` y se comprobó en el
+formulario publicado, que es donde se veía. Lo que seguía viéndose **negro era el
+botón de la vista previa del constructor**, que no es `.vf-submit`: `previewBody()`
+se pintaba el suyo, `<button class="btn btn-lg app-btn-primary">`. `app-btn-primary`
+aporta alto, radio y elevación y **NO color** —está escrito así a propósito, para
+que el color lo ponga el destino—, así que salía el texto del navegador sobre un
+fondo claro, y además era un botón que no se parecía en nada al que se publica.
+
+La lección es la de siempre en este archivo: **«se arregló y se comprobó» en una
+superficie no dice nada de la otra**. El preview en vivo ya reutilizaba el markup
+del fill para las cabeceras y para las minaturas (`nps-option`, `scale-btn`,
+`vf-matrix-cell`…), y el botón se había quedado fuera precisamente por ser el
+único que escribe su propio texto. Ahora emite el markup de `views/fill/show.php`
+(`.vf-submit-row` + `.vf-submit` + `.vf-submit-label`, con el mismo icono de
+papel), sin el `id` del fill —en la página vive un `#vfSubmit` y duplicarlo sería
+HTML inválido— y con `type="button"` porque en el preview no hay nada que enviar.
+
+De paso, el por qué de F0.3-cinco queda con su límite escrito: **sí** se puede
+comprobar con un test, y está atado en las dos superficies a la vez.
+
+### El modal «Agregar elemento» no aparecía, y la causa no era el móvil
+
+Síntoma: se oscurecía la pantalla, el diálogo **no** aparecía, no se cerraba salvo
+recargar la página, y «a veces funcionaba».
+
+**El primer diagnóstico estaba equivocado.** Se atribuyó a tres reglas de
+Bootstrap que son ciertas y que encajan de sobra con el síntoma: la rejilla de
+`minmax(9.5rem, 1fr)` son 152px y en un móvil de 360px el cuerpo del modal mide
+~296px, de modo que los 21 tipos cabían en **una** columna (~1700px);
+`.modal-dialog-centered` al pasarse de alto descuadra el desborde **hacia arriba**; y
+arriba no scrollea nadie, porque el `overflow-y` de Bootstrap está en `.modal-body`,
+**dentro** del diálogo. Tres causas encadenadas que explican los tres síntomas sin
+que falte uno, y ninguna era la causa.
+
+El arreglo de móvil se queda —la rejilla de una columna era real, y anclar arriba y
+topar con `dvh` son lo que corresponde a un diálogo alto en un móvil—, pero
+**no arregla este fallo**, y queda escrito para que nadie lo compruebe aquí dentro.
+
+**La causa era un `</div>` de menos.** Al `modal-footer` de `#formSettingsModal` le
+faltaba el cierre del propio modal, y lo dejó `ea9759f` («los ajustes operativos
+salen del builder a la ficha»). A partir de ahí `#addFieldModal` y `#builderApp`
+quedaban **anidados dentro de `#formSettingsModal`**, que Bootstrap lleva
+`display: none`. Los tres síntomas son el mismo hecho:
+
+- el backdrop lo añade Bootstrap a `<body>`, que está FUERA del corte, así que el
+  tinte se ve igual que si todo fuera bien;
+- el diálogo no se pinta: él se pone `display: block` inline, y eso solo surte
+  efecto si el padre se ve, y el suyo no;
+- no se cierra tocando el fondo porque el clic de dismissal lo escucha el propio
+  `.modal`, y un elemento con `display: none` no puede ser el objetivo de un clic.
+  En escritorio queda `Esc`; en móvil no hay `Esc`, y `body.modal-open` quita el
+  scroll, así que solo quedaba recargar.
+
+**Por qué nadie lo vio**, ni la revisión ni los 732 tests: `#builderApp` es un
+`<div>` vacío que solo lleva `data-*` y el constructor entero está antes de los
+modales, así que anidarlo dentro de un modal oculto **no cambia nada de lo que se
+ve** salvo el propio modal. Los otros dos modales del constructor abrían bien
+porque están antes del corte, que es lo que hizo parecer el fallo suyo y no de la
+vista. Y el eje del diagnóstico estaba equivocado en el orden: se fue al móvil
+porque el usuario tenía el móvil, y el fallo no es de móvil.
+
+**Lo que habría parado antes: medir, no suponer.** Un
+`getBoundingClientRect()` a 0×0 dice que el elemento no se ve **por un ancestro**, que
+es un diagnóstico distinto del de «es demasiado alto y se sale por arriba». La
+medición se queda en `show.bs.modal` (rectángulo, `top`, viewport y ancho) por
+justo eso: ahora un 0×0 es la señal de que hay que mirar la vista. Antes de tocar
+nada: **la primera pregunta es qué se mide, no qué parece**.
+
+**El test que faltaba** — `ViewStructureTest` (`tests/unit/ViewStructureTest.php`).
+Recorre las 53 vistas como lo haría el parser del navegador y ata dos cosas: que no
+queda ninguna etiqueta sin cerrar, y que ningún `.modal` vive dentro de otro
+elemento (todo lo que lo contiene está oculto, por definición casi). 732 tests no
+miraban la estructura del HTML emitido, y un `</div>` perdido no da error en PHP,
+ni en el navegador, ni en un test: el único que lo delata es un síntoma que
+admite tres explicaciones. Los dos llevan guard anti-vacío —que el recorrido vea más
+de 2000 aperturas y encuentre los 6 modales de la app— porque un test de estructura
+que no recorre pasa verde por construcción. Pasó exactamente así al escribirlo: el
+`foreach` iba sobre el `int` que devuelve `preg_match_all` en vez de sobre el array,
+y el primer test daba verde sin haber mirado nada.
+
+## F0.4-uno — `/admin`: el alta plegada, y el estado de los grupos pasa a ser por pantalla
+
+El panel de «Usuarios» tenía dos tarjetas a ancho completo apiladas y el interruptor
+de registro en medio, cuando lo que se abre en esa pantalla ocho de cada diez veces
+es la tabla de usuarios. Y el `vf:grp:<id>` de los grupos plegables era, literalmente,
+`vf:grp:<id de formulario>`: la ficha era la única pantalla con grupos y su clave no
+tenía por qué parecerse a la de otra.
+
+### El reparto 8/4
+
+El alta se queda en `col-lg-8` y «Acceso de cualquiera» pasa a `col-lg-4`, el mismo
+reparto que ya usaba la ficha del formulario, para que el panel tenga una sola
+retícula. Los cinco campos van **3+2** y no cuatro en fila: dentro de `col-lg-8` un
+`col-md-3` deja el campo de contraseña tan estrecho que el marcador de posición se
+corta, que es justo lo que hace parecer mal repartido un formulario que solo lo está.
+
+La columna del interruptor **no se emite vacía** si falta `admin.access`. Podría
+haberse dejado el hueco y el alta ocuparía las mismas 8 columnas, pero una columna
+que no pinta nada es una columna que aparece y desaparece: la retícula daría un
+salto al recargar con otro rol.
+
+### Plegado por defecto, abierto en el servidor
+
+El alta se pliega, que es lo que pedía el reparto en vertical. Lo que **no** se hizo
+es servirla cerrada, y esa es la parte que importa: con el registro público cerrado —
+el default— este formulario es la **únICA** forma de crear un `user` o un `editor`,
+porque `scripts/create-admin.php` solo sabe hacer administradores. Si el panel
+llegara `collapse` sin `show`, sin JavaScript el alta desaparecería entera de la
+pantalla sin un solo error: el botón seguiría ahí, el POST seguiría funcionando y
+quien lo viera concluiría que no hay forma de crear cuentas. El patrón es el del
+que ya usan los siete grupos de la ficha —`collapse show` en el servidor y que sea
+el JS quien pliegue— y lo que se añadió es el atributo que dice «este se pliega»:
+`data-vf-group-default="closed"`, cuya **ausencia** significa «abierto». Por eso los
+siete grupos de la ficha no lo llevan, y un test lo fija.
+
+### `data-vf-group-key`, y por qué la ficha conserva el suyo
+
+`dashboard.js` recorría un contenedor por id (`getElementById('formSettings')`), que
+es un contenedor y medio: con dos pantallas la cosa correcta era recorrerlas todas y
+dejar que cada una diga cuál es. La ficha se queda con `data-vf-form-id` porque su
+clave guardada es el id del formulario, y renombrar el atributo habría hecho que
+todos los usuarios perdieran el estado de sus grupos sin que nada lo dijera; el
+atributo nuevo es su alternativa, no su reemplazo. El estado es `vf:grp:<clave>` en
+los dos casos.
+
+### El `hidden.bs.collapse` de arranque
+
+`bootstrap.Collapse.hide()` dispara `hidden.bs.collapse`, el mismo evento que un
+clic. Sin más, la primera visita se guardaría a sí misma como si el usuario hubiera
+decidido «cerrado», y un cambio de valor por defecto en una versión futura no
+llegaría a nadie. En la ficha no pasaba: su valor por defecto es «abierto», coincide
+con lo que llega del servidor, así que el bucle no tenía nada que corregir. En el
+alta sí, porque el servidor manda abierto y el JS quiere cerrado. Los cambios de
+arranque se marcan en `decididos` y esa primera escritura se descarta: solo se
+guarda lo que alguien toca.
+
+### El test, y dos cosas que se le colaron de paso
+
+`tests/unit/GroupCollapseContractTest.php` fija cinco cosas: el marcado del grupo y
+que el panel llega abierto, que el formulario de alta está **dentro** del panel y no
+al lado, que el cierre por defecto solo lo pide `/admin`, que el JS recorre todos los
+contenedores sin perder la clave de la ficha, y que la escritura de arranque se
+descarta.
+
+Escribiéndolo salieron dos trampas que ya están en el repo y que conviene no volver a
+pisar:
+
+- **Un `str_contains` sobre el archivo entero pasa verde con el atributo borrado**, si
+  la misma cadena está escrita en el comentario que explica el porqué. Aquí pasaba:
+  quitar `data-vf-group-default="closed"` del `<fieldset>` dejaba el test en verde
+  porque el comentario de ocho líneas más arriba la nombraba. Las comprobaciones
+  miran **etiquetas** (`<…>`) y no el archivo, y del JS se quitan los comentarios
+  antes de buscar.
+- **`--filter` casa por nombre de método, y un filtro demasiado corto casa con el
+  test equivocado**: buscando por `Contrato` se ejecutaba
+  `testExportBatchesFiltraPorFechasConElMismoContrato`, de otra clase, y daba verde
+  mientras el test que se quería comprobar ni se había ejecutado. El contador de
+  `Tests:` es el que dice si el filtro era el bueno.
+
+Cada una de las cinco se comprobó **mutando el código**: sin el atributo de cierre,
+con el panel cerrado en el servidor, con la ficha pidiendo cierre, con el JS
+grabando el valor por defecto, con el JS atado a la ficha, con la ficha renombrando
+el atributo, y con el formulario fuera del panel. Las siete se pusieron rojas.
+
+### De paso, dos contadores que ya mentían
+
+Al contar las filas de la tabla de pruebas funcionales para anotar las nuevas, el
+número que se anunciaba en dos sitios (`docs/pruebas-funcionales.md` y `AGENTS.md`)
+no cuadraba con las filas del archivo: decían 248 y había 257. Los siete casos de
+este cambio lo suben a 264, y ese es el que se queda. El otro era el de la suite,
+que en el mismo archivo decía 730 y iba por 739.
+
+Un contador desfasado en un documento de pruebas es la misma clase de fallo que un
+`</div>` de más: nada se rompe, nadie lo nota, y a los dos cambios de distancia ya
+nadie sabe si es que se olvidó anotar un caso o es que se borró.
+
+---
+
+## F0.4-dos — El panel sin recarga: la misma ruta responde JSON o recarga
+
+Publicar, cerrar, aprobar, guardar ajustes, quitar un email de la allowlist o
+borrar una respuesta recargaban la página entera. La recarga no está mal en sí
+misma, pero en una ficha con siete grupos plegados significa que **cada acción
+tira abajo el estado de los paneles** que alguien había abierto y también la
+posición del scroll, y en `/admin` ocurre lo mismo con cada usuario que se
+desactiva. Aquí está el porqué de hacerlo bimodal y no «solo con fetch».
+
+### Por qué bimodal y no solo JS
+
+La respuesta corta es que **el POST nativo es el que ya funcionaba**, y JS es
+una mejora: al revés (hacer la acción solo con fetch y que el botón sea un
+`onclick`) la app deja de funcionar entera en cuanto algo falla, que es
+justo lo que pasa cuando algo falla.
+
+`Response::wantsJson()` mira una sola cosa, la cabecera `X-Requested-With` que
+pone `window.vfPost()`, y a partir de ahí las acciones contestan JSON
+(`{ok, message, html}`) o el 302 de siempre, con su flash. No hay un tercer
+camino ni una ruta nueva: es la misma ruta con dos respuestas, que es lo que
+permite que el botón siga siendo un `<form method="post">` y que el navegador
+con el JS desactivado, o un `fetch` que devuelve algo raro, hagan exactamente
+lo mismo que antes.
+
+El sobre trae `html` con **ids** (`{vfSlotStatusBadge: "…"}`), no un fragmento
+suelto, porque el JS solo sustituye el `innerHTML` de los ids que vienen: no
+sabe pintar una insignia ni un botón, que son de la vista.
+
+### La mitad invisible: hay cuatro huecos, no uno
+
+La idea era «repintar los botones». El problema es que **`forms.status` decide
+cuatro cosas de la ficha**, no una:
+
+| hueco | qué cambia con el estado |
+|---|---|
+| `vfSlotStatusBadge` | el texto y el color de la insignia |
+| `vfSlotReviewTrail` | si hay traza, y si nombra al revisor |
+| `vfSlotActions` | qué botones existen (y cuáles no) |
+| `vfSlotShare` | el enlace público, el QR y el iframe de embed |
+
+Con tres de los cuatro, cerrar un formulario sin recarga deja el QR de un
+formulario que ya no acepta respuestas y un botón de «Cerrar» que sigue ahí.
+No hay forma de que se pongan de acuerdo porque uno se pintó y el otro no. Los
+cuatro viven en `app/Services/FormPanel.php`, que los devuelve ya escapados; el
+GET los pinta en línea y el POST los devuelve, y las dos rutas usan los mismos
+partials para que no puedan separarse.
+
+Y hay una acción cuyo efecto sobre el estado **no es el que dice su nombre**:
+guardar ajustes en un formulario publicado con revisión activa lo devuelve a la
+cola y borra la aprobación anterior (`Form::submitForReview()`, la misma regla
+que el builder). Un guardado que devolviera solo «Ajustes guardados» dejaría la
+insignia diciendo «Publicado» de un formulario que ya está en la cola. Por eso
+`testGuardarAjustesTraeLaInsigniaDelEstadoQueQueda` mira **la insignia que
+vuelve** y no el mensaje: es la única forma de que esa dependencia se note.
+
+### El rescate es un segundo argumento, no un `.catch`
+
+La forma natural de escribir esto es `fetch(...).then(...).catch(...)`, y es
+un error: el mismo brazo recoge «se cayó la red» **y** «reventó el pintado», así
+que una excepción al reponer los huecos —un `innerHTML` que no se puede poner,
+un aviso que revienta— acababa en `form.submit()` y **repetía la operación**.
+Lo encontrou el arnés de `tests/js/async-actions.js` (escenario «un fallo al
+mostrar el resultado no repite la operación»), no una revisión a ojo.
+
+Por eso el `.then()` va con dos manejadores: el primero procesa la respuesta y
+el segundo (el rescate) solo se dispara si la **petición** falla. Y
+`soltar()` —el botón que se apaga y el `data-vf-busy`— va **primero**, antes de
+pintar nada: al revés, un fallo al pintar dejaba el formulario con el botón
+apagado para siempre y sin que se viera el motivo.
+
+### `Content-Type`, no «a ver si `r.json()` no revienta»
+
+`vfPost()` **solo resuelve si la respuesta es JSON de verdad**, mirando el
+`Content-Type`. Una respuesta tunesca (la página de error de un PHP, un aviso
+del servidor web, el índice de un despliegue mal hecho) llega con **200** y
+`text/html`, y `res.json()` sobre eso revienta con un error que se confunde con
+«el servidor dijo que no». Mirar la cabecera separa las dos cosas, y quien llama
+usa esa separación: un `ok:false` se **pinta**, un rechazo **cae al POST
+nativo**.
+
+Igual con `ok:false` dentro de un JSON bien formado: es un «no» del servidor, no
+un fallo de transporte, así que se pinta su motivo y **no se reenvía nada**.
+
+### El estado objetivo: por qué el botón no dice «al revés»
+
+`User::toggleActive()` invertía (`1 - is_active`). Con un botón que va por
+fetch, dos clics sobre «Desactivar» —o un reintento después de un tiempo de
+espera— se activan y desactivan la misma cuenta, y el panel acaba diciendo lo
+contrario de lo que pasó. Con `1 - is_active` no hay forma de decir «déjalo
+como está».
+
+Ahora el botón manda `active=0|1` (el estado **pedido**) y `User::setActive()`
+hace `UPDATE … WHERE id = :id AND is_active <> :igual`, que devuelve 0 filas
+cuando ya estaba en ese estado: eso es lo que hace el POST **idempotente**, y el
+mensaje también lo dice («El usuario ya estaba en ese estado») porque
+«Estado de usuario actualizado» sería cierto pero no avisaría de que no pasó
+nada. Un POST **sin** el campo —una página cacheada de antes de este cambio—
+sigue invirtiendo: el camino sin JS no se rompe.
+
+Dos trampas de PHP en esa línea, las dos paga `Database` con
+`ATTR_EMULATE_PREPARES = false`: un marcador repetido (`:v` dos veces) lanza
+**HY093**, así que hay dos marcadores con el MISMO valor; y `execute()` ya
+devuelve el `rowCount`, no un `PDOStatement` sobre el que llamar a `rowCount()`.
+
+### El hueco del repintado no puede ser un `<form>`
+
+El JS repone con `slot.innerHTML = html`. Si el `id` del hueco estuviera en el
+`<form>` —como estaba el del toggle de `/admin`— lo que se metería dentro es
+**otro formulario**. El parser del navegador descarta el `<form>` anidado, así
+que «funcionaría» por casualidad y perdiendo contenido según el navegador. El
+hueco es ahora un `<span id="vfUserToggleN">` que **envuelve** al formulario, y
+`testElHuecoQueReponeElJsNoEsUnFormulario` lo vigila.
+
+### `data-confirm` va en el `<form>`, no en el botón
+
+El delegado lee `form.getAttribute('data-confirm')`, así que el atributo
+colgado del botón **no lo miraba nadie** y el borrado salía sin preguntar. Está
+en el `<form>` en todas partes, y `testLaConfirmacionVaEnElFormYNoEnElBoton`
+busca `<button … data-confirm` en las 42+ vistas.
+
+### Un delegado, y con nombre
+
+Confirmación y envío comparten **un** `addEventListener('submit')` y en este
+orden: primero se pregunta, luego se decide el modo. Con dos, el orden dependía
+de cuál se anotara primero y una línea movida de sitio sacaba un POST sin
+preguntar. La función se llama `vfHandleSubmit` a propósito (y no `function (e)`
+anónimo) porque `tests/js/async-actions.js` la **extrae del fichero** y la corre
+contra un DOM mínimo: una función anónima no se puede sacar, y lo que hay que
+poder ejecutar es el camino de rescate.
+
+El botón de «Guardar» de la ficha vive **fuera** del formulario (usa
+`form="formUpdate"`), así que `vfSubmitButton()` lo busca también por
+`button[form="…"]`: sin eso esa acción no se apagaba mientras está en vuelo y un
+segundo clic sacaba otro POST. `data-vf-busy` hace lo mismo para el doble clic.
+
+### De paso: «In_review» y un `esc()` que nadie llamaba
+
+Escribir los tests destapó dos cosas que ya estaban:
+
+- **La insignia decía «In_review»** con guion bajo, en la ficha y en los dos
+  listados (`ucfirst($form['status'])`). El texto sale ahora de
+  `Form::statusLabel()` —que devuelve `Borrador`/`En revisión`/`Publicado`/
+  `Cerrado`— y las tres vistas lo usan, porque tres `ucfirst()` divergen. La
+  **clase** CSS sigue siendo `app-status-<status>` sin traducir: es la que le
+  pone el color, y `app.css` la tiene.
+- **`dashboard.js` ya no necesita `esc()`**: su único texto interpolado era el
+  del aviso flotante, y desde que delega en `window.vfToast()` el escapado
+  ocurre en `app.js`. `BuilderEscapingTest` pasó a mirar `builder.js` y `app.js`
+  (y `esc()` se sigue comprobando donde se usa, no donde existió), más un test
+  de que `dashboard.js` delega y no vuelve a construir markup. Un `esc()` que
+  nadie llama es un `esc()` que nadie revisa.
+
+### Dos capas de test, y por qué la del JS ejecuta el código real
+
+`tests/js/async-actions.js` (51 casos) extrae `vfPost()` y el delegado del
+`app.js` de verdad y los corre contra un DOM y un `fetch` de mentira, con el
+mismo criterio que `tests/js/fill-progress.js`: lo que importa es el
+comportamiento, y no se puede comprobar leyendo el fichero.
+`tests/unit/AsyncActionsJsTest.php` lo ejecuta (con SKIP si no hay `node`) y
+añade el contrato que no necesita node; `tests/unit/AsyncFormActionsTest.php`
+prueba el servidor: los cuatro huecos, que guardar ajustes devuelve la insignia
+del estado que **queda**, que sin la cabecera sigue el 302 de siempre, el
+idempotencia del toggle y el `count` del borrado de respuestas.
+
+Las tres se comprobaron **mutando el código**: sin el `form.submit()` del
+rescate, sin el `data-vf-busy`, sin la comprobación del `Content-Type`, y con
+`data-vf-async` borrado de una vista. Las cuatro se pusieron rojas. Un detalle
+del arnés que costó lo suyo y que está escrito en su cabecera: el extractor de
+funciones tiene que distinguir **literales de regex** (`esc()` lleva
+`.replace(/"/g, …)`, y un conteo de llaves a pelo lee ese `/` como el principio
+de un comentario y se va de cabeza), y el DOM mínimo tiene que imitar al
+navegador en `element.id` (que refleja el atributo) y en `remove()` (que pone
+`parentNode` a null **en el nodo quitado, no en sus hijos**), o los casos pasan
+sin haber comprobado nada.
+
+---
+
+## F0.4-tres — El diálogo de confirmación, y un alta que recargaba sin saberlo
+
+Dos cosas que llegaron en la misma petición sin tener nada que ver: el `confirm()` del
+navegador (el prompt gris del sistema, con los botones del sistema operativo y el
+texto en la fuente que toque) y el alta de un correo a la lista de acceso, que
+**recargaba la página** mientras quitarlo no lo hacía. La segunda terminó siendo
+el ejemplo más claro del tipo de fallo que más gusta a este repo: **síntoma
+distinto, misma causa de fondo**.
+
+### El diálogo
+
+`window.confirm()` no se puede estilar, no se puede traducir, no lo puedes
+señalar para copiar el texto y en algunos sistemas aparece **fuera de la
+ventana**. Lo sustituye `#vfConfirm`: un `.modal` de Bootstrap en
+`views/layouts/main.php`, **uno solo para todo el panel** (copiarlo en cada vista
+es copiar el prompt feo por décimo lugar), con trampa de foco, `Esc`, vuelta del
+foco al botón y `aria-labelledby`/`aria-describedby` para que el lector de
+pantalla diga el título y **la pregunta**.
+
+Dos decisiones que costaron algo:
+
+- **El foco va a «Cancelar», no a «Sí».** Escribir un `Enter` nada más abrir un
+  diálogo con «Eliminar formulario» enfocado es una operación sin vuelta atrás a
+  un `Enter` de distancia. El botón de «sí» se pinta con `data-confirm-ok`
+  («Eliminar formulario», «Desactivar cuenta»), porque un «Sí, continuar» sobre
+  una pregunta no dice qué se está aceptando; y el tono sale de
+  `data-confirm-tone` (`primary` para lo que no destruye, `danger` por defecto).
+  El contrato lo ata `testCadaAccionQueConfirmaDiceQueVaASerElSuBoton`, que
+  recorre los `<form data-confirm>` de las vistas y exige `data-confirm-ok` en
+  todos.
+- **La segunda pasada no vuelve a preguntar.** `vfConfirmGo()` hace
+  `requestSubmit()`, que vuelve a lanzar el evento `submit` y con él el delegado:
+  sin el `vfConfirmed` (un `var` de módulo con el formulario ya confirmado) el
+  diálogo se abriría otra vez, y desde ahí es un bucle de diálogos. Es lo primero
+  que se rompe si se toca esa línea, así que el arnés lo mira
+  («una sola vez: el reenvío con requestSubmit no vuelve a preguntar») y no como
+  un detalle: sin él, el arnés daba verde porque `requestSubmit()` del DOM
+  mínimo no re-despachaba nada.
+
+Y dos cosas que **no** se hicieron, por si acaso alguien las echa de menos:
+`vfAsk()` sigue cayendo a `window.confirm()` cuando no hay diálogo o no hay
+Bootstrap (una página que no usa el layout del panel no puede quedarse sin
+preguntar), y el texto se pone con `textContent`, nunca con `innerHTML` (el
+mensaje lleva cosas que ha escapado la vista).
+
+### `#vfConfirm` y la regla de los modales anidados
+
+`ViewStructureTest` prohíbe que un `.modal` viva dentro de otro elemento, porque
+Bootstrap pone `display: none` al `.modal` y cualquier ancestro con `display`
+distinto lo deja invisible para siempre. Con el diálogo del panel al final de
+`<body>` la regla saltó, y la lista de permitidos es ahora `<html>` y `<body>`:
+no son un escondite, son el documento. La regla sigue fulminando `<main>`,
+`<div>`, `<form>` o cualquier otra cosa —que es exactamente lo que tumbó
+`#addFieldModal`—.
+
+### El alta que recargaba
+
+«Añadir correo» recargaba y «quitarlo» no. Los dos son la misma puerta
+(`AccessController`, el mismo partial) y los dos devuelven JSON. La diferencia
+estaba en **el atributo que se había quedado viejo**:
+
+```js
+const endpoint = card.dataset.addEndpoint;      // ← la vista ya no lo tiene
+if (!endpoint || email === '') return;          // ← sale sin quitar el evento
+```
+
+`#access` declara `data-link-endpoint` (el del botón de copiar el enlace), así
+que `endpoint` era `undefined`, la línea de guarda **salía sin hacer su trabajo**
+—sin `preventDefault()`— y el navegador sacaba su POST nativo. La lista se
+repintaba igual, porque volvía la página entera: por eso el síntoma parecía del
+servidor cuando lo que se había perdido era un `data-` en una vista.
+
+Y en el servidor, `addEmail()` contestaba `html` como **cadena suelta** en vez
+del mapa `id → markup` que recorre `vfApplySlots()`. Aunque el formulario
+hubiera llevado `data-vf-async="slots"`, no habría habido a qué reponer. Las dos
+cosas juntas eran necesarias para el fallo, y las dos están ahora fijadas por su
+test (`testAnadirUnEmailPorFetchReponeLaListaYNoRecarga`, que además comprueba
+que la lista trae el correo nuevo y que un repetido vuelve como error).
+
+El handler propio de `dashboard.js` (93 líneas con su `fetch`, su `.catch` y su
+`form.submit()` de rescate) **desapareció**: lo que hace ahora es lo mismo que
+las otras diez acciones, el delegado. Un IIFE que reimplementa lo que ya hace el
+delegado es, tarde o temprano, un camino que se queda sin escapar.
+
+### El error junto a su campo, y no también flotante
+
+El «ese correo ya está en la lista» salía en el `<p id="accessAddError">` de
+más abajo, con su `role="alert"`. Con el delegado, el `ok:false` pinta el aviso
+flotante de siempre —que está en el otro extremo de la pantalla y se va solo a
+los cuatro segundos— y el `role="alert"` se queda vacío para siempre. Por eso el
+formulario declara `data-vf-error="accessAddError"`: el motivo va junto al campo
+(que es donde se busca) y **no** sale además flotante, que sería lo mismo dos
+veces. El hermano `data-vf-clear="accessAddEmail"` vacía el campo y devuelve el
+foco a él, que es lo que hace falta para apuntar el siguiente correo sin tabular
+hasta el principio.
+
+Los dos son opcionales y genéricos: `vfByAttr(form, 'data-vf-…')` resuelve el
+`id` que declara el formulario. El JS sigue sin saber cómo se pinta una fila, un
+aviso ni un campo; solo sabe a qué `id` escribir.
+
+### Lo que encontró el arnés, y lo que no
+
+`tests/js/async-actions.js` pasó de 51 a **88** casos. Los nuevos comprueban la
+pregunta en `textContent`, el `data-confirm-ok`, los dos tonos, el foco en
+Cancelar, que confirmar envía **una** vez y con el submitter, que cancelar no
+envía, los dos caminos de reserva (sin diálogo y sin Bootstrap), el navegador sin
+`requestSubmit()` (que vuelve al POST nativo entero), y los dos atributos del
+alta. Cada uno se comprobó **mutando** el código: sin el bypass, sin
+`vfPending`, sin el `hide()`, con el foco en «Sí», con `innerHTML` en el texto, y
+con el aviso flotante además del de campo. Las seis se pusieron rojas.
+
+Una mutación se escapó, y esa es la que merece.recordarse: cambiar el
+`p.form.submit()` (el `else` para navegadores sin `requestSubmit`) por una línea
+que no hacía nada **no rompió ningún caso**, porque el `requestSubmit` del DOM
+mínimo estaba siempre y ese `else` no lo recorre nadie. El caso se añadió —«sin
+`requestSubmit`, confirmar manda el POST nativo»— y la mutación pasó a ponerse
+roja. Un test que no llega a la rama es un test que no vigila la rama.
+
+## F0.4-cuatro — Un ajuste que se guardaba y una fila que se recargaba
+
+Los dos que quedan son de la misma familia y de la misma causa de fondo: un
+cambio de estado que **ocurre en el servidor** y que la pantalla no se entera
+de, porque el hueco que lo pintaría no existe.
+
+### La tarjeta de Acceso no tenía hueco, porque no es del estado
+
+«¿Quién puede responder?» se edita en un `<select>` que guarda por fetch
+(`updateSettings`), y la tarjeta de debajo —insignia del modo, enlace de acceso,
+alta de la lista— depende **de ese ajuste**. Guardarlo sin recargar la dejaba
+mintiendo: el modo nuevo estaba en la base de datos y la pantalla seguía
+diciendo el anterior, y el síntoma era desconcertante porque la operación
+«funcionaba» (navegador, red, aviso verde) y el cambio no se veía.
+
+El arreglo es `FormPanel::accessSlot()`, que relee el formulario y devuelve
+`['vfSlotAccess' => …]`, y `FormPanel::json()` gana un quinto parámetro para
+sumarlo. **El hueco va aparte y a propósito**, y esa es la parte que no es
+obvia: `slots()` son los cuatro que dependen de `forms.status` y se devuelven en
+**todas** las acciones de estado —publicar, cerrar, mandar a revisión, aprobar—.
+Meter la tarjeta de Acceso ahí la tiraría en cada una de ellas, y con ella el
+enlace de acceso recién emitido (que se rota al regenerarlo) y lo que alguien
+tuviera escrito a medio teclear en el campo del alta. Un hueco que se repinta
+de más no es un coste menor: es devolver un token que ya no sirve.
+
+El test (`testGuardarAjustesReponeLaTarjetaDeAcceso`) comprueba el **modo
+nuevo** en el HTML, y no que «venga un hueco»: un ajuste que se guarda bien y no
+se ve no da ningún error, ni en el navegador ni en el log, ni con la página
+entera recargada. Al mutar el `mode` que se pinta, la lista sale vacía y el
+modo dice siempre `public`; las dos mutaciones se pusieron rojas.
+
+### `form.submit()` no dispara el evento `submit`
+
+Cambiar el rol de una persona en `/admin` recargaba la página entera, y con ella
+se iba el desplegable de grupos que se estuviera editando en la misma fila. El
+formulario del rol lleva `.js-auto-submit` (se envía solo al cambiar el
+selector) y el JS tenía:
+
+```js
+sel.addEventListener('change', () => form.submit());   // ← no hay evento
+```
+
+`form.submit()` **no** dispara el evento `submit`: es el envío nativo sin
+evento. Así que el delegado no se enteraba de nada —no preguntaba, no apagaba el
+botón, no elegía el camino sin recarga— y el navegador sacaba su POST. Con
+`requestSubmit()` el evento sí sale, entra el delegado y funciona sin recargar; y
+el `else` de navegador viejo (sin `requestSubmit`) sigue siendo el
+`form.submit()` de siempre, con la recarga, porque ahí es lo único que hay.
+
+Es el tipo de fallo que no se ve leyendo el código: «se envía solo», dice el
+selector, y es verdad. Solo aparece cuando el delegado **no aparece**.
+
+Lo que faltaba además era el `data-vf-async="slots"` en los dos formularios de
+la fila (rol y grupos) y un hueco para las insignias de grupo
+(`vfUserGroups<uid>`, el mismo nombre que compone el servidor en su respuesta).
+`updateRole()` devuelve JSON **sin `html`**: el `select` ya está en el valor
+nuevo y nada más de la fila depende del rol, así que repintar la fila entera
+tiraría el desplegable de grupos —justo lo que se estaba arreglando—. El error
+de un rol que no existe se pinta (`ok:false`) en vez de redirigir: un fetch que
+se sigue un 302 se descarga la página entera dentro del fetch y no sabría que el
+guardado falló.
+
+### Dos capas de test, y la que casi no muerde
+
+El arnés pasó de 88 a **93** casos. Los dos nuevos ejecutan `vfAutoSubmit()` de
+verdad contra el DOM mínimo: el cambio de rol **no** sale por `form.submit()`
+(`submitted` a 0, un `fetch`, y con el `action` del formulario) y, sin
+`requestSubmit()`, vuelve al POST nativo entero. Para eso hizo falta un
+`conDelegado(escenario)`: el arnés no imita el `addEventListener` del documento,
+así que un `submit` **disparado por el código** no llegaba al delegado y el
+caso pasaba verde sin comprobar nada —que es exactamente el fallo que se quería
+detectar—. Volver a `form.submit()` pone el caso rojo.
+
+En PHP, el contrato de la vista (`data-vf-async` en los dos formularios de la
+fila y el hueco con el `id` por fila) se comprobó quitando cada cosa por
+separado: quitar el atributo de cualquiera de los dos formularios pone el test
+rojo nombrando cuál, y cambiar el nombre del hueco también. El que mide «que el
+`submit()` solo viva en el `else`» mira **posiciones**, no solo presencia: un
+`submit()` suelto antes del `if` deja igual el cambio de rol recargando, y una
+comprobación de presencia no lo notaría.
+
+Y un apunte que costó un rato de lexers: un `?>` **dentro de un comentario `//`
+cierra el modo PHP**, y todo lo que viene detrás se va como HTML —el error es un
+«Unclosed `{' on line 362» que no señala el sitio—. En bloque (`/* */`) no pasa.
+Vale para cualquier nota que hable de `<?php` o `<?=` en un test.
