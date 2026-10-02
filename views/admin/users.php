@@ -41,91 +41,127 @@ $roles = $roles ?? [];
           // REGISTRATION_ENABLED cerrado (el default) es la ÚNICA forma de crear
           // un `user` o un `editor`, ya que `scripts/create-admin.php` solo sabe
           // hacer administradores. Por eso lleva su propia tarjeta y no es un
-          // botón escondido. ?>
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-plus me-2 text-primary"></i>Nuevo usuario</h3>
-            <p class="text-muted small mb-3">
-                Crea una cuenta con su rol desde aquí. Funciona con el registro público abierto o
-                cerrado: eso solo controla el alta desde <code>/register</code>.
-            </p>
-            <form method="post" action="/admin/users/create">
-                <?= Csrf::field() ?>
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
-                        <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
-                        <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
-                        <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
-                        <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
-                        <div class="form-text">Si no coinciden, el alta se rechaza.</div>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
-                        <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
-                            <?php foreach ($roles as $rol): ?>
-                                <?php $rid = (int) $rol['id']; ?>
-                                <option value="<?= $rid ?>"<?= $rid === 2 ? ' selected' : '' ?>>
-                                    <?= View::escape((string) $rol['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div class="form-text">Lo que la persona podrá hacer. Se puede cambiar después.</div>
-                    </div>
-                    <div class="col-md-9 d-flex align-items-center">
-                        <div class="form-text">
-                            Comunícale la contraseña por un canal que no sea el correo: al darle la cuenta
-                            tú, su email no está verificado.
-                        </div>
-                    </div>
-                    <div class="col-12 d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
-                            <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+          // botón escondido.
 
-    <?php // El interruptor de registro es de la INSTALACIÓN, así que va fuera de
-          // la tabla de usuarios y con su propio permiso (`admin.access`): quien
-          // gestiona la instalación lo abre, pero no necesita poder tocar la
-          // cuenta de nadie. Solo se pinta con ese permiso, y no por ser admin,
-          // porque el panel entero ya lo exige. ?>
-    <?php if ($canManageInstance ?? false): ?>
-    <div class="card border-0 shadow-sm mb-4" id="instance"
-         data-csrf="<?= View::escape(Csrf::token()) ?>"
-         data-registration-endpoint="/admin/settings/registration">
-        <div class="card-body">
-            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
-            <p class="text-muted small mb-3">
-                El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
-                se crean solo desde esta pantalla.
-            </p>
-            <div class="form-check form-switch d-flex align-items-center gap-2">
-                <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
-                       <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
-                       aria-describedby="registrationHint">
-                <label class="form-check-label fw-semibold" for="registrationToggle">
-                    <span data-role="registration-state">
-                        <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
-                    </span>
-                </label>
+          // El alta y el interruptor comparten un `row` y no van apilados a ancho
+          // completo: son dos tarjetas de la MISMA pantalla y de menos de la mitad
+          // de alto cada una de ese modo. `col-lg-8` / `col-lg-4` es el mismo
+          // reparto que usa la ficha del formulario, así que el panel tiene una
+          // sola retícula. ?>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <?php // Plegada por defecto, y el panel llega ABIERTO del
+                          // servidor a propósito: con el registro público cerrado
+                          // este formulario es la única forma de crear un `user`
+                          // o un `editor`, así que sin JS tiene que poder usarse.
+                          // Lo pliega `dashboard.js` leyendo
+                          // `data-vf-group-default="closed"`, no el servidor. ?>
+                    <fieldset class="app-settings-group mb-0"
+                              data-vf-group-key="admin-usuarios" data-vf-group-default="closed">
+                        <legend class="app-settings-group-title">
+                            <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-nuevo-usuario"
+                                    aria-expanded="true" aria-controls="grp-nuevo-usuario">
+                                <span><i class="fa-solid fa-user-plus me-1"></i>Nuevo usuario</span>
+                                <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
+                            </button>
+                        </legend>
+                        <div class="collapse show" id="grp-nuevo-usuario">
+                            <p class="text-muted small mb-3">
+                                Crea una cuenta con su rol desde aquí. Funciona con el registro público abierto o
+                                cerrado: eso solo controla el alta desde <code>/register</code>.
+                            </p>
+                            <form method="post" action="/admin/users/create">
+                                <?= Csrf::field() ?>
+                                <?php // 3+2 y no cuatro en fila: dentro de `col-lg-8` un
+                                      // `col-md-3` deja el campo de contraseña tan
+                                      // estrecho que el marcador de posición se corta. ?>
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-4">
+                                        <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
+                                        <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
+                                        <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
+                                        <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
+                                        <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                                        <div class="form-text">Si no coinciden, el alta se rechaza.</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
+                                        <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
+                                            <?php foreach ($roles as $rol): ?>
+                                                <?php $rid = (int) $rol['id']; ?>
+                                                <option value="<?= $rid ?>"<?= $rid === 2 ? ' selected' : '' ?>>
+                                                    <?= View::escape((string) $rol['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="form-text">Lo que la persona podrá hacer. Se puede cambiar después.</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <p class="form-text mb-0">
+                                            Comunícale la contraseña por un canal que no sea el correo: al darle la cuenta
+                                            tú, su email no está verificado.
+                                        </p>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                                            <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </fieldset>
+                </div>
             </div>
-            <p class="form-text mb-0" id="registrationHint" role="status"></p>
         </div>
+
+        <?php // El interruptor de registro es de la INSTALACIÓN, así que va fuera de
+              // la tabla de usuarios y con su propio permiso (`admin.access`): quien
+              // gestiona la instalación lo abre, pero no necesita poder tocar la
+              // cuenta de nadie. Solo se pinta con ese permiso, y no por ser admin,
+              // porque el panel entero ya lo exige.
+
+              // La columna no se emite vacía si no hay tarjeta, para que el alta se
+              // quede en `col-lg-8` de todos modos y la retícula no dé un salto al
+              // desaparecer. ?>
+        <?php if ($canManageInstance ?? false): ?>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100" id="instance"
+                 data-csrf="<?= View::escape(Csrf::token()) ?>"
+                 data-registration-endpoint="/admin/settings/registration">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
+                    <p class="text-muted small mb-3">
+                        El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
+                        se crean solo desde esta pantalla.
+                    </p>
+                    <div class="form-check form-switch d-flex align-items-center gap-2">
+                        <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
+                               <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
+                               aria-describedby="registrationHint">
+                        <label class="form-check-label fw-semibold" for="registrationToggle">
+                            <span data-role="registration-state">
+                                <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
+                            </span>
+                        </label>
+                    </div>
+                    <p class="form-text mb-0" id="registrationHint" role="status"></p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
 
     <?php if (empty($users)): ?>
         <div class="card border-0 shadow-sm">

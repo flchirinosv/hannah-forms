@@ -562,14 +562,22 @@
     });
 })();
 
-/* ---- Grupos colapsables de la ficha del formulario (views/dashboard/forms/show.php)
- * Siete grupos plegables porque, con los siete abiertos, «Ajustes del formulario»
- * ocupaba más de tres pantallas y el ajuste que se busca casi nunca está en el
- * primero. El plegado es de Bootstrap (`data-bs-toggle="collapse"`), así que esto
- * solo recuerda en qué estado quedó cada uno: el estado va en `localStorage` POR
- * FORMULARIO (`vf:grp:<id>`) y no en el del navegador, porque el mismo usuario
+/* ---- Grupos colapsables (views/dashboard/forms/show.php y views/admin/users.php)
+ * En la ficha del formulario son siete grupos porque, con los siete abiertos,
+ * «Ajustes del formulario» ocupaba más de tres pantallas y el ajuste que se busca
+ * casi nunca está en el primero; en «Usuarios» el alta viene cerrada de entrada,
+ * porque con el registro público cerrado es la única forma de crear una cuenta y
+ * lo que se abre en esa pantalla ocho de cada diez veces es la tabla.
+ *
+ * El plegado es de Bootstrap (`data-bs-toggle="collapse"`), así que esto solo
+ * recuerda en qué estado quedó cada uno: el estado va en `localStorage` POR
+ * PANTALLA (`vf:grp:<clave>`) y no en el del navegador, porque el mismo usuario
  * pasa por varias fichas y cerrarlos todos en cada una era más ruido que el que
- * arreglaba.
+ * arreglaba. Cada contenedor trae su clave: la ficha la sigue nombrando
+ * `data-vf-form-id` (su clave es el id del formulario y no cambia), y el alta de
+ * usuarios usa `data-vf-group-key`. `data-vf-group-default="closed"` es lo que
+ * distingue «cerrado de entrada» de «abierto de entrada», sin tener que mantener
+ * dos comportamientos distintos según la pantalla.
  *
  * `bootstrap.bundle` viene en el layout y este script va con `defer`, así que el
  * global existe cuando esto corre; aun así se resuelve en `window.bootstrap` como en
@@ -578,61 +586,81 @@
 (function () {
     'use strict';
 
-    const form = document.getElementById('formSettings');
-    if (!form || !form.dataset.vfFormId) { return; }
-
-    const KEY = 'vf:grp:' + form.dataset.vfFormId;
-    const toggles = Array.prototype.slice.call(form.querySelectorAll('.app-group-toggle'));
+    const contenedores = Array.prototype.slice.call(
+        document.querySelectorAll('[data-vf-group-key], [data-vf-form-id]')
+    );
+    if (contenedores.length === 0) { return; }
 
     /* Un error de guardado sale en el aviso de arriba, no dentro del grupo que lo
      * provocó: si el grupo estaba plegado, el aviso no señala dónde está el problema
      * y quien guarda tiene que abrir los siete a ciegas. Con error, se ignoran los
-     * estados guardados y se abren todos. */
+     * estados guardados y se abren todos. En «Usuarios» el aviso de un alta
+     * rechazada hace lo mismo que aquí: abrir el formulario para poder corregirlo. */
     const hayError = !!document.querySelector('.alert-danger.app-alert');
 
-    let estado = {};
-    if (!hayError) {
-        try {
-            const crudo = window.localStorage.getItem(KEY);
-            const parsed = crudo ? JSON.parse(crudo) : null;
-            if (parsed && typeof parsed === 'object') { estado = parsed; }
-        } catch (e) {
-            estado = {}; // Almacenamiento lleno o bloqueado: los grupos funcionan igual.
+    contenedores.forEach(function (cont) {
+        const clave = cont.dataset.vfGroupKey || cont.dataset.vfFormId;
+        if (!clave) { return; }
+
+        const KEY = 'vf:grp:' + clave;
+        const toggles = Array.prototype.slice.call(cont.querySelectorAll('.app-group-toggle'));
+        if (toggles.length === 0) { return; }
+
+        const abiertoPorDefecto = cont.dataset.vfGroupDefault !== 'closed';
+
+        let estado = {};
+        if (!hayError) {
+            try {
+                const crudo = window.localStorage.getItem(KEY);
+                const parsed = crudo ? JSON.parse(crudo) : null;
+                if (parsed && typeof parsed === 'object') { estado = parsed; }
+            } catch (e) {
+                estado = {}; // Almacenamiento lleno o bloqueado: los grupos funcionan igual.
+            }
         }
-    }
 
-    function guardar() {
-        try {
-            window.localStorage.setItem(KEY, JSON.stringify(estado));
-        } catch (e) { /* sin persistencia no se rompe nada más */ }
-    }
+        function guardar() {
+            try {
+                window.localStorage.setItem(KEY, JSON.stringify(estado));
+            } catch (e) { /* sin persistencia no se rompe nada más */ }
+        }
 
-    const guardado = function (slug) {
-        return Object.prototype.hasOwnProperty.call(estado, slug);
-    };
+        const guardado = function (slug) {
+            return Object.prototype.hasOwnProperty.call(estado, slug);
+        };
 
-    if (window.bootstrap && bootstrap.Collapse) {
+        /* Los `hide()` de arranque también disparan `hidden.bs.collapse`, y esa
+         * escritura no es de la persona: guardaría el valor por defecto como si
+         * fuera una elección suya y, si mañana cambiara el default, seguiría viendo
+         * el viejo. Solo se escribe lo que alguien toca de verdad. */
+        const decididos = {};
+
+        if (window.bootstrap && bootstrap.Collapse) {
+            toggles.forEach(function (btn) {
+                const panel = document.getElementById(btn.getAttribute('aria-controls'));
+                if (!panel) { return; }
+                const slug = panel.id.replace(/^grp-/, '');
+                const visible = panel.classList.contains('show');
+                const abierto = guardado(slug) ? estado[slug] !== false : abiertoPorDefecto;
+                const col = bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false });
+                if (abierto && !visible) { decididos[slug] = true; col.show(); }
+                if (!abierto && visible) { decididos[slug] = false; col.hide(); }
+            });
+        }
+
         toggles.forEach(function (btn) {
             const panel = document.getElementById(btn.getAttribute('aria-controls'));
             if (!panel) { return; }
             const slug = panel.id.replace(/^grp-/, '');
-            const visible = panel.classList.contains('show');
-            const abierto = guardado(slug) ? estado[slug] !== false : true;
-            const col = bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false });
-            if (abierto && !visible) { col.show(); }
-            if (!abierto && visible) { col.hide(); }
+            const persistir = function (abierto) {
+                if (Object.prototype.hasOwnProperty.call(decididos, slug)) {
+                    if (decididos[slug] === abierto) { delete decididos[slug]; return; }
+                }
+                estado[slug] = abierto;
+                guardar();
+            };
+            panel.addEventListener('shown.bs.collapse', function () { persistir(true); });
+            panel.addEventListener('hidden.bs.collapse', function () { persistir(false); });
         });
-    }
-
-    toggles.forEach(function (btn) {
-        const panel = document.getElementById(btn.getAttribute('aria-controls'));
-        if (!panel) { return; }
-        const slug = panel.id.replace(/^grp-/, '');
-        const persistir = function (abierto) {
-            estado[slug] = abierto;
-            guardar();
-        };
-        panel.addEventListener('shown.bs.collapse', function () { persistir(true); });
-        panel.addEventListener('hidden.bs.collapse', function () { persistir(false); });
     });
 })();
