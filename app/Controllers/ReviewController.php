@@ -16,6 +16,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Models\Form;
 use App\Models\User;
+use App\Services\FormPanel;
 
 /**
  * F3 — Revisión y aprobación de formularios.
@@ -41,6 +42,44 @@ use App\Models\User;
 class ReviewController
 {
     /**
+     * «Hecho»: 302 + flash, o el sobre con los huecos de la ficha.
+     *
+     * Las tres acciones comparten las dos mitades porque las dos pintan las
+     * mismas cosas: aprobar sin recarga tenía que reponer la insignia (ya
+     * «Publicado»), la traza de revisión (que aparece justo al aprobar), los
+     * botones (que cambian de «Aprobar/Devolver» a «Cerrar») y la tarjeta de
+     * compartir (que gana el QR que no había). Actualizar solo los botones
+     * deja las otras tres mintiendo.
+     */
+    private static function accept(int $id, string $message): void
+    {
+        if (Response::wantsJson()) {
+            FormPanel::json($id, $message);
+            return;
+        }
+
+        Session::flash('success', $message);
+        Response::redirect('/forms/' . $id);
+    }
+
+    /**
+     * «No se puede»: mismo motivo por los dos caminos. El estado de origen es
+     * el que se comprueba, así que esto casi siempre es un botón que se quedó
+     * viejo: en JSON es un aviso en la esquina (el aviso del servidor), y sin
+     * JS sigue siendo la vuelta a la ficha con el flash de siempre.
+     */
+    private static function reject(int $id, string $error): void
+    {
+        if (Response::wantsJson()) {
+            Response::json(['ok' => false, 'error' => $error], 422);
+            return;
+        }
+
+        Session::flash('error', $error);
+        Response::redirect('/forms/' . $id);
+    }
+
+    /**
      * Dueño: mandar el formulario a revisión.
      *
      * El aviso por correo es OPCIONAL y va en `settings.review.notify_email`,
@@ -56,13 +95,11 @@ class ReviewController
         }
 
         if ($form['status'] === 'in_review') {
-            Session::flash('error', 'Este formulario ya está en revisión.');
-            Response::redirect('/forms/' . $id);
+            self::reject($id, 'Este formulario ya está en revisión.');
             return;
         }
         if ($form['status'] === 'published') {
-            Session::flash('error', 'Un formulario publicado no se manda a revisión: ciérralo antes.');
-            Response::redirect('/forms/' . $id);
+            self::reject($id, 'Un formulario publicado no se manda a revisión: ciérralo antes.');
             return;
         }
 
@@ -71,9 +108,7 @@ class ReviewController
 
         $this->notifyReviewers($form);
 
-        Session::flash('success', 'Formulario enviado a revisión. Queda a la espera de que alguien lo apruebe.');
-        Response::redirect('/forms/' . $id);
-        return;
+        self::accept($id, 'Formulario enviado a revisión. Queda a la espera de que alguien lo apruebe.');
     }
 
     /**
@@ -87,8 +122,7 @@ class ReviewController
         }
 
         if ($form['status'] !== 'in_review') {
-            Session::flash('error', 'Este formulario ya no está en revisión.');
-            Response::redirect('/forms/' . $id);
+            self::reject($id, 'Este formulario ya no está en revisión.');
             return;
         }
 
@@ -107,9 +141,7 @@ class ReviewController
             'formulario #' . $id . ' (' . (string) $form['slug'] . ')' . $propio
         );
 
-        Session::flash('success', 'Formulario aprobado y publicado.');
-        Response::redirect('/forms/' . $id);
-        return;
+        self::accept($id, 'Formulario aprobado y publicado.');
     }
 
     /**
@@ -123,17 +155,14 @@ class ReviewController
         }
 
         if ($form['status'] !== 'in_review') {
-            Session::flash('error', 'Este formulario ya no está en revisión.');
-            Response::redirect('/forms/' . $id);
+            self::reject($id, 'Este formulario ya no está en revisión.');
             return;
         }
 
         Form::returnToDraft($id);
         SecurityLog::record('form.review_reject', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
 
-        Session::flash('success', 'Formulario devuelto al dueño como borrador.');
-        Response::redirect('/forms/' . $id);
-        return;
+        self::accept($id, 'Formulario devuelto al dueño como borrador.');
     }
 
     /**

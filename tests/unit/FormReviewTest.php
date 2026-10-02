@@ -384,9 +384,9 @@ class FormReviewTest
         assertFalse(in_array((string) self::$ownerEmail, $emails(), true), 'al salir del grupo, sale de la lista');
 
         // Una cuenta desactivada no se avisa: no entra ni aunque tenga el permiso.
-        User::toggleActive((int) self::$reviewerId);
+        User::setActive((int) self::$reviewerId, false);
         assertFalse(in_array((string) self::$reviewerEmail, $emails(), true), 'una cuenta desactivada no recibe avisos');
-        User::toggleActive((int) self::$reviewerId);
+        User::setActive((int) self::$reviewerId, true);
     }
 
     // ---- El aviso por correo ----
@@ -436,7 +436,7 @@ class FormReviewTest
         // provocar aquí sin desarmar la matriz de permisos REAL del admin
         // instalado, así que no se fuerza: se fija lo que sí es observable.
         Role::setPermissions((int) self::$reviewRoleId, ['dashboard.view', 'forms.manage_all']);
-        User::toggleActive((int) self::$reviewerId);
+        User::setActive((int) self::$reviewerId, true);
 
         $this->activarRevision(true);
         $this->authAs((int) self::$ownerId);

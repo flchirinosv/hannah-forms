@@ -312,9 +312,52 @@ class AdminController
             return;
         }
 
-        User::toggleActive($userId);
-        SecurityLog::record('admin.user_toggle', 'usuario #' . $userId . ( (int) $target['is_active'] === 1 ? ' -> desactivado' : ' -> activado'));
-        Session::flash('success', 'Estado de usuario actualizado.');
+        // Estado objetivo, no «invertir»: `active` es lo que pinta el botón
+        // (views/admin/users.php lo manda en un `hidden`), y así un reintento o
+        // un doble clic no se quedan activando lo que se quería desactivar. Un
+        // POST sin el campo —una página cacheada de antes de este cambio— sigue
+        // invirtiendo, que es lo que hacía: el camino sin JS no se rompe.
+        $pedido = Request::post('active', null);
+        $activo = $pedido === null
+            ? ((int) $target['is_active'] === 1 ? 0 : 1)
+            : ((int) $pedido === 1 ? 1 : 0);
+
+        $cambio = User::setActive($userId, $activo === 1);
+
+        // `Auth::forgetCache()` NO hace falta aquí: no te puedes desactivar a ti
+        // mismo (el guard de arriba), así que el actor nunca es el afectado y su
+        // caché —que es por request, no de sesión— no puede estar vieja.
+        SecurityLog::record('admin.user_toggle', 'usuario #' . $userId . ($activo === 1 ? ' -> activado' : ' -> desactivado'));
+
+        // Idempotente de verdad también en el mensaje: si ya estaba en ese
+        // estado, «Estado de usuario actualizado» sería cierto pero no
+        // avisa de que no pasó nada, que es la mitad de lo que el botón promete.
+        $message = $cambio
+            ? ($activo === 1 ? 'Usuario activado.' : 'Usuario desactivado.')
+            : 'El usuario ya estaba en ese estado.';
+
+        if (Response::wantsJson()) {
+            // Los DOS partials de la fila, y solo los de ESE usuario: con el
+            // estado objetivo, lo que hay que repintar es el resultado —insignia
+            // y botón—, no «lo que le pasó». Un `html` con la fila entera
+            // repondría también el selector de rol y el desplegable de grupos,
+            // que no han cambiado, y se comerían un `<select>` abierto.
+            $fresco = User::find($userId);
+            Response::json([
+                'ok'      => true,
+                'message' => $message,
+                'html'    => $fresco === null ? [] : [
+                    'vfUserStatus' . $userId => View::partial('admin/_user_status', ['user' => $fresco]),
+                    'vfUserToggle' . $userId => View::partial('admin/_user_toggle', [
+                        'user' => $fresco,
+                        'uid'  => $userId,
+                    ]),
+                ],
+            ]);
+            return;
+        }
+
+        Session::flash('success', $message);
         Response::redirect('/admin');
         return;
     }

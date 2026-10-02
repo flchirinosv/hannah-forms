@@ -40,16 +40,24 @@ class BuilderEscapingTest
 {
     private const JS_BUILDER = 'public/assets/js/builder.js';
     private const JS_DASHBOARD = 'public/assets/js/dashboard.js';
+    private const JS_APP = 'public/assets/js/app.js';
     private const JS_PRINT = 'public/assets/js/print.js';
     private const PRINT_VIEW = 'views/dashboard/forms/print.php';
 
     /* ---------- 2.5: el escapado ---------- */
 
-    public function testEscEscapaLasComillasEnBuilderYDashboard(): void
+    public function testEscEscapaLasComillasEnBuilderYApp(): void
     {
         $fallos = [];
 
-        foreach ([self::JS_BUILDER, self::JS_DASHBOARD] as $rel) {
+        // `dashboard.js` ya NO está en la lista: su único texto interpolado era
+        // el del aviso flotante, y desde que delega en `window.vfToast()`
+        // (app.js) ese escapado ocurre allí. Dejar `esc()` en dashboard.js
+        // para satisfacer el test sería código muerto —y un `esc()` que nadie
+        // llama es un `esc()` que nadie revisa—. Lo que sustituye a la lista es
+        // el test de abajo: si dashboard.js vuelve a construir HTML, tiene que
+        // hacerlo por el camino escapado.
+        foreach ([self::JS_BUILDER, self::JS_APP] as $rel) {
             $esc = $this->escBody($rel);
             if ($esc === '') {
                 $fallos[] = $rel . ': no se encuentra esc()';
@@ -71,6 +79,44 @@ class BuilderEscapingTest
                     $fallos[] = $rel . ': esc() debe escapar ' . $what . ' (' . $needle . ')';
                 }
             }
+        }
+
+        assertEquals([], $fallos, implode(' | ', $fallos));
+    }
+
+    /**
+     * `dashboard.js`delegó su aviso en `app.js` (una sola implementación, y la
+     * página de respuestas no carga dashboard.js pero sí app.js). Se ata el
+     * trato nuevo por los dos lados: delega, y no se ha quedado con markup
+     * propio donde se escape. Un `innerHTML` que se colara aquí sin pasar por
+     * `vfToast()` reintroduciría el XSS en el panel.
+     */
+    public function testElAvisoDelPanelSeEscapaEnAppYNoEnDashboard(): void
+    {
+        $app = $this->read(self::JS_APP);
+        $dash = $this->read(self::JS_DASHBOARD);
+        $fallos = [];
+
+        if (!str_contains($app, 'window.vfToast')) {
+            $fallos[] = 'app.js debe definir window.vfToast(), que es el aviso compartido';
+        }
+        // El `esc()` de app.js tiene que estar pegado al punto donde se
+        // construye el HTML del aviso, no solo existir en el fichero.
+        $toast = $this->escBodyFrom($app, 'function esc(');
+        $cuerpo = strpos($app, 'window.vfToast = function');
+        $cola = $cuerpo === false ? '' : substr($app, (int) $cuerpo, 1200);
+        if (strpos($cola, 'esc(msg)') === false) {
+            $fallos[] = 'vfToast() tiene que pasar el texto por esc(msg) antes de meterlo en el HTML';
+        }
+        if ($toast === '') {
+            $fallos[] = 'app.js necesita esc()';
+        }
+
+        if (!str_contains($dash, 'window.vfToast')) {
+            $fallos[] = 'dashboard.js debe delegar el aviso en window.vfToast()';
+        }
+        if (str_contains($dash, 'app-toast text-bg-')) {
+            $fallos[] = 'dashboard.js ya no debe construir el markup del aviso (una sola implementación)';
         }
 
         assertEquals([], $fallos, implode(' | ', $fallos));
@@ -333,8 +379,12 @@ class BuilderEscapingTest
     /** Cuerpo de la función esc() en un JS dado. */
     private function escBody(string $rel): string
     {
-        $src = $this->read($rel);
-        $start = strpos($src, 'function esc(');
+        return $this->escBodyFrom($this->read($rel), 'function esc(');
+    }
+
+    private function escBodyFrom(string $src, string $signature): string
+    {
+        $start = strpos($src, $signature);
         if ($start === false) {
             return '';
         }

@@ -15,6 +15,7 @@ use App\Core\View;
 use App\Models\Field;
 use App\Models\Form;
 use App\Models\FormAccess;
+use App\Services\FormPanel;
 use App\Services\FormSettings;
 use App\Services\TemplateService;
 
@@ -219,7 +220,18 @@ class FormController
             Response::forbidden();
             return;
         }
+
+        // Sin recarga (`data-vf-async="slots"`): la misma puerta devuelve los
+        // huecos de la ficha ya pintados. Con `!Csrf::verifyRequest()` hay que
+        // tener cuidado con el orden: un token caducado en JSON es un aviso, y
+        // en HTML es la vuelta de siempre.
+        $json = Response::wantsJson();
+
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/forms/' . $id);
             return;
@@ -229,12 +241,20 @@ class FormController
         $description = trim(Request::post('description', ''));
 
         if ($title === '') {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'El título no puede estar vacío.'], 422);
+                return;
+            }
             Session::flash('error', 'El título no puede estar vacío.');
             Response::redirect('/forms/' . $id);
             return;
         }
 
         if (mb_strlen($title) > 190) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'El título no puede superar los 190 caracteres.'], 422);
+                return;
+            }
             Session::flash('error', 'El título no puede superar los 190 caracteres.');
             Response::redirect('/forms/' . $id);
             return;
@@ -255,9 +275,16 @@ class FormController
         if ($requeued) {
             Form::submitForReview($id);
         }
-        Session::flash('success', $requeued
+        $message = $requeued
             ? 'Formulario actualizado. Como exige revisión, ha vuelto a la cola.'
-            : 'Formulario actualizado.');
+            : 'Formulario actualizado.';
+
+        if ($json) {
+            FormPanel::json($id, $message);
+            return;
+        }
+
+        Session::flash('success', $message);
         Response::redirect('/forms/' . $id);
         return;
     }
@@ -417,6 +444,20 @@ class FormController
         }
 
         \App\Core\SecurityLog::record('form.delete', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
+
+        // Sin recarga, el destino es `/dashboard` en el sobre y no un 302: la
+        // ficha de un formulario borrado ya no existe, así que no hay nada que
+        // repintar — solo a dónde ir. `FormPanel::slots()` no sirve aquí por
+        // eso, y por eso lleva `$redirect` aparte.
+        if (Response::wantsJson()) {
+            Response::json([
+                'ok'       => true,
+                'message'  => 'Formulario eliminado.',
+                'redirect' => '/dashboard',
+            ]);
+            return;
+        }
+
         Session::flash('success', 'Formulario eliminado.');
         Response::redirect('/dashboard');
         return;
@@ -445,15 +486,18 @@ class FormController
         // aprobarse a uno mismo. Se rechaza con un mensaje que dice qué hacer en
         // su lugar, en vez de un 403 mudo (que el dueño no sabría interpretar).
         if (self::reviewRequired($form)) {
-            Session::flash('error', 'Este formulario exige revisión: envíalo a revisión para que lo apruebe alguien con el permiso.');
+            $error = 'Este formulario exige revisión: envíalo a revisión para que lo apruebe alguien con el permiso.';
+            if (Response::wantsJson()) {
+                Response::json(['ok' => false, 'error' => $error], 422);
+                return;
+            }
+            Session::flash('error', $error);
             Response::redirect('/forms/' . $id);
             return;
         }
 
         Form::setStatus($id, 'published');
-        Session::flash('success', 'Formulario publicado. Ya puedes compartir el enlace.');
-        Response::redirect('/forms/' . $id);
-        return;
+        self::afterStatusChange($id, 'Formulario publicado. Ya puedes compartir el enlace.');
     }
 
     public function close(int $id): void
@@ -475,9 +519,29 @@ class FormController
         }
 
         Form::setStatus($id, 'closed');
-        Session::flash('success', 'Formulario cerrado. Ya no acepta respuestas.');
+        self::afterStatusChange($id, 'Formulario cerrado. Ya no acepta respuestas.');
+    }
+
+    /**
+     * Lo que hacen las dos acciones de estado (`publish()` y `close()`) una vez
+     * que el estado está en la BD.
+     *
+     * Comparten las dos mitades porque un `redirect` a la misma ficha de la que
+     * se viene no arregla nada por sí solo: sin recarga, quien cerró el
+     * formulario se queda mirando la insignia de «Publicado», el QR de un
+     * formulario que ya no acepta respuestas y un botón de «Cerrar» que sigue
+     * ahí. El camino JSON devuelve los cuatro huecos de la ficha; el de
+     * siempre, el 302 de siempre.
+     */
+    private static function afterStatusChange(int $id, string $message): void
+    {
+        if (Response::wantsJson()) {
+            FormPanel::json($id, $message);
+            return;
+        }
+
+        Session::flash('success', $message);
         Response::redirect('/forms/' . $id);
-        return;
     }
 
     public function duplicate(int $id): void

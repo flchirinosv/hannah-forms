@@ -46,29 +46,25 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <h3 class="h6 fw-bold m-0">Detalles</h3>
-                        <span class="app-status app-status-<?= View::escape($form['status']) ?>"><?= ucfirst(View::escape($form['status'])) ?></span>
+                        <?php // Los cuatro bloques de esta tarjeta que dependen de
+                              // `forms.status` son partials (insignia, traza de
+                              // revisión, fila de acciones y tarjeta de compartir):
+                              // un POST de estado devuelve su HTML y los repinta sin
+                              // recarga. Ver `_status_badge.php`. ?>
+                        <div id="vfSlotStatusBadge">
+                            <?= View::partial('dashboard/forms/_status_badge', ['form' => $form]) ?>
+                        </div>
                     </div>
                     <p class="text-muted small mb-4"><?= View::escape($form['description'] ?: 'Sin descripción') ?></p>
 
                     <?php // F3 — Traza de la revisión. Es lo que distingue «revisado» de
                           // «nadie miró esto»: quién lo pidió y quién lo aprobó. Solo se
                           // pinta si hay algo que contar. ?>
-                    <?php $reviewTrail = $reviewTrail ?? null; ?>
-                    <?php if (!empty($reviewTrail) && ($reviewTrail['solicitado'] !== null || $reviewTrail['aprobado'] !== null)): ?>
-                        <div class="alert alert-light border small mb-4">
-                            <div class="fw-semibold mb-1"><i class="fa-solid fa-clipboard-check me-1 text-primary"></i>Revisión</div>
-                            <ul class="list-unstyled mb-0 small text-muted">
-                                <?php if ($reviewTrail['solicitado'] !== null): ?>
-                                    <li><i class="fa-regular fa-clock me-1"></i>Enviado a revisión el <?= View::escape(View::datetime($reviewTrail['solicitado'])) ?></li>
-                                <?php endif; ?>
-                                <?php if ($reviewTrail['aprobado'] !== null): ?>
-                                    <li><i class="fa-solid fa-check me-1 text-success"></i>Aprobado<?= $reviewTrail['aprobador'] !== null ? ' por ' . View::escape($reviewTrail['aprobador']) : '' ?> el <?= View::escape(View::datetime($reviewTrail['aprobado'])) ?></li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                    <?php endif; ?>
+                    <div id="vfSlotReviewTrail">
+                        <?= View::partial('dashboard/forms/_review_trail', ['reviewTrail' => $reviewTrail ?? null]) ?>
+                    </div>
 
-                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/update" id="formUpdate">
+                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/update" id="formUpdate" data-vf-async="slots">
                         <?= \App\Core\Csrf::field() ?>
                         <div class="mb-3">
                             <label for="title" class="form-label">Título</label>
@@ -80,90 +76,13 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         </div>
                     </form>
 
-                    <div class="row g-2 mb-4">
-                        <div class="col">
-                            <button type="submit" form="formUpdate" class="btn btn-outline-primary w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
-                        </div>
-                        <?php // F3 — Con revisión activa el dueño no tiene botón de publicar:
-                              // el que hay sería aprobarse a uno mismo. Se muestra el
-                              // de «enviar a revisión» en su lugar. ?>
-                        <?php $reviewRequired = $reviewRequired ?? false; ?>
-                        <?php $canReview = $canReview ?? false; ?>
-                        <?php if ($form['status'] === 'draft' && $reviewRequired): ?>
-                            <div class="col">
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" id="formSendReview">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-info w-100"><i class="fa-solid fa-paper-plane me-1"></i>Enviar a revisión</button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-                        <?php if ($form['status'] === 'in_review' && $canReview): ?>
-                            <div class="col">
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove" data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador.">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
-                                </form>
-                            </div>
-                            <div class="col">
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" id="formReturnReview" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-outline-warning w-100"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-                        <?php // Cuál es el hueco de la «acción principal» depende del estado:
-                              // con revisión activa y en borrador no la hay (el hueco lo
-                              // ocupa el envío a revisión), y en revisión sin permiso la
-                              // acción principal es un aviso, no un botón. ?>
-                        <?php $inReview = $form['status'] === 'in_review'; ?>
-                        <?php if ($inReview && !$canReview): ?>
-                            <div class="col">
-                                <div class="alert alert-info mb-0 py-2 px-3 h-100 d-flex align-items-center">
-                                    <i class="fa-solid fa-hourglass-half me-2"></i>Esperando revisión. Volverá al borrador o se publicará.
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        <?php $mainSlot = ($form['status'] === 'draft' && !$reviewRequired) || $form['status'] === 'published' || $form['status'] === 'closed'; ?>
-                        <?php // Esta columna solo se emite si hay una acción principal que
-                              // poner en ella. Antes se emitía siempre, con `col-sm-6` o
-                              // `col-sm-12` según el caso, y en los tres estados que no
-                              // tienen botón (en revisión con permiso —que ya tiene
-                              // Aprobar/Devolver—, en revisión sin permiso —que tiene
-                              // el aviso— y en borrador con revisión activa —que tiene
-                              // «Enviar a revisión») quedaba media fila en blanco.
-                              // Todas las acciones de la fila son `col`, de ancho
-                              // igual, para que la suma sea 12 diga lo que diga el
-                              // número de acciones que haya. ?>
-                        <?php if ($mainSlot): ?>
-                        <div class="col">
-                            <?php if ($form['status'] === 'draft' && !$reviewRequired): ?>
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-globe me-1"></i>Publicar</button>
-                                </form>
-                            <?php endif; ?>
-                            <?php if ($form['status'] === 'published'): ?>
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/close" id="formClose">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-warning w-100"><i class="fa-solid fa-lock me-1"></i>Cerrar</button>
-                                </form>
-                            <?php endif; ?>
-                            <?php if ($form['status'] === 'closed'): ?>
-                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-globe me-1"></i>Reabrir</button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-                        <?php if ($canDelete): ?>
-                        <div class="col">
-                            <form method="post" action="/forms/<?= (int) $form['id'] ?>/delete" id="formDelete" data-confirm="¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.">
-                                <?= \App\Core\Csrf::field() ?>
-                                <button type="submit" class="btn btn-outline-danger w-100"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
-                            </form>
-                        </div>
-                        <?php endif; ?>
+                    <div id="vfSlotActions">
+                        <?= View::partial('dashboard/forms/_status_actions', [
+                            'form'           => $form,
+                            'reviewRequired' => $reviewRequired ?? false,
+                            'canReview'      => $canReview ?? false,
+                            'canDelete'      => $canDelete ?? false,
+                        ]) ?>
                     </div>
                 </div>
             </div>
@@ -173,43 +92,15 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <h3 class="h6 fw-bold mb-3">Enlace para compartir</h3>
-                    <?php $settings = $settings ?? []; ?>
-                    <?php if ($form['status'] === 'published'): ?>
-                        <div class="input-group mb-2">
-                            <input type="text" class="form-control form-control-sm app-share-input" id="shareUrl" value="<?= View::escape($shareUrl) ?>" readonly>
-                            <button class="btn btn-outline-secondary btn-sm btn-copy-link" type="button" data-url="<?= View::escape($shareUrl) ?>" title="Copiar enlace"><i class="fa-solid fa-copy"></i></button>
-                        </div>
-                        <a href="<?= View::escape($shareUrl) ?>" target="_blank" class="btn btn-outline-info btn-sm w-100"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir en nueva pestaña</a>
-
-                        <?php // La URL se dedujo del host de la petición y salió local: el QR solo
-                              // abrirá desde esta red. Ver App\Core\PublicUrl. ?>
-                        <?php if (!empty($publicUrlIsLocal)): ?>
-                            <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small app-share-hint" role="alert">
-                                <i class="fa-solid fa-triangle-exclamation mt-1"></i>
-                                <span>Este enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define <code>APP_PUBLIC_URL</code> en el <code>.env</code>.</span>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php // P7 — QR del enlace público (SVG, sin GD). ?>
-                        <img src="/forms/<?= (int) $form['id'] ?>/qr.svg" alt="Código QR del formulario" class="img-fluid mx-auto d-block my-3 app-qr-img" width="180" height="180">
-
-                        <?php // P7 — Código de embed cuando está habilitado. ?>
-                        <?php if (!empty($settings['embed']['enabled'])): ?>
-                            <div class="mt-2">
-                                <label for="embedSnippet" class="form-label small mb-1">Código para embeber (iframe)</label>
-                                <textarea class="form-control form-control-sm" id="embedSnippet" rows="3" readonly><iframe src="<?= View::escape($embedUrl) ?>" width="100%" height="640" frameborder="0"></iframe></textarea>
-                                <a href="<?= View::escape($embedUrl) ?>" target="_blank" class="small text-decoration-none d-inline-block mt-1"><i class="fa-solid fa-up-right-from-square me-1"></i>Ver página de embed</a>
-                            </div>
-                        <?php else: ?>
-                            <p class="text-muted small mt-3 mb-0"><i class="fa-solid fa-circle-info me-1"></i>El embed está desactivado. Actívalo en la <em>Configuración</em> del constructor para obtener el código iframe.</p>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <p class="text-muted small mb-3">Publica el formulario para obtener el enlace de respuesta.</p>
-                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishSidebar">
-                            <?= \App\Core\Csrf::field() ?>
-                            <button type="submit" class="btn btn-success btn-sm w-100"><i class="fa-solid fa-globe me-1"></i>Publicar ahora</button>
-                        </form>
-                    <?php endif; ?>
+                    <div id="vfSlotShare">
+                        <?= View::partial('dashboard/forms/_share_card', [
+                            'form'             => $form,
+                            'settings'         => $settings ?? [],
+                            'shareUrl'         => $shareUrl ?? '',
+                            'embedUrl'         => $embedUrl ?? '',
+                            'publicUrlIsLocal' => $publicUrlIsLocal ?? false,
+                        ]) ?>
+                    </div>
                 </div>
             </div>
 
@@ -231,8 +122,16 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         de comportamiento siguen en <a href="/forms/<?= (int) $form['id'] ?>/builder">Configuración</a>.
                     </p>
 
+                    <?php // `data-vf-async="slots"`: el guardado va por fetch y
+                          // devuelve los huecos de la ficha, que también cambian:
+                          // guardar la agenda o el acceso de un formulario
+                          // publicado con revisión lo devuelve a la cola. Sin
+                          // esto, guardar un ajuste y que la insignia dijera
+                          // «Publicado» era una recarga de distancia.
+                          // `data-vf-shortcut` habilita Ctrl/Cmd+S con el foco
+                          // dentro del formulario (ver `app.js`). ?>
                     <form method="post" action="/forms/<?= (int) $form['id'] ?>/settings" id="formSettings"
-                          data-vf-form-id="<?= (int) $form['id'] ?>">
+                          data-vf-form-id="<?= (int) $form['id'] ?>" data-vf-async="slots" data-vf-shortcut="save">
                         <?= \App\Core\Csrf::field() ?>
 
                         <fieldset class="app-settings-group mb-3">
@@ -481,7 +380,15 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                             </div>
                         </fieldset>
 
-                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes</button>
+                        <?php // El `.spinner-border.d-none` dentro del botón es el
+                              // contrato con `app.js`: mientras el POST está en
+                              // vuelo lo quita del `d-none`. Sin él, guardar unos
+                              // ajustes tardaba lo que tardara el servidor y solo
+                              // se veía el botón apagado. ?>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes
+                            <span class="spinner-border spinner-border-sm d-none ms-1" role="status" aria-hidden="true"></span>
+                        </button>
                     </form>
                 </div>
             </div>

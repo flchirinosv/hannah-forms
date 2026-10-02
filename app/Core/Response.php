@@ -68,6 +68,27 @@ class Response
         return $url;
     }
 
+    /**
+     * ¿Este POST viene de un `fetch` de nuestra casa y espera JSON?
+     *
+     * El rótulo `X-Requested-With: XMLHttpRequest` es la señal, y es la que ya
+     * mandaba `app.js` al pedir un enlace de acceso: no hay un discriminador
+     * nuevo que aprender. Un POST normal de navegador NO lo lleva (ni puede
+     * traerlo sin CORS), y eso es lo que mantiene vivo el camino sin JavaScript
+     * —el mismo `method`/`action` de siempre, con su 302 y su flash— para una
+     * puerta que también sabe hablar JSON.
+     *
+     * Vive aquí y no en un controlador porque la pregunta la hacen cinco
+     * acciones de la ficha y la de la allowlist: si cada una reimplementa la
+     * comparación, un día una compara `HTTP_X_REQUESTED_WITH` con `'fetch'` y
+     * esa puerta responde HTML a un `fetch` (que se queda pensando que salió
+     * bien con un 200).
+     */
+    public static function wantsJson(): bool
+    {
+        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+    }
+
     public static function json(array $data, int $status = 200): void
     {
         self::logHalt(['type' => 'json', 'status' => $status]);

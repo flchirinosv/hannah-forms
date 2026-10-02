@@ -279,20 +279,28 @@ $roles = $roles ?? [];
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <span class="app-status <?= (int) $user['is_active'] === 1 ? 'app-status-published' : 'app-status-closed' ?>">
-                                    <?= (int) $user['is_active'] === 1 ? 'Activo' : 'Inactivo' ?>
+                                <?php // Dos huecos por fila para el toggle sin recarga: la
+                                      // insignia y el botón son lo único que cambia con
+                                      // `is_active`, y son partials porque el estado
+                                      // objetivo (`active`) puede no ser el inverso del
+                                      // que había —un reintento, un doble clic— y sin
+                                      // repintarlos el panel seguía diciendo «Activo» a
+                                      // un usuario recién desactivado. El resto de la
+                                      // fila (rol, grupos, alta) no depende de esto. ?>
+                                <span id="vfUserStatus<?= $uid ?>">
+                                    <?= View::partial('admin/_user_status', ['user' => $user]) ?>
                                 </span>
                             </td>
                             <td class="small text-muted"><?= View::date($user['created_at']) ?></td>
                             <td class="text-end">
                                 <?php if (!$isSelf): ?>
-                                <form method="post" action="/admin/users/toggle" class="d-inline" data-confirm="¿Cambiar el estado de este usuario?">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <input type="hidden" name="user_id" value="<?= $uid ?>">
-                                    <button type="submit" class="btn btn-sm <?= (int) $user['is_active'] === 1 ? 'btn-outline-warning' : 'btn-outline-success' ?>" title="<?= (int) $user['is_active'] === 1 ? 'Desactivar' : 'Activar' ?>" aria-label="<?= (int) $user['is_active'] === 1 ? 'Desactivar' : 'Activar' ?> a <?= View::escape($user['name']) ?>">
-                                        <i class="fa-solid <?= (int) $user['is_active'] === 1 ? 'fa-ban' : 'fa-check' ?>"></i>
-                                    </button>
-                                </form>
+                                    <?php // El envoltorio ES el hueco (`vfUserToggle<uid>`)
+                                          // y el partial pinta el `<form>` de dentro: el JS
+                                          // sustituye el `innerHTML` de esta caja, no el del
+                                          // formulario. ?>
+                                    <span id="vfUserToggle<?= $uid ?>" class="d-inline">
+                                        <?= View::partial('admin/_user_toggle', ['user' => $user, 'uid' => $uid]) ?>
+                                    </span>
                                 <?php endif; ?>
                             </td>
                         </tr>

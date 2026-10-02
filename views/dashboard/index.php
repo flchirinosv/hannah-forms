@@ -115,7 +115,7 @@ $relativeTs = static function (string $timestamp): string {
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between mb-2">
                             <span class="app-status app-status-<?= View::escape($form['status']) ?>">
-                                <?= $form['status'] === 'in_review' ? 'En revisión' : ucfirst(View::escape($form['status'])) ?>
+                                <?= View::escape(\App\Models\Form::statusLabel((string) $form['status'])) ?>
                             </span>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="app-sub-count small text-muted d-none d-sm-inline">

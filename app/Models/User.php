@@ -167,9 +167,32 @@ class User
         return $value === null ? null : (string) $value;
     }
 
-    public static function toggleActive(int $id): void
+    /**
+     * Deja al usuario en el estado pedido. Devuelve si hubo cambio.
+     *
+     * Es «estado objetivo» y no «invertir» porque es lo que necesita un botón
+     * que se manda por fetch: dos clics sobre «Desactivar» (o un reintento
+     * después de un tiempo de espera) con un POST de «al revés» se activan y
+     * desactivan la misma cuenta y el panel dice lo contrario de lo que pasó.
+     * Con `1 - is_active` no hay forma de decir «déjalo como está»; aquí sí, y
+     * por eso el `WHERE is_active <> :igual` (donde `:igual` es el ESTADO
+     * PEDIDO, no el contrario) devuelve 0 filas cuando ya estaba en ese estado:
+     * eso es lo que hace idempotente el botón.
+     *
+     * @return bool `true` si la fila cambió
+     */
+    public static function setActive(int $id, bool $active): bool
     {
-        self::db()->execute('UPDATE users SET is_active = 1 - is_active WHERE id = :id', ['id' => $id]);
+        // Dos marcadores con el MISMO valor y no uno repetido: `Database` va
+        // con ATTR_EMULATE_PREPARES = false, donde reutilizar `:nuevo` dos
+        // veces lanza HY093. Y `execute()` devuelve YA el rowCount (no un
+        // PDOStatement).
+        $valor = $active ? 1 : 0;
+
+        return self::db()->execute(
+            'UPDATE users SET is_active = :nuevo WHERE id = :id AND is_active <> :igual',
+            ['nuevo' => $valor, 'id' => $id, 'igual' => $valor]
+        ) > 0;
     }
 
     public static function delete(int $id): void

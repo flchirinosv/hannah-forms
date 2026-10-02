@@ -27,7 +27,7 @@ use App\Core\View;
                 <div class="card border-0 shadow-sm app-form-card h-100">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between mb-2">
-                            <span class="app-status app-status-<?= View::escape($form['status']) ?>"><?= ucfirst(View::escape($form['status'])) ?></span>
+                            <span class="app-status app-status-<?= View::escape($form['status']) ?>"><?= View::escape(\App\Models\Form::statusLabel((string) $form['status'])) ?></span>
                             <span class="app-sub-count small text-muted"><i class="fa-solid fa-file-lines me-1"></i><?= (int) $form['submissions_count'] ?></span>
                         </div>
                         <h4 class="h6 fw-bold mb-1"><?= View::escape($form['title']) ?></h4>

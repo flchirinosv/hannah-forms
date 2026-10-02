@@ -21,7 +21,14 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">
 </head>
-<body>
+<?php // `data-csrf` es el token global del panel: `app.js` lo lee para mandarlo
+      // en `X-CSRF-Token` en los POST que se hacen por fetch SIN formulario
+      // (un `FormData` de un formulario ya lleva su `_token`). Vive en `<body>`
+      // y no en cada tarjeta porque el token es de la SESIÓN, no de la vista:
+      // duplicarlo por pantalla era una forma de que se quedara viejo en un
+      // trozo y pareciera un fallo de CSRF que no existe. Las páginas públicas
+      // del fill no pasan por este layout (`View::render(..., null)`). ?>
+<body data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>">
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top app-navbar">
     <div class="container-fluid px-4">
         <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="/">

@@ -240,6 +240,26 @@ class Form
         return $newId;
     }
 
+    /**
+     * El texto de la insignia, con el guion bajo RAIDO y sin inventar.
+     *
+     * Estaba en tres vistas como `ucfirst($form['status'])` y eso escribe
+     * «In_review» (con guion bajo) en el listado y en la ficha, que es lo que
+     * se ve de un formulario en cola. Vive aquí para que las tres no vuelvan a
+     * separarse: la clase CSS sigue siendo `app-status-<status>` sin traducir
+     * (la que le pone el color), y el texto es de las vistas.
+     */
+    public static function statusLabel(string $status): string
+    {
+        return match ($status) {
+            'draft'     => 'Borrador',
+            'in_review' => 'En revisión',
+            'published' => 'Publicado',
+            'closed'    => 'Cerrado',
+            default     => ucfirst($status),
+        };
+    }
+
     public static function setStatus(int $id, string $status): void
     {
         self::db()->execute('UPDATE forms SET status = :status WHERE id = :id', ['id' => $id, 'status' => $status]);

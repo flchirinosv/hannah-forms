@@ -138,6 +138,22 @@ class ResponsesController
             error_log('[ResponsesController] purgePaths: ' . $e->getMessage());
         }
 
+        // Sin recarga: el JS quita la fila (`data-vf-row`) y baja el contador
+        // del encabezado. `count` es el total que queda, y a cero el JS
+        // recarga (ver `app.js`): una tabla sin filas con su «aún no tiene
+        // respuestas» al lado mentiría, y recargar es el caso raro.
+        //
+        // El flash NO se deja puesto en este camino: se vería dos veces, en el
+        // aviso y otra vez en la siguiente página que lo leyera.
+        if (Response::wantsJson()) {
+            Response::json([
+                'ok'      => true,
+                'message' => 'Respuesta eliminada.',
+                'count'   => Submission::countByFiltered((int) $form['id']),
+            ]);
+            return;
+        }
+
         Session::flash('success', 'Respuesta eliminada.');
         Response::redirect('/forms/' . $id . '/responses');
         return;

@@ -82,36 +82,14 @@
         render();
     }
 
-    /* ---------- toast ---------- */
+    /* ---------- toast ----------
+     * Delegado en `window.vfToast` (app.js). El aviso flotante y sus clases son
+     * globales, y la página de respuestas —que borra filas por fetch— también
+     * los usa sin cargar este script: mantener dos copias del markup era tener
+     * dos avisos que no se parecían. Aquí queda solo el nombre corto que usan
+     * las tres llamadas de más abajo. */
     function toast(msg, type) {
-        let wrap = document.getElementById('toastWrap');
-        if (!wrap) {
-            wrap = document.createElement('div');
-            wrap.id = 'toastWrap';
-            wrap.className = 'app-toast-wrap';
-            document.body.appendChild(wrap);
-        }
-        const t = document.createElement('div');
-        t.className = 'app-toast text-bg-' + (type || 'success') + ' shadow';
-        t.innerHTML = '<i class="fa-solid ' + (type === 'danger' ? 'fa-circle-xmark' : 'fa-circle-check') + ' me-2"></i>'
-            + esc(msg);
-        wrap.appendChild(t);
-        setTimeout(() => t.classList.add('show'), 20);
-        setTimeout(() => {
-            t.classList.remove('show');
-            setTimeout(() => t.remove(), 300);
-        }, 2400);
-    }
-
-    // Escapa & < > y las comillas: el resultado es válido tanto en texto como
-    // dentro de un atributo entre comillas (mismo criterio que builder.js).
-    function esc(str) {
-        return String(str == null ? '' : str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        window.vfToast(msg, type);
     }
 
     function copyLink(url) {

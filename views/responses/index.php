@@ -39,7 +39,8 @@ if ($window !== []) {
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-3">
-                <h3 class="h6 fw-bold m-0">Respuestas <?= $total > 0 ? '(' . $total . ')' : '' ?></h3>
+                        <h3 class="h6 fw-bold m-0">Respuestas <span data-vf-role="response-count"><?= $total > 0 ? '(' . $total . ')' : '' ?></span></h3>
+
                 <span class="text-muted small"><?= (int) $pg['per_page'] ?> por página</span>
             </div>
 
@@ -65,13 +66,20 @@ if ($window !== []) {
                             foreach ($pg['items'] as $r):
                                 $num++;
                             ?>
-                            <tr>
+                            <?php // `data-vf-row` es lo que el JS quita cuando el borrado va
+                                  // bien, y `data-vf-async="remove"` lo que decide que el
+                                  // POST vaya por fetch. El contador del encabezado es
+                                  // `[data-vf-role="response-count"]`: el `count` de la
+                                  // respuesta lo actualiza, porque borrar una respuesta y
+                                  // recargar la página entera era lo de antes. ?>
+                            <tr data-vf-row>
                                 <td class="text-muted"><?= $num ?></td>
                                 <td><?= View::datetime($r['finished_at']) ?></td>
                                 <td class="small"><?= $r['ip_address'] !== null && $r['ip_address'] !== '' ? View::escape($r['ip_address']) : '—' ?></td>
                                 <td class="text-end">
                                     <a href="/forms/<?= (int) $form['id'] ?>/responses/<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-eye me-1"></i>Ver</a>
-                                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/responses/<?= (int) $r['id'] ?>/delete" data-confirm="¿Eliminar esta respuesta? Esta acción no se puede deshacer." class="d-inline">
+                                    <form method="post" action="/forms/<?= (int) $form['id'] ?>/responses/<?= (int) $r['id'] ?>/delete" data-confirm="¿Eliminar esta respuesta? Esta acción no se puede deshacer."
+                                           data-confirm-ok="Borrar" class="d-inline" data-vf-async="remove">
                                         <?= \App\Core\Csrf::field() ?>
                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash me-1"></i>Borrar</button>
                                     </form>
