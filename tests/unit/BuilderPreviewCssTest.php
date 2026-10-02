@@ -62,6 +62,12 @@ class BuilderPreviewCssTest
         'scale-preview'    => 'el contenedor; su hueco es la utilidad `gap-2` del markup',
         'star-preview'     => 'el contenedor; su hueco es la utilidad `gap-1` del markup',
         'vf-ranking-list'  => 'el contenedor del ranking; la maqueta es `d-flex flex-column`',
+        // El `<span>` que envuelve el icono de papel y la palabra del botón. Lo
+        // emite el markup del fill (`views/fill/show.php`) y no tiene regla propia:
+        // mientras no se envía es un inline sin maquetar, y durante el envío lo
+        // estira `.vf-submit.vf-submitting span`. Está aquí porque el preview en
+        // vivo copia ese markup y el archivo audita lo que el JS emite.
+        'vf-submit-label'  => 'el `<span>` del botón de enviar; durante el envío lo estira `.vf-submit.vf-submitting span`',
     ];
 
     /**
@@ -682,24 +688,188 @@ class BuilderPreviewCssTest
      *
      * Se fija en claro y no «el que toque»: el degradado siempre acaba en
      * `#7c3aed`, así que claro es el único color que se lee en toda la barra. El
-     * icono de papel inherits `currentColor` y no necesita regla propia.
+     * icono de papel hereda `currentColor` y no necesita regla propia.
+     *
+     * El cuerpo de la regla se lee con `bloqueCss()` y no con `sinComentarios()`,
+     * y no es una manía de estilo. Este test estaba escrito con el segundo, que
+     * borra las líneas que empiezan por `//`, que es justo lo que había en medio
+     * de esta regla: pasaba porque el helper tiraba lo que tenía que comprobar. Y
+     * un comentario de línea dentro de un bloque de declaraciones no es CSS —el
+     * parser lo descarta y se come la declaración de al lado—, así que la última
+     * aserción ata que no vuelva a colarse.
      */
     public function testElBotonDeEnviarTieneElTextoEnClaro(): void
     {
-        // Sin comentarios: un `/* … */` de cinco líneas puede empujar la
-        // declaración fuera de la ventana y hacer creer que no está.
-        $css = self::sinComentarios(self::css());
-        $ini = strpos($css, '.vf-submit {');
-        assertTrue($ini !== false, 'existe la regla de .vf-submit');
-        $bloque = (string) substr($css, (int) $ini, 600);
+        $bloque = self::bloqueCss('.vf-submit');
+        assertTrue($bloque !== null, 'existe la regla de .vf-submit');
+        $cuerpo = (string) $bloque;
+
         assertTrue(
-            preg_match('/color:\s*(#fff|#ffffff|white|rgba?\([^)]*255)/i', $bloque) === 1,
+            preg_match('/(?:^|;|\s)color:\s*(#fff|#ffffff|white|rgba?\([^)]*255)/i', $cuerpo) === 1,
             '.vf-submit declara un texto en claro: sin clase `btn` el color sería el del navegador (negro) sobre el degradado'
         );
         assertTrue(
-            str_contains($bloque, 'linear-gradient') && str_contains($bloque, '#7c3aed'),
+            str_contains($cuerpo, 'linear-gradient') && str_contains($cuerpo, '#7c3aed'),
             'y el degradado acaba en morado oscuro, que es el fondo que tiene que sostener ese texto'
         );
+        assertTrue(
+            preg_match('/(?:^|;|\s|\})\/\//m', $cuerpo) !== 1,
+            'dentro de .vf-submit no hay comentarios de línea: no son CSS y se comen la declaración siguiente (van con /* … */)'
+        );
+    }
+
+    /**
+     * El botón que se ve en el constructor tiene que ser el que se publica.
+     *
+     * El preview en vivo pintaba el suyo: `<button class="btn btn-lg
+     * app-btn-primary">`. `app-btn-primary` aporta alto, radio y elevación pero NO
+     * color —está escrito así a propósito, para que el color lo ponga el destino—,
+     * así que salía un botón claro con el texto del navegador encima de un
+     * degradado morado: negro sobre morado. Y como tampoco era `.vf-submit`, la
+     * regla que lo arregla no le llegaba nunca. Dos pantallas con el mismo
+     * formulario y dos botones distintos, que es como este fallo pasa desapercibido
+     * en el constructor y salta en el formulario final.
+     */
+    public function testElPreviewEnVivoUsaElBotonDeEnviarDelFill(): void
+    {
+        $js = self::sinComentarios(self::js());
+        $ini = strpos($js, 'function previewBody(');
+        assertTrue($ini !== false, 'sigue existiendo previewBody() en builder.js');
+        $fin = strpos($js, 'function openLivePreview(', (int) $ini);
+        assertTrue($fin !== false, 'previewBody() sigue antes de openLivePreview()');
+        $cuerpo = (string) substr($js, (int) $ini, (int) $fin - (int) $ini);
+
+        foreach (['vf-submit-row', 'class="vf-submit"', 'vf-submit-label', 'fa-paper-plane'] as $pieza) {
+            assertTrue(
+                str_contains($cuerpo, $pieza),
+                'el preview en vivo pinta el botón del fill (`' . $pieza . '`), no el suyo'
+            );
+        }
+        foreach (['btn btn-lg', 'app-btn-primary'] as $suyo) {
+            assertTrue(
+                !str_contains($cuerpo, $suyo),
+                'el preview en vivo ya no pinta su propio botón (`' . $suyo . '`): `app-btn-primary` pone fondo y NO color, así que el texto salía negro'
+            );
+        }
+
+        // Y que el otro lado siga siendo el del fill, para que el par no se pueda
+        // mover de uno en uno: el mismo contrato que las cabeceras del salto.
+        $fill = self::sinComentarios((string) file_get_contents(self::root() . '/views/fill/show.php'));
+        foreach (['class="vf-submit"', 'vf-submit-label', 'fa-paper-plane'] as $pieza) {
+            assertTrue(
+                str_contains($fill, $pieza),
+                'views/fill/show.php sigue emitiendo `' . $pieza . '` en el botón de enviar'
+            );
+        }
+    }
+
+    /**
+     * El modal de «Agregar elemento» tiene que caber en un móvil.
+     *
+     * En un teléfono se veía el fondo oscurecido sin que apareciera el diálogo, y
+     * no había forma de cerrarlo salvo recargar. La causa eran tres cosas a la vez,
+     * y por eso el test ata las tres y no solo una:
+     *
+     *   - la rejilla medía `minmax(9.5rem, 1fr)` = 152px, y el cuerpo del modal en
+     *     un móvil de 360px mide ~296px: cabía UNA columna, y 21 tipos en columna
+     *     son ~1700px de alto;
+     *   - `.modal-dialog-scrollable` mide en `100%` de un elemento `position:
+     *     fixed`, que es el viewport GRANDE (con la barra de direcciones
+     *     desplegada), no el que se está viendo;
+     *   - `.modal-dialog-centered` centra con `align-items: center`, así que el
+     *     desborde cae por ARRIBA, y arriba no scrollea nadie: el `overflow-y`
+     *     está en `.modal-body`, dentro del diálogo.
+     *
+     * De ahí los tres síntomas que se reportaron: no se ve, no se cierra (se toca
+     * el diálogo y no el fondo del modal) y «a veces funciona» según esté la barra
+     * desplegada. Los otros dos modales del constructor no se rompían porque usan
+     * las mismas clases de diálogo pero no tienen una rejilla de 21 baldosas.
+     *
+     * El tope se ata a `dvh` y no solo a `vh` porque `dvh` es el viewport real, y
+     * era justo el `100%` de Bootstrap lo que no servía para nada.
+     */
+    public function testElDialogoDeTiposNoSaleDeLaPantallaEnMovil(): void
+    {
+        $movil = self::bloquesMedia('(max-width: 575.98px)');
+        assertTrue($movil !== '', 'app.css declara un bloque @media (max-width: 575.98px)');
+
+        // El mínimo de la rejilla, tal y como lo ve cada pantalla. La regla de
+        // escritorio se queda en 9.5rem a propósito: en un `modal-lg` de 800px
+        // salen tres columnas cómodas y en un móvil de 360px NO sale ninguna
+        // completa, que es justo lo que hay que tapar con una regla del móvil.
+        preg_match('/\.app-type-grid\s*\{[^}]*minmax\(([0-9.]+)rem/', self::css(), $m);
+        assertTrue(isset($m[1]), 'app.css declara la rejilla de tipos con su ancho mínimo');
+        $escritorio = (float) $m[1];
+
+        // El móvil tiene que declarar la SUYA. Es lo que ata el arreglo: si el
+        // mínimo sube a 8.5rem o más, en un móvil de 360px vuelve a caber una
+        // sola columna (el cuerpo del modal mide ~296px) y los 21 tipos se salen.
+        preg_match('/\.app-type-grid\s*\{[^}]*minmax\(([0-9.]+)rem/', $movil, $mm);
+        assertTrue(
+            isset($mm[1]),
+            'el móvil declara su propia rejilla de tipos: sin ella manda la de escritorio y solo cabía una columna'
+        );
+        assertTrue(
+            (float) $mm[1] <= 8.0,
+            'y su mínimo no pasa de 8rem (pide ' . $mm[1] . 'rem): por encima, en un móvil de 360px cabe una sola columna y los 21 tipos no entran'
+        );
+        assertTrue(
+            (float) $mm[1] < $escritorio,
+            'y es más estrecha que la de escritorio (' . $escritorio . 'rem), que en un modal de 800px sí sale en tres columnas'
+        );
+        assertTrue(
+            preg_match('/#addFieldModal[^{]*\.modal-dialog\s*\{[^}]*align-items:\s*flex-start/', $movil) === 1,
+            'el diálogo se ancla arriba en móvil: centrado, el desborde cae por arriba, donde no scrollea nadie'
+        );
+        assertTrue(
+            preg_match('/#addFieldModal[^{]*\.modal-content\s*\{[^}]*max-height:[^;]*dvh/', $movil) === 1,
+            'y su alto se topa con `dvh`, que es el viewport que se ve: el `100%` de Bootstrap es el grande, con la barra desplegada'
+        );
+    }
+
+/**
+     * El cuerpo de todos los bloques `@media` de una condición, concatenados.
+     *
+     * Hace falta contar llaves y no recortar hasta el siguiente `@media`, porque
+     * un bloque puede anidar otro (`prefers-reduced-motion` dentro de un
+     * `max-width`) y el corte por texto se llevaría por delante reglas que no son
+     * suyas. Los comentarios se quitan antes de contar porque una llave escrita
+     * dentro de una explicación descuadra el conteo, y el bloque se corta en el
+     * sitio que no toca: el test passaría por la mitad de las reglas.
+     */
+    private static function bloquesMedia(string $condicion): string
+    {
+        // Sin comentarios: una llave escrita dentro de una explicación descoloca
+        // el conteo y el bloque se corta en el sitio que no toca.
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', self::css());
+        $salida = '';
+        $offset = 0;
+        $prefijo = '@media ' . $condicion;
+        while (($ini = strpos($css, $prefijo, $offset)) !== false) {
+            $apertura = strpos($css, '{', $ini);
+            if ($apertura === false) {
+                break;
+            }
+            $nivel = 0;
+            $cierre = null;
+            for ($i = $apertura, $n = strlen($css); $i < $n; $i++) {
+                if ($css[$i] === '{') {
+                    $nivel++;
+                } elseif ($css[$i] === '}') {
+                    $nivel--;
+                    if ($nivel === 0) {
+                        $cierre = $i;
+                        break;
+                    }
+                }
+            }
+            if ($cierre === null) {
+                break;
+            }
+            $salida .= "\n" . substr($css, $apertura + 1, $cierre - $apertura - 1);
+            $offset = $cierre + 1;
+        }
+        return $salida;
     }
 
     private static function esDeLaApp(string $clase): bool

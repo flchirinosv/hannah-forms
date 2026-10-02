@@ -1377,6 +1377,24 @@
         });
         // Al cerrar sin elegir tipo se limpia el destino pendiente.
         el.addFieldModal.addEventListener('hidden.bs.modal', () => { pendingAddTarget = null; });
+
+        // Medición del diálogo al abrirlo. NO arregla nada: solo anota el
+        // rectángulo cuando el diálogo se queda medio fuera de la pantalla, que
+        // es el síntoma que se reportó en móvil («se oscurece la pantalla y el
+        // modal no aparece»). El arreglo es CSS (rejilla de dos columnas, tope
+        // en `dvh` y anclaje arriba, en el bloque `@media` de `app.css`); esto
+        // está para que, si vuelve a pasar, haya números en la consola en vez
+        // de otra suposición. Con `top >= 0` y `height > 0` no dice nada, así que
+        // un constructor que va bien no llena la consola.
+        el.addFieldModal.addEventListener('show.bs.modal', () => {
+            const dialogo = el.addFieldModal.querySelector('.modal-dialog');
+            if (!dialogo) return;
+            const r = dialogo.getBoundingClientRect();
+            if (r.top < 0 || r.height < 120) {
+                console.warn('[vanillaforms] el diálogo de «Agregar elemento» no cabe en la pantalla',
+                    { top: Math.round(r.top), alto: Math.round(r.height), vh: window.innerHeight, ancho: Math.round(r.width) });
+            }
+        });
     }
 
     function addFieldByType(type, parentUid, atRoot, atIndex) {
@@ -1648,7 +1666,22 @@
             html += previewCard(f, null);
         });
 
-        html += '</div><div class="d-grid mt-4"><button class="btn btn-lg app-btn-primary">Enviar</button></div>';
+        // El botón de enviar es el markup REAL de `views/fill/show.php`
+        // (`.vf-submit-row` + `.vf-submit` + `.vf-submit-label`). Antes la
+        // preview pintaba su propio `<button class="btn btn-lg
+        // app-btn-primary">`: `app-btn-primary` pone fondo y NO pone color, y
+        // al no ser `.vf-submit` tampoco heredaba su texto en claro, así que en
+        // el constructor salía un botón con el texto del navegador (negro) que
+        // además no se parecía en nada al que se publica. `type="button"`
+        // porque en la preview no hay nada que enviar y el lienzo sí tiene
+        // formularios reales cerca. El `id` del fill tampoco se copia: en la
+        // página vive un `#vfSubmit` y duplicarlo aquí sería HTML inválido.
+        html += '</div>' +
+            '<div class="vf-submit-row flip-in">' +
+            '<button type="button" class="vf-submit">' +
+            '<span class="vf-submit-label"><i class="fa-solid fa-paper-plane me-2"></i>Enviar</span>' +
+            '</button>' +
+            '</div>';
         return html;
     }
 

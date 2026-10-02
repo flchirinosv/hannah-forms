@@ -1223,11 +1223,15 @@ body {
     box-shadow: 0 10px 28px rgba(99,102,241,.4);
     background: linear-gradient(90deg, var(--vf-primary), #7c3aed);
     border: 0;
-    // El botón NO lleva la clase `btn` de Bootstrap, y sin ella el color del
-    // texto es el del navegador: negro sobre un degradado morado, que es
-    // ilegible y ni se nota en una captura hasta que se lee. El degradado acaba
-    // siempre en `#7c3aed`, así que el texto va en claro; el icono hereda el
-    // mismo color por `currentColor`.
+    /* El botón NO lleva la clase `btn` de Bootstrap, y sin ella el color del
+       texto es el del navegador: negro sobre un degradado morado, que es
+       ilegible y ni se nota en una captura hasta que se lee. El degradado acaba
+       siempre en `#7c3aed`, así que el texto va en claro; el icono hereda el
+       mismo color por `currentColor`.
+
+       El comentario va de bloque y no de línea a propósito: dentro de un
+       bloque de declaraciones los comentarios de línea no son CSS, y la
+       declaración de abajo se lo comería el que está justo encima. */
     color: #fff;
     transition: transform .15s ease, box-shadow .15s ease;
 }
@@ -1514,6 +1518,42 @@ body {
    visibles dentro de una sección (y al pulsarlos se insertaban en la raíz sin
    avisar). Si se cambia esta regla, cambiar también openAddFieldModal(). */
 [data-vf-structural-hidden] { display: none; }
+
+/* ---- Móvil: el modal de tipos tiene que caber en la pantalla ----
+   Síntoma reportado (móvil, constructor): al pulsar «Agregar» se oscurecía la
+   pantalla pero el diálogo NO aparecía, y no había forma de cerrarlo salvo
+   recargar. Los otros dos modales del constructor —configuración del formulario
+   y del elemento— sí abrían, y usan EXACTAMENTE las mismas clases de diálogo
+   (`modal-dialog-centered modal-lg modal-dialog-scrollable`). La diferencia es
+   que este trae 21 baldosas en una rejilla. Lo que pasaba, por partes:
+
+   1. `minmax(9.5rem, 1fr)` son 152px y en un móvil de 360px el cuerpo del
+      modal mide ~296px: cabía UNA columna. 21 tipos en columna son ~1700px.
+   2. `.modal-dialog-scrollable` mide `calc(100% - 1rem)` sobre un `.modal` que
+      es `position: fixed; height: 100%`, y ese 100% es el viewport GRANDE (con
+      la barra de direcciones desplegada), no el que se está viendo.
+   3. `.modal-dialog-centered` es `display: flex; align-items: center`: al
+      pasarse de alto, el desborde cae por ARRIBA, y arriba no hay nada que
+      scrollear, porque el `overflow-y: auto` está en `.modal-body`, dentro del
+      diálogo. De ahí los tres síntomas: no se veía, no se cerraba (se tocaba el
+      diálogo, no el fondo) y dependía de si la barra estaba desplegada.
+
+   El arreglo quita las tres causas, no una: dos columnas en móvil (con eso ya
+   no desborda), el tope del alto en `dvh` —el viewport REAL, que sigue a la
+   barra— y el anclaje arriba, para que si aun así sobrara el desborde cayera
+   abajo, que es donde el cuerpo del diálogo sabe scrollear. El `100vh` va
+   declarado antes a propósito: donde no exista `dvh` la segunda declaración se
+   descarta y gana la primera. */
+@media (max-width: 575.98px) {
+    .app-type-grid {
+        grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+    }
+    #addFieldModal .modal-dialog { align-items: flex-start; }
+    #addFieldModal .modal-content {
+        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+}
 
 /* ---- Botón «+» de inserción ----
    F1 (2026-09-27): el «+» es HIJO de la tarjeta que precede y cuelga de su

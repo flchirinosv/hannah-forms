@@ -454,6 +454,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
         </div>
     </div>
 </div>
+</div>
 
 <div class="modal fade" id="addFieldModal" tabindex="-1" aria-hidden="true" aria-labelledby="addFieldTitle">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
