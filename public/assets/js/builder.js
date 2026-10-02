@@ -1610,12 +1610,17 @@
                 const desc = String(f.help_text || '').trim();
                 const sinCabecera = f.show_header === false || (titulo === '' && desc === '');
                 if (!sinCabecera) {
+                    // Título primero y icono al final, igual que en el fill: la
+                    // fila reparte el sobrante con `space-between` y el icono cae
+                    // a la derecha sin que ninguno de los dos tenga que empujarse
+                    // con un margen. Mismo criterio que el encabezado de sección,
+                    // para que un paso y una sección se lean igual.
                     html += '<div class="vf-page-head">' +
-                        '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>' +
                         '<div>' +
                             (titulo ? '<h2 class="vf-page-title h5 fw-bold mb-0">' + esc(titulo) + '</h2>' : '') +
                             (desc ? '<p class="vf-page-desc text-muted mt-1 mb-0">' + esc(desc) + '</p>' : '') +
                         '</div>' +
+                        '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>' +
                         '</div>';
                 }
                 html += '<div class="vf-page-break"><span class="text-muted small">— siguiente paso —</span></div>';
@@ -2354,5 +2359,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-10-01b (F0.3+cabecera: el salto de página vuelve a nacer con «Página N»; el preview decide la cabecera igual que el fill; y «dato personal» y «mostrar cabecera» ya disparan applySettings en change)');
+    console.log('[builder] v2026-10-01c (F0.3+cabecera: el salto de página nace con «Página N», su icono va a la derecha como el de la sección, y el preview decide la cabecera igual que el fill)');
 })();

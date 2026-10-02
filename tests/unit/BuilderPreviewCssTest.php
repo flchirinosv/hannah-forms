@@ -622,6 +622,35 @@ class BuilderPreviewCssTest
             'y solo pinta la cabecera si hay algo que decir'
         );
 
+        // Y el icono va al final en las DOS superficies, que es lo que decide su
+        // lado con `space-between`: título primero, icono después, en el fill y
+        // en el preview. Con el icono primero, el relleno sobrante lo empujaba a
+        // la izquierda y el constructor se veía distinto del publicado.
+        $fill = (string) file_get_contents(self::root() . '/views/fill/show.php');
+        $ini = strpos($fill, 'class="vf-page-head"');
+        assertTrue($ini !== false, 'el fill sigue montando la cabecera del paso');
+        // 1200 y no 500 porque entre el `header` y el icono hay un comentario que
+        // explica el orden; con una ventana justa la aserción miraba al vacío y
+        // `strpos` devolvía `false`, que es menor que todo y pasaba de largo.
+        $fila = (string) substr($fill, (int) $ini, 1200);
+        assertTrue(
+            strpos($fila, 'vf-page-title') < strpos($fila, 'vf-page-icon'),
+            'en el fill el título va antes que el icono'
+        );
+        assertTrue(
+            strpos($fila, 'vf-page-icon') < strpos($fila, 'vf-page-desc') + 400,
+            'y el icono cierra la cabecera'
+        );
+        $fila = (string) substr($js, (int) strpos($js, "class=\"vf-page-head\""), 500);
+        assertTrue(
+            strpos($fila, 'vf-page-title') < strpos($fila, 'vf-page-icon'),
+            'y en el preview también, que es de donde viene la mitad de las diferencias'
+        );
+        assertTrue(
+            preg_match('/\.vf-page-head\s*\{[^}]*justify-content:\s*space-between/', self::css()) === 1,
+            'la fila del paso reparte el sobrante, igual que la de la sección'
+        );
+
         // El aviso del panel: el interruptor no inventa contenido, así que sin
         // título ni descripción tiene que explicar por qué no se ve nada, en vez
         // de dejar que parezca roto.
@@ -641,6 +670,35 @@ class BuilderPreviewCssTest
         assertTrue(
             str_contains($js, "el.fieldPageHeader.addEventListener('change', updatePageHeaderHint)"),
             'y al mover el interruptor'
+        );
+    }
+
+    /**
+     * El botón de enviar lleva su propio color de texto porque NO lleva la clase
+     * `btn` de Bootstrap: sin ella el color es el del navegador, que es negro
+     * sobre un degradado que acaba en `#7c3aed`. Se leyó como un detalle, pero es
+     * el texto de la acción principal del formulario y el degradado es el fondo
+     * más oscuro de toda la página.
+     *
+     * Se fija en claro y no «el que toque»: el degradado siempre acaba en
+     * `#7c3aed`, así que claro es el único color que se lee en toda la barra. El
+     * icono de papel inherits `currentColor` y no necesita regla propia.
+     */
+    public function testElBotonDeEnviarTieneElTextoEnClaro(): void
+    {
+        // Sin comentarios: un `/* … */` de cinco líneas puede empujar la
+        // declaración fuera de la ventana y hacer creer que no está.
+        $css = self::sinComentarios(self::css());
+        $ini = strpos($css, '.vf-submit {');
+        assertTrue($ini !== false, 'existe la regla de .vf-submit');
+        $bloque = (string) substr($css, (int) $ini, 600);
+        assertTrue(
+            preg_match('/color:\s*(#fff|#ffffff|white|rgba?\([^)]*255)/i', $bloque) === 1,
+            '.vf-submit declara un texto en claro: sin clase `btn` el color sería el del navegador (negro) sobre el degradado'
+        );
+        assertTrue(
+            str_contains($bloque, 'linear-gradient') && str_contains($bloque, '#7c3aed'),
+            'y el degradado acaba en morado oscuro, que es el fondo que tiene que sostener ese texto'
         );
     }
 

@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada en el commit `751602c`).
 
-No sustituye a la suite automática (`php scripts/test.php`, 729 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 730 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -457,6 +457,9 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S21 | Constructor → agregar un salto de página | La tarjeta dice «Página 1», «Página 2»… según cuántas haya, y no «Página» a secas | M | |
 | S22 | Publicar con dos saltos recién creados y el interruptor encendido | Cada paso abre con su icono y su cabecera «Página 1» / «Página 2»; al borrar el título de un paso y guardar, ese paso deja de pintar cabecera y el panel avisa | M | |
 | S23 | Formulario publicado con una sección | El icono de la sección queda pegado a su título y a la derecha de la fila, sin el hueco de antes; en el constructor se ve igual | M | |
+| S24 | Formulario publicado con un salto de página con título | El icono del paso queda a la derecha de la fila, como el de la sección, no a la izquierda | M | |
+| S25 | Publicar y pulsar «Enviar» | El texto del botón y el icono se leen en blanco sobre el degradado, no en negro | M | |
+| S26 | «Diseño» → poner un color **muy claro** como primario y publicar | El texto de «Enviar» se sigue leyendo sobre el degradado; si no se lee, es que el color de la izquierda del degradado no admite texto blanco | M | |
 
 ---
 

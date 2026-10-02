@@ -508,7 +508,12 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                 $desc = trim((string) ($pageField['help_text'] ?? ''));
                 if ($title !== '' || $desc !== '') {
                     echo '<header class="vf-page-head">';
-                    echo '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>';
+                    // Título primero y icono al final, como el encabezado de la
+                    // sección: la fila reparte el sobrante con `space-between` y
+                    // el icono cae a la derecha sin necesitar un margen propio. Es
+                    // el mismo criterio en los dos bloques (`vf-section-inner` y
+                    // `vf-page-head`), para que un paso y una sección se lean
+                    // como el mismo tipo de separador.
                     echo '<div>';
                     if ($title !== '') {
                         echo '<h2 class="vf-page-title h4 fw-bold mb-0">' . View::escape($title) . '</h2>';
@@ -517,6 +522,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                         echo '<p class="vf-page-desc text-muted mt-1 mb-0">' . nl2br(View::escape($desc)) . '</p>';
                     }
                     echo '</div>';
+                    echo '<span class="vf-page-icon"><i class="fa-solid fa-file-lines"></i></span>';
                     echo '</header>';
                 }
             }

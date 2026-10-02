@@ -998,7 +998,7 @@ body {
   ») y hacía que el formulario final pareciera un borrador con notas. Se conserva
    el ámbar del icono porque un paso y una sección no son lo mismo. */
 .vf-page-head {
-    display: flex; align-items: center; gap: .7rem;
+    display: flex; align-items: center; justify-content: space-between; gap: .7rem;
     border-top: 1px solid var(--vf-border);
     padding: 1rem .25rem .25rem;
     margin-bottom: 1rem;
@@ -1223,6 +1223,12 @@ body {
     box-shadow: 0 10px 28px rgba(99,102,241,.4);
     background: linear-gradient(90deg, var(--vf-primary), #7c3aed);
     border: 0;
+    // El botón NO lleva la clase `btn` de Bootstrap, y sin ella el color del
+    // texto es el del navegador: negro sobre un degradado morado, que es
+    // ilegible y ni se nota en una captura hasta que se lee. El degradado acaba
+    // siempre en `#7c3aed`, así que el texto va en claro; el icono hereda el
+    // mismo color por `currentColor`.
+    color: #fff;
     transition: transform .15s ease, box-shadow .15s ease;
 }
 .vf-submit:hover:not(:disabled) {

@@ -180,3 +180,31 @@ app —su alcance son esas filas, no las nuevas—.
 Y el aviso de `pageHeaderHint` sigue en pie: pasa a ser más raro (un paso nuevo
 ya trae título) pero no es código muerto, porque sigue siendo el aviso para
 cuando el editor **borra** el título con el interruptor encendido.
+
+## F0.3-cinco — El icono del paso también a la derecha, y el texto del botón en claro
+
+Dos retoques de maquetación que salen del mismo sitio: el que manda en una fila
+es la fila, y los colores que nadie pone.
+
+**El icono del salto de página a la derecha**, como el de la sección. `.vf-page-head`
+es una fila igual que `.vf-section-inner`, y su icono iba en primer lugar, con el
+título detrás: el mismo caso que acababa de corregirse en la sección, con el
+salto de página todavía fuera. Ahora los dos marcan el título primero y el icono
+al final, y las dos filas reparten el sobrante con `justify-content: space-between`.
+Lo que importa del orden es que con `space-between` **el lado lo decide cuál va
+el último**, así que un solo hijo desordenado devuelve el icono al otro extremo sin
+que se note el motivo: constructor y publicado se ven distintos y las clases del
+icono son las mismas en las dos pantallas. Comprobado en el HTML renderizado que
+el orden sale como debe en los dos bloques, y los tests atan las dos superficies.
+
+**El texto del botón de enviar, en claro.** `.vf-submit` no lleva la clase `btn`
+de Bootstrap, y sin ella el color del texto es el del navegador: **negro sobre un
+degradado que acaba en `#7c3aed`**. Es el texto de la acción principal sobre el
+fondo más oscuro de la página, y no se nota en una captura hasta que se lee. Va
+en `#fff`; el icono hereda por `currentColor`.
+
+Va en claro y no «el que toque» porque el degradado siempre acaba en el mismo
+morado oscuro: es el único color que se lee en toda la barra. La **otra** mitad
+del degradado es `var(--vf-primary)`, que el editor puede poner claro, y ahí el
+texto blanco se perdería: es el único caso de este cambio que no se puede
+comprobar con un test y toca mirarlo a mano si alguien pone un color muy claro.
