@@ -159,13 +159,15 @@ $relativeTs = static function (string $timestamp): string {
                                         <?php if ($form['status'] === 'in_review' && ($canReview ?? false)): ?>
                                             <li>
                                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" class="m-0"
-                                                      data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador.">
+                                                      data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador."
+                                                      data-confirm-ok="Publicar" data-confirm-tone="primary">
                                                     <?= \App\Core\Csrf::field() ?>
                                                     <button type="submit" class="dropdown-item"><i class="fa-solid fa-check me-2 text-success"></i>Aprobar</button>
                                                 </form>
                                             </li>
                                             <li>
-                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" class="m-0" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
+                                                <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/return" class="m-0" data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará."
+                                                data-confirm-ok="Devolver" data-confirm-tone="primary">
                                                     <?= \App\Core\Csrf::field() ?>
                                                     <button type="submit" class="dropdown-item"><i class="fa-solid fa-rotate-left me-2 text-warning"></i>Devolver a borrador</button>
                                                 </form>
@@ -182,7 +184,8 @@ $relativeTs = static function (string $timestamp): string {
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <form method="post" action="/forms/<?= (int) $form['id'] ?>/delete" class="m-0"
-                                                  data-confirm="¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.">
+                                                  data-confirm="¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer."
+                                                  data-confirm-ok="Eliminar formulario">
                                                 <?= \App\Core\Csrf::field() ?>
                                                 <button type="submit" class="dropdown-item text-danger"><i class="fa-solid fa-trash me-2"></i>Eliminar</button>
                                             </form>

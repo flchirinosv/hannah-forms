@@ -3,7 +3,7 @@
  * Matriz de permisos por rol.
  *
  * Los permisos van agrupados por prefijo (admin.*, forms.*, responses.*...) con
- * una cabecera por grupo: la lista plana de 30 claves强迫aba a recorrerla entera
+ * una cabecera por grupo: la lista plana de 30 claves obligaba a recorrerla entera
  * para encontrar una sola, y lo que se quiere es «darle a este rol lo de
  * formularios», que son cinco casillas contiguas.
  *
@@ -124,7 +124,8 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                                           // listener de app.js busca
                                           // `form[data-confirm]`. ?>
                                     <form method="post" action="/admin/roles/delete" class="d-inline"
-                                          data-confirm="¿Borrar el rol '<?= View::escape($rol['name']) ?>'? Se quitará también de los grupos que lo confieran.">
+                                          data-confirm="¿Borrar el rol '<?= View::escape($rol['name']) ?>'? Se quitará también de los grupos que lo confieran."
+                                          data-confirm-ok="Borrar rol">
                                         <?= \App\Core\Csrf::field() ?>
                                         <input type="hidden" name="role_id" value="<?= $rid ?>">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"

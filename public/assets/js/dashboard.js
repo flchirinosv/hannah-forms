@@ -377,98 +377,21 @@
     }
 })();
 
-/* Ficha del formulario: alta de un correo a la allowlist sin recargar.
+/* El ALTA de un correo a la allowlist (`#accessAddForm`) ya no tiene un
+ * handler propio: la hace el delegado de `app.js` como cualquier otra acción con
+ * `data-vf-async="slots"`, y la lista vuelve por `html.accessList`.
  *
- * El servidor devuelve el HTML de la lista ya rerenderizado (el partial
- * `dashboard/forms/_access_list`, el mismo que pinta el GET), así que aquí no se
- * sabe cómo es una fila: se sustituye el contenido del contenedor y punto. Si
- * el fetch falla se cae al POST normal — el `form` tiene `method`/`action` de
- * verdad, así que el alta sigue funcionando sin JavaScript. */
-(function () {
-    'use strict';
-
-    const form = document.querySelector('[data-role="access-add-form"]');
-    if (!form) {
-        return;
-    }
-
-    const card = form.closest('#access');
-    const input = document.getElementById('accessAddEmail');
-    const button = document.getElementById('accessAddBtn');
-    const error = document.getElementById('accessAddError');
-    const box = document.getElementById('accessList');
-
-    form.addEventListener('submit', function (e) {
-        if (!card || !input || !box || typeof window.fetch !== 'function') {
-            return;
-        }
-        const endpoint = card.dataset.addEndpoint;
-        const email = (input.value || '').trim();
-        if (!endpoint || email === '') {
-            return;
-        }
-
-        e.preventDefault();
-        if (error) {
-            error.textContent = '';
-            error.className = 'small mb-0 mt-1';
-        }
-        if (button) {
-            button.disabled = true;
-        }
-
-        const body = new URLSearchParams();
-        body.set('_token', card.dataset.csrf || '');
-        body.set('email', email);
-
-        fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: body.toString(),
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    return { ok: r.ok && data.ok, data: data };
-                });
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    if (error) {
-                        error.textContent = (res.data && res.data.error) || 'No se pudo añadir el correo';
-                        error.className = 'small mb-0 mt-1 text-danger fw-semibold';
-                    }
-                    return;
-                }
-                // El `html` viene escapado por el partial; `innerHTML` es lo
-                // correcto aquí porque el servidor ya lo pintó, y los correos
-                // que introduces pasan por `FormAccess::normalizeEmail()`.
-                box.innerHTML = res.data.html || '';
-                input.value = '';
-                input.focus();
-                // El aviso «la lista está vacía» desaparece con elrerenderizado,
-                // pero el `aria-live` del error necesita que se anuncie el éxito:
-                // sin recargar, nadie más se entera de que ha funcionado.
-                if (error) {
-                    error.textContent = res.data.message || '';
-                    error.className = 'small mb-0 mt-1 text-success';
-                }
-            })
-            .catch(function () {
-                // Fallo de red o JSON inválido: se deja pasar el POST normal en
-                // vez de dejar al usuario creyendo que se guardó.
-                form.submit();
-            })
-            .then(function () {
-                if (button) {
-                    button.disabled = false;
-                }
-            });
-    });
-})();
-
+ * Aquí hubo uno, y era la razón de que «añadir correo» recargara la página. Leía
+ * `card.dataset.addEndpoint` —un atributo que la vista no tiene: la tarjeta
+ * declara `data-link-endpoint`, el del botón de copiar el enlace—, así que
+ * `endpoint` salía `undefined`, la línea de guarda `if (!endpoint) return;` lo
+ * apagaba sin quitar el evento, y el navegador sacaba su POST nativo. La lista
+ * se repintaba porque la página entera venía de vuelta: por eso quitar un
+ * correo (que sí pasó por fetch) no recargaba y añadirlo sí, y por eso el
+ * síntoma parecía del servidor cuando el atributo lo había perdido la vista.
+ *
+ * El aviso de error y el campo también los pone ahora el delegado
+ * (`data-vf-error` y `data-vf-clear`): el `role="alert"` es el mismo. */
 /* Interruptor del registro público (`/admin`).
  *
  * Es de la instalación, no de la cuenta de nadie, así que va con su propio

@@ -48,12 +48,14 @@ use App\Core\View;
                         <div class="d-flex gap-2">
                             <a href="/forms/<?= (int) $p['id'] ?>" class="btn btn-sm btn-outline-secondary flex-fill"><i class="fa-solid fa-eye me-1"></i>Ver</a>
                             <form method="post" action="/forms/<?= (int) $p['id'] ?>/review/approve" class="m-0 flex-fill"
-                                  data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador.">
+                                  data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador."
+                                  data-confirm-ok="Publicar" data-confirm-tone="primary">
                                 <?= \App\Core\Csrf::field() ?>
                                 <button type="submit" class="btn btn-sm btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
                             </form>
                             <form method="post" action="/forms/<?= (int) $p['id'] ?>/review/return" class="m-0 flex-fill"
-                                  data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará.">
+                                  data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará."
+                                  data-confirm-ok="Devolver" data-confirm-tone="primary">
                                 <?= \App\Core\Csrf::field() ?>
                                 <button type="submit" class="btn btn-sm btn-outline-warning w-100"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
                             </form>

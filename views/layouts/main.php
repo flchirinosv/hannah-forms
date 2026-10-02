@@ -114,6 +114,37 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <span>Vanilla PHP + MySQL + nginx</span>
 </footer>
 
+<?php // F0.4-tres — el diálogo de confirmación del panel. UNO, aquí, y no uno en
+      // cada vista: `confirm()` del navegador no se puede estilar ni traducir y
+      // además es el prompt feo que hay que sustituir; este es un `role="dialog"`
+      // de Bootstrap, con trampa de foco, `Esc`, vuelta del foco al botón y el
+      // texto puesto por `textContent` (`app.js`).
+      //
+      // Va como hijo DIRECTO de `<body>` y no dentro de `<main>`: Bootstrap lleva
+      // el `.modal` a `display: none`, así que cualquier contenedor con `display`
+      // distinto lo deja invisible para siempre (lo pasó con `#addFieldModal`).
+      // Los dos botones de «cerrar» usan `data-bs-dismiss` y los ata Bootstrap:
+      // el JS solo decide si se envía, y pone el foco en «Cancelar» al abrir. ?>
+<div class="modal fade" id="vfConfirm" tabindex="-1" aria-labelledby="vfConfirmTitle" aria-describedby="vfConfirmText" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-confirm">
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title h6 fw-bold mb-0" id="vfConfirmTitle">
+                    <i class="fa-solid fa-circle-exclamation text-warning me-2" aria-hidden="true"></i>Confirmar la acción
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar sin continuar"></button>
+            </div>
+            <div class="modal-body py-2">
+                <p class="mb-0" id="vfConfirmText"></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" id="vfConfirmCancel" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="vfConfirmOk">Sí, continuar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="<?= View::asset('js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= View::asset('js/app.js') ?>"></script>
 </body>

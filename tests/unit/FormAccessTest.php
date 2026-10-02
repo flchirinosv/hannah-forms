@@ -458,6 +458,12 @@ class FormAccessTest
      * El camino JSON devuelve el HTML de la lista ya rerenderizado, no la lista
      * de correos: así el JS no sabe cómo es una fila y el partial es el único
      * sitio donde se pinta.
+     *
+     * Y lo devuelve **en un mapa `id → markup`**, no como una cadena suelta. Es
+     * el contrato de `vfApplySlots()`, el mismo que usan los cuatro huecos de la
+     * ficha y que el borrado ya usaba: con el `html` como string el JS recibía algo
+     * que no tenía a qué reponer, el alta se quedaba en el POST nativo (y
+     * recargaba) y el síntoma parecía del servidor.
      */
     public function testElAltaPorFetchDevuelveElHtmlDeLaListaYElContador(): void
     {
@@ -471,7 +477,12 @@ class FormAccessTest
         assertSame(true, $data['ok'] ?? null);
         assertSame(1, $data['count'] ?? null, 'y el contador nuevo');
         assertTrue(
-            str_contains((string) ($data['html'] ?? ''), 'ana@ejemplo.com'),
+            is_array($data['html'] ?? null) && isset($data['html']['accessList']),
+            'el `html` es un mapa de ids (aquí, `accessList`, el del contenedor de '
+                . 'la vista), no markup suelto'
+        );
+        assertTrue(
+            str_contains((string) ($data['html']['accessList'] ?? ''), 'ana@ejemplo.com'),
             'el html trae la fila recién añadida, escapada por el partial'
         );
         assertSame(1, FormAccess::allowlistCount((int) self::$formId));
@@ -489,8 +500,9 @@ class FormAccessTest
 
         $r = $this->postOwner('addEmail', ['email' => 'beto@ejemplo.com'], true);
         $data = json_decode((string) $r['body'], true);
-        $html = (string) ($data['html'] ?? '');
+        $html = (string) ($data['html']['accessList'] ?? '');
 
+        assertTrue($html !== '', 'el hueco `accessList` trae el partial');
         assertTrue(str_contains($html, 'name="_token"'), 'la fila trae token de CSRF para quitarla');
         assertTrue(str_contains($html, '/access/email/remove'), 'y el endpoint de quitar');
         assertTrue(str_contains($html, 'data-role="access-link"'), 'y el botón de emitir enlace');
@@ -539,7 +551,21 @@ class FormAccessTest
         assertSame(1, FormAccess::allowlistCount((int) self::$formId), 'y no añade nada');
     }
 
-    /** El `form` conserva method/action: sin JavaScript, el alta sigue funcionando. */
+    /**
+     * El `form` conserva method/action: sin JavaScript, el alta sigue
+     * funcionando.
+     *
+     * Y sin JS **tampoco hay nada que «desactivar»**: no hay un
+     * `if (algo) return;` que deje pasar el formulario porque la mitad de la
+     * configuración del alta no exista en la vista.
+     *
+     * El camino sin JS lo cubre el delegado de `app.js` y su `.catch`, no un
+     * handler propio en `dashboard.js`: aquel IIFE tenía su propio `fetch`, su
+     * propio `.catch` y su propio `form.submit()` de reserva, o sea **tres**
+     * caminos al mismo sitio, y el que se quedó sin escapar (`card.dataset.
+     * addEndpoint`, un atributo que la vista ya no tenía) era el que hacía que el
+     * alta recargara mientras el borrado no.
+     */
     public function testElFormularioDelAltaFuncionaSinJavaScript(): void
     {
         $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/dashboard/forms/show.php');
@@ -549,13 +575,26 @@ class FormAccessTest
             'el form apunta a la puerta con method y action de verdad'
         );
         assertTrue(str_contains($vista, 'Csrf::field()'), 'con su token CSRF');
-
-        $js = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/dashboard.js');
-        assertTrue(str_contains($js, "e.preventDefault();"), 'el fetch anula el submit');
-        assertTrue(str_contains($js, 'form.submit();'), 'y el fallo de red cae al POST normal en vez de tragarse el alta');
+        /* Sin comentarios: en dashboard.js queda escrito POR QUÉ ya no está
+         * (`card.dataset.addEndpoint`, el atributo que la vista perdió), y una
+         * nota que nombra el código muerto no es código muerto. */
+        $js = preg_replace('#[/][/*].*?[/][*]#s', ' ', (string) file_get_contents(
+            dirname(__DIR__, 2) . '/public/assets/js/dashboard.js'
+        ));
         assertTrue(
-            str_contains($js, "box.innerHTML = res.data.html"),
-            'el HTML lo sustituye el servidor: el JS no construye filas'
+            !str_contains($js, 'addEndpoint'),
+            'dashboard.js no vuelve a manejar el alta: eso ya lo hace el '
+                . 'delegado, y un segundo camino al mismo sitio se queda viejo en silencio'
+        );
+
+        $app = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/app.js');
+        assertTrue(
+            str_contains($app, "e.preventDefault();"),
+            'el delegado anula el submit cuando va por fetch'
+        );
+        assertTrue(
+            str_contains($app, 'p.form.submit();'),
+            'y el fallo de red cae al POST normal en vez de tragarse el alta'
         );
     }
 

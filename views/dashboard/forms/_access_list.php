@@ -39,11 +39,21 @@ $formId = (int) ($formId ?? 0);
                       // del `d-flex` de la fila y el botón se queda arriba con
                       // el interlineado del form debajo, un píxel o dos más
                       // bajo que su hermano. ?>
-                <form method="post" action="/forms/<?= $formId ?>/access/email/remove" class="d-inline">
+                <?php // `data-vf-async="slots"`: el borrado va por fetch y la
+                      // respuesta trae la lista entera en `html.accessList`
+                      // (mismo partial, misma salida que el alta). Y
+                      // `data-confirm` va en el FORM, no en el botón: el
+                      // delegado de `app.js` lo lee del formulario (como en
+                      // `admin/roles.php`), y puesto en el botón la pregunta
+                      // NUNCA salía — se quitaba el email y se revocaban sus
+                      // enlaces sin confirmar nada, con un `title` que
+                      // prometía lo contrario. ?>
+                <form method="post" action="/forms/<?= $formId ?>/access/email/remove" class="d-inline" data-vf-async="slots"
+                      data-confirm="¿Quitar <?= View::escape($entry['email']) ?> de la lista? Los enlaces que ya se le hayan enviado dejarán de funcionar."
+                      data-confirm-ok="Quitar">
                     <?= \App\Core\Csrf::field() ?>
                     <input type="hidden" name="email" value="<?= View::escape($entry['email']) ?>">
                     <button type="submit" class="btn btn-outline-danger btn-sm"
-                            data-confirm="¿Quitar <?= View::escape($entry['email']) ?> de la lista? Los enlaces que ya se le hayan enviado dejarán de funcionar."
                             title="Quitar de la lista y revocar sus enlaces"
                             aria-label="Quitar <?= View::escape($entry['email']) ?> de la lista">
                         <i class="fa-solid fa-xmark"></i>

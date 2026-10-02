@@ -282,11 +282,19 @@ class AccessController
             'ok'      => true,
             'email'   => $email,
             'message' => I18n::t('access.added', $locale, ['email' => $email]),
-            'html'    => View::partial('dashboard/forms/_access_list', [
-                'accessList'  => FormAccess::allowlistFor($id, '', 200),
-                'accessCount' => FormAccess::allowlistCount($id),
-                'formId'      => $id,
-            ]),
+            /* `html` va keyed por el `id` del hueco (`accessList`), como en
+             * `removeEmail()` y en las cuatro acciones de la ficha: el JS solo
+             * sustituye el `innerHTML` de los ids que vienen y no sabe cómo se
+             * pinta una fila. Aquí era una CADENA suelta, y como el
+             * `vfApplySlots()` de `app.js` recorre un mapa se la saltaba: el
+             * alta se quedaba en el POST nativo y recargaba la página. */
+            'html'    => [
+                'accessList' => View::partial('dashboard/forms/_access_list', [
+                    'accessList'  => FormAccess::allowlistFor($id, '', 200),
+                    'accessCount' => FormAccess::allowlistCount($id),
+                    'formId'      => $id,
+                ]),
+            ],
             'count'   => FormAccess::allowlistCount($id),
         ]);
     }
@@ -294,18 +302,27 @@ class AccessController
     /**
      * ¿El POST viene de un `fetch` de nuestra casa?
      *
-     * El rótulo `X-Requested-With` es lo que ya manda `dashboard.js` al pedir un
-     * enlace (`/access/link`), así que no hay un discriminador nuevo que
-     * aprender: la misma señal distingue «responde en JSON» de «responde con el
-     * 302 de siempre». Un POST normal de navegador NO lo lleva, que es lo que
-     * mantiene el camino sin JavaScript.
+     * Ahora la pregunta vive en `Response::wantsJson()`, que es donde la hacen
+     * las cinco acciones de la ficha también. Este método se queda porque es
+     * la puerta de las tres acciones de la allowlist y su docblock explica el
+     * rótulo; delegar mantiene las dos cosas en un sitio sin dejar de apuntar
+     * al viejo.
      */
     public static function wantsJson(): bool
     {
-        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+        return Response::wantsJson();
     }
 
-    /** POST /forms/{id}/access/email/remove — quita un email y revoca sus enlaces. */
+    /**
+     * POST /forms/{id}/access/email/remove — quita un email y revoca sus enlaces.
+     *
+     * Bimodal como `addEmail()`: si el POST viene de un `fetch`, devuelve el
+     * MISMO partial de la lista que pintó el alta. Es el mismo truco y por el
+     * mismo motivo —que el JS no sepa cómo se pinta una fila—, y además el
+     * borrado es la operación que peor se lleva sin recarga: quitar a diez
+     * correos de uno en uno recargando diez veces, con el panel de acceso
+     * desplegado en cada recarga.
+     */
     public function removeEmail(int $id): void
     {
         $form = $this->ownedForm($id, 'remove_email');
@@ -315,20 +332,49 @@ class AccessController
 
         $settings = Form::settings($id);
         $locale = I18n::forRequest($settings);
+        $json = self::wantsJson();
 
         if (!Csrf::verifyRequest()) {
-            $this->back($id, 'error', I18n::t('err.csrf', $locale));
+            if ($json) {
+                Response::json(['ok' => false, 'error' => I18n::t('err.csrf', $locale)], 419);
+            } else {
+                $this->back($id, 'error', I18n::t('err.csrf', $locale));
+            }
             return;
         }
 
         $email = FormAccess::normalizeEmail((string) Request::post('email', ''));
         if (!FormAccess::isValidEmail($email)) {
-            $this->back($id, 'error', I18n::t('access.invalid_email', $locale));
+            $error = I18n::t('access.invalid_email', $locale);
+            if ($json) {
+                Response::json(['ok' => false, 'error' => $error], 422);
+            } else {
+                $this->back($id, 'error', $error);
+            }
             return;
         }
 
         FormAccess::removeEmail($id, $email);
-        $this->back($id, 'success', I18n::t('access.removed', $locale, ['email' => $email]));
+        $message = I18n::t('access.removed', $locale, ['email' => $email]);
+
+        if (!$json) {
+            $this->back($id, 'success', $message);
+            return;
+        }
+
+        Response::json([
+            'ok'      => true,
+            'email'   => $email,
+            'message' => $message,
+            'html'    => [
+                'accessList' => View::partial('dashboard/forms/_access_list', [
+                    'accessList'  => FormAccess::allowlistFor($id, '', 200),
+                    'accessCount' => FormAccess::allowlistCount($id),
+                    'formId'      => $id,
+                ]),
+            ],
+            'count'   => FormAccess::allowlistCount($id),
+        ]);
     }
 
     /**

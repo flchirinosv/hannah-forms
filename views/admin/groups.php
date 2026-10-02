@@ -103,7 +103,8 @@ $groupPermKeys = static function (array $keys): array {
                                     <?= count($gMembers) === 1 ? 'miembro' : 'miembros' ?>
                                 </span>
                                 <form method="post" action="/admin/groups/delete" class="d-inline"
-                                      data-confirm="¿Eliminar el grupo '<?= View::escape($group['name']) ?>'? Se desvincula de sus usuarios, sin borrarlos.">
+                                      data-confirm="¿Eliminar el grupo '<?= View::escape($group['name']) ?>'? Se desvincula de sus usuarios, sin borrarlos."
+                                      data-confirm-ok="Eliminar grupo">
                                     <?= \App\Core\Csrf::field() ?>
                                     <input type="hidden" name="group_id" value="<?= $gid ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar grupo" aria-label="Eliminar grupo <?= View::escape($group['name']) ?>">

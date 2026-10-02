@@ -1892,3 +1892,28 @@ body {
 }
 .app-rbac-groups-btn .badge { font-weight: 500; }
 .app-rbac-groups-btn:focus-visible { box-shadow: var(--vf-focus-ring); }
+
+/* ---- Diálogo de confirmación del panel (F0.4-tres) ----
+   `#vfConfirm` sustituye al `confirm()` del navegador. El estilo es casi todo de
+   Bootstrap: lo que se añade aquí es el aire y el borde del botón de «sí», que
+   con `btn-danger` pelado en el `modal-footer` estrecho se lee como un enlace
+   rojo en vez de como una acción. El `.modal-header` va sin borde y sin padding
+   inferior porque el texto de la pregunta ya es el cuerpo. */
+.app-confirm { border: 0; border-radius: .75rem; overflow: hidden; }
+.app-confirm .modal-title { line-height: 1.35; }
+.app-confirm .modal-body p { line-height: 1.55; }
+.app-confirm .modal-footer { gap: .5rem; }
+.app-confirm #vfConfirmOk { min-width: 8.5rem; font-weight: 600; }
+.app-confirm .modal-footer .btn-outline-secondary { min-width: 7rem; }
+
+/* En móvil el diálogo se ancla arriba y con tope de `dvh`: es el viewport que
+   se ve, y el mismo motivo que el modal de tipos del constructor. */
+@media (max-width: 575.98px) {
+    #vfConfirm .modal-dialog { align-items: flex-start; }
+    #vfConfirm .modal-content {
+        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+    .app-confirm .modal-footer { flex-wrap: wrap-reverse; }
+    .app-confirm .modal-footer .btn { flex: 1 1 8rem; }
+}
