@@ -116,13 +116,39 @@ class AdminController
         ]);
     }
 
+    /**
+     * Rol de un usuario, cambiado desde su fila de `/admin`.
+     *
+     * Bimodal: el `select` se envía solo al cambiarlo (`js-auto-submit`, que
+     * dispara un `requestSubmit()` y por tanto pasa por el delegado), así que
+     * recargar la página entera por cada cambio de rol era tirar abajo el
+     * desplegable de grupos que se estuviera editando al lado y todo lo que
+     * hubiera escrito en cualquier otra parte.
+     *
+     * El `html` viene **vacío a propósito**: cambiar el rol no cambia nada de
+     * lo que se ve en la fila (el `select` ya está en el valor nuevo, y el
+     * nombre del rol lo pone el propio `select`), así que lo único que hay que
+     * pintar es el aviso de que se guardó. Repintar la fila entera, o el botón
+     * de los grupos, para un cambio de rol sería tirar estado away por nada.
+     */
     public function updateRole(): void
     {
         if (!Auth::can('admin.users')) {
-            Response::forbidden();
+            if (Response::wantsJson()) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para cambiar roles.'], 403);
+            } else {
+                Response::forbidden();
+            }
             return;
         }
+
+        $json = Response::wantsJson();
+
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin');
             return;
@@ -133,6 +159,10 @@ class AdminController
 
         $target = User::find($userId);
         if ($target === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Usuario no encontrado.'], 404);
+                return;
+            }
             Session::flash('error', 'Usuario no encontrado.');
             Response::redirect('/admin');
             return;
@@ -140,19 +170,43 @@ class AdminController
 
         // No permitir degradar al propio admin
         if (Auth::id() === $userId && $roleId !== 1) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No puedes cambiar tu propio rol de administrador.'], 422);
+                return;
+            }
             Session::flash('error', 'No puedes cambiar tu propio rol de administrador.');
             Response::redirect('/admin');
             return;
         }
 
-        if (!in_array($roleId, array_column(Role::all(), 'id'), true)) {
+        // El rol se busca en la tabla y no se compara con una lista de ids: un
+        // id inventado (o el de un rol borrado) dejaría la cuenta con un rol que
+        // no existe y `Auth::can()` daría false para todo lo suyo sin decir nada.
+        $role = Role::find($roleId);
+        if ($role === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Rol inválido.'], 422);
+                return;
+            }
             Session::flash('error', 'Rol inválido.');
             Response::redirect('/admin');
             return;
         }
 
+        // Idempotente con estado OBJETIVO: un reintento o un doble clic no
+        // pueden degradar la cuenta a un rol anterior, porque el «objetivo» es
+        // el rol que se acaba de elegir, no el contrario.
         User::updateRole($userId, $roleId);
         SecurityLog::record('admin.role_change', 'usuario #' . $userId . ' -> rol #' . $roleId);
+
+        if ($json) {
+            Response::json([
+                'ok'      => true,
+                'message' => 'Rol de «' . $target['name'] . '»: ' . ucfirst((string) $role['name']) . '.',
+            ]);
+            return;
+        }
+
         Session::flash('success', 'Rol actualizado.');
         Response::redirect('/admin');
         return;
@@ -172,11 +226,21 @@ class AdminController
      */
     public function updateUserGroups(): void
     {
+        $json = Response::wantsJson();
+
         if (!Auth::can('admin.groups')) {
-            Response::forbidden();
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para gestionar los grupos.'], 403);
+            } else {
+                Response::forbidden();
+            }
             return;
         }
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin');
             return;
@@ -185,15 +249,28 @@ class AdminController
         $userId = (int) Request::post('user_id', 0);
         $target = User::find($userId);
         if ($target === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Usuario no encontrado.'], 404);
+                return;
+            }
             Session::flash('error', 'Usuario no encontrado.');
             Response::redirect('/admin');
             return;
         }
 
-        $existing = array_column(RoleGroup::all(), 'id', 'id');
+        /* Un solo `RoleGroup::all()` para las dos cosas que hacen falta: validar
+         * que ningún id venga inventado (map por id) y volver a pintar las
+         * insignias del botón con el NOMBRE que le pone el servidor. No se usa
+         * `User::groupsMap()` —que es la tabla entera— porque eso sería una
+         * consulta por cada usuario de la instalación para pintar un botón. */
+        $groupNames = array_column(RoleGroup::all(), 'name', 'id');
         $groupIds = self::postedIds('groups');
         foreach ($groupIds as $groupId) {
-            if (!isset($existing[$groupId])) {
+            if (!isset($groupNames[$groupId])) {
+                if ($json) {
+                    Response::json(['ok' => false, 'error' => 'Uno de los grupos ya no existe.'], 422);
+                    return;
+                }
                 Session::flash('error', 'Grupo inválido.');
                 Response::redirect('/admin');
                 return;
@@ -205,12 +282,41 @@ class AdminController
             'admin.group_membership',
             'usuario #' . $userId . ' -> grupos [' . implode(',', $groupIds) . ']'
         );
-        Session::flash(
-            'success',
-            $groupIds === []
-                ? '«' . $target['name'] . '» ya no está en ningún grupo.'
-                : 'Grupos de «' . $target['name'] . '» actualizados.'
-        );
+
+        $message = $groupIds === []
+            ? '«' . $target['name'] . '» ya no está en ningún grupo.'
+            : 'Grupos de «' . $target['name'] . '» actualizados.';
+
+        if ($json) {
+            /* Solo las insignias del botón (`vfUserGroups<uid>`), que es lo
+             * único de la celda que depende de la pertenencia. Las casillas del
+             * desplegable NO se repintan: son las que enviaron el POST, así que
+             * ya son la verdad, y sustituirlas cerraría el desplegable que se
+             * está editando.
+             *
+             * Se recorren los grupos del catálogo y no `$groupIds`, para que las
+             * insignias salgan en el MISMO orden que las casillas del menú: el
+             * POST va en el orden en que se marcaron, y en el botón se verían
+             * desordenadas respecto a lo que hay justo debajo. */
+            $myGroups = [];
+            foreach ($groupNames as $groupId => $groupName) {
+                if (in_array((int) $groupId, $groupIds, true)) {
+                    $myGroups[] = ['id' => (int) $groupId, 'name' => (string) $groupName];
+                }
+            }
+            Response::json([
+                'ok'      => true,
+                'message' => $message,
+                'html'    => [
+                    'vfUserGroups' . $userId => View::partial('admin/_user_groups', [
+                        'myGroups' => $myGroups,
+                    ]),
+                ],
+            ]);
+            return;
+        }
+
+        Session::flash('success', $message);
         Response::redirect('/admin');
         return;
     }

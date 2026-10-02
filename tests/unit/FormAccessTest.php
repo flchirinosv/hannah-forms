@@ -557,7 +557,9 @@ class FormAccessTest
      *
      * Y sin JS **tampoco hay nada que «desactivar»**: no hay un
      * `if (algo) return;` que deje pasar el formulario porque la mitad de la
-     * configuración del alta no exista en la vista.
+     * configuración del alta no exista en la vista. El `data-vf-async="slots"`
+     * es lo único que dice «esto también funciona sin recargar», y lo que
+     * devuelve el servidor encaja con él (mapa `id → markup`).
      *
      * El camino sin JS lo cubre el delegado de `app.js` y su `.catch`, no un
      * handler propio en `dashboard.js`: aquel IIFE tenía su propio `fetch`, su
@@ -568,13 +570,31 @@ class FormAccessTest
      */
     public function testElFormularioDelAltaFuncionaSinJavaScript(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/dashboard/forms/show.php');
+        /* F0.4-cuatro: el alta y el botón de copiar viven en
+         * `_access_card.php`, que `show.php` pinta dentro de `#vfSlotAccess` (el
+         * hueco que devuelve `FormPanel::accessSlot()`). Se buscan en los DOS
+         * ficheros: el partial es el que trae el formulario, y si un día se
+         * movía sin actualizar este test el alta se quedaba sin `data-vf-async`
+         * sin que nada se enterara. */
+        $raiz = dirname(__DIR__, 2);
+        $vista = (string) file_get_contents($raiz . '/views/dashboard/forms/show.php')
+            . "\n" . (string) file_get_contents($raiz . '/views/dashboard/forms/_access_card.php');
 
         assertTrue(
             str_contains($vista, 'method="post" action="/forms/<?= (int) $form[\'id\'] ?>/access/email"'),
             'el form apunta a la puerta con method y action de verdad'
         );
         assertTrue(str_contains($vista, 'Csrf::field()'), 'con su token CSRF');
+        assertTrue(
+            str_contains($vista, 'data-vf-async="slots"'),
+            'y el atributo que le dice al delegado que también va sin recarga: sin él '
+                . 'el alta es el POST nativo de siempre (correcto, pero recarga)'
+        );
+        assertTrue(
+            str_contains($vista, 'id="vfSlotAccess"'),
+            'y el cuerpo de la tarjeta tiene el hueco que devuelve el guardado de ajustes'
+        );
+
         /* Sin comentarios: en dashboard.js queda escrito POR QUÉ ya no está
          * (`card.dataset.addEndpoint`, el atributo que la vista perdió), y una
          * nota que nombra el código muerto no es código muerto. */

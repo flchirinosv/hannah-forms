@@ -320,7 +320,14 @@ class FormController
             Response::forbidden();
             return;
         }
+
+        $json = Response::wantsJson();
+
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/forms/' . $id);
             return;
@@ -358,6 +365,10 @@ class FormController
         $errores = array_values(array_unique(array_filter($errores)));
 
         if ($errores !== []) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => implode(' ', $errores)], 422);
+                return;
+            }
             Session::flash('error', implode(' ', $errores));
             Response::redirect('/forms/' . $id);
             return;
@@ -378,9 +389,23 @@ class FormController
             Form::submitForReview($id);
         }
 
-        Session::flash('success', $requeued
+        $message = $requeued
             ? 'Ajustes guardados. Como exige revisión, el formulario ha vuelto a la cola.'
-            : 'Ajustes guardados.');
+            : 'Ajustes guardados.';
+
+        if ($json) {
+            /* F0.4-cuatro — Además de los cuatro huecos del estado, el de la
+             * tarjeta de Acceso: guardar ajustes es lo único que cambia el modo
+             * de acceso, y sin reponerlo la tarjeta seguía diciendo «Público» con
+             * el formulario ya en «Solo la lista» (o al revés, con el formulario
+             * abierto a todo el mundo y una lista que ya no protege nada). El
+             * hueco se pide DESPUÉS de guardar, para que el HTML sea el del
+             * ajuste que queda y no el del que se envió. */
+            FormPanel::json($id, $message, FormPanel::accessSlot($id));
+            return;
+        }
+
+        Session::flash('success', $message);
         Response::redirect('/forms/' . $id);
         return;
     }

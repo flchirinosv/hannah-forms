@@ -498,13 +498,31 @@
         });
     });
 
-    // Auto-enviar el select de rol del admin al cambiar (CSP: sin onchange inline).
-    document.querySelectorAll('.js-auto-submit').forEach(function (sel) {
+    /* Auto-enviar el select de rol del admin al cambiar (CSP: sin onchange
+     * inline).
+     *
+     * `requestSubmit()` y NO `submit()`: `submit()` no dispara el evento
+     * `submit`, así que el delegado de más arriba —el que pregunta, el que
+     * apaga el botón y el que decide entre fetch y POST nativo— no se enteraba
+     * de nada y la fila se recargaba entera por cada cambio de rol. Lo segundo
+     * es lo que dolía: recargar la página tira abajo el desplegable de grupos
+     * que se estuviera editando al lado y cualquier otra cosa que estuviera a
+     * medias en la pantalla.
+     *
+     * El `else` es para navegadores sin `requestSubmit()`: ahí sí `submit()`,
+     * que es exactamente lo que se hacía antes. */
+    function vfAutoSubmit(sel) {
         sel.addEventListener('change', function () {
             var form = sel.closest('form');
-            if (form) form.submit();
+            if (!form) return;
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
         });
-    });
+    }
+    document.querySelectorAll('.js-auto-submit').forEach(vfAutoSubmit);
 
     /* ---------------------------------------------------------------
      * Matriz de permisos: marcar una sección entera (admin.roles)

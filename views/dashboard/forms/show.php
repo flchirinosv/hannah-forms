@@ -402,88 +402,22 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
             <div class="card border-0 shadow-sm mb-4" id="access"
                  data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
                  data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="h6 fw-bold m-0"><i class="fa-solid fa-user-lock me-2 text-primary"></i>Acceso</h3>
-                        <span class="badge text-bg-light text-muted"><?= View::escape(match ($accessMode) {
-                            'email' => 'Por correo',
-                            'allowlist' => 'Solo la lista',
-                            default => 'Público',
-                        }) ?></span>
-                    </div>
-
-                    <?php if ($accessMode === 'public'): ?>
-                        <p class="text-muted small mb-0">
-                            <i class="fa-solid fa-circle-info me-1"></i>Cualquiera con el enlace puede responder.
-                            Cambia el modo en <em>Ajustes del formulario</em>, más abajo.
-                        </p>
-                    <?php elseif ($accessMode === 'email'): ?>
-                        <p class="text-muted small mb-0">
-                            <i class="fa-solid fa-circle-info me-1"></i>Cualquiera que escriba un correo recibe un
-                            enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
-                            <em>Ajustes del formulario</em>, más abajo.
-                        </p>
-                    <?php else: ?>
-                        <p class="text-muted small">
-                            Solo los correos de esta lista reciben un enlace. Quitar a alguien de la lista
-                            <strong>invalida los enlaces que ya se le hayan enviado</strong>.
-                        </p>
-
-                        <?php // El alta se hace por fetch (`dashboard.js`): con
-                              // recarga, añadir diez correos obligaba a diez
-                              // viajes y la lista se recolocaba sola al scroll.
-                              // El `method`/`action` siguen ahí a propósito, así
-                              // que SIN JavaScript el formulario funciona igual
-                              // (la misma puerta responde en HTML o en JSON). ?>
-                        <form method="post" action="/forms/<?= (int) $form['id'] ?>/access/email"
-                              class="mb-3" id="accessAddForm" data-role="access-add-form">
-                            <?= \App\Core\Csrf::field() ?>
-                            <div class="input-group input-group-sm">
-                                <input type="email" name="email" id="accessAddEmail" class="form-control" required maxlength="190"
-                                       placeholder="nombre@ejemplo.com" aria-label="Correo con acceso">
-                                <button type="submit" class="btn btn-outline-primary" id="accessAddBtn">
-                                    <i class="fa-solid fa-plus me-1"></i>Añadir
-                                </button>
-                            </div>
-                            <p class="small mb-0 mt-1" id="accessAddError" role="alert"></p>
-                        </form>
-
-                        <?php // F4 — Salida del enlace recién emitido. Se rellena por JS y
-                              // se queda a la vista a propósito: el token solo
-                              // existe en claro en el momento de emitirlo, así que
-                              // si el portapapeles falla no hay forma de recuperarlo
-                              // y el enlace se habría perdido. ?>
-                        <div class="d-none mb-3" id="accessLinkOut">
-                            <label class="form-label small mb-1">
-                                Enlace para <span data-role="access-link-for"></span>
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" readonly
-                                       aria-label="Enlace de acceso generado">
-                                <?php // `access-recopy` y no el `js-copy-url` de siempre:
-                                      // ese prepende el origen de la página, y esta URL
-                                      // ya viene absoluta desde PublicUrl.
-                                      ?>
-                                <button type="button" class="btn btn-outline-secondary"
-                                        data-role="access-recopy" title="Copiar otra vez"><i class="fa-solid fa-copy"></i></button>
-                            </div>
-                            <p class="small text-muted mb-0 mt-1">
-                            Al pedir otro enlace para el mismo correo, este deja de funcionar.</p>
-                        </div>
-
-                        <?php // La lista es un partial porque el alta por fetch
-                              // devuelve este MISMO HTML ya escapado (ver
-                              // `AccessController::addEmail()`): con dos copias,
-                              // añadir un email y recargar mostraría listas
-                              // distintas según por dónde se mirara. ?>
-                        <div id="accessList">
-                            <?= View::partial('dashboard/forms/_access_list', [
-                                'accessList'  => $accessList,
-                                'accessCount' => $accessCount,
-                                'formId'      => (int) $form['id'],
-                            ]) ?>
-                        </div>
-                    <?php endif; ?>
+                <?php // F0.4-cuatro — El CUERPO de esta tarjeta es un partial
+                      // (`_access_card.php`) porque lo que lo cambia es un ajuste
+                      // —el modo de acceso— y el guardado de ajustes va por fetch:
+                      // el `POST /settings` repone este hueco (`vfSlotAccess`) y sin
+                      // él la tarjeta seguía diciendo «Público» con el formulario
+                      // ya en «Solo la lista». El `id` va en el `card-body` y no en
+                      // la tarjeta, porque la tarjeta lleva lo que el JS lee
+                      // (`data-csrf`, `data-link-endpoint`) y repintar el hueco
+                      // borraría esos atributos. ?>
+                <div class="card-body" id="vfSlotAccess">
+                    <?= View::partial('dashboard/forms/_access_card', [
+                        'form'        => $form,
+                        'accessMode'  => $accessMode,
+                        'accessList'  => $accessList,
+                        'accessCount' => $accessCount,
+                    ]) ?>
                 </div>
             </div>
 

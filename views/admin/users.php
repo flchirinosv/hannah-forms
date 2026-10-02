@@ -216,7 +216,19 @@ $roles = $roles ?? [];
                                         <?= View::escape($ownRole['name'] ?? '—') ?>
                                     </span>
                                 <?php else: ?>
-                                <form method="post" action="/admin/users/role" class="d-inline-flex align-items-center gap-2">
+                                <?php // El `data-vf-async="slots"` sin ningún hueco que
+                                      // reponer: cambiar el rol no cambia nada de lo
+                                      // que se ve en la fila (el `select` ya está en el
+                                      // valor nuevo), así que aquí lo que hace falta es
+                                      // que NO se recargue —el dropdown de grupos y la
+                                      // fila entera se iban con ella— y que el POST por
+                                      // fetch avise. Ojo con `js-auto-submit`: hace
+                                      // `requestSubmit()`, no `submit()`, porque
+                                      // `submit()` no dispara el evento `submit` y el
+                                      // delegado nunca se enteraría (eso es lo que hacía
+                                      // que esta fila recargara). ?>
+                                <form method="post" action="/admin/users/role" class="d-inline-flex align-items-center gap-2"
+                                      data-vf-async="slots">
                                     <?= \App\Core\Csrf::field() ?>
                                     <input type="hidden" name="user_id" value="<?= $uid ?>">
                                     <label class="visually-hidden" for="role-<?= $uid ?>">Rol de <?= View::escape($user['name']) ?></label>
@@ -232,24 +244,33 @@ $roles = $roles ?? [];
                                 <?php if ($grupos === []): ?>
                                     <span class="text-muted small">—</span>
                                 <?php elseif (!$canEditGroups): ?>
-                                    <?php foreach ($myGroups as $g): ?>
-                                        <span class="badge text-bg-light border"><?= View::escape($g['name']) ?></span>
-                                    <?php endforeach; ?>
+                                    <?php // Sin `admin.groups` se ven, pero no se editan: las
+                                          // insignias son el MISMO partial de la celda editable,
+                                          // para que las dos ramas no se separen. ?>
+                                    <?= View::partial('admin/_user_groups', ['myGroups' => $myGroups]) ?>
                                 <?php else: ?>
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle app-rbac-groups-btn" type="button"
                                                 data-bs-toggle="dropdown" aria-expanded="false"
                                                 id="groups-btn-<?= $uid ?>">
-                                            <?php if ($myGroups === []): ?>
-                                                <span class="text-muted">Sin grupos</span>
-                                            <?php else: ?>
-                                                <?php foreach ($myGroups as $g): ?>
-                                                    <span class="badge text-bg-light border"><?= View::escape($g['name']) ?></span>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
+                                            <?php // El hueco (`vfUserGroups<uid>`) envuelve a las
+                                                  // insignias y es un partial, porque el guardado
+                                                  // de grupos va por fetch: sin él el botón se
+                                                  // queda diciendo «Sin grupos» sobre alguien que
+                                                  // acaba de entrar en un grupo. ?>
+                                            <span id="vfUserGroups<?= $uid ?>">
+                                                <?= View::partial('admin/_user_groups', ['myGroups' => $myGroups]) ?>
+                                            </span>
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="groups-btn-<?= $uid ?>">
-                                            <form method="post" action="/admin/users/groups">
+                                            <?php // `data-vf-async="slots"`: guarda y repone las
+                                                  // insignias del botón (`vfUserGroups<uid>`)
+                                                  // sin sacar al que edita el desplegable ni
+                                                  // perder lo que había marcado. El
+                                                  // `method`/`action` siguen ahí, así que sin
+                                                  // JavaScript funciona igual. ?>
+                                            <form method="post" action="/admin/users/groups" data-vf-async="slots"
+                                                  data-vf-error="groupsError<?= $uid ?>">
                                                 <?= \App\Core\Csrf::field() ?>
                                                 <input type="hidden" name="user_id" value="<?= $uid ?>">
                                                 <div class="px-1">
@@ -272,6 +293,11 @@ $roles = $roles ?? [];
                                                     <button type="submit" class="btn btn-sm btn-primary">
                                                         <i class="fa-solid fa-floppy-disk me-1"></i>Guardar grupos
                                                     </button>
+                                                    <?php // `role="alert"` y con `d-none`: el aviso
+                                                          // del `ok:false` se pinta aquí, dentro del
+                                                          // desplegable que se está editando, y no
+                                                          // flotando arriba donde no se ve. ?>
+                                                    <p class="small mb-0 d-none text-danger fw-semibold" id="groupsError<?= $uid ?>" role="alert"></p>
                                                 </div>
                                             </form>
                                         </div>
