@@ -424,6 +424,13 @@ Están repartidos en **dos sitios**, según lo que cambia el ajuste:
 | **Ficha del formulario** (`/forms/{id}`) — tarjeta *Ajustes del formulario* | Acceso (quién responde), programación, cupo, avisos y confirmación, webhook, mensaje final, revisión e idioma |
 | **Constructor** — botón *Configuración* | Tema, quiz, orden de las preguntas, avance automático, embed y anti-bot |
 
+La ficha se reparte en **dos columnas**. A la izquierda, la ancha, va lo que
+describe el formulario: *Detalles*, *Campos* y *Acceso*. A la derecha, la
+estrecha, lo que se comparte y lo que se configura: *Enlace para compartir* y
+*Ajustes del formulario*. La lista de correos está donde está porque puede
+llegar a tener cientos de líneas, y en la columna estrecha estiraba la de los
+ajustes. En móvil las dos columnas se apilan en ese mismo orden.
+
 La regla es qué cambia el ajuste: los de la ficha cambian **a quién llega el
 formulario y cuándo** (y ahí se ven las consecuencias: si la lista de correos
 está vacía, a quién le llega el aviso, si el formulario vuelve a la cola de
@@ -463,9 +470,9 @@ La caja se queda con el foco al añadir, así que se pueden encadenar varios
 correos sin volver al ratón. Sin JavaScript, el alta sigue funcionando igual:
 el formulario se envía y la página se recarga.
 
-El **modo** se cambia en *Ajustes del formulario* (más abajo, en *Acceso
-restringido*), con su botón *Guardar ajustes*. Ese guardado tampoco recarga, y
-la tarjeta de arriba se entera: pasa a decir «Solo la lista» con el alta y los
+El **modo** se cambia en el grupo *Acceso* de la tarjeta *Ajustes del
+formulario*, con su botón *Guardar ajustes*. Ese guardado tampoco recarga, y la
+tarjeta *Acceso* se entera: pasa a decir «Solo la lista» con el alta y los
 correos, o a «Público» sin ellos, sin tocar nada más.
 
 > El enlace se genera **al vuelo**: el token de acceso solo existe en claro en

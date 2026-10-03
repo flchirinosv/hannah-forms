@@ -1787,11 +1787,30 @@
         saving = true;
 
         let original = null;
-        if (!opts.silent) {
-            el.saveBtn.disabled = true;
-            original = el.saveBtn.innerHTML;
-            el.saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando…';
-        }
+        /* El botón se repone por `pintarBoton(false)`, y desde aquí abajo SOLO
+         * hay una salida que lo hace. Antes el atajo de «no hay cambios» salía
+         * antes del `try`, así que se saltaba el `finally` que lo repone: el
+         * segundo clic sin cambios lo dejaba apagado con el spinner para
+         * siempre, sin error y sin red. La puerta única es lo que evita que el
+         * próximo atajo repita el fallo; lo vigila
+         * `BuilderSaveButtonTest::testNingunaSalidaSeSaltaLaReposicionDelBoton`. */
+        const pintarBoton = function (guardando) {
+            if (opts.silent || !el.saveBtn) {
+                return;
+            }
+            if (guardando) {
+                original = el.saveBtn.innerHTML;
+                el.saveBtn.disabled = true;
+                el.saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando…';
+                return;
+            }
+            if (original !== null) {
+                el.saveBtn.disabled = false;
+                el.saveBtn.innerHTML = original;
+                original = null;
+            }
+        };
+        pintarBoton(true);
         setStatus('Guardando…', 'text-secondary');
 
         const payload = buildPayload();
@@ -1803,6 +1822,7 @@
             pendingSave = false;
             setStatus('Guardado ✓', 'text-success');
             if (!opts.silent) showToast('Sin cambios por guardar', 'success');
+            pintarBoton(false);
             saving = false;
             return;
         }
@@ -1833,10 +1853,7 @@
             setStatus('Error de conexión', 'text-danger');
             if (!opts.silent) showToast('Error de conexión al guardar', 'danger');
         } finally {
-            if (!opts.silent && original !== null) {
-                el.saveBtn.disabled = false;
-                el.saveBtn.innerHTML = original;
-            }
+            pintarBoton(false);
             saving = false;
             // M1: si hubo cambios mientras se guardaba, relanzar el autosave
             if (pendingSave) {

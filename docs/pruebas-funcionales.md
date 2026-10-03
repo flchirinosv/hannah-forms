@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**308 pruebas** en 21 bloques: A–Q, las regresiones (R) de fallos que ya
+**312 pruebas** en 21 bloques: A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), y el diálogo de confirmación con el alta
 de la lista de acceso (U).
@@ -430,6 +430,7 @@ Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
 | R4 | Botón verde en cualquier vista | Sale **verde**, no índigo (`.app-btn-primary` ya no pisa el color de la variante) | A | |
 | R5 | Ficha de un formulario con revisión | Una acción primaria, las de siempre y un menú «más»; «Guardar» no compite con «Publicar» | M | |
 | R6 | Escala, NPS y estrellas con el teclado | Un tabulador por control y anillo de foco visible (antes no eran alcanzables) | A | |
+| R7 | Constructor → «Guardar» **dos veces seguidas**, sin tocar nada entre las dos | El botón vuelve a su estado normal las dos veces. Antes el segundo clic lo dejaba en «Guardando…» apagado para siempre, sin red y sin error | A | |
 
 ---
 
@@ -472,6 +473,9 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S29 | Constructor → vista previa del formulario, abajo del todo | El botón es el del formulario publicado: degradado morado con **«Enviar» en blanco**, no un botón blanco con el texto en negro | M | |
 | S30 | `/admin` en pantalla ancha | El alta ocupa 2/3 y «Acceso de cualquiera» 1/3, con el chevron de «Nuevo usuario» a la derecha de su título | M | |
 | S31 | `/admin` a 375 px | Las dos tarjetas se apilan y **ninguna** desborda; los cinco campos del alta se reparten en 3+2 sin cortes | M | |
+| S32 | Ficha del formulario, en pantalla ancha | Columna ancha: Detalles, Campos y Acceso, en ese orden. Columna estrecha: Enlace para compartir y Ajustes del formulario | M | |
+| S33 | Ficha con una **larga lista de correos** | La lista se lee con holgura y no estira la columna de los ajustes, que se queda a su ancho | M | |
+| S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
 
 
 ---

@@ -790,3 +790,49 @@ sección** (y más grande) en vez de con el nivel de la tarjeta (`h6 fw-bold`,
 `.85rem`, bold). `font-size: .85rem; font-weight: 600;` iguala el grupo al texto
 de la tarjeta; el botón del grupo lo hereda porque la etiqueta ya estaba en el
 mismo elemento.
+
+### Campos y Acceso en la columna ancha, y por qué la lista no va en el desplegable
+
+La ficha era `col-lg-8` (Detalles) y `col-lg-4` (Compartir, Ajustes, Acceso,
+Campos), y la tarjeta de Acceso quedaba arriba de la de Campos: para llegar al
+formulario había que pasar por la configuración, y la lista —la única parte que
+puede medir —cientos de correos—. Ahora la columna ancha lleva **Detalles → Campos → Acceso** y
+la estrecha **Enlace para compartir → Ajustes del formulario**.
+
+Dos motivos, y el segundo es el que de verdad lo impedía. La lista de correos
+puede tener cientos de líneas, y en una columna de un tercio estiraba la de los
+ajustes; en la ancha se lee. Y el desplegable «Acceso» de «Ajustes del
+formulario» está **dentro de `<form id="formSettings">`**: meter allí los
+formularios de la allowlist anidaría dos `<form>`, que no es HTML válido, y el
+parser descarta el interior —la lista desaparecería de verdad, no solo de
+maquetación—. Por eso el modo **sigue** en el desplegable y la tarjeta solo
+explica y lista: separarlos no fue capricho, fue lo que quedó al no anidar.
+
+De paso se borraron las tres referencias cruzadas que decían «más abajo». En
+dos columnas, si la izquierda es más alta que la derecha, «más abajo» es verdad;
+si es al revés, es mentira, y depende de los formularios que hubiera en la
+instancia. Ahora las dos tarjetas se nombran y no se sitúan.
+
+### El botón de «Guardar» se quedaba en «Guardando…» para siempre
+
+Lo reportó un usuario: el **segundo clic** sin cambios dejaba el botón apagado
+con el spinner, sin red, sin error y sin forma de volver a pulsarlo. La causa no
+era el clic sino una **salida**: `saveStructure()` apagaba el botón, y el atajo
+de M8 —`payloadJson === lastSavedJson`, que evita el POST inútil— hacía
+`return` **antes** del `try`. Ese `return` se saltaba el `finally` que era lo
+único que reponía el botón, y un `finally` solo corre si hubo `try`. Es decir:
+el atajo que existe para **no** hacer nada era el que dejaba la interfaz
+colgada.
+
+El arreglo no es añadir el `pintarBoton(false)` que faltaba en esa rama —eso
+arregla el clic de hoy y deja la misma trampa al próximo atajo—, sino que la
+reposición tenga **una sola puerta**: `pintarBoton()`, y que toda salida la
+llame. `testNingunaSalidaSeSaltaLaReposicionDelBoton` ata justo eso: recorre
+los `return` que hay *después* de que se encienda el botón y falla si alguno no
+tiene una `pintarBoton(false)` antes. Verificado poniéndole el bug de vuelta:
+el test cae y nombra la causa.
+
+El test quita los comentarios antes de leer el cuerpo, porque la explicación
+del propio bug menciona `return` y sin hacerlo el test fallaría por su propia
+explicación. Es la misma trampa que ya describen los contratos de
+`builder.js`: un test que lee estructura de código no debe leer prosa.

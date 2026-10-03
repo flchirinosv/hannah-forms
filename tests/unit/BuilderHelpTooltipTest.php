@@ -161,18 +161,28 @@ class BuilderHelpTooltipTest
      * de un adjunto, p. ej.), y la tarjeta de Acceso tiene los suyos. Un
      * `role="status"` obligatorio en toda la vista sería una regla falsa; y sin
      * recorte, este test no distinguiría los ajustes de una explicación suelta.
+     *
+     * La ficha se recorta POR SU IDENTIFICADOR y hasta el final de la vista, y
+     * no entre dos tarjetas. Antes el corte era la tarjeta de Acceso, que iba
+     * justo detrás: un par de anclas que eran una suposición de orden, así que
+     * al mover las tarjetas el test caía sin que nada estuviera mal —o, peor,
+     * seguía mirando un panel que ya no era el que decía mirar—. Ahora
+     * `#settings` es la última tarjeta de la ficha, así que «hasta el final» SÍ
+     * es el panel. Anclar por `id` y no por la clase del `div` también evita que
+     * un cambio de margen rompa un test que no va de márgenes.
      */
     public function testLosTextosDeAyudaYaNoEstanSueltosEnLosPanelesDeAjustes(): void
     {
         $paneles = [
             self::VISTA_BUILDER => ['<div class="modal fade" id="formSettingsModal"', '<div class="modal-footer border-0">'],
-            self::VISTA_FICHA   => ['<div class="card border-0 shadow-sm mb-4" id="settings"', '<div class="card border-0 shadow-sm mb-4" id="access"'],
+            self::VISTA_FICHA   => ['id="settings"', null],
         ];
 
         foreach ($paneles as $ruta => [$ini, $fin]) {
             $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/' . $ruta);
             $desde = strpos($vista, $ini);
-            $hasta = $desde === false ? false : strpos($vista, $fin, $desde);
+            $hasta = $desde === false ? false
+                : ($fin === null ? strlen($vista) : strpos($vista, $fin, (int) $desde));
 
             assertTrue($desde !== false && $hasta !== false, 'se recorta el panel de ajustes de ' . $ruta);
             if ($desde === false || $hasta === false) {

@@ -482,7 +482,7 @@ php scripts/test.php --path tests/unit
 ## Proximos Pasos
 
 1. **Verificación manual en navegador** de los bloques R, S, T y U de
-   `docs/pruebas-funcionales.md` (308 comprobaciones). Es lo único que la suite no
+   `docs/pruebas-funcionales.md` (312 comprobaciones). Es lo único que la suite no
    puede ver: maquetación, foco con teclado y flujo en pantalla. Con node
    opcional, el arnés cubre el comportamiento del envío, no el pixel.
 2. Lazy loading del builder JS (cargar `builder.js`/`sortable` solo al entrar al builder)

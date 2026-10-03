@@ -86,6 +86,73 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                     </div>
                 </div>
             </div>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0">Campos</h3>
+                        <a href="/forms/<?= (int) $form['id'] ?>/builder" class="small text-decoration-none"><i class="fa-solid fa-pen me-1"></i>Editar</a>
+                    </div>
+                    <?php if (empty($form['fields'])): ?>
+                        <p class="text-muted small mb-0">Aún no hay campos. Ve al <a href="/forms/<?= (int) $form['id'] ?>/builder">builder</a> para agregar preguntas.</p>
+                    <?php else: ?>
+                        <ul class="list-group list-group-flush app-field-list">
+                            <?php foreach ($form['fields'] as $field): ?>
+                            <li class="list-group-item d-flex align-items-center justify-content-between px-0">
+                                <span class="small app-truncate-1"><?= View::escape($field['label']) ?></span>
+                                <span class="badge text-bg-light text-muted"><?= View::escape($field['type']) ?></span>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php // F4 — Acceso. La lista se edita aquí y NO en el builder a propósito:
+                  // quitar un email revoca sus enlaces, y esa consecuencia se ve
+                  // mejor junto al formulario que dentro de un modal de ajustes.
+                  //
+                  // Va en la columna ANCHA y al final, y no dentro del desplegable
+                  // «Acceso» de «Ajustes del formulario», por dos razones. La
+                  // lista puede ser larga —cientos de correos— y en un `col-lg-4`
+                  // estiraba la columna de los ajustes; en la ancha se lee y no
+                  // empuja a nadie. Y el desplegable está dentro del formulario
+                  // de ajustes: meter aquí los formularios de la allowlist
+                  // anidaría dos `<form>`, que no es HTML válido y el parser
+                  // descarta el interior —la lista desaparecería de verdad, no
+                  // solo de maquetación—. Un comentario como este no puede
+                  // escribir el identificador de ese formulario con sus comillas:
+                  // `AsyncActionsJsTest` cuenta esas apariciones en crudo y
+                  // daría un id repetido que no existe por ningún lado.
+                  //
+                  // Por eso el MODO sigue en el desplegable y esta tarjeta solo
+                  // explica y lista. Y las dos se nombran sin decir «más abajo»:
+                  // en dos columnas esa dirección depende de cuánto ocupe cada
+                  // una, así que el mismo texto era verdad o mentira según los
+                  // formularios que hubiera en la instancia. ?>
+            <?php $accessMode = $accessMode ?? 'public'; ?>
+            <?php $accessList = $accessList ?? []; ?>
+            <?php $accessCount = $accessCount ?? 0; ?>
+            <div class="card border-0 shadow-sm" id="access"
+                 data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
+                 data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
+                <?php // F0.4-cuatro — El CUERPO de esta tarjeta es un partial
+                      // (`_access_card.php`) porque lo que lo cambia es un ajuste
+                      // —el modo de acceso— y el guardado de ajustes va por fetch:
+                      // el `POST /settings` repone este hueco (`vfSlotAccess`) y sin
+                      // él la tarjeta seguía diciendo «Público» con el formulario
+                      // ya en «Solo la lista». El `id` va en el `card-body` y no en
+                      // la tarjeta, porque la tarjeta lleva lo que el JS lee
+                      // (`data-csrf`, `data-link-endpoint`) y repintar el hueco
+                      // borraría esos atributos. ?>
+                <div class="card-body" id="vfSlotAccess">
+                    <?= View::partial('dashboard/forms/_access_card', [
+                        'form'        => $form,
+                        'accessMode'  => $accessMode,
+                        'accessList'  => $accessList,
+                        'accessCount' => $accessCount,
+                    ]) ?>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">
@@ -111,7 +178,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                   // entero, cada pulsación de «Guardar» en el builder dejaría
                   // estos ocho ajustes en sus valores de fábrica. ?>
             <?php $emailFieldLabels = $emailFieldLabels ?? []; ?>
-            <div class="card border-0 shadow-sm mb-4" id="settings">
+            <div class="card border-0 shadow-sm" id="settings">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <h3 class="h6 fw-bold m-0"><i class="fa-solid fa-sliders me-2 text-primary"></i>Ajustes del formulario</h3>
@@ -150,7 +217,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                     <option value="email"<?= (($settings['access']['mode'] ?? 'public') === 'email') ? ' selected' : '' ?>>Cualquiera que verifique su correo</option>
                                     <option value="allowlist"<?= (($settings['access']['mode'] ?? 'public') === 'allowlist') ? ' selected' : '' ?>>Solo los correos de la lista</option>
                                 </select>
-                                <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace» y «solo los correos de la lista», que se edita más abajo en la tarjeta de Acceso.') ?>
+                                <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace» y «solo los correos de la lista», que se edita en la tarjeta de Acceso.') ?>
                             </div>
                             <p class="small text-muted mb-0" id="stAccessHint" role="status"></p>
                             </div>
@@ -390,55 +457,6 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                             <span class="spinner-border spinner-border-sm d-none ms-1" role="status" aria-hidden="true"></span>
                         </button>
                     </form>
-                </div>
-            </div>
-
-            <?php // F4 — Acceso. La lista se edita aquí y NO en el builder a propósito:
-                  // quitar un email revoca sus enlaces, y esa consecuencia se ve
-                  // mejor junto al formulario que dentro de un modal de ajustes. ?>
-            <?php $accessMode = $accessMode ?? 'public'; ?>
-            <?php $accessList = $accessList ?? []; ?>
-            <?php $accessCount = $accessCount ?? 0; ?>
-            <div class="card border-0 shadow-sm mb-4" id="access"
-                 data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
-                 data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
-                <?php // F0.4-cuatro — El CUERPO de esta tarjeta es un partial
-                      // (`_access_card.php`) porque lo que lo cambia es un ajuste
-                      // —el modo de acceso— y el guardado de ajustes va por fetch:
-                      // el `POST /settings` repone este hueco (`vfSlotAccess`) y sin
-                      // él la tarjeta seguía diciendo «Público» con el formulario
-                      // ya en «Solo la lista». El `id` va en el `card-body` y no en
-                      // la tarjeta, porque la tarjeta lleva lo que el JS lee
-                      // (`data-csrf`, `data-link-endpoint`) y repintar el hueco
-                      // borraría esos atributos. ?>
-                <div class="card-body" id="vfSlotAccess">
-                    <?= View::partial('dashboard/forms/_access_card', [
-                        'form'        => $form,
-                        'accessMode'  => $accessMode,
-                        'accessList'  => $accessList,
-                        'accessCount' => $accessCount,
-                    ]) ?>
-                </div>
-            </div>
-
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="h6 fw-bold m-0">Campos</h3>
-                        <a href="/forms/<?= (int) $form['id'] ?>/builder" class="small text-decoration-none"><i class="fa-solid fa-pen me-1"></i>Editar</a>
-                    </div>
-                    <?php if (empty($form['fields'])): ?>
-                        <p class="text-muted small mb-0">Aún no hay campos. Ve al <a href="/forms/<?= (int) $form['id'] ?>/builder">builder</a> para agregar preguntas.</p>
-                    <?php else: ?>
-                        <ul class="list-group list-group-flush app-field-list">
-                            <?php foreach ($form['fields'] as $field): ?>
-                            <li class="list-group-item d-flex align-items-center justify-content-between px-0">
-                                <span class="small app-truncate-1"><?= View::escape($field['label']) ?></span>
-                                <span class="badge text-bg-light text-muted"><?= View::escape($field['type']) ?></span>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -41,13 +41,13 @@ use App\Core\View;
 <?php if ($accessMode === 'public'): ?>
     <p class="text-muted small mb-0">
         <i class="fa-solid fa-circle-info me-1"></i>Cualquiera con el enlace puede responder.
-        Cambia el modo en <em>Ajustes del formulario</em>, más abajo.
+        Cambia el modo en <em>Ajustes del formulario</em>.
     </p>
 <?php elseif ($accessMode === 'email'): ?>
     <p class="text-muted small mb-0">
         <i class="fa-solid fa-circle-info me-1"></i>Cualquiera que escriba un correo recibe un
         enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
-        <em>Ajustes del formulario</em>, más abajo.
+        <em>Ajustes del formulario</em>.
     </p>
 <?php else: ?>
     <p class="text-muted small">
