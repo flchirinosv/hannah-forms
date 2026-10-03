@@ -779,3 +779,14 @@ Y un apunte que costó un rato de lexers: un `?>` **dentro de un comentario `//`
 cierra el modo PHP**, y todo lo que viene detrás se va como HTML —el error es un
 «Unclosed `{' on line 362» que no señala el sitio—. En bloque (`/* */`) no pasa.
 Vale para cualquier nota que hable de `<?php` o `<?=` en un test.
+
+### Los títulos de los grupos plegables con el nivel de la tarjeta
+
+La tarjeta de ajustes la cabecera `h3 class="h6 fw-bold"` «Ajustes del
+formulario» y cada grupo lleva `<legend class="app-settings-group-title">`.
+Antes el `<legend>` no tenía tamaño y heredaba `var(--bs-body-font-size)`
+(`1rem`), así que el nombre de cada grupo se leía como un **encabezado de
+sección** (y más grande) en vez de con el nivel de la tarjeta (`h6 fw-bold`,
+`.85rem`, bold). `font-size: .85rem; font-weight: 600;` iguala el grupo al texto
+de la tarjeta; el botón del grupo lo hereda porque la etiqueta ya estaba en el
+mismo elemento.

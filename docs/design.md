@@ -238,6 +238,13 @@ busca casi nunca está en el primero.
 | Clase | Qué es |
 |---|---|
 | `.app-settings-group` | El `<fieldset>` del grupo. Bootstrap ya pone `min-width: 0` |
+| `.app-settings-group-title` | El `<legend>`: mismo tamaño y peso que el título de la tarjeta
+  (`h6 fw-bold`), así que los títulos de los siete grupos no se leen como
+  subtítulos de la sección, sino como el mismo nivel que «Ajustes del
+  formulario». Sin esto el botón del grupo heredaba el tamaño del cuerpo
+  (`var(--bs-body-font-size)`) y el grupo se leía como un encabezado de
+  sección, no como un título de bloque plegable. `margin-bottom: .75rem` es el
+  espacio con el bloque de controles de abajo. |
 | `.app-group-toggle` | El `<button type="button">` del título: `flex`, ancho completo, `cursor: pointer` y anillo de `:focus-visible` (`--vf-focus-ring`) |
 | `.app-group-caret` | El chevron a la derecha (`ms-auto`); gira con `transform` cuando `aria-expanded="true"` |
 

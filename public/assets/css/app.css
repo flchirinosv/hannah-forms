@@ -305,6 +305,8 @@ body {
    `<p>` de introducción; al llevarlo todo a los tooltips, sin esto los grupos
    quedan pegados al bloque de controles de arriba. */
 .app-settings-group-title {
+    font-size: .85rem;
+    font-weight: 600;
     margin-bottom: .75rem;
 }
 .app-settings-group-title + .row,
