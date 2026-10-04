@@ -173,7 +173,7 @@ el existente y lo dice.
 |---|---|---|---|
 | 0 | Bug de PII en la analítica | bajo | **Hecha** (6 tests nuevos) |
 | 1 | Escritor xlsx (`RosterTemplate`) | **cero** | **Hecha** (15 tests nuevos) |
-| 2 | Migración `0014` | **cero** | Pendiente |
+| 2 | Migración `0014` | **cero** | **Hecha** (11 tests nuevos) |
 | 3 | `FormParticipant`, CRUD, importar | bajo | Pendiente |
 | 4 | **La puerta del fill** | **alto** | Pendiente |
 | 5 | Pestaña Participantes + huecos | bajo | Pendiente |
@@ -293,6 +293,71 @@ que aporta, que ya está en `RosterTemplateTest`.
 
 **15 tests nuevos. Suite completa: 790, 0 fallos.**
 
+## Fase 2 — el esquema (migración `0014`) — **HECHA**
+
+Tres tablas y una columna. Las dos decisiones que justifican el diseño están
+escritas en el `COMMENT` de la propia columna, que es donde se van a leer:
+
+- **`identifier_value` denormalizado.** Los tres candidatos a identificador
+  (`cedula`, `indicador`, `correo`) son columnas propias, pero la puerta del fill
+  busca siempre en esta, que está indexada. Un `CASE` sobre tres columnas
+  significa tres índices y el mismo código repetido tres veces.
+- **`submissions.participant_id` con `ON DELETE SET NULL`.** Borrar a alguien de
+  la lista es dejar de invitarlo, **no** anular lo que ya contestó. Con `CASCADE`,
+  quitar a un participante tiraría sus respuestas y no habría forma de
+  recuperarlas. Es la regla que se comprueba con un test, porque no se deduce
+  leyendo el nombre de la columna.
+
+`responded_at` es redundante a propósito y su comentario lo dice: existe para poder
+listar «quién NO ha respondido» con un `LEFT JOIN ... WHERE responded_at IS NULL` en
+vez de una subconsulta correlacionada. Se puede quedar viejo, y su único escritor es
+el mismo sitio que crea la respuesta.
+
+### Lo que salió al implementarla (y no estaba previsto)
+
+**1. `database/schema.sql` estaba ROTO y no loIndicaba ningún test.** La línea 102
+era la continuación de un comentario a la que se le había caído el `--`:
+
+```
+-- la FK convierte el descuido de escribir un 0 en un error de integridad en vez
+ * de un "campo sin sección" silencioso.
+```
+
+MariaDB intentaba ejecutar esa prosa como SQL y **`schema.sql` no instalaba una base
+limpia**: el error sale en la línea 102, mil líneas más allá del `--` que se perdió,
+y no menciona el esquema. Es decir, la ruta documentada de «BD desde cero» estaba
+rota. Ahora hay un test que la vigila
+(`testSchemaSqlNoTieneComentariosRotos`) y que se comprobó **reintroduciendo el bug a
+propósito**: sale rojo señalando la línea.
+
+**2. Yo introduje el mismo descuido en mis propias tablas**, y por eso el orden de las
+comprobaciones era: instalar limpio, migrar, y **comparar las dos bases**. Salieron
+tres diferencias reales que ninguna revisión de código habría visto:
+
+| Diferencia | Por qué importa |
+|---|---|
+| `submissions.participant_id` **sin la FK** en `schema.sql` | Instalaba sin `ON DELETE SET NULL`: solo las bases migradas garantizaban que borrar a alguien no tira sus respuestas |
+| La columna **al final** de `submissions` en la migración | Al arreglar unas comillas se me fue el `AFTER form_id`; el orden de columnas ya no cuadraba |
+| Faltaban `COMMENT` en 4 sitios | Cosmético, pero hacen que las dos bases difieran y por tanto que el diff deje de servir |
+
+La comparación no es un `mysqldump | diff`, sino una consulta a `information_schema`
+que compara columnas, tipos, nulabilidad, posición, índices y **reglas de borrado de
+las FK**: 239 elementos estructurales, idénticos por las dos vías. (Y con un aviso:
+`diff` de dos ficheros **vacíos** sale limpio. Se comprobó que las dos listas tuvieran
+239 líneas antes de creerse nada.)
+
+**3. La herramienta de comparación mintió dos veces**, y las dos por el mismo motivo:
+`diff` sobre ficheros vacíos sale con código 0. Está escrito en el propio script.
+
+**11 tests nuevos** en `ParticipantSchemaTest`. No miran el archivo de la migración:
+miran **la base de datos**, que es donde el error se vuelve problema. Cogen tres
+cosas que de otro modo no habría quien las viera — que no se haya migrado, que el
+esquema esté a medias, y que un índice haya dejado de cubrir su columna — y una
+cuarta que compara el texto del DDL de las dos fuentes, que es como una instalación
+limpia acaba sin la FK que sí tiene toda base migrada.
+
+**Suite completa: 801, 0 fallos.**
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -325,7 +390,7 @@ que aporta, que ya está en `RosterTemplateTest`.
 |---|---|
 | 0 | **Hecha** — `4b4d31b`, 775 tests |
 | 1 | **Hecha** — 790 tests |
-| 2 | Pendiente |
+| 2 | **Hecha** — 801 tests |
 | 3 | Pendiente |
 | 4 | Pendiente |
 | 5 | Pendiente |

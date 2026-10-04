@@ -99,7 +99,7 @@ CREATE INDEX idx_fields_form_position ON fields (form_id, position);
 -- Importa además por el significado de la columna: `parent_id` es NULL para un
 -- campo suelto, y 0 nunca puede ser una sección real (AUTO_INCREMENT), así que
 -- la FK convierte el descuido de escribir un 0 en un error de integridad en vez
- * de un "campo sin sección" silencioso.
+-- de un "campo sin sección" silencioso.
 CREATE INDEX idx_fields_parent ON fields (parent_id);
 
 -- Índice para consultas frecuentes de dashboard: forms por usuario, con y sin
@@ -143,10 +143,71 @@ CREATE TABLE IF NOT EXISTS form_access_tokens (
     CONSTRAINT fk_form_access_token_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Roster: la persona con acceso. `identifier_value` está DENORMALIZADO para que
+-- la puerta del fill busque siempre en la misma columna indexada, se elija
+-- identificador. `code` es la credencial, no la fila: un entero correlativo sería
+-- adivinable. La collation no distingue mayúsculas ni acentos, así que `V-1234` y
+-- `v-1234` son el mismo participante.
+CREATE TABLE IF NOT EXISTS form_participants (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    form_id          INT UNSIGNED NOT NULL,
+    cedula           VARCHAR(190) NOT NULL DEFAULT '' COMMENT 'Uno de los tres candidatos a identificador',
+    nombre           VARCHAR(190) NOT NULL DEFAULT '',
+    indicador        VARCHAR(190) NOT NULL DEFAULT '',
+    correo           VARCHAR(190) NOT NULL DEFAULT '' COMMENT 'Normalizado a minúsculas por el modelo',
+    identifier_value VARCHAR(190) NOT NULL COMMENT 'Denormalizado: la puerta busca siempre por aquí',
+    code             CHAR(16) NOT NULL COMMENT 'Credencial personal; NO es la fila ni el identificador',
+    responded_at     DATETIME DEFAULT NULL COMMENT 'Su único escritor es el mismo POST que crea la respuesta',
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_form_participant_identifier (form_id, identifier_value),
+    UNIQUE KEY uq_form_participant_code (code),
+    KEY idx_form_participant_correo (form_id, correo),
+    CONSTRAINT fk_form_participant_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
+) ENGINE=InnoDB COMMENT='Listado de participantes con acceso al formulario';
+
+-- El catálogo de atributos es la FRONTERA DE SEGURIDAD: el SQL solo recibe un
+-- `key_name` que salió de aquí, y una clave inventada no encuentra nada.
+-- `label` es lo que escribió el dueño en la cabecera del xlsx y es único por
+-- formulario porque es lo que ve en la interfaz.
+CREATE TABLE IF NOT EXISTS form_participant_fields (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    form_id    INT UNSIGNED NOT NULL,
+    key_name   VARCHAR(64) NOT NULL COMMENT 'Slug estable; es lo único que viaja al SQL',
+    label      VARCHAR(190) NOT NULL COMMENT 'La cabecera que escribió el dueño en el xlsx',
+    position   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_form_participant_field_key (form_id, key_name),
+    UNIQUE KEY uq_form_participant_field_label (form_id, label),
+    CONSTRAINT fk_form_participant_field_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
+) ENGINE=InnoDB COMMENT='Catálogo de atributos de participante por formulario';
+
+-- Un renglón por valor, y NO una columna JSON: el nombre de la clave no se puede
+-- pasar como parámetro enlazado (va dentro de la llamada a la función de SQL) y
+-- agrupar por JSON no es indexable. `value` es VARCHAR, no TEXT, para que el
+-- índice de filtro cubra la columna entera.
+CREATE TABLE IF NOT EXISTS form_participant_attrs (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    form_id        INT UNSIGNED NOT NULL COMMENT 'Desnormalizado para filtrar sin atravesar dos tablas',
+    participant_id INT UNSIGNED NOT NULL,
+    key_name       VARCHAR(64) NOT NULL COMMENT 'Salió de form_participant_fields, nunca del POST',
+    value          VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'VARCHAR, no TEXT: así el índice es completo',
+    KEY idx_form_participant_attr_unique (participant_id, key_name),
+    KEY idx_form_participant_attr_filter (form_id, key_name, value),
+    CONSTRAINT fk_form_participant_attr_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE,
+    CONSTRAINT fk_form_participant_attr_participant FOREIGN KEY (participant_id) REFERENCES form_participants(id) ON DELETE CASCADE
+) ENGINE=InnoDB COMMENT='Un renglón por valor de atributo';
+
 -- Submissions
 CREATE TABLE IF NOT EXISTS submissions (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     form_id     INT UNSIGNED NOT NULL,
+    -- Con qué participante se respondió. NULL si el formulario no es roster, o si
+    -- respondió sin código. La FK va DECLARADA (y no solo la columna) para que una
+    -- instalación limpia quede idéntica a una migrada: `ON DELETE SET NULL` es lo
+    -- que garantiza que borrar a alguien de la lista no borre su respuesta, y si
+    -- esta FK faltara, solo estaría en las instalaciones que se migraron.
+    participant_id INT UNSIGNED DEFAULT NULL,
     ip_address  VARCHAR(45) DEFAULT NULL,
     user_agent  VARCHAR(255) DEFAULT NULL,
     -- Token de capacidad de 128 bits para la página pública de gracias (P8).
@@ -155,11 +216,13 @@ CREATE TABLE IF NOT EXISTS submissions (
     -- NULL = fila antigua sin token: se muestra el agradecimiento sin quiz.
     public_token CHAR(32) DEFAULT NULL,
     finished_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_submissions_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
+    CONSTRAINT fk_submissions_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE,
+    CONSTRAINT fk_submissions_participant FOREIGN KEY (participant_id) REFERENCES form_participants(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_submissions_form_finished ON submissions (form_id, finished_at);
 CREATE UNIQUE INDEX idx_submissions_public_token ON submissions (public_token);
+CREATE INDEX idx_submissions_participant ON submissions (participant_id);
 
 -- Answers
 CREATE TABLE IF NOT EXISTS answers (

@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 78 archivos, 790 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 79 archivos, 801 métodos, ~3 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -94,7 +94,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **43 de los 78 archivos tocan la BD real** (los que llaman
+- **44 de los 79 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -701,6 +701,26 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   catálogo leyéndolo de `config/permissions.php` (así hace la 0006): la que lo
   sembró ya no vuelve a correr. **Nunca borres filas de `migrations`** para
   re-sembrar.
+- **`schema.sql` y las migraciones tienen que decir LO MISMO, y `schema.sql` lleva
+  su propio `USE vanilla_forms;`**: `mysql otra_base < database/schema.sql` NO elige
+  esa base, aplica sobre `vanilla_forms` pase lo que pase. Para instalar de verdad
+  en otra hay que copiar el fichero sustituyendo el nombre. Con `USE` dentro, el
+  primer `CREATE TABLE` que ya existe no hace nada y el primer `CREATE INDEX` plano
+  revienta con 1061: el error dice «duplicate key» y parece que la base está mal
+  cuando lo que pasó es que has apuntado a la que no creías.
+- La comparación de verdad entre «instalación limpia» y «instalación migrada» no es
+  un `mysqldump | diff` (llena de ruido de `AUTO_INCREMENT` y de comentarios): es
+  una consulta a `information_schema` que compara columnas con su **posición**,
+  índices y **`DELETE_RULE` de cada FK**. Tres diferencias reales salieron así, y
+  ninguna se ve leyendo el código: una FK que solo estaba en las migradas, una
+  columna que la migración dejaba al final y `schema.sql` en medio, y `COMMENT`
+  divergentes. **`diff` de dos ficheros VACÍOS sale con código 0**: comprueba el
+  número de líneas antes de creerte que dos esquemas son iguales.
+- **`schema.sql` tiene un test que vigila que no haya prosa fuera de comentario**
+  (`ParticipantSchemaTest::testSchemaSqlNoTieneComentariosRotos`): una continuación
+  de comentario a la que se le cayó el `--` hace que MariaDB ejecute la frase como
+  SQL, y **`schema.sql` dejó de instalar** sin que ningún test se enterara. El error
+  aparece en la línea del `--` perdido, no en la del comentario que empezó.
 
 **Builder (JS)**
 
@@ -865,7 +885,7 @@ probando la rama equivocada).
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
-- `docs/technical-document.md`: arquitectura y modelo de datos (19 tablas, con
+- `docs/technical-document.md`: arquitectura y modelo de datos (22 tablas, con
   F2/F3/F4 y RBAC).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
   P1–P10 con su diagnóstico; los mapas de estado quedaron al día el 2026-09-29.
