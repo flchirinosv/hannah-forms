@@ -9,21 +9,41 @@
  *   $answers          answers por submission id (Submission::withAnswersByIds)
  *   $answerableFields campos respuesta en orden
  *   $offset           índice base para la columna «#» (server-side offset)
+ *   $piiTypes         field_id => tipo de los campos marcados (F1), opcional
  */
 use App\Core\View;
+use App\Services\Pii;
+use App\Services\Uploader;
+
 if (empty($submissions)) {
     return;
 }
 $idx = (int) ($offset ?? 1);
+$piiTypes = is_array($piiTypes ?? null) ? $piiTypes : [];
 foreach ($submissions as $submission) {
     $row = $answers[$submission['id']]['answers'] ?? [];
     echo '<tr class="paginate-item">';
     echo '  <td class="text-muted" data-label="#">' . $idx++ . '</td>';
     foreach ($answerableFields as $field) {
+        $fieldId = (int) $field['id'];
         echo '  <td class="app-answer-cell" data-label="' . View::escape($field['label']) . '">';
-        $val = $row[(int) $field['id']] ?? '';
-        if (is_string($val) && \App\Services\Uploader::isAttachmentJson($val)) {
-            $val = \App\Services\Uploader::displayValue($val);
+        $val = $row[$fieldId] ?? '';
+        $esAdjunto = is_string($val) && Uploader::isAttachmentJson($val);
+
+        // F1: el enmascarado va ANTES de reinterpretar el valor, porque
+        // `[oculto]` empieza por `[` y el bloque de JSON de abajo lo trataría
+        // como una lista (el mismo motivo por el que el CSV enmascara dentro
+        // del bucle, después de decodificar). Un adjunto marcado se sustituye
+        // por el marcador entero: el NOMBRE del archivo es el dato.
+        if (isset($piiTypes[$fieldId])) {
+            $val = $esAdjunto
+                ? Pii::MASK
+                : Pii::maskValue((string) $val, (string) $piiTypes[$fieldId]);
+            $esAdjunto = false;
+        }
+
+        if ($esAdjunto) {
+            $val = Uploader::displayValue($val);
         } elseif (is_string($val) && str_starts_with($val, '[')) {
             $decoded = json_decode($val, true);
             if (is_array($decoded) && $decoded !== []) {

@@ -289,11 +289,35 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `[oculto]`, campos marcados `[oculto]` (email `j***@e***.com`, teléfono solo
   prefijo). `piiFieldTypes()` NO comprueba el permiso (extrae la lista);
   `maybeMaskAnswers()`/`maybeMaskSubmission()` sí.
-- **Los cuatro canales de salida se enmascaran**: detalle, listado, `exportJson`
-  y `exportCsv`. Enmascarar en la vista y no en la exportación deja un canal
-  limpio. En el CSV se enmascara **dentro** del bucle de campos, después de
+- **Los canales de salida se enmascaran**: detalle, listado, `exportJson`,
+  `exportCsv` y **la analítica** (sus gráficos y su tabla de detalle). Enmascarar
+  en la vista y no en la exportación deja un canal limpio. En el CSV y en
+  `analytics/_rows` se enmascara **dentro** del bucle de campos, después de
   decodificar: `[oculto]` empieza por `[` como un JSON y el bloque lo
   reinterpretaría.
+- **En la analítica se enmascara ANTES de agregar, no después**, porque la
+  pantalla existe para agrupar: `Answer::valueCountsInForm()` agrupa por
+  `(field_id, value)`, así que cuando llega a PHP los valores crudos ya son
+  distintos entre sí. Enmascarar el resultado daría 30 barras `[oculto]` de un 1
+  cada una, y las etiquetas de los gráficos viajan en `data-chart`
+  (`views/analytics/show.php:6`). Lo hace `FieldAggregator::enmascararValores()`,
+  que además **funde** las que quedan con el mismo marcador sumando su `c`. Cada
+  agregado sale honesto después: `conteoSimple` da una barra `[oculto]` con el
+  total; `numerico`/`nps` filtran lo no numérico con una regex y quedan a `null`,
+  que es mejor que un promedio inventado; `matriz`/`ranking` buscan la etiqueta en
+  las opciones del campo y la fila desaparece.
+- **El permiso se decide en el CONTROLADOR, no en la vista**: los controladores
+  pasan `Pii::canView() ? [] : Pii::piiFieldTypes($fields)`, y una lista vacía es
+  la forma de decir «este usuario puede verlos». Mascarar dentro del partial
+  dejaba la analítica siempre tapada, **también para el admin**, que es lo
+  contrario de lo que hace el listado de respuestas.
+- **Asimetría conocida, no la «arregles» sin pensar:** `exportCsv` enmascara
+  **siempre**, porque su puerta es `forms.export_own`, no `responses.pii`. O sea
+  que un admin ve la PII en la analítica y `[oculto]` en el CSV del mismo
+  formulario. Está en el lado estricto (nadie ve de más) y es lo que testea
+  `PiiMaskingTest`, así que **no lo cambies por simetría sin decidirlo**: abrirlo
+  es aflojar una exportación.
+
 - El bloqueo de **adjuntos** va en `AttachmentController::download` (403 si el
   campo es PII sin el permiso), no en la vista: `/attachments/{id}` es
   adivinable por el id correlativo de `answers`.

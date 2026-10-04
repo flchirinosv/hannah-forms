@@ -40,12 +40,29 @@ final class FieldAggregator
      *
      * @param array $fields     campos del formulario (`id`, `type`, `options`)
      * @param int[] $fieldIds   ids de los campos ya filtrados (sin secciones)
+     * @param array $piiTypes   field_id => tipo de los campos marcados (F1)
      * @return array<int, array{field: array, values: mixed, count: int, non_empty: int, nps?: array}>
      */
-    public static function forForm(int $formId, array $fields, array $fieldIds, int $total, string $from = '', string $to = ''): array
-    {
+    public static function forForm(
+        int $formId,
+        array $fields,
+        array $fieldIds,
+        int $total,
+        string $from = '',
+        string $to = '',
+        array $piiTypes = []
+    ): array {
         $nonEmpty = Answer::nonEmptyCountsInForm($formId, $fieldIds, $from, $to);
         $values   = Answer::valueCountsInForm($formId, $fieldIds, $from, $to);
+
+        // F1: el enmascarado va ANTES de agregar, no después. La consulta agrupa
+        // por `(field_id, value)`, así que a estas alturas los valores crudos ya
+        // vienen distintos entre sí: enmascarar el resultado daría N barras
+        // `[oculto]` en vez de una con el total, y las etiquetas de los gráficos
+        // (que van en `data-chart`) llevarían el dato.
+        if ($piiTypes !== []) {
+            $values = self::enmascararValores($values, $piiTypes);
+        }
 
         $stats = [];
         foreach ($fields as $field) {
@@ -73,6 +90,54 @@ final class FieldAggregator
         }
 
         return $stats;
+    }
+
+    /**
+     * F1 — Enmascara las filas de un campo marcado y **fusiona** las que quedan
+     * con el mismo marcador, sumando su `c`.
+     *
+     * La fusión no es un detalle: sin ella, 30 correos distintos darían 30
+     * barras `[oculto]` con un 1 cada una, que es peor que no hacer nada porque
+     * parece que hay una respuesta por barra.
+     *
+     * Qué pasa después con cada tipo, y por qué no hay que inventar nada:
+     *
+     *  - `conteoSimple` / `conteoCheckbox`: sale un único `[oculto]` con el
+     *    total de respuestas. Es información útil y no dice quién.
+     *  - `numerico` / `nps`: filtran los valores con una regex numérica, así que
+     *    `[oculto]` no entra y el agregado sale a cero. **Honesto**: promedios y
+     *    NPS a `null` en vez de un promedio inventado sobre datos que no se pueden
+     *    mirar.
+     *  - `matriz` / `ranking`: buscan la etiqueta en las opciones del campo, así
+     *    que una fila o columna que solo tuviera respuestas personales
+     *    desaparece en vez de enseñar el dato.
+     */
+    private static function enmascararValores(array $values, array $piiTypes): array
+    {
+        foreach ($piiTypes as $fieldId => $type) {
+            $rows = $values[(int) $fieldId] ?? null;
+            if ($rows === null || $rows === []) {
+                continue;
+            }
+
+            $merged = [];
+            foreach ($rows as $row) {
+                $value = (string) $row['value'];
+                $masked = Pii::maskValue(
+                    \App\Services\Uploader::isAttachmentJson($value) ? 'file' : $value,
+                    (string) $type
+                );
+                $merged[$masked] = ($merged[$masked] ?? 0) + (int) $row['c'];
+            }
+
+            $out = [];
+            foreach ($merged as $masked => $c) {
+                $out[] = ['value' => $masked, 'c' => $c];
+            }
+            $values[(int) $fieldId] = $out;
+        }
+
+        return $values;
     }
 
     /**

@@ -648,8 +648,14 @@ que no tenga el permiso `responses.pii` ve los datos enmascarados**:
 | Campo marcado | `j***@e***.com` (email), prefijo (teléfono), `[oculto]` (resto) |
 | Adjunto de un campo PII | **403**, no se descarga |
 
-Se enmascara en los **cuatro** canales de salida: detalle, listado, exportación
-JSON y exportación CSV. No solo en pantalla.
+Se enmascara en **todos** los canales de salida: detalle, listado, analítica,
+exportación JSON y exportación CSV. No solo en pantalla.
+
+Una asimetría que conviene conocer: el **CSV se enmascara siempre**, aunque tengas
+`responses.pii`. Su puerta es el permiso de exportar, no el de leer datos
+personales, así que con permiso ves los valores en la analítica y `[oculto]` en el
+CSV del mismo formulario. Está del lado estricto por decisión propia; no es un
+fallo.
 
 `responses.pii` es por defecto solo de `admin`. Si no tienes ese permiso y ves
 `[oculto]`, el enmascarado está funcionando, no fallando.

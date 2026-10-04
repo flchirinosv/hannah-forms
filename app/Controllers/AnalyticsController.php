@@ -13,6 +13,7 @@ use App\Core\View;
 use App\Models\Form;
 use App\Models\Submission;
 use App\Services\FieldAggregator;
+use App\Services\Pii;
 
 class AnalyticsController
 {
@@ -59,13 +60,23 @@ class AnalyticsController
             $form['fields'],
             static fn($f) => ($f['type'] ?? '') !== 'section'
         ));
+        // F1: tipos de los campos marcados como personales, para los agregados y el
+        // detalle. Se calculan una vez y se pasan a los dos.
+        //
+        // El permiso se decide AQUÍ y no en la vista: `Pii` es el único sitio que
+        // decide el valor que sale, y una lista vacía es la forma de decir "este
+        // usuario puede verlos". La alternativa —mascarar dentro del partial—
+        // dejaba la pantalla siempre enmascarada, también para el admin, que es
+        // justo lo contrario de lo que hace el listado de respuestas.
+        $piiTypes = Pii::canView() ? [] : Pii::piiFieldTypes($form['fields'] ?? []);
         $fieldStats = FieldAggregator::forForm(
             $formId,
             $campos,
             array_map(static fn($f) => (int) $f['id'], $campos),
             $total,
             (string) $from,
-            (string) $to
+            (string) $to,
+            $piiTypes
         );
 
         // Progreso diario (migrado a Models)
@@ -86,6 +97,7 @@ class AnalyticsController
             'from'        => $from,
             'to'          => $to,
             'detail'      => $detail,
+            'piiTypes'    => $piiTypes,
         ]);
     }
 
@@ -127,6 +139,11 @@ class AnalyticsController
             'answers'          => $answers,
             'answerableFields' => $campos,
             'offset'           => 15 * ((int) $detail['page'] - 1),
+            // F1: el detalle es un canal de salida y va enmascarado igual que la
+            // primera página. Sin esto, el lazy-load del pager-era el camino
+            // limpio: lo que se ve en la carga inicial, tapado, y lo que se ve al
+            // cambiar de página, en claro.
+            'piiTypes'         => Pii::canView() ? [] : Pii::piiFieldTypes($form['fields'] ?? []),
         ]);
 
         Response::json([

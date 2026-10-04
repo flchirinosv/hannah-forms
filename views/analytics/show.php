@@ -231,6 +231,7 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                                         'answers'          => $answers,
                                         'answerableFields' => $answerableFields,
                                         'offset'           => (int) ($detail['per_page'] ?? 15) * (int) (($detail['page'] ?? 1) - 1),
+                                        'piiTypes'         => $piiTypes ?? [],
                                     ]) ?>
                                 </tbody>
                             </table>

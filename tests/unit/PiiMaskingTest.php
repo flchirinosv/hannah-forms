@@ -249,6 +249,192 @@ class PiiMaskingTest
         );
     }
 
+    // ---- La analítica también es un canal de salida ----
+    //
+    // Regresión real: `AnalyticsController` solo llamaba a `Pii::` DENTRO de
+    // `exportCsv()`, así que el HTML —la carga inicial y el lazy-load del
+    // pager— imprimía los valores crudos de los campos marcados. El listado de
+    // respuestas sí los tapaba: se veía el mismo dato tapado en una pantalla y en
+    // claro en la de al lado, y `PiiMaskingTest` no lo-notaba porque probaba los
+    // otros tres canales.
+
+    public function testElDetalleDeLaAnaliticaEnmascaraLosCamposMarcados(): void
+    {
+        self::asUser((int) self::$userId);
+        assertFalse(Pii::canView());
+
+        $sid = Submission::create((int) self::$formId);
+        Answer::create($sid, (int) self::$piiFieldId, 'Juan Pérez');
+        Answer::create($sid, (int) self::$plainFieldId, 'Muy buen servicio');
+
+        $html = $this->renderDetalle((int) $sid);
+
+        assertTrue(
+            !str_contains($html, 'Juan Pérez'),
+            'el detalle de la analítica no debe mostrar el valor de un campo marcado'
+        );
+        assertTrue(str_contains($html, Pii::MASK), 'debe mostrar el marcador: ' . $html);
+        assertTrue(
+            str_contains($html, 'Muy buen servicio'),
+            'un campo NO marcado se sigue viendo en claro'
+        );
+    }
+
+    public function testElDetalleDeLaAnaliticaEnClaroConElPermiso(): void
+    {
+        self::asUser((int) self::$adminId);
+
+        $sid = Submission::create((int) self::$formId);
+        Answer::create($sid, (int) self::$piiFieldId, 'Juan Pérez');
+
+        $html = $this->renderDetalle((int) $sid);
+
+        assertTrue(str_contains($html, 'Juan Pérez'), 'con el permiso, el detalle va en claro: ' . $html);
+    }
+
+    public function testElMarcadorNoSeReinterpretaComoUnaListaJson(): void
+    {
+        // `[oculto]` empieza por `[`, que es justo lo que el bloque de JSON de
+        // `_rows.php` mira para dar formato a las respuestas de checkbox. Si el
+        // enmascarado se hiciera después de ese bloque, `json_decode` fallaría y
+        // el valor se imprimiría vacío o sin el marcador. Este test ata que el
+        // orden es el correcto.
+        self::asUser((int) self::$userId);
+
+        $sid = Submission::create((int) self::$formId);
+        Answer::create($sid, (int) self::$piiFieldId, 'Juan Pérez');
+
+        $html = $this->renderDetalle((int) $sid);
+
+        assertTrue(str_contains($html, Pii::MASK), 'el marcador tiene que llegar entero a la celda');
+    }
+
+    public function testLosGraficosFundenLasRespuestasPersonalesEnUnaSolaBarra(): void
+    {
+        // El agregado se calcula en SQL agrupando por `(field_id, value)`, así que
+        // a la hora de enmascarar hay 30 valores distintos. Sin fundirlos saldrían
+        // 30 barras `[oculto]` de un 1 cada una, que parece un dato real.
+        self::asUser((int) self::$userId);
+
+        $selectId = Field::create(
+            (int) self::$formId,
+            'select',
+            'Enfermedad de base',
+            '',
+            '',
+            false,
+            [['value' => 'diabetes', 'label' => 'Diabetes'], ['value' => 'ninguna', 'label' => 'Ninguna']],
+            [],
+            10,
+            null,
+            null,
+            true
+        );
+
+        $valores = ['diabetes', 'hipertension', 'asma', 'diabetes', 'ninguna', 'hipertension', 'epilepsia'];
+        foreach ($valores as $valor) {
+            Answer::create(Submission::create((int) self::$formId), $selectId, $valor);
+        }
+
+        $stat = $this->agregadoDe($selectId, true);
+        $values = $stat['values'];
+
+        assertSame(1, count($values), 'todas las respuestas personales deben fundirse en un solo valor');
+        assertSame(Pii::MASK, (string) $values[0]['value'], 'la etiqueta del gráfico no debe llevar el dato');
+        assertSame(count($valores), (int) $values[0]['c'], 'el total sí debe conservarse: es información útil');
+    }
+
+    public function testUnPromedioPersonalSaleVacioYNoInventado(): void
+    {
+        // Un campo numérico marcado enmascarado no puede devolver un promedio:
+        // `numerico()` filtra lo que no es número con una regex, así que `[oculto]`
+        // no entra. Lo que importa es que NO se muestre un promedio calculado
+        // sobre datos que el usuario no puede mirar.
+        self::asUser((int) self::$userId);
+
+        $numId = Field::create((int) self::$formId, 'number', 'Ingresos mensuales', '', '', false, [], [], 11, null, null, true);
+        foreach ([1200, 3400, 5100] as $valor) {
+            Answer::create(Submission::create((int) self::$formId), $numId, (string) $valor);
+        }
+
+        $stat = $this->agregadoDe($numId, true);
+
+        assertNull($stat['values']['avg_value'], 'no se puede promediar sobre valores que no se pueden ver');
+        assertNull($stat['values']['min_value']);
+        assertNull($stat['values']['max_value']);
+        assertSame(0, (int) $stat['values']['answer_count']);
+    }
+
+    public function testLosGraficosVanEnClaroConElPermiso(): void
+    {
+        self::asUser((int) self::$adminId);
+
+        $selectId = Field::create(
+            (int) self::$formId,
+            'select',
+            'Enfermedad de base',
+            '',
+            '',
+            false,
+            [['value' => 'diabetes', 'label' => 'Diabetes']],
+            [],
+            12,
+            null,
+            null,
+            true
+        );
+        foreach (['diabetes', 'diabetes', 'ninguna'] as $valor) {
+            Answer::create(Submission::create((int) self::$formId), $selectId, $valor);
+        }
+
+        $stat = $this->agregadoDe($selectId, false);
+        $values = $stat['values'];
+
+        assertTrue(count($values) >= 2, 'con el permiso los valores se agrupan por su valor real: ' . json_encode($values));
+        $etiquetas = array_map(static fn($v) => (string) $v['value'], $values);
+        assertTrue(in_array('diabetes', $etiquetas, true), 'debe verse la etiqueta real');
+    }
+
+    /**
+     * Renderiza `analytics/_rows` con los mismos datos y la misma decisión que
+     * el controlador: la lista de tipos llega YA filtrada por el permiso.
+     */
+    private function renderDetalle(int $submissionId): string
+    {
+        $fields = Field::byForm((int) self::$formId);
+
+        return (string) \App\Core\View::partial('analytics/_rows', [
+            'submissions'      => [['id' => $submissionId, 'finished_at' => '2026-01-01 10:00:00']],
+            'answers'          => Submission::withAnswersByIds([$submissionId]),
+            'answerableFields' => $fields,
+            'offset'           => 1,
+            'piiTypes'         => Pii::canView() ? [] : Pii::piiFieldTypes($fields),
+        ]);
+    }
+
+    /**
+     * El agregado de un campo tal como lo pinta la analítica.
+     *
+     * @param bool $enmascarar qué hacer con la marca de `is_pii`
+     */
+    private function agregadoDe(int $fieldId, bool $enmascarar): array
+    {
+        $fields = Field::byForm((int) self::$formId);
+
+        $stats = \App\Services\FieldAggregator::forForm(
+            (int) self::$formId,
+            $fields,
+            [$fieldId],
+            99,
+            '',
+            '',
+            $enmascarar ? Pii::piiFieldTypes($fields) : []
+        );
+
+        assertArrayHasKey($fieldId, $stats, 'el agregado debe traer el campo pedido');
+        return $stats[$fieldId];
+    }
+
     // ---- El permiso existe en la matriz ----
 
     public function testElPermisoResponsesPiiEstaEnLaMatrizDeAdmin(): void
