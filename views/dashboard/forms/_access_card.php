@@ -21,12 +21,23 @@ use App\Core\View;
  * `<div class="card">`, repintar el hueco borraría esos atributos y el botón de
  * emitir enlace se quedaría sin destino a la mitad de la sesión.
  *
- * Variables: `$form`, `$accessMode`, `$accessList`, `$accessCount`.
+ * ## Y el cuarto modo, `roster`, no cabe en ninguno de los tres bloques
+ *
+ * La allowlist guarda correos; el listado guarda personas con un código, atributos
+ * y un estado de «respondió». Meterlo en el `else` de abajo habría producido un
+ * formulario con una casilla de correo por cada persona de una lista que no usa
+ * correos. Por eso `roster` tiene su propia rama y su propio partial (fase 5),
+ * y el `else` sigue siendo exactamente la allowlist de F4.
+ *
+ * Variables: `$form`, `$accessMode`, `$accessList`, `$accessCount`, y en modo
+ * `roster` `$roster` y `$informe`.
  *
  * @var array $form
  * @var string $accessMode
  * @var array $accessList
  * @var int $accessCount
+ * @var array<string,mixed>|null $roster
+ * @var array<string,mixed>|null $informe
  */
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -34,6 +45,7 @@ use App\Core\View;
     <span class="badge text-bg-light text-muted"><?= View::escape(match ($accessMode) {
         'email' => 'Por correo',
         'allowlist' => 'Solo la lista',
+        'roster' => 'Solo el listado',
         default => 'Público',
     }) ?></span>
 </div>
@@ -49,6 +61,22 @@ use App\Core\View;
         enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
         <em>Ajustes del formulario</em>.
     </p>
+<?php elseif ($accessMode === 'roster'): ?>
+    <?php // `$roster` puede llegar `null` con el modo ya en `roster` (por ejemplo desde
+          // `FormPanel::accessSlot()` justo después de cambiar el modo): en ese caso se
+          // calculan los datos aquí, en vez de pintar un hueco vacío, porque un
+          // formulario que acaba de pasar a «Solo el listado» sin lista parece que no
+          // tiene puerta de entrada. ?>
+    <p class="text-muted small">
+        Solo puede responder quien esté en esta lista, con el código que le tocó.
+        Quitar a alguien de la lista <strong>le cierra la puerta</strong>.
+    </p>
+
+    <?= \App\Services\RosterPanel::panel(
+        $roster ?? \App\Services\RosterPanel::data((int) $form['id']),
+        $form,
+        $informe
+    ) ?>
 <?php else: ?>
     <p class="text-muted small">
         Solo los correos de esta lista reciben un enlace. Quitar a alguien de la lista

@@ -92,6 +92,7 @@ $router->post('/forms/{id}/access/link', [AccessController::class, 'copyLink'], 
 // respondería «token CSRF inválido» a quien no ha tenido ningún problema.
 $router->get('/forms/{id}/participants', [ParticipantController::class, 'index'], ['auth']);
 $router->get('/forms/{id}/participants/export', [ParticipantController::class, 'export'], ['auth']);
+$router->get('/forms/{id}/participants/template', [ParticipantController::class, 'template'], ['auth']);
 $router->post('/forms/{id}/participants', [ParticipantController::class, 'store'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/update', [ParticipantController::class, 'update'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/delete', [ParticipantController::class, 'destroy'], ['auth', 'post-max', 'csrf']);

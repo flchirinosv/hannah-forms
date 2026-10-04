@@ -410,6 +410,30 @@ class FormParticipant
         return (int) ($row['c'] ?? 0);
     }
 
+    /**
+     * Cuántos han respondido de los que hay en la lista.
+     *
+     * Es un `COUNT` aparte y no un `COUNT` con `WHERE responded_at IS NOT NULL`
+     * porque el número de la cabecera («12 de 40 han respondido») es del listado
+     * COMPLETO, no de la página ni de lo que dice la búsqueda: si contara lo
+     * filtrado, buscar «V-» y ver «0 de 3 respondieron» sería verdad de una
+     * forma que no sirve para nada, porque el dueño quiere saber cuánto de SU
+     * lista ha respondido, no cuánto de la parte que está leyendo.
+     *
+     * Sin argumento de búsqueda a propósito, y con el `form_id` en el WHERE
+     * (que es la mitad de la autorización, como en el resto del modelo).
+     */
+    public static function respondedCountForForm(int $formId): int
+    {
+        $row = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM form_participants
+             WHERE form_id = :form_id AND responded_at IS NOT NULL',
+            ['form_id' => $formId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
     public static function find(int $id): ?array
     {
         return self::db()->fetch(

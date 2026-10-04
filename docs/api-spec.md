@@ -144,6 +144,7 @@ con el mismo texto en flash.
 |--------|------|------------|-------------|
 | GET | `/forms/{int}/participants` | auth | Lista paginada + catálogo de atributos + total. JSON (`X-Requested-With`) o 200 vacío |
 | GET | `/forms/{int}/participants/export` | auth | XLSX con una fila por participante y una columna por atributo |
+| GET | `/forms/{int}/participants/template` | auth | Plantilla `.xlsx` en blanco (cabecera de identificador, nombre, correo y una columna por atributo del catálogo) |
 | POST | `/forms/{int}/participants` | auth, post-max, csrf | Alta manual. Devuelve el `code` del recién creado |
 | POST | `/forms/{int}/participants/update` | auth, post-max, csrf | Editar uno (`participant_id` del POST) |
 | POST | `/forms/{int}/participants/delete` | auth, post-max, csrf | Borrar a una persona (**no** sus respuestas) |
@@ -165,7 +166,26 @@ siempre.
 
 `GET /participants` **no** lee `per_page` del query: el tamaño de página lo fija el
 servidor (50). Aceptarlo sería un `per_page=100000` que se come la tabla entera en
-memoria.
+memoria. Ese 50 es el de la API; el de la pantalla del panel es 25
+(`RosterPanel::POR_PAGINA`), que es una decisión de pantalla y no un contrato.
+
+### Las de escritura devuelven huecos, y hay que leerlos
+
+Con `X-Requested-With: XMLHttpRequest` la respuesta es `{ok, message, html}` donde
+`html` es un mapa `id` → markup: `rosterList`, `rosterStats`, `rosterCatalog`,
+`rosterAddForm` y `rosterImportReport`. Solo vienen los que la acción cambió de verdad
+(ver `$cambia` en `ParticipantController::ok()`), y el `html` se devuelve **también con
+`ok:false`** —el informe de una importación con filas malas es justo el caso en el que
+hay algo que reponer—.
+
+El `html` repone la vista con la **búsqueda, la página y el orden** que el dueño tenía
+delante: viajan en el POST como `rosterQ`, `rosterPage` y `rosterSort`, porque la
+búsqueda es un GET a la ficha (`/forms/{id}?q=…&page=…&sort=…#participantes`) y sin
+ellos borrar a alguien saltaba a la primera página y a ordenar por cédula.
+
+Sin `X-Requested-With` no hay `html`: es un **flash y el 302** de siempre, y el informe
+de la importación se deja en la sesión (`roster_report`, de un solo uso) para que lo
+pinte el GET siguiente.
 
 ### La puerta del listado
 

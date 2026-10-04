@@ -17,6 +17,7 @@ use App\Models\Form;
 use App\Models\FormAccess;
 use App\Services\FormPanel;
 use App\Services\FormSettings;
+use App\Services\RosterPanel;
 use App\Services\TemplateService;
 
 class FormController
@@ -170,6 +171,28 @@ class FormController
             'accessCount'    => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
                 ? FormAccess::allowlistCount($id)
                 : 0,
+            // Fase 5 — La búsqueda y la página de la lista de participantes son
+            // un GET a ESTA misma ficha (`?q=`, `?page=`, `?sort=`), y no un
+            // fetch: así llegan sin JavaScript, se pueden compartir y el botón
+            // «atrás» del navegador deshace una búsqueda. El ancla `#participantes`
+            // es la que usan el POST nativo del alta y el redirect del
+            // ParticipantController, así que también es lo que devuelve la
+            // búsqueda.
+            //
+            // Y el informe de la importación se saca de la sesión AQUÍ, una sola
+            // vez: es lo que hace que el camino sin JavaScript enseñe las filas
+            // que no entraron y no solo cuántas fueron.
+            'roster'         => FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER
+                ? RosterPanel::data(
+                    $id,
+                    (string) Request::query('q', ''),
+                    (int) Request::query('page', 1),
+                    (string) Request::query('sort', 'cedula')
+                )
+                : null,
+            'informe'        => FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER
+                ? Session::takeValue('roster_report')
+                : null,
             // Las etiquetas de los campos de tipo email alimentan el datalist de
             // la confirmación: `notify.confirmation.to_field` se resuelve por
             // etiqueta EXACTA y `Notifier` se come el fallo en silencio (una

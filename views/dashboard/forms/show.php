@@ -132,6 +132,12 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
             <?php $accessMode = $accessMode ?? 'public'; ?>
             <?php $accessList = $accessList ?? []; ?>
             <?php $accessCount = $accessCount ?? 0; ?>
+            <?php // Fase 5 — el listado solo se lee en modo `roster`, y el informe
+                  // solo existe una vez (en el GET que sigue a una importación
+                  // sin JavaScript): `FormController::show()` lo saca de la
+                  // sesión, y aquí solo se pasa. ?>
+            <?php $roster = $roster ?? null; ?>
+            <?php $informe = $informe ?? null; ?>
             <div class="card border-0 shadow-sm" id="access"
                  data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
                  data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
@@ -150,6 +156,8 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         'accessMode'  => $accessMode,
                         'accessList'  => $accessList,
                         'accessCount' => $accessCount,
+                        'roster'      => $roster,
+                        'informe'     => $informe,
                     ]) ?>
                 </div>
             </div>

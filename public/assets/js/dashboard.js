@@ -565,3 +565,116 @@
         });
     });
 })();
+
+/* ---------------------------------------------------------------------------
+ * Pestañas de un panel: `data-vf-tabs`
+ *
+ * Fase 5 (listado de participantes). La tarjeta de Acceso trae dos pestañas
+ * («Lista» e «Importar») y aquí está el interruptor.
+ *
+ * ## Por qué NO es el `tab` de Bootstrap
+ *
+ * Porque el de Bootstrap esconde sus paneles con CSS (`.tab-pane` sin `.active` es
+ * `display: none`), así que sin JavaScript el segundo panel **desaparece sin decir
+ * nada**. Aquí todo lo que hay debajo es de dueño y con `Access::canEdit()` detrás:
+ * un panel que depende de JS para existir es un panel que se pierde en el
+ * navegador que menos lo puede permitir.
+ *
+ * Con `hidden` (el atributo nativo) el degradado sale solo: la vista pinta los dos
+ * paneles SIN `hidden` y este script lo pone. Sin JS, no hay nadie que lo ponga y
+ * se ven los dos, uno debajo de otro.
+ *
+ * ## El estado va en `localStorage` por PANTALLA, como los grupos
+ *
+ * `vf:tab:<clave>`, con la clave del contenedor (`data-vf-tabs="roster-<id>"`),
+ * porque quien importa un archivo vuelve a la pestaña «Importar» con el informe
+ * delante y no a «Lista» con el informe escondido en la otra.
+ *
+ * Y con la misma trampa que los grupos: el `hidden` que pone este arranque NO se
+ * guarda. Si se guardara, la primera visita decidiría la pestaña para siempre y un
+ * cambio futuro del valor por defecto no llegaría a nadie (`decididos`).
+ * ------------------------------------------------------------------------- */
+(function () {
+    'use strict';
+
+    const contenedores = Array.prototype.slice.call(document.querySelectorAll('[data-vf-tabs]'));
+    if (contenedores.length === 0) { return; }
+
+    const leido = (clave) => {
+        try {
+            return window.localStorage.getItem('vf:tab:' + clave) || '';
+        } catch (e) {
+            return '';
+        }
+    };
+    const guardado = (clave, valor) => {
+        try {
+            window.localStorage.setItem('vf:tab:' + clave, valor);
+        } catch (e) { /* sin localStorage las pestañas funcionan igual, sin memoria */ }
+    };
+
+    contenedores.forEach((caja) => {
+        const clave = caja.getAttribute('data-vf-tabs') || '';
+        const botones = Array.prototype.slice.call(caja.querySelectorAll('[data-vf-tab]'));
+        if (botones.length === 0) { return; }
+
+        const panelDe = (boton) => document.getElementById(boton.getAttribute('data-vf-tab'));
+        const porId = (id) => botones.filter((b) => b.getAttribute('data-vf-tab') === id)[0];
+
+        /* Pintar una pestaña = `aria-selected` en el botón y `hidden` en el resto.
+         * Los paneles que no son el elegido se ocultan TODOS, no solo los que el
+         * botón conoce: un panel sin su botón (porque el servidor lo pintó y el
+         * JS no lo vio) se queda visible, que es lo que se ve sin JS. */
+        const pintar = (id, guardar) => {
+            const elegido = panelDe(porId(id) || botones[0]);
+            if (!elegido) { return; }
+            botones.forEach((b) => {
+                const suyo = b.getAttribute('data-vf-tab') === elegido.id;
+                b.classList.toggle('active', suyo);
+                b.setAttribute('aria-selected', suyo ? 'true' : 'false');
+                if (suyo) { b.removeAttribute('tabindex'); } else { b.setAttribute('tabindex', '-1'); }
+                const panel = panelDe(b);
+                if (panel) {
+                    if (suyo) { panel.removeAttribute('hidden'); } else { panel.setAttribute('hidden', ''); }
+                }
+            });
+            if (guardar && clave !== '') { guardado(clave, elegido.id); }
+        };
+
+        /* El arranque NO guarda. La primera visita enseña la pestaña activa del
+         * servidor y no la fija para siempre (ver la nota de `decididos` arriba). */
+        const guardada = clave !== '' ? leido(clave) : '';
+        const inicial = (guardada && porId(guardada)) ? guardada : botones[0].getAttribute('data-vf-tab');
+        pintar(inicial, false);
+
+        botones.forEach((b) => {
+            b.addEventListener('click', function (e) {
+                e.preventDefault();
+                pintar(this.getAttribute('data-vf-tab'), true);
+            });
+        });
+
+        /* Volver al panel después de buscar.
+         *
+         * El buscador es un GET a esta misma ficha, así que la página se recarga y
+         * el navegador deja arriba del todo, con el resultado fuera de pantalla:
+         * se ha buscado y parece que no ha pasado nada. El ancla está en el
+         * `action` de la vista, pero un envío GET puede llevársela, y por eso se
+         * la pone aquí justo antes de enviar.
+         *
+         * Y es una mejora, no la puerta: si el navegador se sigue llevando el
+         * fragmento por delante, la búsqueda devuelve la página entera con el
+         * resultado, solo que arriba del todo, y sin JavaScript es exactamente eso
+         * lo que hay. Lo único que hace este bloque es añadir un `#`; nunca toca
+         * el `query`, así que no puede cambiar lo que se busca. */
+        const buscador = caja.querySelector('form[role="search"]');
+        if (buscador) {
+            buscador.addEventListener('submit', function () {
+                const accion = buscador.getAttribute('action') || '';
+                if (accion.indexOf('#') === -1) {
+                    buscador.setAttribute('action', accion + '#' + caja.id);
+                }
+            });
+        }
+    });
+})();

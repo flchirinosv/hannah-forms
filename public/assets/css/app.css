@@ -1919,3 +1919,34 @@ body {
     .app-confirm .modal-footer { flex-wrap: wrap-reverse; }
     .app-confirm .modal-footer .btn { flex: 1 1 8rem; }
 }
+
+/* --- Pestañas de un panel (fase 5, listado de participantes) ---------------
+ * Lo único que hay aquí es el refuerzo del atributo `hidden` y el `<summary>`
+ * que hace de botón.
+ *
+ * El interruptor de verdad lo pone `dashboard.js` AÑADIENDO `hidden`, que es lo
+ * que hace que sin JavaScript se vean los dos paneles. Este `!important` no es
+ * decoración: `.tab-pane`-al estilo de Bootstrap, o cualquier `display` de autor
+ * sobre el panel, gana al `[hidden] { display: none }` del navegador y la
+ * pestaña se «queda pegada» abierta. */
+.vf-tabs [data-vf-pane][hidden] { display: none !important; }
+
+/* El `<details>` de editar y el de añadir a uno son controles, no adornos: sin
+ * ellos el `<summary>` sale con el triángulo del navegador y del mismo tamaño que
+ * el texto, que es indistinguible de una frase más de la tarjeta. */
+.vf-tabs details > summary {
+    cursor: pointer;
+    list-style: none;
+    display: inline-block;
+    user-select: none;
+}
+.vf-tabs details > summary::-webkit-details-marker { display: none; }
+.vf-tabs details > summary::before {
+    content: '\f078';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-right: .35rem;
+    font-size: .8em;
+}
+.vf-tabs details[open] > summary::before { content: '\f054'; }
+.vf-tabs details > summary:focus-visible { outline: 2px solid var(--vf-primary, #0d6efd); outline-offset: 2px; }

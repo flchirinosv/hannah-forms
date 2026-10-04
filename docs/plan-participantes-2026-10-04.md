@@ -176,7 +176,7 @@ el existente y lo dice.
 | 2 | Migración `0014` | **cero** | **Hecha** (11 tests nuevos) |
 | 3 | `FormParticipant`, CRUD, importar | bajo | **Hecha** (85 tests nuevos) |
 | 4 | **La puerta del fill** | **alto** | **Hecha** (23 tests nuevos) |
-| 5 | Pestaña Participantes + huecos | bajo | Pendiente |
+| 5 | Pestaña Participantes + huecos | bajo | **Hecha** (24 tests nuevos) |
 | 6 | Exponer `roster` en el `<select>` | bajo | Pendiente |
 | 7 | Filtro por atributo + detalle | bajo | Pendiente |
 | 8 | Agrupar por atributo + techo | medio | Pendiente |
@@ -581,6 +581,67 @@ el contador con la lista topada y deduplicar por la cabecera cruda).
 contra la lista, `participant_id` al guardar, `marcarRespondido()`, el cupo en la página
 del código, el rate limit que solo cuenta los aciertos, el mensaje que distingue el
 código ajeno y el corte del POST sin acceso. Las nueve se ponen rojas.
+
+## Fase 5 — la pestaña de participantes — **HECHA**
+
+Veinticuatro tests en `tests/unit/RosterPanelTest.php` (y uno más en el arnés de JS)
+y **936 en total, 0 fallos**. Es la fase con menos riesgo del plan y la que más
+sitios puede dejar «a medias sin decir nada», porque casi ninguno de sus fallos es un
+error de PHP: un hueco repuesto con el id equivocado no falla, **no hace nada**; una
+pestaña escondida por CSS no falla, **no aparece**; un formulario que conserva su
+`action` no falla, recarga.
+
+### Las dos zonas se pintan las dos, y ninguna viene escondida
+
+Lo primero que se probó, antes de escribir el JS: **`.tab-pane` sin `.active` está
+oculto por CSS**, así que el `tab` de Bootstrap habría hecho desaparecer el panel de
+importar en el navegador que menos lo puede permitir. Aquí las dos zonas salen SIN
+`hidden` y `dashboard.js` lo **añade** (`[data-vf-pane]`), con el estado en
+`localStorage['vf:tab:<clave>']` **por pantalla** y sin guardar el `hidden` de arranque,
+por la misma trampa que los grupos plegables. Sin JS, no hay nadie que lo ponga y se
+ven las dos, una debajo de otra.
+
+### Cinco huecos, y cada acción declara los suyos
+
+`rosterStats`, `rosterList`, `rosterCatalog`, `rosterAddForm` y `rosterImportReport`.
+Los markup salen de `RosterPanel::html()`, que pinta **los mismos partials** que la
+ficha: con dos copias, la lista repuesta tras un borrado y la que se vería recargando
+divergirían sin que nada fallara. Cada acción dice qué huecos cambiaron (`$cambia` en
+`ok()`), y el alta **no repone `rosterAddForm`** a propósito: el repintado borraría lo
+que el dueño tiene a medio escribir y el foco que devuelve `data-vf-clear` apuntaría a
+un nodo que ya no está.
+
+### La búsqueda viaja en la URL
+
+Un GET a `/forms/{id}?q=…&page=…&sort=…#participantes`, no un fetch: así llega sin JS,
+se puede compartir y el botón «atrás» deshace una búsqueda. Las acciones por fetch
+guardan `rosterQ`/`rosterPage`/`rosterSort` en inputs ocultos para reponer la vista en
+la que se estaba. Sin ellos, borrar a alguien con la lista ordenada por nombre la
+repinta ordenada por cédula y en la primera página, y el cambio parece un fallo de la
+operación —que sí lo fue.
+
+### El informe llega por los DOS caminos
+
+Con JS, en `html.rosterImportReport`, y **también con `ok:false`**: el informe de una
+importación con filas malas es justo el caso en el que hay algo que reponer, y
+`app.js` aplica los huecos **antes** de pintar el aviso. Sin JS, en
+`Session::flashValue('roster_report')`, que consume `FormController::show()` con
+`takeValue()` (un solo uso). Y solo en el camino nativo: guardado también en el camino
+con JS, reaparecería en la siguiente carga de la ficha, que es cuando el dueño vuelve a
+la pestaña «Lista».
+
+Un `$error` con cero omitidas **no** se pinta como informe: un `.xlsx` ilegible no ha
+guardado «las 0 filas del archivo», y ese bloque al lado de un mensaje que sí dice la
+verdad dice exactamente lo que no pasó.
+
+### Lo que sigue sin verse
+
+Sigue sin haber `<option>` en el selector de modos (fase 6): hoy un formulario en
+`roster` solo se alcanza si alguien edita sus ajustes a mano o viene de una fase
+anterior. **La puerta y el panel están probados y no se ven.** Es exactamente lo que
+la fase 6 viene a arreglar, y por eso sigue siendo la última en aparecer en pantalla.
+
+**Suite completa: 936, 0 fallos.**
 
 ## Decisiones de correo
 

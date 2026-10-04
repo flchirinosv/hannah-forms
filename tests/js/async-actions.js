@@ -859,6 +859,37 @@ async function main() {
         is('el aviso del intento anterior se borra', esc.aviso.textContent, '');
     }
 
+    {
+        // FASE 5 — Un `ok:false` CON `html` sí repone huecos, y este es el caso
+        // que lo fija: el informe de una importación con filas malas. El mensaje
+        // dice «5 filas quedaron fuera» y el informe dice cuáles; si el
+        // repintado fuera solo del camino bueno, quien subiera un archivo con 5
+        // cédulas mal tecleadas se quedaría con el número y sin las filas, y sin
+        // ningún error que lo delatara. El orden importa: los huecos ANTES de
+        // pintar el aviso, para que un aviso que revienta no se lleve el informe
+        // por delante.
+        const esc = escenario({
+            attrs: { 'data-vf-async': 'slots', 'data-vf-error': 'rosterImportError' },
+            aviso: 'rosterImportError',
+            slots: ['rosterImportReport', 'rosterList'],
+        });
+        esc.setFetch(esc.defaultFetch({
+            ok: false,
+            message: 'El archivo no se pudo leer.',
+            html: {
+                rosterImportReport: '<div>Fila 3: sin cédula</div>',
+                rosterList: '<ul>las 2 que sí entraron</ul>',
+            },
+        }));
+        const { handle } = montar(esc);
+        handle(evento(esc.form));
+        await flush();
+        is('el informe se repone con un ok:false', esc.slots.rosterImportReport.innerHTML, '<div>Fila 3: sin cédula</div>');
+        is('y la lista también', esc.slots.rosterList.innerHTML, '<ul>las 2 que sí entraron</ul>');
+        is('el motivo va a su campo', esc.aviso.textContent, 'El archivo no se pudo leer.');
+        is('y no se reenvía nada', esc.form.submitted, 0);
+    }
+
     console.log('El rescate: lo que no es JSON vuelve al POST nativo');
     {
         // CASO QUE IMPORTABA: la respuesta tunesca (200 con text/html) llega

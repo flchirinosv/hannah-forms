@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 84 archivos, 912 métodos, ~4.5 min;
+- Suite completa: `php scripts/test.php` → 85 archivos, 936 métodos, ~4.5 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -33,8 +33,9 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 - Mantenimiento: `scripts/clean-rate-limits.php` (`--all` vacía todo y pide
   confirmación, `--yes` la salta) y `scripts/clean-uploads.php` (`--dry-run` solo
   cuenta).
-- **node es opcional**: solo lo usa `tests/unit/FillProgressTest.php` para correr
-  el arnés `tests/js/fill-progress.js`; sin node ese test avisa y pasa.
+- **node es opcional**: solo lo usan `tests/unit/FillProgressTest.php` y
+  `tests/unit/AsyncActionsJsTest.php` para correr los arneses `tests/js/fill-progress.js`
+  y `tests/js/async-actions.js`; sin node esos tests avisan y pasan.
 
 Atajos de OpenCode (`.opencode/`, no es código de la app): el skill `vf-docs`
 indexa `docs/` (con sus trampas de obsolescencia) y el skill `vf-migraciones` da la
@@ -48,8 +49,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   controlador. `public/index.php` es el único PHP que ve el web server.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
-  es un directorio **vacío**), `Models` (10), `Services` (16), `lang/{es,en}.php`.
-  `views/` = 53 plantillas y partials con `View` (siete con prefijo `_`, sin ruta
+  es un directorio **vacío**), `Models` (10), `Services` (17), `lang/{es,en}.php`.
+  `views/` = 59 plantillas y partials con `View` (dieciocho con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -94,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **48 de los 84 archivos tocan la BD real** (los que llaman
+- **49 de los 85 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -388,6 +389,50 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Importar y vaciar son **acciones distintas**: «reemplazar con un archivo vacío»
   se rechaza, y vaciar tiene que poder existir igual aunque el importador no lo
   acepte. `truncate` por eso no mira el `modo` del POST.
+- **Hay dos tamaños de página y no se deducen uno del otro**:
+  `ParticipantController::index()` (la API JSON) usa 50 y
+  `RosterPanel::POR_PAGINA` (la pantalla) usa 25. El 50 es un contrato con su test
+  atado al número; el 25 es una decisión de pantalla, porque cada fila lleva su
+  `<details>` de edición con un input por atributo y a 50 el botón de «Quitar» deja
+  de notarse. Si se cambian, se cambian los dos sitios y sus tests.
+
+**El panel de la ficha (fase 5)**
+
+- `roster` tiene su propia rama en `_access_card.php` y su propio partial:
+  meterlo en el `else` habría producido un alta de correo por persona. Y el `else`
+  sigue siendo exactamente la allowlist de F4 (`testLaRamaDeLaAllowlistNoSeHaTocado`).
+- **El panel son CINCO huecos y ninguno está en un `<form>`**: `rosterStats`,
+  `rosterList`, `rosterCatalog`, `rosterAddForm` y `rosterImportReport`. Los tres
+  markup salen de `RosterPanel::html()`, que pinta **los mismos partials** que la
+  ficha: con dos copias, la lista repuesta tras un borrado y la que se vería
+  recargando divergirían sin que nada fallara.
+- **Cada acción declara qué huecos cambian** (`$cambia` en `ok()`): alta/edición/
+  borrado/vaciar → lista+números; baja de atributo → lista+catalogo+alta;
+  importación → los cinco. Reponerlos todos hace un `catalogFor` por alta.
+- **El alta NO repone `rosterAddForm`**: el repintado borraría lo que el dueño
+  tiene a medio escribir y el foco que devuelve `data-vf-clear` apuntaría a un nodo
+  que ya no está.
+- **Las pestañas NO son el `tab` de Bootstrap**: `.tab-pane` sin `.active` está
+  oculto por CSS, así que sin JS desaparecería un panel entero. El servidor pinta
+  las dos zonas SIN `hidden` y `dashboard.js` lo pone. Si el servidor empezara a
+  pintar `hidden`, el segundo panel se pierde y ningún test de PHP lo nota
+  (`testLasDosZonasSePintanLasDosYNingunaVieneEscondida`).
+- **La búsqueda y el orden viajan en la URL** (`/forms/{id}?q=…&page=…`), y las
+  acciones por fetch los reponen en `rosterQ`/`rosterPage`/`rosterSort`. Sin ellos,
+  borrar a alguien salta a la primera página y a ordenar por cédula, y el cambio
+  parece un fallo de la operación.
+- **La búsqueda es un `LIKE '%…%'`**, así que `V-1` también casa con `V-10`. Un test
+  que filtre esperando una fila tiene que usar cédulas de ancho fijo (`V-01`).
+- **El informe de la importación llega por los DOS caminos** y son decisiones
+  distintas: con JS va en `html.rosterImportReport` —**también con `ok:false`**, que
+  es cuando más falta hace, y `app.js` lo aplica antes de pintar el aviso—; sin JS
+  va en `Session::flashValue('roster_report')`, que consume `FormController::show()`
+  con `takeValue()` (un solo uso). Solo se guarda en sesión en el camino nativo: si
+  se guardara también con JS, el informe reaparecería en la siguiente carga de la
+  ficha.
+- **Un `$error` con cero omitidas NO se pinta como informe** (`informe()` devuelve
+  `null`): un `.xlsx` ilegible no ha guardado «las 0 filas», y el partial con
+  `omitidos = 0` diría exactamente eso al lado de un mensaje que sí dice la verdad.
 
 - **`Database::transaccionar()` confirma cuando la closure DEVUELVE**, así que un
   `return` dentro de la closure es un `return` normal y deja confirmado todo lo que ya
@@ -451,10 +496,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 53 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 59 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
-  anti-vacío —53 vistas, >1800 aperturas vistas y los 6 modales encontrados—
+  anti-vacío —59 vistas, >1800 aperturas vistas y los 6 modales encontrados—
   porque un test de estructura que no recorre pasa verde por construcción, y así
   pasó al escribirlo (`foreach` sobre el `int` de `preg_match_all`).
 - **Ante un síntoma de «no aparece», mide antes de arreglar**: un
@@ -961,9 +1006,10 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 312 comprobaciones manuales en 21 bloques (A–U,
-  las regresiones R, la tanda visual S, las acciones sin recarga T y el
-  diálogo de confirmación con el alta de la allowlist U), para
+- `docs/pruebas-funcionales.md`: 335 comprobaciones manuales en 22 bloques (A–V,
+  las regresiones R, la tanda visual S, las acciones sin recarga T, el
+  diálogo de confirmación con el alta de la allowlist U y la pestaña de
+  participantes V), para
   detectar problemas que la suite no ve (teclado, maquetación, flujo en
   pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la lista
   mínima.

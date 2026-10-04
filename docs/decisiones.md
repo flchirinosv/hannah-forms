@@ -1055,3 +1055,50 @@ base de datos).
 `submissions.participant_id` es **NULL** en `public`, `email` y `allowlist`: existe para
 atribuir respuestas de un listado, no para marcar «alguien entró con un correo», que ya
 está en `form_access_tokens` y ahí sí se puede ver quién usó qué enlace.
+
+## Fase 5: la pestaña de participantes — las dos zonas se ven SIN JavaScript
+
+**El qué:** la tarjeta de Acceso tiene una rama propia para `roster`, con cinco huecos
+(`rosterStats`, `rosterList`, `rosterCatalog`, `rosterAddForm`,
+`rosterImportReport`) y dos zonas: «Lista» e «Importar».
+
+**El porqué de las dos zonas visible sin JS:** lo natural era el `tab` de Bootstrap, y
+`.tab-pane` sin `.active` está **oculto por CSS**. Eso convierte un panel entero en
+algo que depende de JavaScript para *existir*, y se pierde en el navegador que menos lo
+puede permitir (sin JS, sin `fetch`, con una extensión que lo bloquea). Aquí el servidor
+pinta las dos zonas **sin `hidden`** y `dashboard.js` lo **añade**; sin JS no hay nadie
+que lo ponga. Es lo mismo que el `collapse show` de los grupos plegables, y al revés que
+el `tab`: degradado en vez de perdido. El `nav-tabs` de Bootstrap se usa solo para el
+aspecto.
+
+**El porqué de los cinco huecos y no uno:** son cinco estados distintos, y repintarlos
+todos en cada acción es peor que escribirlo. `store` no cambia el catálogo ni el
+informe, y un `catalogFor` por alta es un `information_schema` que nadie pidió. El
+informe va además por **argumento**, no dentro de `data()`: las filas omitidas no están
+en ninguna tabla, y `data()` se recalcula en cada visita —un informe guardado que se
+leyera sin borrarse volvería a enseñar las mismas filas después de cualquier alta—.
+
+**El porqué de que el alta NO reponga `rosterAddForm`:** el repintado borraría lo que
+el dueño tiene a medio escribir, y el foco que devuelve `data-vf-clear` apuntaría a un
+nodo que ya no está en el documento. Un formulario que se vacía solo al guardar el
+anterior parece un formulario que pierde lo que escribes.
+
+**El porqué de que el informe llegue por los dos caminos:** con JS va en
+`html.rosterImportReport` —también con `ok:false`, que es cuando más falta hace, y
+`app.js` aplica los huecos **antes** de pintar el aviso porque un aviso que revienta no
+debe llevarse el informe por delante—; sin JS, el POST es nativo y redirige, así que
+`import()` lo deja en la sesión y `FormController::show()` lo consume con
+`takeValue()`, de un solo uso. Y **solo en el camino nativo**: guardado también con JS,
+reaparecería en la siguiente carga de la ficha, que es cuando el dueño vuelve a la
+pestaña «Lista» y se encuentra con un aviso de una importación que ya terminó de mirar.
+
+**El porqué de que la búsqueda viaje en la URL:** un GET a `/forms/{id}?q=…&page=…` y no
+un fetch. Así llega sin JavaScript, se puede compartir en un correo y el botón «atrás»
+deshace una búsqueda. Las acciones por fetch la guardan en `rosterQ`/`rosterPage`/
+`rosterSort` para reponer la misma vista: sin ellos, borrar a alguien con la lista
+ordenada por nombre la repinta ordenada por cédula y en la primera página, y el cambio
+parece un fallo de la operación —que sí lo fue.
+
+**El porqué de que un archivo ilegible no se pinte como informe:** el partial con
+`omitidos = 0` diría «las 0 filas del archivo se guardaron» al lado de un mensaje que sí
+dice la verdad. `informe()` devuelve `null` cuando hay `$error` y cero omitidas.

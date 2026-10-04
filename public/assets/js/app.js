@@ -380,6 +380,15 @@
                 var limpiar = vfByAttr(form, 'data-vf-clear');
 
                 if (!r.ok) {
+                    /* Los huecos se reponen ANTES de mirar si la operación tuvo
+                     * éxito. Un `ok:false` con `html` es el caso del informe de una
+                     * importación con filas malas: el aviso dice «5 filas quedaron
+                     * fuera» y el informe dice cuáles, y ese «cuáles» es justo lo
+                     * que se pierde si el repintado fuera solo del camino bueno
+                     * (RosterPanelTest lo ata). Reponer no es «hacer la operación»:
+                     * aquí el servidor ya la ha hecho. */
+                    vfApplySlots(r.json.html);
+
                     /* Un `ok:false` es el servidor diciendo que NO, y su motivo se
                      * pinta donde toca: si el formulario ha declarado un
                      * destino (`data-vf-error`), el aviso va junto a su campo —

@@ -553,6 +553,45 @@ que se rompió.
 
 ---
 
+## V. La pestaña de participantes (fase 5, 2026-10-04)
+
+Solo se llega poniendo el formulario en modo `roster`: **hasta la fase 6 no hay
+`<option>` en el selector**, así que hay que editarlo en *Ajustes del formulario*.
+Es la fase donde más cosas pueden quedar «a medias sin decir nada» —un hueco
+repuesto con el id equivocado no falla, no hace nada—, así que lo que se mira es
+que **cada guardado sin recarga repinte lo que ese guardado cambió** y que
+**sin JavaScript se vea todo**.
+
+Para llegar al panel: ficha del formulario → *Ajustes* → acceso `roster` → guardar.
+El botón de la puerta sigue sin salir (es la fase 6).
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| V1 | Formulario en modo `roster` | La tarjeta de Acceso trae la lista de participantes con dos pestañas («Lista», «Importar») | A | |
+| V2 | Las dos pestañas | Solo se ve la elegida; el estado se recuerda al volver a la ficha | M | |
+| V3 | **Con el JS desactivado**, abrir la ficha en `roster` | **Se ven las dos zonas**, una debajo de otra: el panel de importar no desaparece | A | |
+| V4 | *Añadir uno a la lista* → escribir una cédula y *Añadir* | **No recarga.** Aparece la tarjeta de la persona, suben los números y la caja queda vacía con el foco dentro | M | |
+| V5 | Escribir una cédula **ya presente** y añadir | No aparece una segunda tarjeta; el motivo sale **junto al campo**, no flotando, y no sale dos veces | A | |
+| V6 | Alta repetida sin recargar, tres seguidas | El catálogo **no** se repinta en cada alta (no se ve el parpadeo de las columnas) y los números suben | M | |
+| V7 | Cada tarjeta → *Editar* | Se abre con los valores y un campo por atributo del catálogo | M | |
+| V8 | Editar el nombre y guardar, con la lista ordenada por nombre | **No recarga** y la lista sale ordenada por nombre, no por cédula | A | |
+| V9 | Buscar `V-01` en la caja de búsqueda con la lista ordenada por *Nombre* | Es un GET: la URL cambia, se puede compartir y el botón «atrás» deshace la búsqueda; el resultado sale **en el mismo orden** y en la primera página | A | |
+| V10 | Con una búsqueda puesta, borrar a alguien | La tarjeta repuesta **respeta la búsqueda** (no vuelve la lista entera) | A | |
+| V11 | Importar un `.xlsx` con una columna nueva | Se crean la persona, el atributo, los números **y el campo del atributo en el alta**, sin recargar | A | |
+| V12 | Importar un archivo con una fila sin identificador, en modo *reemplazar* | No se importa nada y el **informe sale igualmente**: dice qué fila y que no entró | A | |
+| V13 | Con el JS desactivado, importar un archivo con filas malas | Recarga y el informe se ve en la pestaña «Importar», con las filas concretas | A | |
+| V14 | Importar un archivo que no es un `.xlsx` | Sale el aviso del motivo y **no** un informe diciendo que se guardaron 0 filas | A | |
+| V15 | Tras una importación, recargar la ficha | El informe **no vuelve a salir**: es de un solo uso | A | |
+| V16 | *Vaciar la lista* | El diálogo dice **qué** se pierde y que las respuestas se quedan; la lista se vacía y **el catálogo sigue** | A | |
+| V17 | Quitar un atributo del catálogo | Pregunta; desaparecen la columna, sus valores en las tarjetas y el campo del alta, sin recargar | M | |
+| V18 | Quitar a alguien de la lista | El diálogo dice que su código deja de servir y que sus respuestas se quedan | A | |
+| V19 | Un formulario con 26 participantes | 25 en la página y paginación; los números de arriba son **de los 26**, no de lo filtrado | M | |
+| V20 | En móvil (360 px), la pestaña «Lista» | Los números no se desbordan y el botón de *Quitar* se ve sin scrolls interminables | M | |
+| V21 | Con el JS desactivado, buscar, añadir y borrar | Todo funciona con POST normal y avisos con flash | A | |
+| V22 | Un formulario que **no** es de lista | La tarjeta de Acceso es la de siempre: ni panel, ni alta de correo | A | |
+| V23 | Buscar con el panel a media pantalla (sin recargar antes) | La página vuelve al panel, no al principio de la ficha: si el resultado queda fuera de pantalla parece que la búsqueda no hizo nada | M | |
+
+
 ## Cuando encuentres un fallo
 
 Anota para que el diagnóstico sea rápido:

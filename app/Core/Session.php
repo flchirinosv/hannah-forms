@@ -68,6 +68,42 @@ class Session
         return $value;
     }
 
+    /**
+     * Un flash que no es un texto.
+     *
+     * Existe por el informe de la importación del listado: el mensaje («5 filas
+     * quedaron fuera») es un texto, pero **qué filas** son un array, y meter un
+     * array en `flash()` lo convertiría en la cadena `Array` —que es justo el
+     * caso para el que existe este método: un `json_encode` en la sesión que
+     * alguien tiene que acordarse de decodificar.
+     *
+     * Es de un solo uso igual que el de texto (`takeValue()` borra), porque un
+     * informe que se reensee en cada visita se quedaría pegado para siempre.
+     *
+     * @param array<string,mixed>|list<mixed>|scalar $value
+     */
+    public static function flashValue(string $key, $value): void
+    {
+        $_SESSION['_flash'][$key] = $value;
+    }
+
+    /**
+     * Leer un flash de un solo uso y BORRARLO, sin fijar un tipo.
+     *
+     * El gemelo de `getFlash()` para lo que no es un texto. Se borra igual
+     * porque el motivo es el mismo: un valor que se relee en cada visita se queda
+     * pegado para siempre, y un informe de importación pegado es peor que
+     * ninguno —dice que cinco filas no entraron cada vez que se guarda un ajuste.
+     *
+     * @return array<string,mixed>|list<mixed>|scalar|null
+     */
+    public static function takeValue(string $key, $default = null)
+    {
+        $value = $_SESSION['_flash'][$key] ?? $default;
+        unset($_SESSION['_flash'][$key]);
+        return $value;
+    }
+
     public static function hasFlash(string $key): bool
     {
         return isset($_SESSION['_flash'][$key]);

@@ -118,6 +118,21 @@ final class FormPanel
      * los otros dos modos no dicen nada, y 5000 correos en un `<ul>` no ayudan a
      * administrarlos.
      *
+     * ## El listado (fase 5) va aquí con la página 1 y sin búsqueda, a propósito
+     *
+     * Este hueco se repone al **guardar los ajustes**, y quien guarda los ajustes
+     * está cambiando el título o el color, no mirando la lista: si el repintado
+     * respetara la búsqueda que hubiera en la barra de direcciones, cambiar el
+     * color del formulario y volver a la ficha dejaría la lista filtrada por
+     * «V-» sin que nadie lo hubiera pedido. La lista se repinta con lo que el
+     * dueño tiene delante (la primera página entera), y el GET normal de la ficha
+     * es el que lee `?q=` y `?page=`.
+     *
+     * `$informe` NO se pasa aquí, y por el mismo motivo: el informe de una
+     * importación es de un solo uso y lo consume el GET que viene detrás del
+     * POST nativo. Si este hueco lo leyera, un guardado de ajustes que coincidiera
+     * con ese GET se comería el informe.
+     *
      * @return array<string, string>
      */
     public static function accessSlot(int $formId): array
@@ -139,6 +154,10 @@ final class FormPanel
                 'accessCount' => $mode === FormSettings::ACCESS_ALLOWLIST
                     ? FormAccess::allowlistCount($formId)
                     : 0,
+                'roster'      => $mode === FormSettings::ACCESS_ROSTER
+                    ? RosterPanel::data($formId)
+                    : null,
+                'informe'     => null,
             ]),
         ];
     }

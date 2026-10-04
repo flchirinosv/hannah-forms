@@ -68,13 +68,13 @@ class AsyncActionsJsTest
         //
         // El número EXACTO y no un prefijo: `str_contains($text, 'Arranques: 5')`
         // casa con «51» y con «50», así que el contador dejó de mirar cuando el
-        // arnés pasó de 5 a 93 casos y nadie se enteró de que se podía añadir un
+        // arnés pasó de 5 a 97 casos y nadie se enteró de que se podía añadir un
         // caso sin subir la cifra. La línea entera, con `^`/`$` en multilínea: el
         // «| Fallidos: 0» va en la misma línea y hace falta para atar las dos
         // mitades del resumen.
         assertTrue(
-            preg_match('/^Arranques: 93 \| Fallidos: 0$/m', $text) === 1,
-            'el arnés no llegó a sus 93 casos, o alguno falló:\n' . $text
+            preg_match('/^Arranques: 97 \| Fallidos: 0$/m', $text) === 1,
+            'el arnés no llegó a sus 97 casos, o alguno falló:\n' . $text
         );
     }
 
