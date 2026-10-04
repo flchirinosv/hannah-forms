@@ -51,21 +51,22 @@ final class FormSettings
     public const ACCESS_IDENTIFIERS = ['cedula', 'indicador', 'correo'];
 
     /**
-     * El fill solo pide identificación con estos dos.
+     * El fill pide identificación con estos tres.
      *
-     * `roster` **no está** aquí a propósito, y es un estado transitorio
-     * deliberado: existe como modo desde la fase 3 (si no, `normalize()` lo
-     * convertiría en `public` al leerlo de la BD y el valor se perdería), pero su
-     * puerta —la que decide si el GET sirve el formulario o la pantalla de
-     * identificación— se añade en la fase 4. Hasta entonces un formulario en modo
-     * `roster` se comporta como `public`, que es el lado inofensivo: no se puede
-     * alcanzar en pantalla porque el `<option>` no aparece hasta la fase 6.
+     * `roster` entró aquí **en el mismo commit** que su puerta en el
+     * `FillController` (fase 4), y no un commit antes: un `roster` en
+     * `ACCESS_MODES` pero fuera de esta lista se sirve **abierto**, y es el fallo
+     * que no da ningún error ni en el log ni en la respuesta.
      *
-     * Cuando se añada, va aquí y en el gate del `FillController` en el MISMO
-     * commit: un `roster` en `ACCESS_MODES` pero fuera de esta lista se sirve
-     * abierto, y es el fallo que no da ningún error.
+     * Lo que sigue sin aparecer es el `<option>` en el selector de modos (fase 6),
+     * así que hoy un formulario en `roster` solo se alcanza si alguien edita sus
+     * ajustes a mano o viene de una fase anterior.
      */
-    public const RESTRICTED_MODES = [self::ACCESS_EMAIL, self::ACCESS_ALLOWLIST];
+    public const RESTRICTED_MODES = [
+        self::ACCESS_EMAIL,
+        self::ACCESS_ALLOWLIST,
+        self::ACCESS_ROSTER,
+    ];
 
     public static function defaults(): array
     {

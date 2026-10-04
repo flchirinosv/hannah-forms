@@ -699,6 +699,51 @@ class FormParticipant
         return ['ok' => true, 'id' => $id, 'motivo' => self::OK];
     }
 
+    /**
+     * Marca que este participante ya contestó (`responded_at`, fase 4).
+     *
+     * Es idempotente con estado **objetivo**: si ya estaba marcada, no se
+     * reescribe. La razón es que esta columna se usa para listar «quién NO ha
+     * respondido» y su `COMMENT` dice que su único escritor es el mismo POST que
+     * crea la respuesta; si una segunda respuesta volviera a poner «ahora»,
+     * el que respondió primero desaparecería del historial, que es justo lo que la
+     * columna promete.
+     */
+    public static function marcarRespondido(int $id): void
+    {
+        self::db()->execute(
+            'UPDATE form_participants SET responded_at = UTC_TIMESTAMP()
+             WHERE id = :id AND responded_at IS NULL',
+            ['id' => $id]
+        );
+    }
+
+        /**
+     * ¿Existe este participante en ESTE formulario?
+     *
+     * Es la revalidación del permiso de sesión (fase 4), así que el `form_id` va en
+     * el WHERE y no se filtra después: es la mitad de la autorización, igual que en
+     * `FormAccess::tokenIsLive()`.
+     *
+     * `LIMIT 1` acompaña a un `fetch()` porque la puerta se consulta en **cada**
+     * petición de cada formulario restringido: es la consulta más repetida del fill, y
+     * con el `id` (clave primaria) el MySQL no necesita ni mirar las filas siguientes.
+     * Un `COUNT(*)` daría el mismo booleano y recorrería el índice entero.
+     */
+    public static function existeEnFormulario(int $formId, int $participantId): bool
+    {
+        if ($formId <= 0 || $participantId <= 0) {
+            return false;
+        }
+
+        $fila = self::db()->fetch(
+            'SELECT id FROM form_participants WHERE id = :id AND form_id = :fid LIMIT 1',
+            ['id' => $participantId, 'fid' => $formId]
+        );
+
+        return $fila !== null;
+    }
+
     public static function delete(int $id): bool
     {
         // El `ON DELETE SET NULL` de `submissions.participant_id` deja las

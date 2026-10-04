@@ -17,11 +17,14 @@ use App\Core\View;
 use App\Models\Answer;
 use App\Models\Form;
 use App\Models\FormAccess;
+use App\Models\FormParticipant;
 use App\Models\Submission;
+use App\Services\FormSettings;
 use App\Services\LogicEvaluator;
 use App\Services\Notifier;
 use App\Services\QuizScore;
 use App\Services\RedirectGuard;
+use App\Services\RosterDoor;
 use App\Services\Turnstile;
 use App\Services\Uploader;
 use App\Services\Webhook;
@@ -68,8 +71,9 @@ class FillController
 
         // F4 — primero se identifica, después se informa de si está abierto.
         $accessToken = null;
+        $participantId = null;
         if (FormAccess::isRestricted($settings)) {
-            [$granted, $accessToken] = self::resolveAccess($form);
+            [$granted, $accessToken, $participantId] = self::resolveAccess($form, $settings);
             if (!$granted) {
                 $this->renderAccessPage($form, $settings, false);
                 return;
@@ -124,8 +128,9 @@ class FillController
             return;
         }
         $accessToken = null;
+        $participantId = null;
         if (FormAccess::isRestricted($settings)) {
-            [$granted, $accessToken] = self::resolveAccess($form);
+            [$granted, $accessToken, $participantId] = self::resolveAccess($form, $settings);
             if (!$granted) {
                 $this->renderAccessPage($form, $settings, true);
                 return;
@@ -372,6 +377,79 @@ class FillController
     }
 
     /**
+     * Fase 4 — `POST /f/{slug}/code`: canjea un código personal por acceso.
+     *
+     * ## Por qué esta puerta existe aunque el enlace ya lleve el código
+     *
+     * Porque el enlace se equivoca: se copia a mano, se parte al pegar en un
+     * correo y a veces se teclea. Sin esta página, un código con un carácter mal
+     * deja al visitante en una pantalla de la que no puede salir —la puerta no se
+     * abre «a medias» porque no hay forma de decir cuál de los 16 caracteres
+     * falló—, y su salida sería escribirle al dueño.
+     *
+     * ## El rate limit va ANTES de buscar el código, y cuenta los fallidos
+     *
+     * Es lo que hace de esto una puerta y no un campo de texto. Cuenta por IP y por
+     * formulario, y también por código, para que el mismo no se pueda probar desde
+     * mil máquinas. **Un intento fallido cuenta igual que uno bueno**: si solo
+     * sumaran los válidos, enumerar códigos sería gratis y esto sería un adorno.
+     *
+     * ## La respuesta es uniforme
+     *
+     * Un código inexistente, uno de otro formulario y uno con un carácter mal se
+     * contestan igual. Distinguirlos convierte esta página en un oráculo de qué
+     * códigos existen, que es justo lo que el rate limit intenta que no se pueda
+     * averiguar.
+     *
+     * ## Y es un PRG
+     *
+     * Un código válido redirige a `/f/{slug}?t=<código>`: la credencial queda en la
+     * URL, que es lo que la puerta del GET entiende, y un refresco no vuelve a
+     * canjear nada.
+     */
+    public function verifyCode(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        $locale = I18n::forRequest($settings);
+
+        // 404 y no 403, como en `/f/{slug}/access`: que un formulario tenga o no
+        // puerta de código no es información que deba darse a quien solo lo ve.
+        if (FormAccess::mode($settings) !== FormSettings::ACCESS_ROSTER) {
+            Response::notFound();
+            return;
+        }
+
+        $formId = (int) $form['id'];
+        $ip = RosterDoor::ip();
+        $codigo = (string) Request::post('code', '');
+        $volver = '/f/' . rawurlencode((string) $form['slug']);
+
+        if (!RosterDoor::permitirIntento($formId, $codigo, $ip)) {
+            Session::flash('error', I18n::t('access.code_blocked', $locale));
+            Response::redirect($volver);
+            return;
+        }
+
+        $participante = RosterDoor::buscar($form, $codigo);
+        if ($participante === null) {
+            Session::flash('error', I18n::t('access.code_invalid', $locale));
+            Response::redirect($volver);
+            return;
+        }
+
+        RosterDoor::grant($formId, (int) $participante['id']);
+
+        Response::redirect($volver . '?t=' . rawurlencode((string) $participante['code']));
+    }
+
+    /**
      * F4 — Pinta la página de identificación (`views/fill/access.php`).
      *
      * Va DESPUÉS de los cortes por estado y ANTES del gate de disponibilidad, en
@@ -411,9 +489,17 @@ class FillController
      * POST se caería con un 403 que no tiene explicación— y dentro de un iframe
      * la cookie es de terceros y muchos navegadores la bloquean.
      *
-     * @return array{0: bool, 1: ?string} [autorizado, token en claro si vino por query]
+     * Los `$settings` llegan como argumento y no se vuelven a pedir: `mode()` con
+     * ellos es una lectura de la fila de `forms` en cada petición que trae `?t=`.
+     *
+     * El tercer valor es el **participante** que abrió la puerta, y solo se rellena
+     * en modo `roster`: es lo que se guarda en `submissions.participant_id`, y por
+     * eso no puede ser «alguien de la sesión sin comprobar», sino el que la puerta
+     * acaba de resolver en ESTA petición.
+     *
+     * @return array{0: bool, 1: ?string, 2: ?int} [autorizado, credencial en claro si vino por query, id del participante]
      */
-    private static function resolveAccess(array $form): array
+    private static function resolveAccess(array $form, array $settings): array
     {
         $formId = (int) $form['id'];
 
@@ -427,11 +513,32 @@ class FillController
                 // ya había pasado por un enlace que después se revoca.
                 self::grantSessionAccess($formId, (int) $row['id'], (string) $row['expires_at']);
 
-                return [true, $token];
+                return [true, $token, null];
+            }
+
+            // El token de F4 no era. En un formulario de lista la credencial es el
+            // código personal, y se busca **después** a propósito: un `?t=` que
+            // casa con `form_access_tokens` sigue siendo ese token, y los dos tipos
+            // de fila no se buscan en la misma tabla.
+            if (FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER) {
+                $participante = RosterDoor::buscar($form, $token);
+                if ($participante !== null) {
+                    RosterDoor::grant($formId, (int) $participante['id']);
+
+                    return [true, $token, (int) $participante['id']];
+                }
             }
         }
 
-        return [self::sessionAccessValid($formId), null];
+        // Sin credencial en la URL solo puede salvar la sesión, y ahí lo que se
+        // revalida es la fila del permiso: en `roster`, que el participante siga en
+        // la lista; en los otros modos restringidos, que su token siga vivo.
+        $grant = self::sessionGrant($formId);
+
+        // El tercer valor es el `id` del participante o `null`, no el grant entero:
+        // lo que viaja a `submissions.participant_id` es un entero, y un array ahí
+        // revienta la persistencia con un `TypeError` que no dice nada de accesos.
+        return [$grant !== null, null, $grant['participant'] ?? null];
     }
 
     /**
@@ -450,12 +557,7 @@ class FillController
 
         // Poda de lo caducado al escribir, para que `$_SESSION` no crezca con
         // cada formulario restringido que visita alguien.
-        $now = time();
-        foreach ($grants as $id => $grant) {
-            if (!is_array($grant) || (int) ($grant['exp'] ?? 0) <= $now) {
-                unset($grants[$id]);
-            }
-        }
+        RosterDoor::podar($grants);
 
         $grants[$formId] = ['id' => $tokenId, 'exp' => self::toUnix($expiresAt)];
         Session::set('vf_form_access', $grants);
@@ -468,22 +570,58 @@ class FillController
      * token es de un formulario, y un permiso de sesión que no lo comprobara
      * aceptaría un id de token de otro formulario como si fuera suyo.
      */
-    private static function sessionAccessValid(int $formId): bool
+    /**
+     * El permiso de sesión de este formulario, si sigue vivo.
+     *
+     * Devuelve `null` cuando no hay acceso, y un array cuando sí: `['participant' => id]`
+     * en `roster` y `['participant' => null]` con un token de F4. **No devuelve el id
+     * como valor de retorno**, porque para un token de `email`/`allowlist` no hay
+     * ninguno y `null` significaría a la vez «sin acceso» y «acceso de otro tipo»:
+     * un valor que significa dos cosas en el mismo `return` es un `403` a la
+     * puerta de F4 en cuanto alguien lo lea mal.
+     *
+     * @return array{participant:?int}|null
+     */
+    private static function sessionGrant(int $formId): ?array
     {
         $grants = Session::get('vf_form_access', []);
         if (!is_array($grants) || !isset($grants[$formId]) || !is_array($grants[$formId])) {
-            return false;
+            return null;
         }
 
         $grant = $grants[$formId];
+
+        // Un permiso `roster` no caduca (`exp = 0`): lo que lo cierra es que el
+        // participante salga de la lista, y eso se comprueba en la fila, no en un
+        // reloj. El `exp` a 0 se trata antes que la caducidad porque comparar
+        // `0 <= time()` como si fuera una fecha tira la puerta en cada petición.
+        if (($grant['kind'] ?? '') === 'participant') {
+            $participantId = (int) ($grant['id'] ?? 0);
+            if (!RosterDoor::sigueEnLaLista($formId, $participantId)) {
+                unset($grants[$formId]);
+                Session::set('vf_form_access', $grants);
+
+                return null;
+            }
+
+            return ['participant' => $participantId];
+        }
+
         if ((int) ($grant['exp'] ?? 0) <= time()) {
             unset($grants[$formId]);
             Session::set('vf_form_access', $grants);
 
-            return false;
+            return null;
         }
 
-        return FormAccess::tokenIsLive($formId, (int) ($grant['id'] ?? 0));
+        if (!FormAccess::tokenIsLive($formId, (int) ($grant['id'] ?? 0))) {
+            unset($grants[$formId]);
+            Session::set('vf_form_access', $grants);
+
+            return null;
+        }
+
+        return ['participant' => null];
     }
 
     /**
@@ -526,8 +664,9 @@ class FillController
         // eso el corte va antes que el `post-max` y que el CSRF: a un formulario
         // restringido no se le contesta nada hasta saber si tiene acceso.
         $accessToken = null;
+        $participantId = null;
         if (FormAccess::isRestricted($settings)) {
-            [$granted, $accessToken] = self::resolveAccess($form);
+            [$granted, $accessToken, $participantId] = self::resolveAccess($form, $settings);
             if (!$granted) {
                 Response::abort(403, I18n::t('access.denied', $locale));
                 return;
@@ -771,11 +910,22 @@ class FillController
                 (int) $form['id'],
                 $ip,
                 Request::userAgent(),
-                $publicToken
+                $publicToken,
+                $participantId
             );
 
             foreach ($validated as $fieldId => $value) {
                 Answer::create($submissionId, $fieldId, $value);
+            }
+
+            // `responded_at` va DENTRO de la misma transacción que la respuesta: si
+            // la respuesta se guarda y la marca no, la lista de «quién NO ha
+            // respondido» enseña a alguien que ya contestó, y no hay forma de
+            // saber que las dos cosas se separaron. Es un UPDATE idempotente con
+            // estado objetivo (`WHERE responded_at IS NULL`), así que responder dos
+            // veces no mueve la fecha de la primera.
+            if ($participantId !== null) {
+                FormParticipant::marcarRespondido($participantId);
             }
 
             $db->commit();

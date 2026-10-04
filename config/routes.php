@@ -70,6 +70,11 @@ $router->get('/review', [ReviewController::class, 'inbox'], ['auth']);
 // del iframe; el gate, el correo y el token son los mismos.
 $router->post('/f/{slug}/access', [AccessController::class, 'requestAccess'], ['csrf']);
 $router->post('/f/{slug}/access/embed', [AccessController::class, 'requestAccessEmbed'], ['csrf']);
+// Fase 4 — La puerta del listado: canjear un código personal por acceso. No lleva
+// `post-max` porque no sube nada (el cuerpo es un código de 16 caracteres), y el
+// `csrf` va solo porque no hay `$_FILES` que vaciarse. Es un PRG: un código
+// válido redirige a `/f/{slug}?t=<código>`.
+$router->post('/f/{slug}/code', [FillController::class, 'verifyCode'], ['csrf']);
 // La gestión de la lista es del dueño: `auth` + el `canEdit` de la acción, igual
 // que el resto de la configuración del formulario. `copyLink` devuelve JSON, así
 // que su CSRF va por cabecera (`csrf-header`) y no por campo.

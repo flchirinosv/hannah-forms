@@ -74,24 +74,39 @@ class Submission
         return preg_match('/^[a-f0-9]{' . self::TOKEN_LENGTH . '}$/', $token) === 1;
     }
 
+    /**
+     * `$participantId` es el id de `form_participants` cuando el formulario está
+     * en modo `roster` (fase 4 del plan de participantes). Es opcional para no
+     * tocar a los otros tres modos:
+     * quien no lo manda deja la columna a NULL, que es lo que hace hoy todo lo
+     * demás. **No se valida aquí a propósito** —el `form_id` va en el INSERT y el
+     * que decide si esa pareja tiene sentido es la puerta del fill, que ya sabe
+     * de qué formulario viene el visitante—; lo que sí hace falta es que sea un
+     * entero o NULL, porque un `0` se colaría como si fuera alguien.
+     */
     public static function create(
         int $formId,
         string $ip = '',
         string $userAgent = '',
-        ?string $publicToken = null
+        ?string $publicToken = null,
+        ?int $participantId = null
     ): int {
         if ($formId <= 0) {
             throw new \InvalidArgumentException('El ID del formulario debe ser mayor a 0.');
         }
+        if ($participantId !== null && $participantId <= 0) {
+            throw new \InvalidArgumentException('El participante debe ser mayor a 0.');
+        }
 
         self::db()->execute(
-            'INSERT INTO submissions (form_id, ip_address, user_agent, public_token)
-             VALUES (:form_id, :ip, :ua, :token)',
+            'INSERT INTO submissions (form_id, ip_address, user_agent, public_token, participant_id)
+             VALUES (:form_id, :ip, :ua, :token, :pid)',
             [
                 'form_id' => $formId,
                 'ip'      => $ip,
                 'ua'      => $userAgent,
                 'token'   => $publicToken ?? self::newToken(),
+                'pid'     => $participantId,
             ]
         );
         $id = self::db()->lastInsertId();
