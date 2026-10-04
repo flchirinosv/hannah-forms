@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 79 archivos, 801 métodos, ~3 min;
+- Suite completa: `php scripts/test.php` → 83 archivos, 886 métodos, ~4 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -46,9 +46,9 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `public/index.php` → `config/bootstrap.php` (carga `.env` con `App\Core\Env`,
   fija **UTC** en PHP, conecta la BD, inicia sesión) → `config/routes.php` →
   controlador. `public/index.php` es el único PHP que ve el web server.
-- Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (12),
+- Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
-  es un directorio **vacío**), `Models` (9), `Services` (14), `lang/{es,en}.php`.
+  es un directorio **vacío**), `Models` (10), `Services` (15), `lang/{es,en}.php`.
   `views/` = 53 plantillas y partials con `View` (siete con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
@@ -94,7 +94,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **44 de los 79 archivos tocan la BD real** (los que llaman
+- **47 de los 83 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -321,6 +321,45 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - El bloqueo de **adjuntos** va en `AttachmentController::download` (403 si el
   campo es PII sin el permiso), no en la vista: `/attachments/{id}` es
   adivinable por el id correlativo de `answers`.
+
+**Listado de participantes (roster)**
+
+- `roster` **aún no es una puerta**: hasta que la fase 4 lo meta en
+  `FillController::resolveAccess()`, un formulario en modo `roster` se comporta
+  como `public` para quien responde. Si alguien lo encuentra antes de tiempo,
+  lo que se arregla es la fase 4, no el `fallback`.
+- **Tres devoluciones que se parecen y no son lo mismo**, y confundirlas hace que
+  un test pase probando otra cosa: `Form::create()` devuelve **un `int`** (leer
+  `$form['id']` de un entero da `null` y la llamada se va a `/forms/0`, que
+  responde 404), `Submission::create()` también devuelve `int`, y
+  `FormParticipant::create()` devuelve el resultado **`['ok','id','motivo']`**, no
+  la fila. Para el `code` hay que releer con `find()`.
+- **El catálogo y los valores son dos methods distintos**: `catalogFor($formId)`
+  devuelve las COLUMNAS (`key_name`, `label`, `position`) y
+  `attributesOf($participantId)` los valores de UNA persona. Pasar el id del
+  formulario al segundo devuelve `[]` en silencio, y el test que "comprueba que
+  las columnas siguen ahí" se pasa mirando las celdas de nadie.
+- **Vaciar la lista no borra el catálogo**: `truncate()` quita filas, y las
+  columnas son el formato del próximo archivo. Si se fueran con la gente,
+  vaciar destruiría el formato que el editor ya tenía.
+- **El `form_id` hay que compararlo en el controlador**, en `update()` y
+  `destroy()`: los dos reciben un `participant_id` del POST y sin
+  `(int) $fila['form_id'] !== $id` el dueño de dos formularios borra o edita en
+  la lista que no es. Es la mitad de la autorización, como el `form_id` en el
+  WHERE de `FormAccess::findValidToken()`.
+- **El cliente NO elige el tamaño de página**: `index()` usa `self::POR_PAGINA` y
+  no lee `per_page` del query. Aceptarlo sería un `per_page=100000` que se come la
+  tabla entera en memoria y descuadra el `total` de lo que se pinta. Lo fija
+  `testElListadoBuscaYPagina`, que crea 51 filas a propósito.
+- El orden del listado es por identificador **como texto** (es lo que se guarda y
+  lo que se busca), así que `V-51` va antes que `V-6`. Un test que cria `V-1`…
+  `V-51` y espera `V-51` el último está probando un orden natural que no existe.
+- El **mensaje de duplicado lleva el identificador** (`{id}`): «ya hay alguien con
+  ese identificador» obliga a abrir la lista a buscar a quién se refiere, y quien
+  escribe ya lo tiene en el campo. Sale del POST, no de la fila.
+- Importar y vaciar son **acciones distintas**: «reemplazar con un archivo vacío»
+  se rechaza, y vaciar tiene que poder existir igual aunque el importador no lo
+  acepte. `truncate` por eso no mira el `modo` del POST.
 
 **Adjuntos**
 

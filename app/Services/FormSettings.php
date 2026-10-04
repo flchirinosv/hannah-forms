@@ -29,14 +29,42 @@ final class FormSettings
     public const ACCESS_PUBLIC    = 'public';
     public const ACCESS_EMAIL     = 'email';
     public const ACCESS_ALLOWLIST = 'allowlist';
+    public const ACCESS_ROSTER    = 'roster';
 
     public const ACCESS_MODES = [
         self::ACCESS_PUBLIC,
         self::ACCESS_EMAIL,
         self::ACCESS_ALLOWLIST,
+        self::ACCESS_ROSTER,
     ];
 
-    /** El fill solo pide identificación con estos dos. */
+    /**
+     * Columnas de `form_participants` que pueden ser la identidad del
+     * participante, en el orden en que se ofrecen.
+     *
+     * Los tres son los que ya tienen columna propia en la tabla: `cedula` e
+     * `indicador` se rellenan a mano y `correo` es el único que además sirve para
+     * mandar el enlace por correo. Añadir un cuarto sería añadir una columna, y el
+     * identificador está **denormalizado** en `identifier_value` precisamente para
+     * que la puerta del fill busque siempre en la misma columna indexada.
+     */
+    public const ACCESS_IDENTIFIERS = ['cedula', 'indicador', 'correo'];
+
+    /**
+     * El fill solo pide identificación con estos dos.
+     *
+     * `roster` **no está** aquí a propósito, y es un estado transitorio
+     * deliberado: existe como modo desde la fase 3 (si no, `normalize()` lo
+     * convertiría en `public` al leerlo de la BD y el valor se perdería), pero su
+     * puerta —la que decide si el GET sirve el formulario o la pantalla de
+     * identificación— se añade en la fase 4. Hasta entonces un formulario en modo
+     * `roster` se comporta como `public`, que es el lado inofensivo: no se puede
+     * alcanzar en pantalla porque el `<option>` no aparece hasta la fase 6.
+     *
+     * Cuando se añada, va aquí y en el gate del `FillController` en el MISMO
+     * commit: un `roster` en `ACCESS_MODES` pero fuera de esta lista se sirve
+     * abierto, y es el fallo que no da ningún error.
+     */
     public const RESTRICTED_MODES = [self::ACCESS_EMAIL, self::ACCESS_ALLOWLIST];
 
     public static function defaults(): array
@@ -76,7 +104,7 @@ final class FormSettings
             // La lista de emails NO va aquí (está en `form_access_emails`): la
             // revoca un borrado en cascada de sus tokens, y eso es SQL, no un
             // array que reescribir entero en cada cambio.
-            'access'     => ['mode' => self::ACCESS_PUBLIC],
+            'access'     => ['mode' => self::ACCESS_PUBLIC, 'identifier' => 'cedula'],
             // F5 — avance automático entre páginas. OPT-IN por formulario, y no
             // por un motivo distinto del de las demás banderas: un salto de página
             // automático es la clase de detalle que molesta si aparece sin
@@ -219,6 +247,18 @@ final class FormSettings
             $out['access']['mode'] = in_array($mode, self::ACCESS_MODES, true) ? $mode : self::ACCESS_PUBLIC;
         }
 
+        // El identificador se lee junto al modo pero se guarda SIEMPRE, incluso en
+        // `public`: es el valor por defecto al que se vuelve, y borrarlo en cada
+        // cambio de modo haría que «cambiar a público y volver» perdiera la
+        // elección. Un valor desconocido cae en `cedula` por el mismo motivo que
+        // el modo cae en `public`.
+        if (isset($raw['access']) && is_array($raw['access']) && isset($raw['access']['identifier'])) {
+            $identificador = (string) $raw['access']['identifier'];
+            $out['access']['identifier'] = in_array($identificador, self::ACCESS_IDENTIFIERS, true)
+                ? $identificador
+                : 'cedula';
+        }
+
         if (isset($raw['locale']) && is_array($raw['locale']) && isset($raw['locale']['code'])) {
             $code = (string) $raw['locale']['code'];
             $out['locale']['code'] = in_array($code, self::LOCALES, true) ? $code : 'es';
@@ -311,8 +351,16 @@ final class FormSettings
         $patch = [];
 
         // --- acceso ---
-        if ($enviado('access_mode')) {
-            $patch['access'] = ['mode' => (string) ($post['access_mode'] ?? '')];
+        // El identificador viaja aunque el modo no cambie: el `<select>` del
+        // identificador se manda siempre junto al del modo, y separarlos con dos
+        // `if` pondría el segundo en el parche con una condición que no depende
+        // del primero. Se decide con `$enviado`, no con «si no viene, no lo toques»:
+        // es el mismo criterio del resto del parche.
+        if ($enviado('access_mode') || $enviado('access_identifier')) {
+            $patch['access'] = array_filter([
+                'mode'       => $enviado('access_mode') ? (string) ($post['access_mode'] ?? '') : null,
+                'identifier' => $enviado('access_identifier') ? (string) ($post['access_identifier'] ?? '') : null,
+            ], static fn($v): bool => $v !== null);
         }
 
         // --- programación y cupo ---
@@ -462,7 +510,17 @@ final class FormSettings
         // formulario acaba de quedar abierto para todo el mundo.
         $rawMode = $raw['access']['mode'] ?? null;
         if (is_string($rawMode) && $rawMode !== '' && !in_array($rawMode, self::ACCESS_MODES, true)) {
-            return 'El modo de acceso debe ser "public", "email" o "allowlist".';
+            return 'El modo de acceso debe ser "public", "email", "allowlist" o "roster".';
+        }
+
+        // El identificador se mira CRUDO y no el normalizado, por la misma razón
+        // que el resto de `validate()`: `normalize()` convierte un valor
+        // desconocido en `cedula`, así que mirar el normalizado no distinguiría
+        // «el dueño eligió cédula» de «el dueño mandó basura».
+        $rawIdentifier = $raw['access']['identifier'] ?? null;
+        if (is_string($rawIdentifier) && $rawIdentifier !== ''
+            && !in_array($rawIdentifier, self::ACCESS_IDENTIFIERS, true)) {
+            return 'El identificador del participante debe ser "cedula", "indicador" o "correo".';
         }
 
         if ($n['notify']['enabled'] && $n['notify']['emails'] === []) {

@@ -174,7 +174,7 @@ el existente y lo dice.
 | 0 | Bug de PII en la analítica | bajo | **Hecha** (6 tests nuevos) |
 | 1 | Escritor xlsx (`RosterTemplate`) | **cero** | **Hecha** (15 tests nuevos) |
 | 2 | Migración `0014` | **cero** | **Hecha** (11 tests nuevos) |
-| 3 | `FormParticipant`, CRUD, importar | bajo | Pendiente |
+| 3 | `FormParticipant`, CRUD, importar | bajo | **Hecha** (85 tests nuevos) |
 | 4 | **La puerta del fill** | **alto** | Pendiente |
 | 5 | Pestaña Participantes + huecos | bajo | Pendiente |
 | 6 | Exponer `roster` en el `<select>` | bajo | Pendiente |
@@ -358,6 +358,121 @@ limpia acaba sin la FK que sí tiene toda base migrada.
 
 **Suite completa: 801, 0 fallos.**
 
+## Fase 3 — modelo, CRUD e importación — **HECHA**
+
+Cuatro entregables y **85 tests**: lector XLSX (17), modelo (31), importador (19) y
+controlador (18). La fase quedó en 886 tests, 0 fallos.
+
+### El lector tiene que adivinar, y cada suposición es una forma de perder datos
+
+Un `.xlsx` es un ZIP de XML y **no dice cómo se llaman las hojas**. El orden de los
+ficheros dentro del ZIP no es el de las hojas (va por CRC), así que «la primera» es
+una moneda al aire. `RosterTemplate::leer()` usa `xl/workbook.xml` para el nombre
+real, `xl/_rels/workbook.xml.rels` para el destino, y solo si no aparece busca por
+posición. Un test genera un ZIP **con las entradas barajadas** y otro pone las hojas
+en el orden inverso a como se escribieron: los dos salen del caso que un
+`glob('xl/worksheets/sheet1.xml')` no habría visto.
+
+Otras cuatro suposiciones que también se prueban: `sharedStrings.xml` (no todas las
+celdas de texto van inline), celdas con varios `<r>` («se**ñ**or» partido), huecos
+intermedios (una fila vacía **no** termina la tabla) y límites de descompresión.
+
+### El identificador es denormalizado, y eso obliga a un invariante
+
+`identifier_value` es una copia de `cedula` / `indicador` o `correo`. Eso hace la
+búsqueda barata y deja la puerta del fill en una sola columna, pero crea una
+obligación: **`sinIdentificadorPara()` tiene que reescribir la copia si el formulario
+cambia de identificador, y si no la puerta busca en una columna que ya nadie
+escribe.** Hay un test que cambia el identificador del formulario y comprueba que el
+nuevo `identifier_value` es el nuevo campo.
+
+### `utf8mb4_unicode_ci` no distingue mayúsculas ni acentos: dos cosas que se creían distintas
+
+**1. «Diseño» y «Diseno» son el mismo atributo.** El `key_name` sale del
+`slugify()` de la cabecera, así que un archivo con `Diseño` y otro con `Diseno` —incluso
+en el mismo archivo— convergen a `diseno`. `ensureAttribute()` reutiliza la fila
+existente en lugar de intentar insertar y comerse un `1062`. El test
+`testDosCabecerasQueSoloSeDifierenEnAcentosSonElMismoAtributo` lo fija. Sin esto,
+importar un archivo de una columna y otro de la suya creaba dos atributos que se
+pisan.
+
+**2. El slug de un identificador puede chocar aunque el texto sea distinto.**
+`Sede-Norte` y `Sede Norte` dan el mismo `key_name`, y `ensureAttribute()` resuelve el
+conflicto como **sufijo** (`sede_norte_2`), que es la convención que ya usa el
+generador de `code`.
+
+### Lo que rompió al testear el modelo, y era del modelo
+
+**`FormParticipant::create()` devuelve `['ok','id','motivo']`, no la fila.** Lo primero
+que escribí fue `$fila = FormParticipant::create(...); $fila['code']`, que es `null`
+en silencio. Un test que compara el código «antes» contra «después» pasaba probando
+`null === null`. Lo mismo con `Form::create()` y `Submission::create()`, que sí
+devuelven un `int`: leer `$form['id']` de un entero produce `null`, la llamada se va
+a `/forms/0`, responde 404 y el test sigue verde.
+
+### El importador: tres decisiones que parecían detalles
+
+**1. `reemplazar` valida ANTES de borrar, siempre.** Con un `DELETE` dentro del
+bucle, un archivo con 399 filas buenas y 1 mala deja la lista con las 399 y nadie se
+entera de que era una sustitución. Se comprobó **quitando el `return` de la
+validación previa**: el test se pone rojo.
+
+**2. En `fusionar`, un error de fila no tumba el resto, y eso también se probó**
+metiendo una fila con el correo inválido en medio de un archivo de cinco.
+
+**3. Los atributos que el archivo no trae no se borran al actualizar.** Una columna
+que el archivo nuevo ya no trae es una columna que el editor ya no quiere, pero un
+`key_name` ausente en **esa fila** es «no la he rellenado». Distinguir las dos cosas es
+lo que separa «actualizar» de «reemplazar mis datos», y la prueba es un archivo que
+trae `Sede` y `Turno` donde el participante solo tenía `Sede`: después sigue teniendo
+las dos, con `Turno` en blanco.
+
+Y una cuarta, que salió al mirar los tests y no al escribir el código: el catálogo
+**no se borra al reemplazar**. Las columnas son el formato del próximo archivo; si se
+fueran con la gente, la segunda importación del mismo archivo no tendría nada que
+reconocer.
+
+### El controlador devuelve JSON, pero con el mismo contrato de siempre
+
+`ParticipantController` responde `{ok, message, ...}` tanto en JSON como con el flash
+y el 302 de siempre, según `wantsJson()`, porque **la pestaña todavía no existe** (fase
+5) y una vista que solo pinta una tabla no aporta nada que JSON no dé. Cuando llegue
+la pestaña, esta misma respuesta es lo que consumirá.
+
+Tres cosas del controlador que parecen no código y son la puerta:
+
+- **`rosterForm()` exige `Access::canEdit()` y el modo `roster`, y devuelve 404 (no
+  403) si el formulario no es de lista.** Desde fuera, que un formulario tenga o no
+  listado no es información que deba darse a quien solo puede verlo.
+- **`update()` y `destroy()` comparan `(int) $fila['form_id'] !== $id`.** Los dos
+  reciben un `participant_id` del POST, y el dueño de dos formularios —cosa normal—
+  puede mandar el id de la lista que no es. **La primera versión de los tests no lo
+  cubría** (creaban el participante ajeno en el mismo formulario, así que el `form_id`
+  era el mismo y todo pasaba), y se vio al **quitar el `form_id` a propósito y ver que
+  la suite seguía verde**: un test que no falla cuando rompes lo que vigila está
+  probando otra cosa. Ese agujero estaba en los tests, no en el código.
+- **`index()` no lee `per_page`.** El tamaño de página lo fija el servidor.
+
+### El orden del listado es de texto, no de número
+
+`allForForm()` ordena por `identifier_value`, que es una columna de texto: `V-51` va
+**antes** que `V-6`. El test de paginación crea `V-1`…`V-51` a propósito, y al
+escribirlo se esperaba `V-51` al final. Está anotado en el test porque «arreglarlo» por
+cambiar el `ORDER BY` a algo numérico rompería la búsqueda, que es textual también.
+
+### Lo que sigue sin hacer, y es lo importante
+
+**`roster` sigue sin ser una puerta.** No se ha tocado `FillController`, ni
+`FormSettings::RESTRICTED_MODES`, ni el `<select>` de los modos de acceso. Un
+formulario en modo `roster` se comporta como `public` para quien responde: se puede
+llenar sin invitación. Es exactamente lo que dice la fase 4, y por eso la fase 3 no
+se puede dar por buena en pantalla: **nada de esto es visible todavía.**
+
+**Suite completa: 886, 0 fallos. 8 mutaciones comprobadas** (quitar el `form_id` del
+`update`, del `destroy` y del alta; quitar el `canEdit`; no exigir el modo `roster`;
+dejar pasar cualquier `key_name`; ignorar la búsqueda en el total y en las filas; dejar
+elegir `per_page`). Las ocho se ponen rojas.
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -391,7 +506,7 @@ limpia acaba sin la FK que sí tiene toda base migrada.
 | 0 | **Hecha** — `4b4d31b`, 775 tests |
 | 1 | **Hecha** — 790 tests |
 | 2 | **Hecha** — 801 tests |
-| 3 | Pendiente |
+| 3 | **Hecha** — 886 tests |
 | 4 | Pendiente |
 | 5 | Pendiente |
 | 6 | Pendiente |

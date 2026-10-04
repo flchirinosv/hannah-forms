@@ -106,4 +106,46 @@ class Database
     {
         $this->pdo->rollBack();
     }
+
+    /**
+     * Ejecuta `$fn` dentro de una transacción y la juega si `$fn` lanza.
+     *
+     * Existe por el anidamiento, que sin esto no es posible: `PDO::beginTransaction()`
+     * lanza «There is already an active transaction» si ya hay una abierta, así que
+     * un servicio transaccional que llama a un modelo que también lo es revienta —
+     * y la mezcla de los dos estilos deja transactions abiertas a medias.
+     *
+     * Quien llama con `$propia = false` **no** confirma ni abandona: la de fuera es
+     * la que manda, y es la única que sabe si lo que hizo la de dentro debe
+     * sobrevivir. Por eso un fallo de una de dentro solo deshace todo si sube, y un
+     * modelo que devuelve `['ok' => false]` en vez de lanzar deja la transacción de
+     * fuera intacta: eso es justo lo que necesita una importación que salta la
+     * fila duplicada y sigue con las demás.
+     *
+     * @template T
+     * @param callable():T $fn
+     * @return T
+     */
+    public function transaccionar(callable $fn): mixed
+    {
+        $propia = !$this->pdo->inTransaction();
+        if ($propia) {
+            $this->pdo->beginTransaction();
+        }
+
+        try {
+            $resultado = $fn();
+        } catch (\Throwable $e) {
+            if ($propia) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        if ($propia) {
+            $this->pdo->commit();
+        }
+
+        return $resultado;
+    }
 }

@@ -137,6 +137,38 @@ funcionando. Los status son `200` (añadido), `419` (CSRF) y `422` (modo que no
 es `allowlist`, email inválido o duplicado); el camino sin `fetch` responde 302
 con el mismo texto en flash.
 
+## Listado de participantes (`roster`)
+
+| Método | Ruta | Middleware | Descripción |
+|--------|------|------------|-------------|
+| GET | `/forms/{int}/participants` | auth | Lista paginada + catálogo de atributos + total. JSON (`X-Requested-With`) o 200 vacío |
+| GET | `/forms/{int}/participants/export` | auth | XLSX con una fila por participante y una columna por atributo |
+| POST | `/forms/{int}/participants` | auth, post-max, csrf | Alta manual. Devuelve el `code` del recién creado |
+| POST | `/forms/{int}/participants/update` | auth, post-max, csrf | Editar uno (`participant_id` del POST) |
+| POST | `/forms/{int}/participants/delete` | auth, post-max, csrf | Borrar a una persona (**no** sus respuestas) |
+| POST | `/forms/{int}/participants/import` | auth, post-max, csrf | Importar XLSX (`modo= fusionar|reemplazar`) |
+| POST | `/forms/{int}/participants/truncate` | auth, post-max, csrf | Vaciar la lista. **No** lee el `modo` del POST |
+| POST | `/forms/{int}/participants/attribute` | auth, post-max, csrf | Quitar un atributo del catálogo (`key_name`) |
+
+Todas exigen que el formulario sea del usuario (`Access::canEdit()`) y que esté en
+modo `roster`: si no está en modo lista, la respuesta es **404 y no 403**, porque
+desde fuera no es información que deba darse. `update` y `delete` comparan además
+`form_id` con el de la ruta, así que el dueño de dos formularios no puede tocar la
+lista que no es.
+
+Las de escritura devuelven `422` con `{ok:false, message}` cuando el POST no lleva
+CSRF o cuando la acción choca con el modo `roster` (no con el `modo` de importación),
+y `419` cuando el CSRF falla. El `message` es un texto ya traducido, no una clave:
+con `X-Requested-With: XMLHttpRequest` sale JSON y sin él, un flash y el 302 de
+siempre.
+
+`GET /participants` **no** lee `per_page` del query: el tamaño de página lo fija el
+servidor (50). Aceptarlo sería un `per_page=100000` que se come la tabla entera en
+memoria.
+
+> **Hasta que la fase 4 esté hecha, `roster` no es una puerta**: el GET y el POST de
+> `/f/{slug}` siguen aceptando a cualquiera. Ver `docs/plan-participantes-2026-10-04.md`.
+
 ## Llenado público
 
 | Método | Ruta | Middleware | Descripción |

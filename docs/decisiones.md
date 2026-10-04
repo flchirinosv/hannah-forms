@@ -836,3 +836,129 @@ El test quita los comentarios antes de leer el cuerpo, porque la explicación
 del propio bug menciona `return` y sin hacerlo el test fallaría por su propia
 explicación. Es la misma trampa que ya describen los contratos de
 `builder.js`: un test que lee estructura de código no debe leer prosa.
+
+## Fase 3 — el listado de participantes (modelo, CRUD e importador)
+
+### La denormalización de `identifier_value` y su invariante
+
+El identificador de una persona en el formulario puede ser su cédula, su indicador
+o su correo, y son **tres columnas distintas**. La puerta del fill necesita
+encontrar a alguien por ese valor en cada petición. Con un `CASE` sobre tres
+columnas hacen falta tres índices y el mismo código repetido tres veces; con una
+cuarta columna `identifier_value` hay un índice y una comparación.
+
+El coste es que la copia se puede quedar vieja, y la única forma de que eso no
+pase es que **cambiar el identificador del formulario reescriba la copia**. Por eso
+`FormParticipant::sinIdentificadorPara()` existe y por eso hay un test que cambia el
+identificador del formulario y comprueba el valor nuevo: sin él, un formulario
+pasado de `cedula` a `correo` seguiría buscando cédulas en una columna que ya nadie
+escribe, y **no daría ningún error**: solo respuestas de más, o invitaciones a
+equivocados.
+
+### `utf8mb4_unicode_ci` convierte dos cabeceras en un atributo, y eso no es un detalle de collation
+
+El `key_name` de un atributo sale del `slugify()` de la cabecera, así que `Diseño` y
+`Diseno` dan el mismo `key_name`. Sin más, importar dos archivos donde uno dice
+`Diseño` y otro `Diseno` —incluso uno detrás de otro en el **mismo** archivo— intenta
+insertar dos filas con la misma clave y se come un `1062`.
+
+La opción no es «normalizar más», sino **reutilizar la fila que ya existe**: es lo
+que hace `ensureAttribute()`. Importar una hoja con `Diseño` y otra con `Diseno` no
+crea dos atributos que se pisan; reconoce que son el mismo y escribe en el mismo.
+
+El caso hermano es el slug que choca aunque el texto sea distinto: `Sede-Norte` y
+`Sede Norte` dan `sede_norte` los dos, y ahí no hay manera de reconocer que
+**no son la misma columna para el editor**: son dos columnas distintas que casualmente
+comparten nombre. Se resuelven con **sufijo** (`sede_norte_2`), que es la
+convención que ya usa el generador de `code`.
+
+### En `reemplazar`, validar antes de borrar no es una optimización
+
+La tentación es borrar la lista y escribir lo que venga. El problema es que un
+archivo con 399 filas buenas y 1 mala dejaría la lista con las 399 **sin decir que
+era una sustitución**: el usuario creería que su archivo se importó entero. En
+`reemplazar` la validación es previa y total; si hay un solo problema, no se borra
+nada.
+
+En `fusionar` lo contrario, y por el motivo opuesto: un error de fila **no** tumba el
+resto, porque el propósito de fusionar es extraer lo que haya podido traerse y
+devolver un informe de lo que no. Esa asimetría se comprueba en los dos sentidos
+con tests, y cada una de las dos ramas se verificó **quitando su `return` de
+protección**.
+
+### Una columna ausente en el archivo es «no la he rellenado», no «bórrala»
+
+Al actualizar una persona por importación hay dos cosas que se parecen: una columna
+que el archivo nuevo ya no trae (el editor ya no la quiere) y una columna presente en
+el catálogo que en **esa fila** no viene (esta persona no la tiene rellenada).
+Borrarla por lo segundo pierde datos sin avisar.
+
+La regla que salió de esto: **`reemplazar` es la única operación que puede quitar
+columnas**, y para vaciar del todo está `truncate`. Y hay un tercero, que ya estaba
+dicho pero que conviene repetir porque se olvida: **el catálogo no se borra al
+reemplazar ni al vaciar la lista**. Las columnas son el formato del próximo archivo; si se fueran con
+la gente, vaciar la lista destruiría el formato que el editor ya tenía, y la segunda
+importación del mismo archivo no tendría nada que reconocer.
+
+### El controlador responde JSON antes de que exista la pestaña, y no por comodidad
+
+`ParticipantController` devuelve `{ok, message, ...}` cuando llega
+`X-Requested-With: XMLHttpRequest` y flash + 302 cuando no. Podría haberlo hecho al
+revés, pero la pestaña del panel es la fase 5: **la respuesta que necesita la
+pestaña es esta**, y hacer la vista ahora sería escribir markup que se borra en dos
+fases. Cuando llegue la pestaña, esta misma respuesta es la que consumirá, sin
+cambiar el contrato.
+
+Lo que sí es puerta, y vive en `rosterForm()`: `Access::canEdit()` y el modo
+`roster`, con **404 y no 403** si el formulario no es de lista, porque que un
+formulario tenga o no listado no es información que deba darse a quien solo puede
+verlo.
+
+Y dos detalles que parecen de estilo y son autorización: `update` y `destroy`
+reciben un `participant_id` del POST, y el dueño de dos formularios —cosa
+normal— puede mandar el id de la lista que no es. Sin `(int) $fila['form_id'] !==
+$id`, editar o borrar en la lista equivocada es un `WHERE id = ?` y nada más. **Los
+primeros tests no lo cubrían** (creaban el participante «ajeno» en el mismo
+formulario, así que el `form_id» era el mismo y todo pasaba), y se detectó
+**quitando el `form_id` a propósito y viendo que la suite seguía verde**. El
+agujero estaba en los tests.
+
+### Tres devoluciones que se parecen, y una que no se parece a ninguna
+
+`Form::create()` y `Submission::create()` devuelven un `int`;
+`FormParticipant::create()` devuelve `['ok', 'id', 'motivo']`, no la fila. Leer
+`$fila['code']` de ese array da `null` en silencio, y un test que compara el código
+antes y después pasa comparando `null` contra `null`: **verde, probando nada**.
+Leer `$form['id']` de un `int` también da `null`, y la llamada se va a `/forms/0`,
+que responde 404 — otra forma de test verde por la vía equivocada.
+
+Y una cuarta, que es la que más caro sale cuando se confunde:
+`attributesOf($participantId)` devuelve los valores de **una** persona, y
+`catalogFor($formId)` las **columnas**. Pasar el id del formulario al segundo
+devuelve `[]` sin decir nada, así que un test que «comprueba que las columnas
+siguen ahí» se pasa mirando las celdas de nadie.
+
+### El cliente no elige el tamaño de página
+
+`index()` lee `page` del query pero **no** `per_page`: el tamaño lo fija el servidor.
+Aceptarlo sería un `per_page=100000` que se come la tabla entera en memoria y
+descuadra el `total` de lo que se pinta. Está atado a un test que crea 51 filas a
+propósito, porque con cinco filas cualquier valor de página da el mismo resultado y
+el test pasaría sin comprobar nada.
+
+### El orden del listado es textual, y «arreglarlo» rompería la búsqueda
+
+`allForForm()` ordena por `identifier_value`, que es texto: `V-51` va **antes** que
+`V-6`. Es lo correcto para un identificador que puede ser «CC-1234», «V-51» o un
+correo, y también lo es la búsqueda. Ordenar «como número» solo funciona para un
+subconjunto y cambia la página 2 sin avisar.
+
+### Lo que la fase 3 NO hace, y es lo importante
+
+**`roster` todavía no es una puerta.** No se ha tocado `FillController`, ni
+`FormSettings::RESTRICTED_MODES`, ni el `<select>` de los modos: un formulario en
+modo `roster` se puede llenar sin invitación. Todo lo de esta fase es la
+maquinaria de gestión, y la puerta es la fase 4, que tiene que tocar doce sitios
+en ocho archivos (`FormSettings::normalize()` lo convierte a `public`,
+`RESTRICTED_MODES` no lo incluye, `/f/{slug}/access` da 404…). Por eso la fase 3
+**no se puede dar por buena en pantalla**: nada de esto es visible todavía.

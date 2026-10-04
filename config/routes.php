@@ -12,6 +12,7 @@ use App\Controllers\BuilderController;
 use App\Controllers\DashboardController;
 use App\Controllers\FillController;
 use App\Controllers\FormController;
+use App\Controllers\ParticipantController;
 use App\Controllers\ResponsesController;
 use App\Controllers\ReviewController;
 use App\Core\Router;
@@ -75,6 +76,23 @@ $router->post('/f/{slug}/access/embed', [AccessController::class, 'requestAccess
 $router->post('/forms/{id}/access/email', [AccessController::class, 'addEmail'], ['auth', 'csrf']);
 $router->post('/forms/{id}/access/email/remove', [AccessController::class, 'removeEmail'], ['auth', 'csrf']);
 $router->post('/forms/{id}/access/link', [AccessController::class, 'copyLink'], ['auth', 'csrf-header']);
+
+// Listado de participantes (`roster`). Todas del dueño (`auth` + `canEdit` de la acción,
+// el mismo permiso que la allowlist) y todas exigiendo que el formulario esté en
+// modo `roster`; el `id` del participante va en el POST y no en la URL, como en
+// `/admin/users/toggle` y `/admin/roles`, para no añadir un segundo parámetro de
+// ruta al smoke que las recorre todas.
+// `post-max` va ANTES de `csrf` en las de subida (ver `/f/{slug}`): si el cuerpo
+// pasa de `post_max_size`, PHP vacía `$_POST` y `$_FILES` y sin el guard se
+// respondería «token CSRF inválido» a quien no ha tenido ningún problema.
+$router->get('/forms/{id}/participants', [ParticipantController::class, 'index'], ['auth']);
+$router->get('/forms/{id}/participants/export', [ParticipantController::class, 'export'], ['auth']);
+$router->post('/forms/{id}/participants', [ParticipantController::class, 'store'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/update', [ParticipantController::class, 'update'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/delete', [ParticipantController::class, 'destroy'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/import', [ParticipantController::class, 'import'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/truncate', [ParticipantController::class, 'truncate'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/attribute', [ParticipantController::class, 'destroyAttribute'], ['auth', 'post-max', 'csrf']);
 // P7
 $router->post('/forms/{id}/duplicate', [FormController::class, 'duplicate'], ['auth', 'csrf']);
 $router->get('/forms/{id}/qr.svg', [FormController::class, 'qrSvg'], ['auth']);
