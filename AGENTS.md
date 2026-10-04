@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 85 archivos, 936 métodos, ~4.5 min;
+- Suite completa: `php scripts/test.php` → 86 archivos, 953 métodos, ~5 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **49 de los 85 archivos tocan la BD real** (los que llaman
+- **50 de los 86 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -395,6 +395,45 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   atado al número; el 25 es una decisión de pantalla, porque cada fila lleva su
   `<details>` de edición con un input por atributo y a 50 el botón de «Quitar» deja
   de notarse. Si se cambian, se cambian los dos sitios y sus tests.
+
+**Elegir con qué se identifica (fase 6)**
+
+- `roster` es la **cuarta y última** `<option>` de `#access_mode`: el orden de la lista
+  es el mensaje (cada vez más cerrado) y el test lo compara entero, no «que exista».
+- El estado inicial del segundo desplegable lo pone el **servidor**: `#accessIdentifierBox`
+  y `#access_identifier` vienen sin `hidden` en `roster` y con él en los otros tres, y
+  `dashboard.js` solo lo mantiene al día (`updateIdentifierBox()`) al cambiar de modo
+  **sin guardar**. `hidden` y `disabled` van **juntos**: un `<select>` escondido sigue
+  mandando su valor, y sin `disabled` un formulario en «Público» guardaría «cédula»
+  (la primera opción) en cada guardado de cualquier ajuste.
+- Sin JS el camino también existe, con **un guardado de más**: se elige `roster`, se
+  guarda y al reabrir la ficha el selector ya está a la vista. No lo escribas como «el
+  selector se ve siempre» en un comentario: es falso.
+- **Cambiar el identificador es la operación que puede dejar entrar a nadie.** Por eso
+  van las dos mitades: `planDeReidentificacion()` (sin escribir nada) y, solo con el
+  plan limpio, `FormController::updateSettings()` mete ajustes y `reidentificar()` en
+  **una transacción**.
+- **El plan cuenta en SQL, y no es una decisión de gusto**: `UNIQUE (form_id,
+  identifier_value)` es `utf8mb4_unicode_ci`, así que `V-1` y `v-1` son **la misma
+  clave**. Agrupar en PHP con un array asociativo diría «no hay repetidos» y el
+  `UPDATE` se comería un 1062 con un error de servidor en vez de un mensaje que dice
+  qué corregir. Al revés que `normalizar()`: allí lo que decide qué es el mismo dato es
+  PHP; aquí es el índice. La prueba que lo ata monta las dos filas con identificadores
+  **distintos** (una cédula y un indicador) y luego cambia a cédula: es la única forma
+  de que dos valores que solo colisionan al cambiar lleguen a existir.
+- `a_cambiar` excluye las filas sin el dato nuevo (`TRIM(...) <> ''`): no se van a
+  reescribir, y `sin_identidad` las corta antes.
+- `reidentificar()` mueve **solo** `identifier_value`: `code` es la credencial que ya
+  se repartió, y quien entra por un enlace viejo tiene que seguir entrando.
+- `settings.access.identifier` no viaja en el POST mientras el `<select>` venga
+  `disabled`, y `fromDashboardPost()` lo respeta («si no viene, no lo toques»): un POST
+  sin el campo tiene que dejar guardado el que hubiera.
+- **Un test que quita comentarios de un fichero de JS con un regex: que el regex sea
+  `/*`.** `[/][/*]` es una clase de caracteres —«una barra o un asterisco»—, y el
+  recorte empezaba en la barra de `'use strict'` y llegaba al primer cierre de verdad:
+  tapaba por casualidad el comentario que el test vigilaba. Cuando se añadió código
+  nuevo dejó de taparlo y el test falló sin que el código vigilado cambiara
+  (`FormAccessTest`).
 
 **El panel de la ficha (fase 5)**
 
@@ -1006,10 +1045,10 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 335 comprobaciones manuales en 22 bloques (A–V,
+- `docs/pruebas-funcionales.md`: 348 comprobaciones manuales en 23 bloques (A–W,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
-  diálogo de confirmación con el alta de la allowlist U y la pestaña de
-  participantes V), para
+  diálogo de confirmación con el alta de la allowlist U, la pestaña de
+  participantes V y el identificador de la lista W), para
   detectar problemas que la suite no ve (teclado, maquetación, flujo en
   pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la lista
   mínima.

@@ -597,8 +597,17 @@ class FormAccessTest
 
         /* Sin comentarios: en dashboard.js queda escrito POR QUÉ ya no está
          * (`card.dataset.addEndpoint`, el atributo que la vista perdió), y una
-         * nota que nombra el código muerto no es código muerto. */
-        $js = preg_replace('#[/][/*].*?[/][*]#s', ' ', (string) file_get_contents(
+         * nota que nombra el código muerto no es código muerto.
+         *
+         * El patrón de abajo escapa la barra y el asterisco, y no los mete en
+         * una clase de caracteres. Leída como clase, `[/][*]` significa «una
+         * barra o un asterisco»: el recorte empezaba en la primera barra del
+         * fichero, la de `'use strict'`, y llegaba hasta el primer cierre de
+         * verdad, así que tapaba el comentario de `addEndpoint` por casualidad.
+         * En la fase 6 dejó de taparlo y este test falló con la fase 6 a medio
+         * hacer: lo único que se había movido era una nota, y el código que
+         * vigila no había cambiado. */
+        $js = preg_replace('~/\*.*?\*/~s', ' ', (string) file_get_contents(
             dirname(__DIR__, 2) . '/public/assets/js/dashboard.js'
         ));
         assertTrue(

@@ -177,7 +177,7 @@ el existente y lo dice.
 | 3 | `FormParticipant`, CRUD, importar | bajo | **Hecha** (85 tests nuevos) |
 | 4 | **La puerta del fill** | **alto** | **Hecha** (23 tests nuevos) |
 | 5 | Pestaña Participantes + huecos | bajo | **Hecha** (24 tests nuevos) |
-| 6 | Exponer `roster` en el `<select>` | bajo | Pendiente |
+| 6 | Exponer `roster` en el `<select>` | bajo | **Hecha** (17 tests nuevos) |
 | 7 | Filtro por atributo + detalle | bajo | Pendiente |
 | 8 | Agrupar por atributo + techo | medio | Pendiente |
 | 9 | Quién respondió, `responses.pii` | bajo | Pendiente |
@@ -634,14 +634,83 @@ Un `$error` con cero omitidas **no** se pinta como informe: un `.xlsx` ilegible 
 guardado «las 0 filas del archivo», y ese bloque al lado de un mensaje que sí dice la
 verdad dice exactamente lo que no pasó.
 
-### Lo que sigue sin verse
+### Lo que seguía sin verse
 
-Sigue sin haber `<option>` en el selector de modos (fase 6): hoy un formulario en
-`roster` solo se alcanza si alguien edita sus ajustes a mano o viene de una fase
-anterior. **La puerta y el panel están probados y no se ven.** Es exactamente lo que
-la fase 6 viene a arreglar, y por eso sigue siendo la última en aparecer en pantalla.
+Quedaba el interruptor de la fase 6: la puerta y el panel estaban probados y sin una
+`<option>` que los alcanzara. Es lo que viene ahora, y por eso era la última en
+aparecer en pantalla.
 
 **Suite completa: 936, 0 fallos.**
+
+## Fase 6 — exponer `roster` y elegir con qué se identifica — **HECHA**
+
+Diecisiete tests en `tests/unit/RosterIdentifierTest.php` y **953 en total, 0 fallos**.
+El riesgo era bajo y así fue, pero la fase destapó dos cosas que no estaban en el plan.
+
+### La cuarta opción, y la última en la lista
+
+`roster` va al final del desplegable, después de `allowlist`. El orden es el mensaje:
+los tres modos de siempre se leen como «cada vez más cerrado» y el cuarto encaja ahí.
+Con JS se elige y el formulario sigue abierto para configurarlo; sin JS se elige,
+se guarda y al volver a abrir la ficha el selector del identificador ya está a la
+vista. No es un control que exista solo en el navegador, pero necesita un guardado de
+más, y eso está escrito en la vista.
+
+### El identificador viaja con el modo, y por eso viene `disabled`
+
+El segundo desplegable (cédula, indicador o correo) lo decide el **servidor**: el
+`<select>` llega sin `hidden` en `roster` y con él en los otros tres, y `dashboard.js`
+solo lo mantiene al día cuando se cambia de modo sin guardar. Oculto **con**
+`disabled`, y no por descuido: un `<select>` escondido sigue mandando su valor, así que
+un formulario en «Público» con la lista ya configurada para correo guardaría «cédula» —
+la primera opción— en cada guardado de cualquier ajuste, y al volver al listado el
+identificador elegido en su día habría desaparecido sin que nadie lo tocase. Con
+`disabled` el campo no viaja, que es lo que ya decía `fromDashboardPost()` («si no
+viene, no lo toques»).
+
+### Cambiar el identificador es la operación peligrosa de la fase
+
+`identifier_value` es la columna desnormalizada por la que la puerta busca, así que
+cambiarla reescribe la identidad de **toda** la lista. Va en dos mitades porque el
+fallo que evita es el peor posible en esta tabla —un formulario que deja de dejar
+entrar a nadie sin decir nada—:
+
+1. `FormParticipant::planDeReidentificacion()` calcula, **sin escribir**, cuántas
+   personas se quedarían sin identidad y cuántos valores pasarían a compartirse.
+2. El POST se **corta** con un 422 y un mensaje que dice qué corregir si hay alguna de
+   las dos cosas.
+3. Si el plan está limpio, ajustes y reescritura van en **una transacción**.
+
+El plan es una pregunta de SQL y no de PHP, y la razón salió al escribir el test:
+`UNIQUE (form_id, identifier_value)` es `utf8mb4_unicode_ci`, así que `V-1` y `v-1` —o
+`Pérez` y `Perez`— son **la misma clave para el índice**. Agruparlos en PHP con un array
+asociativo los daría por distintos, el plan diría «no hay repetidos» y el `UPDATE` se
+comería un 1062 con un error de servidor en vez de un mensaje que dice qué corregir.
+Al revés que la normalización: ahí lo que decide qué es el mismo dato es PHP, y aquí lo
+que decide es el índice.
+
+El mensaje nombra los valores repetidos, topados a cinco con el total al lado: si no
+lo lee nadie, no arregla nadie.
+
+### Los códigos no se tocan
+
+La reescritura solo mueve `identifier_value`. `code` es la credencial que ya se
+repartió —y lo que va en los enlaces de correo y en el QR—, así que quien entra por un
+enlace viejo sigue entrando. El test compara el código antes y después.
+
+### Dos cosas que se encontraron de paso
+
+- **`Database::transaccionar()` no es estático.** Es un método de la instancia, y la
+  primera versión de la fase 6 lo llamaba con `Database::` a secas.
+- **El patrón que quita comentarios en `FormAccessTest` no era un patrón de
+  comentarios.** `[/][/*]` es una clase de caracteres: significa «una barra o un
+  asterisco», así que el recorte empezaba en la primera barra del fichero —la de
+  `'use strict'`— y llegaba hasta el primer cierre de verdad. Tapaba por casualidad el
+  comentario que ese test vigila, y al añadir código nuevo dejó de taparlo: el test
+  falló en la fase 6 sin que el código vigilado hubiera cambiado. Ahora es `~` con la
+  barra y el asterisco escapados, y el comentario explica por qué.
+
+**Suite completa: 953, 0 fallos.**
 
 ## Decisiones de correo
 
@@ -678,7 +747,7 @@ la fase 6 viene a arreglar, y por eso sigue siendo la última en aparecer en pan
 | 2 | **Hecha** — 801 tests |
 | 3 | **Hecha** — 886 tests |
 | 4 | **Hecha** — 912 tests |
-| 5 | Pendiente |
+| 5 | **Hecha** — `b9f131e`, 936 tests |
 | 6 | Pendiente |
 | 7 | Pendiente |
 | 8 | Pendiente |

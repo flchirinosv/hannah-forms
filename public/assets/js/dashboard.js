@@ -325,11 +325,17 @@
         return;
     }
 
-    /* F4 — Los tres modos de acceso no se distinguen solos: 'email' y
+    /* F4 — Los modos de acceso no se distinguen solos: 'email' y
      * 'allowlist' los dos piden un correo y mandan un enlace, y lo único que
      * los separa es si el correo tiene que estar en una lista. Sin esta frase
      * alguien elige 'email' pensando que es la lista y se queda con un
-     * formulario abierto a cualquiera que escriba un correo. */
+     * formulario abierto a cualquiera que escriba un correo.
+     *
+     * Fase 6 — `roster` se añade como SU frase, no como otra más del `else`: el
+     * identificador (`cédula` / `indicador` / `correo`) solo significa algo aquí,
+     * así que el cuarto modo necesita un cuarto modo de explicar. Y el `else` se
+     * queda siendo el de la allowlist a propósito: es el que no tiene nombre
+     * propio y el que más fácil es cambiar sin querer. */
     function updateAccessHint() {
         const hint = document.getElementById('stAccessHint');
         if (!hint || !accessSel) {
@@ -339,8 +345,41 @@
             hint.textContent = 'Sin identificación: cualquiera con el enlace responde.';
         } else if (accessSel.value === 'email') {
             hint.textContent = 'Pide un correo y envía un enlace. No hay lista: cualquier correo válido entra.';
+        } else if (accessSel.value === 'roster') {
+            hint.textContent = 'Solo entran las personas del listado, con su código. La lista se gestiona en la tarjeta de Acceso.';
         } else {
             hint.textContent = 'Solo los correos de la lista reciben un enlace. La lista vacía cierra el formulario a todo el mundo.';
+        }
+    }
+
+    /* Fase 6 — El identificador solo tiene sentido con lista, así que se enseña y
+     * se esconde con el modo.
+     *
+     * Lo pone el SERVIDOR el estado inicial (el `<select>` viene sin `hidden` en
+     * `roster` y con él en los otros modos), y esto solo lo mantiene al día al
+     * cambiar de modo antes de guardar. Sin JavaScript el camino también existe,
+     * con **un guardado de más**: se elige `roster`, se guarda, y al reabrir la
+     * ficha el selector ya está a la vista. Lo que depende del JS es que se
+     * enseñe al vuelo, no que exista.
+     *
+     * **`hidden` y `disabled` van juntos, y no es un descuido**: un `<select>`
+     * escondido sigue mandando su valor, así que sin `disabled` un formulario en
+     * «Público» guardaría «cédula» —la primera opción— en cada guardado de
+     * cualquier ajuste, y al volver al listado el identificador elegido en su día
+     * habría desaparecido sin que nadie lo tocase. */
+    function updateIdentifierBox() {
+        const box = document.getElementById('accessIdentifierBox');
+        const sel = document.getElementById('access_identifier');
+        if (!box || !sel || !accessSel) {
+            return;
+        }
+        const roster = accessSel.value === 'roster';
+        if (roster) {
+            box.removeAttribute('hidden');
+            sel.removeAttribute('disabled');
+        } else {
+            box.setAttribute('hidden', '');
+            sel.setAttribute('disabled', '');
         }
     }
 
@@ -365,8 +404,15 @@
     }
 
     if (accessSel) {
-        accessSel.addEventListener('change', updateAccessHint);
+        // Las dos van en el mismo `change` y no en dos `addEventListener`: el modo
+        // manda sobre la frase y sobre si el identificador está a la vista, y
+        // separarlas es la forma de que una se quede atrás.
+        accessSel.addEventListener('change', function () {
+            updateAccessHint();
+            updateIdentifierBox();
+        });
         updateAccessHint();
+        updateIdentifierBox();
     }
     if (reviewBox) {
         reviewBox.addEventListener('change', updateReviewHint);

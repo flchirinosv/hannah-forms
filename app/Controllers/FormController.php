@@ -6,7 +6,9 @@ namespace App\Controllers;
 
 use App\Core\Access;
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Csrf;
+use App\Core\Database;
 use App\Core\DashboardLimit;
 use App\Core\Request;
 use App\Core\Response;
@@ -15,6 +17,7 @@ use App\Core\View;
 use App\Models\Field;
 use App\Models\Form;
 use App\Models\FormAccess;
+use App\Models\FormParticipant;
 use App\Services\FormPanel;
 use App\Services\FormSettings;
 use App\Services\RosterPanel;
@@ -373,7 +376,13 @@ class FormController
         }
 
         $parche = FormSettings::fromDashboardPost(Request::postAll());
-        $parche['access'] = ['mode' => $modo];
+        // El identificador viaja en el mismo POST que el modo (su `<select>` está
+        // al lado) y `fromDashboardPost()` lo deja puesto si vino. Esta línea le
+        // pone encima el modo YA saneado, así que el identificador **sobrevive**:
+        // antes era `$parche['access'] = ['mode' => $modo]`, que se lo comía sin
+        // decir nada y dejaba un `<select>` que se podía cambiar y no se guardaba
+        // —el peor de los fallos de ajustes, porque en pantalla parecía funcionar.
+        $parche['access'] = array_merge(is_array($parche['access'] ?? null) ? $parche['access'] : [], ['mode' => $modo]);
 
         $fusionado = FormSettings::merge($actuales, $parche, FormSettings::DASHBOARD_BLOCKS);
 
@@ -385,6 +394,51 @@ class FormController
         // dejar los avisos sin destinatario con los de antes puestos).
         $errores[] = FormSettings::validate($parche);
         $errores[] = FormSettings::validate($fusionado);
+
+        /* Fase 6 — Cambiar el identificador CON GENTE EN LA LISTA no es un cambio de
+         * ajustes más, y por eso va aquí y no en `FormSettings::validate()`: el
+         * identificador solo significa algo para el listado, así que un error suyo
+         * necesita saber si el formulario tiene participantes, y `validate()` no
+         * recibe el id del formulario.
+         *
+         * Y lo que hay que impedir no es un valor raro, es un formulario que deja
+         * de dejar entrar a nadie sin decir nada. `identifier_value` está
+         * desnormalizada y es la columna por la que la puerta busca: si el dueño
+         * pasa de `cedula` a `correo` y las filas siguen con la cédula, la puerta
+         * busca el correo de cada quien llega y no encuentra a nadie. Con la lista
+         * reescrita (`FormParticipant::reidentificar()`) el problema no aparece,
+         * pero solo se puede resolver si nadie se queda sin identidad y si dos
+         * personas no pasan a compartir la misma, que es el `UNIQUE` de la puerta.
+         *
+         * El `code` NO se toca nunca en ese cambio: es la credencial que ya se
+         * repartió, y vaciar la lista obligaría a repartirla otra vez. */
+        $identificadorAntes = FormParticipant::identifierOf($actuales);
+        $identificadorDespues = FormParticipant::identifierOf($fusionado);
+        $cambiaIdentificador = $identificadorAntes !== $identificadorDespues;
+        $plan = ['a_cambiar' => 0];
+
+        if ($cambiaIdentificador) {
+            $plan = FormParticipant::planDeReidentificacion($id, $identificadorDespues);
+
+            if ($plan['sin_identidad'] > 0) {
+                $errores[] = sprintf(
+                    'No se puede cambiar el identificador a «%s»: %d persona%s de la lista no lo tiene%s. Rellénalo en la lista o quita a quien no lo tenga.',
+                    self::rotuloIdentificador($identificadorDespues),
+                    $plan['sin_identidad'],
+                    $plan['sin_identidad'] === 1 ? '' : 's',
+                    $plan['sin_identidad'] === 1 ? '' : 'n'
+                );
+            } elseif ($plan['repetidos_cuento'] > 0) {
+                $errores[] = sprintf(
+                    'No se puede cambiar el identificador a «%s»: %d persona%s pasarían a compartir la misma identidad (%s). Corrige la lista antes de cambiarlo.',
+                    self::rotuloIdentificador($identificadorDespues),
+                    $plan['repetidos_cuento'],
+                    $plan['repetidos_cuento'] === 1 ? '' : 's',
+                    implode(', ', array_map(static fn(string $v): string => '«' . $v . '»', $plan['repetidos']))
+                );
+            }
+        }
+
         $errores = array_values(array_unique(array_filter($errores)));
 
         if ($errores !== []) {
@@ -397,7 +451,26 @@ class FormController
             return;
         }
 
-        Form::saveSettings($id, $fusionado);
+        /* Los ajustes y la reescritura de `identifier_value` van en la MISMA
+         * transacción, y no por ordenado: son las dos mitades de una sola decisión.
+         * Guardar el ajuste y reescribir después deja, si la segunda falla, un
+         * formulario cuyo ajuste dice «correo» y cuya lista dice «cédula» — es decir,
+         * cerrado a todo el mundo; y reescribir antes de guardar deja lo mismo al
+         * revés. Con `transaccionar()` alrededor de las dos no hay ningún orden en
+         * el que quede el formulario a medias, y `Database::transaccionar()` es
+         * reentrante: la de `saveSettings()` se apoya en la de aquí.
+         *
+         * Y `reidentificar()` devuelve cuántas filas cambiaron, así que cuando no
+         * hay nada que reescribir (la lista vacía, o el identificador nuevo que ya
+         * era el de todas las filas) esto es exactamente el guardado de antes. */
+        if ($cambiaIdentificador && $plan['a_cambiar'] > 0) {
+            Database::getInstance(Config::db())->transaccionar(static function () use ($id, $fusionado, $identificadorDespues): void {
+                Form::saveSettings($id, $fusionado);
+                FormParticipant::reidentificar($id, $identificadorDespues);
+            });
+        } else {
+            Form::saveSettings($id, $fusionado);
+        }
 
         // F3 — mismo criterio que `update()` y que el builder: cambiar la
         // agenda, el acceso o el webhook de un formulario ya publicado lo
@@ -431,6 +504,25 @@ class FormController
         Session::flash('success', $message);
         Response::redirect('/forms/' . $id);
         return;
+    }
+
+    /**
+     * El nombre que el dueño ve del identificador, para los mensajes de error.
+     *
+     * Vive aquí y no en `FormSettings` porque es texto de interfaz del **panel**.
+     * Las etiquetas del desplegable de la ficha son suyas y **están escritas en la
+     * vista** (`views/dashboard/forms/show.php`): el error dice «cédula» en minúscula
+     * dentro de una frase y el desplegable dice «Cédula» como nombre de columna, y
+     * son dos textos distintos. Si un día se renombra a «Documento», hay que
+     * cambiar los dos sitios: no comparten fuente, y conviene que no la compartan.
+     */
+    private static function rotuloIdentificador(string $identificador): string
+    {
+        return match ($identificador) {
+            'indicador' => 'indicador',
+            'correo'    => 'correo',
+            default     => 'cédula',
+        };
     }
 
     /**

@@ -555,15 +555,14 @@ que se rompió.
 
 ## V. La pestaña de participantes (fase 5, 2026-10-04)
 
-Solo se llega poniendo el formulario en modo `roster`: **hasta la fase 6 no hay
-`<option>` en el selector**, así que hay que editarlo en *Ajustes del formulario*.
-Es la fase donde más cosas pueden quedar «a medias sin decir nada» —un hueco
-repuesto con el id equivocado no falla, no hace nada—, así que lo que se mira es
-que **cada guardado sin recarga repinte lo que ese guardado cambió** y que
-**sin JavaScript se vea todo**.
+Se llega poniendo el formulario en modo `roster` (la fase 6 añadió la `<option>`
+al desplegable; el bloque W lo mira). Es la fase donde más cosas pueden quedar «a
+medias sin decir nada» —un hueco repuesto con el id equivocado no falla, no hace
+nada—, así que lo que se mira es que **cada guardado sin recarga repinte lo que ese
+guardado cambió** y que **sin JavaScript se vea todo**.
 
-Para llegar al panel: ficha del formulario → *Ajustes* → acceso `roster` → guardar.
-El botón de la puerta sigue sin salir (es la fase 6).
+Para llegar al panel: ficha del formulario → *Ajustes* → *Quién puede responder* →
+«Solo un listado de participantes» → guardar.
 
 | # | Qué probar | Esperado | P. | Estado |
 |---|---|---|---|---|
@@ -590,6 +589,31 @@ El botón de la puerta sigue sin salir (es la fase 6).
 | V21 | Con el JS desactivado, buscar, añadir y borrar | Todo funciona con POST normal y avisos con flash | A | |
 | V22 | Un formulario que **no** es de lista | La tarjeta de Acceso es la de siempre: ni panel, ni alta de correo | A | |
 | V23 | Buscar con el panel a media pantalla (sin recargar antes) | La página vuelve al panel, no al principio de la ficha: si el resultado queda fuera de pantalla parece que la búsqueda no hizo nada | M | |
+
+## W. Elegir con qué se identifica a cada participante (fase 6, 2026-10-04)
+
+El identificador es lo que decide **quién puede entrar**: la puerta busca por esa
+columna, así que cambiarlo reescribe la identidad de toda la lista. Es el ajuste más
+peligroso de la ficha y el que más parece un detalle, así que lo que se mira es que
+**avise antes de romper** y que **sin JavaScript el camino exista**.
+
+Para llegar: ficha del formulario → *Ajustes* → *Quién puede responder*.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| W1 | Abrir el desplegable «Quién puede responder» | Cuatro opciones y «Solo un listado de participantes» es la **última** | A | |
+| W2 | Poner `roster` **sin guardar** | Aparece el desplegable «Con qué se identifica», con el valor que ya había guardado | M | |
+| W3 | Volver a «Cualquiera con el enlace» sin guardar | El desplegable desaparece y el identificador guardado **no** se pierde | M | |
+| W4 | Un formulario en `roster` con identificador «Correo electrónico», abrir la ficha | El desplegable viene a la vista y con «Correo electrónico» elegido, no con la primera opción | A | |
+| W5 | **Con el JS desactivado**: poner `roster` y guardar | Al reabrir la ficha el desplegable del identificador ya está a la vista (un guardado de más, sin daha) | A | |
+| W6 | Guardar **otro** ajuste que no sea de acceso (el título, por ejemplo) en un formulario en `Público` que tenga lista configurada para correo | El identificador guardado sigue siendo «Correo electrónico»: el desplegable apagado no debe mandar «cédula» | A | |
+| W7 | Cambiar a un identificador que **alguien de la lista no tiene** | No se guarda nada: el mensaje dice **qué campo falta** y el identificador y la lista siguen como estaban | A | |
+| W8 | Importar una lista con **dos correos iguales** y cambiar a «Correo electrónico» | No se guarda nada y el mensaje **nombra los valores repetidos**, no solo dice que hay repetidos | A | |
+| W9 | Una lista con nueve correos repetidos y cambiar a «Correo electrónico» | El mensaje sale **topado** (no nueve nombres) y dice el total al lado | M | |
+| W10 | Una lista en la que todo el mundo tiene correo, cambiar a «Correo electrónico» y guardar | Se guarda y la lista se reescribe; los enlaces con `?c=` que ya se habían repartido **siguen sirviendo** | A | |
+| W11 | Con la lista reescrita, entrar por un enlace con el código viejo | Entra: el código no cambia, solo lo que se teclea | A | |
+| W12 | Poner `public` en un formulario que tenía lista | El formulario se abre y **la lista sigue ahí**, con su catálogo | A | |
+| W13 | El formulario en `roster`, con los botones de la ficha (*Publicar*, *Compartir*) | Los botones son los de siempre: el identificador no toca el estado | M | |
 
 
 ## Cuando encuentres un fallo

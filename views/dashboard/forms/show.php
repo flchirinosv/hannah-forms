@@ -224,8 +224,52 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                     <option value="public"<?= (($settings['access']['mode'] ?? 'public') === 'public') ? ' selected' : '' ?>>Cualquiera con el enlace</option>
                                     <option value="email"<?= (($settings['access']['mode'] ?? 'public') === 'email') ? ' selected' : '' ?>>Cualquiera que verifique su correo</option>
                                     <option value="allowlist"<?= (($settings['access']['mode'] ?? 'public') === 'allowlist') ? ' selected' : '' ?>>Solo los correos de la lista</option>
+                                    <?php // Fase 6 — La cuarta opción, y la última en aparecer en
+                                          // pantalla a propósito: hasta aquí la puerta y el
+                                          // panel estaban escritos y probados, y lo que
+                                          // faltaba era el interruptor, que es lo que
+                                          // hace «funciona» más que «está». Si el modo
+                                          // nuevo se hubiera enseñado primero, un fallo de
+                                          // la puerta se habría visto como un selector
+                                          // que no hace nada. ?>
+                                    <option value="roster"<?= (($settings['access']['mode'] ?? 'public') === 'roster') ? ' selected' : '' ?>>Solo un listado de participantes</option>
                                 </select>
-                                <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace» y «solo los correos de la lista», que se edita en la tarjeta de Acceso.') ?>
+                                <?= $helpButton('Cambia entre «abierto a cualquiera con el enlace», «pide un correo y manda un enlace», «solo los correos de la lista» y «solo las personas de un listado», que también se edita en la tarjeta de Acceso.') ?>
+                            </div>
+                            <?php /* Fase 6 — Con qué campo se identifica a cada fila de la
+                                     lista. Lo decide el SERVIDOR (no hay nadie en el
+                                     navegador que lo enseñe) y `dashboard.js` lo
+                                     enseña y esconde al cambiar de modo.
+
+                                     Oculto viene **con `disabled`**, y no por descuido:
+                                     un `<select>` que se ve apagado sigue mandando su
+                                     valor, así que un formulario en «Público» con la
+                                     lista ya configurada para correo guardaría
+                                     «cédula» —la primera opción— cada vez que se
+                                     guardara cualquier ajuste, y al volver al listado
+                                     el identificador elegido habría desaparecido. Con
+                                     `disabled` el campo no viaja, que es lo que dice
+                                     `FormSettings::fromDashboardPost()` («si no viene,
+                                     no lo toques»).
+
+                                     Y sin JavaScript el camino también existe, con
+                                     un guardado de más: se elige «Solo un listado de
+                                     participantes», se guarda, y al volver a abrir la
+                                     ficha el selector ya está a la vista con el
+                                     identificador que tuviera. No es un campo que
+                                     exista solo en el navegador —el que depende del
+                                     JS es el modo, que se enseña y esconde al vuelo
+                                     sin recargar—, pero no se puede cambiar en la
+                                     misma visita. */ ?>
+                            <div class="mb-2" id="accessIdentifierBox"<?= (($settings['access']['mode'] ?? 'public') === 'roster') ? '' : ' hidden' ?>>
+                                <label for="access_identifier" class="form-label small fw-semibold">Con qué se identifica a cada participante</label>
+                                <select class="form-select form-select-sm" id="access_identifier" name="access_identifier"<?= (($settings['access']['mode'] ?? 'public') === 'roster') ? '' : ' disabled' ?>>
+                                    <?php $identificadorActual = (string) ($settings['access']['identifier'] ?? 'cedula'); ?>
+                                    <option value="cedula"<?= $identificadorActual === 'cedula' ? ' selected' : '' ?>>Cédula</option>
+                                    <option value="indicador"<?= $identificadorActual === 'indicador' ? ' selected' : '' ?>>Indicador del centro</option>
+                                    <option value="correo"<?= $identificadorActual === 'correo' ? ' selected' : '' ?>>Correo electrónico</option>
+                                </select>
+                                <?= $helpButton('No cambia lo que hace el formulario: dice qué columna del archivo es la identidad de cada persona. El código con el que entran es siempre el mismo, y el correo solo sirve para mandarles el enlace. Con gente en la lista, cambiarla reescribe la identidad de todos y se rechaza si alguno se queda sin ella o si dos personas acabarían con la misma.') ?>
                             </div>
                             <p class="small text-muted mb-0" id="stAccessHint" role="status"></p>
                             </div>

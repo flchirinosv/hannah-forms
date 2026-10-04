@@ -154,6 +154,11 @@ class FormParticipant
      * de identificar a nadie en el identificador nuevo, y seguir aceptando el
      * cambio dejaría una lista que no deja entrar a nadie. Se cuenta aquí y lo
      * comprueba quien llama antes de guardar el ajuste.
+     *
+     * Es la versión SQL (un `COUNT`, sin traer filas) y por eso no mira lo demás
+     * que el cambio puede romper: para eso está `planDeReidentificacion()`, que es
+     * la que usa el guardado de ajustes. Esta se queda para lo que solo necesita
+     * el número.
      */
     public static function sinIdentificadorPara(int $formId, string $nuevo): int
     {
@@ -169,6 +174,140 @@ class FormParticipant
         );
 
         return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Qué pasaría al cambiar el identificador de un formulario a `$nuevo`, **sin
+     * escribir nada**.
+     *
+     * Es la pregunta que se hace antes de aceptar el cambio, y tiene tres partes
+     * porque el fallo que evita es un **formulario que deja de dejar entrar a
+     * nadie** sin decir nada:
+     *
+     *  1. `sin_identidad`: personas a las que el identificador nuevo les quedaría
+     *     vacío. Es el mismo caso de `sinIdentificadorPara()`.
+     *  2. `repetidos`: valores que **dos** personas pasarían a compartir. El
+     *     `UNIQUE (form_id, identifier_value)` es la frontera de la puerta, así que
+     *     un duplicado revienta con un 1062 a mitad de la reescritura y se lleva por
+     *     delante a las que ya estaban bien. Dos personas con el mismo correo —una
+     *     errata en el `.xlsx`, dos filas copiadas del mismo correo— no es raro.
+     *  3. `a_cambiar`: cuántas filas reescribiría `reidentificar()`, para que quien
+     *     llama sepa si tiene algo que hacer. Las que **no** tienen el dato nuevo
+     *     quedan fuera del número porque no se van a reescribir: cambian de
+     *     identidad a una cadena vacía, que es justo lo que `sin_identidad` impide
+     *     antes de llegar aquí.
+     *
+     * Los repetidos se cuentan **en SQL y no en PHP** por una razón que salió al
+     * escribirlo: `UNIQUE (form_id, identifier_value)` no es sensible a mayúsculas
+     * ni a acentos (`utf8mb4_unicode_ci`), así que `V-1` y `v-1` —o `Pérez` y
+     * `Perez`— son **la misma clave para el índice**. Agruparlos en PHP con un
+     * array asociativo los daría por distintos, el plan diría «no hay repetidos» y
+     * el `UPDATE` se comería un 1062 con un error de servidor en vez de un mensaje
+     * que dice qué corregir. Al revés que `normalizar()`: ahí la normalización es
+     * de PHP porque decide qué es el mismo dato, y aquí lo que decide es el índice.
+     *
+     * Que el grupo se quede con una u otra grafía («V-1» o «v-1») lo decide el
+     * servidor, y da igual: lo que avisa es que están repetidas.
+     *
+     * `repetidos` viene topado a cinco valores con el total al lado
+     * (`repetidos_cuento`): el mensaje tiene que ser corto —si no no lo lee nadie—
+     * y la lista completa está a una edición de distancia.
+     *
+     * @return array{sin_identidad:int, repetidos:list<string>, repetidos_cuento:int, a_cambiar:int}
+     */
+    public static function planDeReidentificacion(int $formId, string $nuevo): array
+    {
+        $vacio = ['sin_identidad' => 0, 'repetidos' => [], 'repetidos_cuento' => 0, 'a_cambiar' => 0];
+
+        $columna = self::COLUMNA_IDENTIFICADOR[$nuevo] ?? null;
+        if ($columna === null) {
+            return $vacio;
+        }
+
+        $sinIdentidad = $aCambiar = 0;
+        $repetidos = [];
+        $cuentaRepetidos = 0;
+
+        try {
+            $vacias = self::db()->fetch(
+                'SELECT COUNT(*) AS c FROM form_participants
+                 WHERE form_id = :fid AND TRIM(' . $columna . ') = :vacio',
+                ['fid' => $formId, 'vacio' => '']
+            );
+            $sinIdentidad = (int) ($vacias['c'] ?? 0);
+
+            $distintas = self::db()->fetch(
+                'SELECT COUNT(*) AS c FROM form_participants
+                 WHERE form_id = :fid AND TRIM(' . $columna . ') <> \'\'
+                   AND BINARY identifier_value <> BINARY ' . $columna,
+                ['fid' => $formId]
+            );
+            $aCambiar = (int) ($distintas['c'] ?? 0);
+
+            foreach (self::db()->fetchAll(
+                'SELECT ' . $columna . ' AS valor, COUNT(*) AS c FROM form_participants
+                 WHERE form_id = :fid
+                 GROUP BY ' . $columna . ' HAVING c > 1
+                 ORDER BY ' . $columna . ' ASC',
+                ['fid' => $formId]
+            ) as $grupo) {
+                $repetidos[] = (string) ($grupo['valor'] ?? '');
+                $cuentaRepetidos += (int) ($grupo['c'] ?? 0);
+            }
+        } catch (\PDOException $e) {
+            // Una lista anterior a la migración 0014 no tiene la columna y este
+            // guardado no puede ser el que se entere con un error de SQL. Se trata
+            // como «no hay nada que reescribir», que es lo que había antes de que
+            // existiera el identificador.
+            if (self::esDuplicado($e) || str_contains($e->getMessage(), 'form_participants')) {
+                return $vacio;
+            }
+            throw $e;
+        }
+
+        return [
+            'sin_identidad'   => $sinIdentidad,
+            'repetidos'       => array_slice($repetidos, 0, 5),
+            'repetidos_cuento' => $cuentaRepetidos,
+            'a_cambiar'       => $aCambiar,
+        ];
+    }
+
+    /**
+     * Reescribe `identifier_value` de toda la lista con la columna que ahora es la
+     * identidad. **Solo la denormalizada**: `cedula`, `indicador` y `correo` no se
+     * tocan, y el `code` menos, porque es la credencial que ya se repartió.
+     *
+     * Es un `UPDATE` y no un bucle de filas porque las tres columnas ya están
+     * normalizadas —las normaliza `identifierValue()` en cada alta y cada
+     * edición— y `correo` además se guarda en minúsculas, así que copiar la columna
+     * ES el valor nuevo. Un bucle de 400 filas daría el mismo resultado a un coste
+     * que no se ve en una pantalla de guardado.
+     *
+     * El `WHERE` compara en **binario** y no con la collation de la tabla: con
+     * `utf8mb4_unicode_ci` una fila que solo se diferencie en mayúsculas se
+     * consideraría igual y no se reescribiría, y quedaría guardando el valor viejo
+     * por puro capricho. Da igual para la puerta (que también compara con la
+     * collation) y no da igual para lo que se ve en la lista.
+     *
+     * **Quien llama tiene que haber comprobado antes el plan**: sin duplicados
+     * (`planDeReidentificacion()`), este `UPDATE` puede reventar con un 1062 y
+     * dejarlo a medias. Es lo mismo que el `UNIQUE` de cualquier otra escritura.
+     *
+     * @return int cuántas filas han cambiado de verdad
+     */
+    public static function reidentificar(int $formId, string $nuevo): int
+    {
+        $columna = self::COLUMNA_IDENTIFICADOR[$nuevo] ?? null;
+        if ($columna === null) {
+            return 0;
+        }
+
+        return self::db()->execute(
+            'UPDATE form_participants SET identifier_value = ' . $columna . '
+             WHERE form_id = :fid AND BINARY identifier_value <> BINARY ' . $columna,
+            ['fid' => $formId]
+        );
     }
 
     // =====================================================================
