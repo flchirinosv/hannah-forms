@@ -192,12 +192,20 @@
         var formId = tbody.getAttribute('data-form') || '';
         var from = tbody.getAttribute('data-from') || '';
         var to = tbody.getAttribute('data-to') || '';
+        // Fase 7 — El filtro del listado viaja con la página. Sin esto, el contador
+        // y los gráficos dicen «38 respuestas del grupo Norte» y las filas que se
+        // pintan al cambiar de página son las de otra cosa: la siguiente tabla es
+        // exactamente la misma pantalla que la primera.
+        var atrKey = tbody.getAttribute('data-atr-key') || '';
+        var atrValue = tbody.getAttribute('data-atr-value') || '';
 
         function fetchPage(page) {
             var url = '/forms/' + encodeURIComponent(formId) + '/analytics/rows'
                 + '?page=' + encodeURIComponent(page)
                 + (from ? '&from=' + encodeURIComponent(from) : '')
-                + (to ? '&to=' + encodeURIComponent(to) : '');
+                + (to ? '&to=' + encodeURIComponent(to) : '')
+                + (atrKey ? '&atr_key=' + encodeURIComponent(atrKey) : '')
+                + (atrValue ? '&atr_value=' + encodeURIComponent(atrValue) : '');
 
             tbody.classList.add('vf-loading');
 

@@ -19,6 +19,18 @@ $chartData = [
     'colors' => ['#6366f1', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#64748b'],
 ];
 $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+// Fase 7 — El filtro de la URL, en un solo string. Lo usan el botón del CSV y el
+// `data-*` del fetcher del paginador, y son cosas distintas que tienen que llevar
+// exactamente lo mismo: el botón del CSV sin el filtro descarga un archivo que no
+// corresponde a la pantalla, y el fetcher sin el filtro pinta filas de otro grupo
+// debajo de un contador que sí dice el grupo bueno.
+$qsAnalytics = http_build_query(array_filter([
+    'from'      => (string) ($from ?? ''),
+    'to'        => (string) ($to ?? ''),
+    'atr_key'   => (string) ($atr['key'] ?? ''),
+    'atr_value' => (string) ($atr['value'] ?? ''),
+], static fn(string $v): bool => $v !== ''));
 ?>
 <div class="container-fluid px-lg-4" id="analyticsApp" data-chart="<?= View::escape($chartDataJson) ?>">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
@@ -37,12 +49,63 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                 <input type="date" class="form-control form-control-sm" name="from" value="<?= View::escape($from) ?>">
                 <span class="text-muted small d-none d-sm-inline">a</span>
                 <input type="date" class="form-control form-control-sm" name="to" value="<?= View::escape($to) ?>">
+                <?php // Fase 7 — El filtro por atributo va DENTRO del mismo formulario
+                      // GET de las fechas y no en otro: son la misma pregunta («qué
+                      // respuestas estoy mirando») y el botón dice «Filtrar» una
+                      // sola vez. Los dos desplegables se rellenan por el servidor
+                      // (`$atributos` y `$atrValues`) para que el atributo elegido
+                      // salga con SU lista de valores, y solo hay un `atr_value` en
+                      // la URL: un solo valor filtrado a la vez.
+                      //
+                      // Y sin filtro no se pinta nada, ni un desplegable vacío: un
+                      // formulario que no es de listado no tiene atributos y un
+                      // «— Attributes —» que no filtra nada parece un filtro roto. ?>
+                <?php if (!empty($catalogo)): ?>
+                    <?php $atrActual = (string) ($atrClave['key_name'] ?? ''); ?>
+                    <select class="form-select form-select-sm" name="atr_key" aria-label="Atributo del listado">
+                        <?php if ($atrActual === ''): ?>
+                            <option value="">Todo el listado</option>
+                        <?php endif; ?>
+                        <?php foreach ($catalogo as $atributo): ?>
+                            <option value="<?= View::escape($atributo['key_name']) ?>"<?= $atrActual === $atributo['key_name'] ? ' selected' : '' ?>><?= View::escape($atributo['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php // El desplegable de VALORES sale con la clave elegida aunque
+                          // todavía no haya valor, que es como se llega al filtro:
+                          // se elige el atributo, se guarda, y aquí aparece el
+                          // segundo. Con `atr_value` vacío el servidor no filtra
+                          // (un filtro por nada no es un filtro) y `atr_value=''`
+                          // vuelve en la URL, que es la primera opción del
+                          // desplegable. ?>
+                    <?php if ($atrClave !== null): ?>
+                        <select class="form-select form-select-sm" name="atr_value" aria-label="Valor del atributo">
+                            <?php $valorActual = (string) ($atr['value'] ?? ''); ?>
+                            <option value="">Todos los valores</option>
+                            <?php foreach ($atrValues as $valor): ?>
+                                <option value="<?= View::escape($valor) ?>"<?= $valorActual === $valor ? ' selected' : '' ?>><?= View::escape($valor) ?></option>
+                            <?php endforeach; ?>
+                            <?php // Un valor que ya no está en la lista se queda
+                                  // marcado en vez de desaparecer: es lo que se
+                                  // está mirando (aunque salga vacío) y si no
+                                  // estuviera, el desplegable mentiría sobre lo
+                                  // que hay en pantalla. ?>
+                            <?php if ($valorActual !== '' && !in_array($valorActual, $atrValues, true)): ?>
+                                <option value="<?= View::escape($valorActual) ?>" selected><?= View::escape($valorActual) ?></option>
+                            <?php endif; ?>
+                        </select>
+                    <?php endif; ?>
+                <?php endif; ?>
                 <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>Filtrar</button>
-                <?php if ($from !== '' || $to !== ''): ?>
+                <?php if ($from !== '' || $to !== '' || $atrClave !== null): ?>
                     <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-sm btn-link text-danger"><i class="fa-solid fa-xmark me-1"></i>Limpiar</a>
                 <?php endif; ?>
             </form>
-            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $from !== '' || $to !== '' ? '?from=' . urlencode($from) . '&to=' . urlencode($to) : '' ?>" class="btn btn-sm btn-success w-100 w-sm-auto"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
+            <?php // El CSV sale con lo que hay en pantalla. Los dos query strings se
+                  // componen aquí y en un solo sitio (`$qsAnalytics`), porque el
+                  // botón y el `data-*` del fetcher tienen que llevar EXACTAMENTE lo
+                  // mismo: si el botón se olvidara del filtro, el archivo traería
+                  // respuestas que la pantalla está ocultando. ?>
+            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-sm btn-success w-100 w-sm-auto"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
         </div>
     </div>
 
@@ -219,19 +282,29 @@ $chartDataJson = json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
                                 <thead>
                                     <tr>
                                         <th class="small text-muted" style="width: 60px;">#</th>
+                                        <?php // Fase 7 — Una columna por atributo del
+                                              // catálogo, y SOLO si hay filtro: las
+                                              // columnas son las del listado de quien
+                                              // respondió, no un dato más del
+                                              // formulario. ?>
+                                        <?php foreach ($atributos ?? [] as $atributo): ?>
+                                            <th class="small text-muted"><?= View::escape($atributo['label']) ?></th>
+                                        <?php endforeach; ?>
                                         <?php foreach ($answerableFields as $field): ?>
                                             <th class="small text-muted"><?= View::escape($field['label']) ?></th>
                                         <?php endforeach; ?>
                                         <th class="small text-muted">Fecha</th>
                                     </tr>
                                 </thead>
-                                <tbody id="analyticsRows" data-form="<?= (int) $form['id'] ?>" data-from="<?= View::escape($from) ?>" data-to="<?= View::escape($to) ?>">
+                                <tbody id="analyticsRows" data-form="<?= (int) $form['id'] ?>" data-from="<?= View::escape($from) ?>" data-to="<?= View::escape($to) ?>" data-atr-key="<?= View::escape((string) ($atr['key'] ?? '')) ?>" data-atr-value="<?= View::escape((string) ($atr['value'] ?? '')) ?>">
                                     <?= View::partial('analytics/_rows', [
                                         'submissions'      => $submissions,
                                         'answers'          => $answers,
                                         'answerableFields' => $answerableFields,
                                         'offset'           => (int) ($detail['per_page'] ?? 15) * (int) (($detail['page'] ?? 1) - 1),
                                         'piiTypes'         => $piiTypes ?? [],
+                                        'atributos'        => $atributos ?? [],
+                                        'attrsByPid'       => $attrsByPid ?? [],
                                     ]) ?>
                                 </tbody>
                             </table>

@@ -10,6 +10,8 @@
  *   $answerableFields campos respuesta en orden
  *   $offset           índice base para la columna «#» (server-side offset)
  *   $piiTypes         field_id => tipo de los campos marcados (F1), opcional
+ *   $atributos        columnas del catálogo del listado (fase 7), opcional
+ *   $attrsByPid       participant_id => (key_name => valor), opcional
  */
 use App\Core\View;
 use App\Services\Pii;
@@ -20,10 +22,24 @@ if (empty($submissions)) {
 }
 $idx = (int) ($offset ?? 1);
 $piiTypes = is_array($piiTypes ?? null) ? $piiTypes : [];
+$atributos = is_array($atributos ?? null) ? $atributos : [];
+$attrsByPid = is_array($attrsByPid ?? null) ? $attrsByPid : [];
 foreach ($submissions as $submission) {
     $row = $answers[$submission['id']]['answers'] ?? [];
+    $del = $attrsByPid[(int) ($submission['participant_id'] ?? 0)] ?? [];
     echo '<tr class="paginate-item">';
     echo '  <td class="text-muted" data-label="#">' . $idx++ . '</td>';
+    // Fase 7 — Una celda por atributo del CATÁLOGO, con la cabecera que pone
+    // `show.php`. Solo salen si hay filtro, así que una lista sin atributos deja la
+    // tabla igual que estaba. Una celda vacía es «—» y no una celda en blanco: en un
+    // `table-hover` un hueco vacío no se lee, y eldueño no distingue «no lo
+    // rellenó» de «se olvidó la columna».
+    foreach ($atributos as $atributo) {
+        $valor = (string) ($del[(string) $atributo['key_name']] ?? '');
+        echo '  <td data-label="' . View::escape($atributo['label']) . '">';
+        echo $valor !== '' ? View::escape($valor) : '<span class="text-muted">—</span>';
+        echo '  </td>';
+    }
     foreach ($answerableFields as $field) {
         $fieldId = (int) $field['id'];
         echo '  <td class="app-answer-cell" data-label="' . View::escape($field['label']) . '">';

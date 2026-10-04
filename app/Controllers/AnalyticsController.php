@@ -11,6 +11,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\FormParticipant;
 use App\Models\Submission;
 use App\Services\FieldAggregator;
 use App\Services\Pii;
@@ -43,11 +44,35 @@ class AnalyticsController
         }
 
         $formId = (int) $form['id'];
+
+        // Fase 7 — el filtro por atributo del listado. Se resuelve UNA vez aquí
+        // (`null` si no hay, o si la clave no es del catálogo) y el mismo array
+        // viaja a los cuatro caminos: sin esto, el indicador marcaría una cosa y
+        // los gráficos y la tabla otra.
+        //
+        // Y el CATÁLOGO se pide siempre, filtro o no: es la lista de opciones del
+        // desplegable. Pedirlo solo cuando ya hay filtro deja la pantalla sin
+        // forma de tener el primero — no hay ningún enlace ni botón que ponga la
+        // clave en la URL — y el filtro nace muerto sin un solo error.
+        $atr = FormParticipant::filtroAtributo(
+            $formId,
+            (string) Request::query('atr_key', ''),
+            (string) Request::query('atr_value', '')
+        );
+        // La clave ELEGIDA aunque todavía no haya valor: sin esto el segundo
+        // desplegable no se pinta nunca y no hay forma de llegar al filtro.
+        $atrClave = FormParticipant::atributoDeCatalogo($formId, (string) Request::query('atr_key', ''));
+        $catalogo = FormParticipant::catalogFor($formId);
+        // Las columnas del detalle, en cambio, solo con filtro puesto: sin él el
+        // dueño no ha pedido ver quién es quién y la tabla no gana columnas.
+        $atributos = $atr === null ? [] : $catalogo;
+        $valores = $atrClave === null ? [] : FormParticipant::valuesOf($formId, (string) $atrClave['key_name']);
+
         // P1 (2026-09-28): la tabla de detalle se pagina EN EL SERVIDOR (15 por
         // página, lazy-load con fetch). Los agregados siguen siendo globales:
         // es la tabla la que acota, no las métricas. La respuesta de la página
         // 1 se renderiza server-side (sin parpadeo JS) y el pager la refresca.
-        $detail = Submission::byFormFilteredPaginated($formId, (string) $from, (string) $to, 1, 15);
+        $detail = Submission::byFormFilteredPaginated($formId, (string) $from, (string) $to, 1, 15, $atr);
         $submissions = $detail['items'];
         $total = $detail['total'];
         $detailPage = $detail['page'];
@@ -76,11 +101,12 @@ class AnalyticsController
             $total,
             (string) $from,
             (string) $to,
-            $piiTypes
+            $piiTypes,
+            $atr
         );
 
         // Progreso diario (migrado a Models)
-        $daily = Submission::dailyStats($formId, (string) $from, (string) $to);
+        $daily = Submission::dailyStats($formId, (string) $from, (string) $to, $atr);
 
         // Respuestas de la tabla (N+1 resuelto: una sola consulta; y SOLO de
         // la página actual, no de todas las submissions del formulario).
@@ -98,6 +124,18 @@ class AnalyticsController
             'to'          => $to,
             'detail'      => $detail,
             'piiTypes'    => $piiTypes,
+            // Fase 7 — las columnas del detalle son los atributos del CATÁLOGO y
+            // solo se piden si hay filtro: son una columna por atributo y una
+            // consulta más, y un formulario sin listado no tiene nada que pintar.
+            'atributos'   => $atributos,
+            'catalogo'    => $catalogo,
+            'atr'         => $atr,
+            'atrClave'    => $atrClave,
+            'atrValues'   => $valores,
+            'attrsByPid'  => FormParticipant::atributosDe(array_map(
+                static fn(array $s): int => (int) ($s['participant_id'] ?? 0),
+                $submissions
+            )),
         ]);
     }
 
@@ -125,7 +163,18 @@ class AnalyticsController
         $to = self::validarFecha((string) Request::query('to', ''));
         $page = max(1, (int) Request::query('page', '1'));
 
-        $detail = Submission::byFormFilteredPaginated((int) $form['id'], $from, $to, $page, 15);
+        $formId = (int) $form['id'];
+
+        // El filtro se resuelve aquí también: la página N del detalle es la MISMA
+        // analítica que la página 1, y si el fetcher no lo pasara, el contador
+        // marcaría 38 y las filas que saldrían serían 12 de otro grupo.
+        $atr = FormParticipant::filtroAtributo(
+            $formId,
+            (string) Request::query('atr_key', ''),
+            (string) Request::query('atr_value', '')
+        );
+
+        $detail = Submission::byFormFilteredPaginated($formId, $from, $to, $page, 15, $atr);
 
         $campos = array_values(array_filter(
             (array) ($form['fields'] ?? []),
@@ -139,6 +188,11 @@ class AnalyticsController
             'answers'          => $answers,
             'answerableFields' => $campos,
             'offset'           => 15 * ((int) $detail['page'] - 1),
+            'atributos'        => $atr === null ? [] : FormParticipant::catalogFor($formId),
+            'attrsByPid'       => FormParticipant::atributosDe(array_map(
+                static fn(array $s): int => (int) ($s['participant_id'] ?? 0),
+                $detail['items']
+            )),
             // F1: el detalle es un canal de salida y va enmascarado igual que la
             // primera página. Sin esto, el lazy-load del pager-era el camino
             // limpio: lo que se ve en la carga inicial, tapado, y lo que se ve al
@@ -207,7 +261,16 @@ class AnalyticsController
         fputcsv($out, $headers, ',', '"', '\\');
 
         $n = 0;
-        foreach (Submission::exportBatches((int) $form['id'], (string) $from, (string) $to) as [$submissions, $answersBySubmission]) {
+        // Fase 7 — el CSV respeta el filtro que hay en pantalla. Lo contrario es
+        // un export que no corresponde a lo que se está viendo, y se descubre
+        // después de abrir el archivo.
+        $atr = FormParticipant::filtroAtributo(
+            (int) $form['id'],
+            (string) Request::query('atr_key', ''),
+            (string) Request::query('atr_value', '')
+        );
+
+        foreach (Submission::exportBatches((int) $form['id'], (string) $from, (string) $to, 0, $atr) as [$submissions, $answersBySubmission]) {
             foreach ($submissions as $submission) {
                 $byField = $answersBySubmission[(int) $submission['id']]['answers'] ?? [];
                 $n++;

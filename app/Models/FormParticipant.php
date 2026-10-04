@@ -679,22 +679,7 @@ class FormParticipant
             return [];
         }
 
-        $ids = array_map(static fn(array $p): int => (int) $p['id'], $participantes);
-        $todo = [];
-
-        // Troceado a 5000 porque ese es el techo de marcadores de MariaDB, y la
-        // lista de una importación grande lo pasa holgadamente.
-        foreach (array_chunk($ids, 5000) as $tanda) {
-            $marcas = implode(',', array_fill(0, count($tanda), '?'));
-            $stmt = self::db()->getPdo()->prepare(
-                'SELECT participant_id, key_name, value FROM form_participant_attrs
-                 WHERE participant_id IN (' . $marcas . ')'
-            );
-            $stmt->execute($tanda);
-            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
-                $todo[(int) $fila['participant_id']][(string) $fila['key_name']] = (string) $fila['value'];
-            }
-        }
+        $todo = self::atributosDe(array_map(static fn(array $p): int => (int) $p['id'], $participantes));
 
         foreach ($participantes as &$participante) {
             $participante['data'] = $todo[(int) $participante['id']] ?? [];
@@ -929,6 +914,154 @@ class FormParticipant
     }
 
     // =====================================================================
+    // Analítica: filtrar por atributo
+    // =====================================================================
+
+    /**
+     * Resuelve el filtro de la analítica («un atributo = un valor») contra el
+     * catálogo del formulario, y devuelve `null` si no hay filtro que aplicar.
+     *
+     * El catálogo es la lista blanca y no un detalle: `key_name` es lo único que
+     * viaja al SQL y sale de las cabeceras del `.xlsx` que subió el dueño, así
+     * que una clave que no está en el catálogo no se filtra por nada. Y como el
+     * importador **nunca** crea un atributo para las columnas fijas (cédula,
+     * nombre, correo y código), el catálogo no puede contener la identidad de
+     * nadie: por aquí no se puede filtrar la analítica por la cédula de alguien,
+     * ni aunque el dueño lo escriba en la URL a mano.
+     *
+     * Un valor que no existe en ese atributo **no** se descarta (devuelve el
+     * filtro y la pantalla sale vacía): puede ser un valor que se borró al quitar
+     * una fila del catálogo, y quedarse sin resultados es la respuesta honesta.
+     * Un valor vacío tampoco se filtra, porque «sin filtro» y «filtro por nada» se
+     * ven igual en pantalla y el segundo hace trabajar a SQL para nada.
+     *
+     * @return array{form_id:int, key:string, value:string}|null
+     */
+    public static function filtroAtributo(int $formId, string $keyName, string $value): ?array
+    {
+        $keyName = trim($keyName);
+        $value = self::normalizar($value);
+
+        if ($keyName === '' || $value === '' || !self::atributoExiste($formId, $keyName)) {
+            return null;
+        }
+
+        return ['form_id' => $formId, 'key' => $keyName, 'value' => $value];
+    }
+
+    /**
+     * La fila del catálogo de una `key_name`, o `null` si no existe.
+     *
+     * Es la otra mitad de `filtroAtributo()`, y hace falta porque **elegir el
+     * atributo y filtrar por un valor son dos pasos**: con la clave elegida y sin
+     * valor todavía no hay filtro (`filtroAtributo()` devuelve `null`), pero el
+     * desplegable de valores tiene que salir ya, con la etiqueta del atributo
+     * marcada, o el usuario elige «Sede», pulsa «Filtrar» y la pantalla vuelve a
+     * ponerse en «Todo el listado» con la palabra Sede escribiendo lo que no hace
+     * — un filtro que al seleccionarse se deselecciona. Con esta fila, el
+     * desplegable se pinta con lo que el dueño eligió aunque la pantalla aún no
+     * esté filtrada.
+     *
+     * @return array{id:int,key_name:string,label:string,position:int}|null
+     */
+    public static function atributoDeCatalogo(int $formId, string $keyName): ?array
+    {
+        $keyName = trim($keyName);
+        if ($keyName === '') {
+            return null;
+        }
+
+        $fila = self::db()->fetch(
+            'SELECT id, key_name, label, position FROM form_participant_fields
+             WHERE form_id = :fid AND key_name = :k',
+            ['fid' => $formId, 'k' => $keyName]
+        );
+
+        return $fila === null ? null : [
+            'id'       => (int) $fila['id'],
+            'key_name' => (string) $fila['key_name'],
+            'label'    => (string) $fila['label'],
+            'position' => (int) $fila['position'],
+        ];
+    }
+
+    /**
+     * Los valores que tiene un atributo, para el desplegable del filtro.
+     *
+     * Ordenados por **cuántas personas** los tienen y no alfabéticamente: el
+     * desplegable es una lista corta de lo que la gente ha contestado y el
+     * principio se llena siempre igual. Topados a 200 y con el total al lado en el
+     * rótulo, porque un atributo libre con 800 valores distintos son 800 opciones
+     * en un `<select>` de la barra de filtros.
+     *
+     * @return list<string>
+     */
+    public static function valuesOf(int $formId, string $keyName, int $limite = 200): array
+    {
+        if (trim($keyName) === '') {
+            return [];
+        }
+
+        $filas = self::db()->fetchAll(
+            'SELECT pa.value AS v, COUNT(DISTINCT pa.participant_id) AS c
+             FROM form_participant_attrs pa
+             JOIN form_participants p ON p.id = pa.participant_id
+             WHERE pa.form_id = :fid AND pa.key_name = :k
+             GROUP BY pa.value
+             ORDER BY c DESC, pa.value ASC
+             LIMIT ' . max(1, $limite),
+            ['fid' => $formId, 'k' => trim($keyName)]
+        );
+
+        $out = [];
+        foreach ($filas as $fila) {
+            $valor = (string) ($fila['v'] ?? '');
+            if ($valor !== '') {
+                $out[] = $valor;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Los atributos de varios participantes a la vez, indexados por participante.
+     *
+     * Es la forma que necesita la tabla de detalle de la analítica: trae 15
+     * respuestas por página y `attributesOf()` sería una consulta por cada
+     * respuesta, que es justo el N+1 que la fase 3 de la analítica vino a quitar.
+     *
+     * @param list<int> $participantIds
+     *
+     * @return array<int, array<string,string>> participant_id => (key_name => valor)
+     */
+    public static function atributosDe(array $participantIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $participantIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $out = [];
+
+        // Troceado a 5000 porque ese es el techo de marcadores de MariaDB, y la
+        // lista de una importación grande lo pasa holgadamente.
+        foreach (array_chunk($ids, 5000) as $tanda) {
+            $marcas = implode(',', array_fill(0, count($tanda), '?'));
+            $stmt = self::db()->getPdo()->prepare(
+                'SELECT participant_id, key_name, value FROM form_participant_attrs
+                 WHERE participant_id IN (' . $marcas . ')'
+            );
+            $stmt->execute($tanda);
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+                $out[(int) $fila['participant_id']][(string) $fila['key_name']] = (string) $fila['value'];
+            }
+        }
+
+        return $out;
+    }
+
+    // =====================================================================
     // Utilidades internas
     // =====================================================================
 
@@ -1116,6 +1249,17 @@ class FormParticipant
         );
 
         return (int) ($row['p'] ?? 0) + 1;
+    }
+
+    /** ¿Es esta `key_name` un atributo del catálogo de ESTE formulario? */
+    private static function atributoExiste(int $formId, string $keyName): bool
+    {
+        $fila = self::db()->fetch(
+            'SELECT 1 AS ok FROM form_participant_fields WHERE form_id = :fid AND key_name = :k LIMIT 1',
+            ['fid' => $formId, 'k' => $keyName]
+        );
+
+        return $fila !== null;
     }
 
     /** MariaDB, no SQL estándar: el 1062 es la clave duplicada. */

@@ -1102,3 +1102,61 @@ parece un fallo de la operación —que sí lo fue.
 **El porqué de que un archivo ilegible no se pinte como informe:** el partial con
 `omitidos = 0` diría «las 0 filas del archivo se guardaron» al lado de un mensaje que sí
 dice la verdad. `informe()` devuelve `null` cuando hay `$error` y cero omitidas.
+
+## Fase 6: exponer `roster` y elegir con qué se identifica — el ajuste que puede dejar entrar a nadie
+
+**El porqué de las dos mitades:** cambiar el identificador reescribe la identidad de
+toda la lista, así que va `planDeReidentificacion()` (que no escribe nada: cuenta, y
+nombra lo que está mal) y, solo con el plan limpio, la escritura —ajustes y
+`reidentificar()` en UNA transacción. Un `UPDATE` que se va a medias deja un formulario
+cuyo identificador dice «cédula» y cuya lista dice «indicador», y la puerta no deja
+entrar a nadie con un mensaje que no explica nada.
+
+**El porqué de que el plan cuente en SQL y no en PHP:** `UNIQUE (form_id,
+identifier_value)` es `utf8mb4_unicode_ci`, así que `V-1` y `v-1` son la misma clave.
+Agrupar en PHP con un array asociativo diría «no hay repetidos» y el `UPDATE` se comería
+un 1062 con un error de servidor, en vez de un mensaje que dice qué corregir. Al revés
+que en la importación, donde lo que decide qué es el mismo dato es PHP.
+
+**El porqué de que `code` no se toque:** es la credencial que ya se repartió, y va en
+los enlaces de correo y en el QR. `reidentificar()` mueve solo `identifier_value`, así
+que quien entra por un enlace viejo sigue entrando.
+
+**El porqué de que el interruptor sea solo de páginas y secciones en el builder:** lo
+dicen las columnas de `fields`, no la UI. Un salto de página o una sección no guardan
+respuestas, así que marcar su etiqueta como dato personal no tiene nada que enmascarar.
+
+## Fase 7: el filtro de la analítica — el catálogo se pide siempre, y hay tres variables
+
+**El porqué de `$catalogo` + `$atrClave` + `$atr`:** elegir el atributo y filtrar por un
+valor son dos pasos, y con una sola variable no se llega al segundo. La clave pedida sin
+valor no es un filtro (`filtroAtributo()` devuelve `null` a propósito: «sin filtro» y
+«filtro por nada» se ven igual), pero el desplegable de valores tiene que salir ya, con
+la etiqueta marcada. Leyendo la vista del filtro *resuelto*, elegir «Sede» y guardar
+devolvía la pantalla a «Todo el listado» con la palabra Sede escribiendo lo que no
+hace: un filtro que al seleccionarse se deselecciona.
+
+**El porqué de pedir el catálogo siempre:** no hay ningún botón ni enlace que ponga
+`atr_key` en la URL. Pedirlo solo con filtro puesto deja la pantalla **sin forma de
+tener el primero**, y no hay ningún error que lo delate: es un filtro que nunca se
+usa.
+
+**El porqué de que la identidad no se pueda filtrar:** la lista blanca es el catálogo,
+y el catálogo no puede contener `cedula`, `nombre` ni `correo` porque el importador
+trata esas cabeceras como columnas fijas. No es una decisión de este filtro: es la
+herencia de la fase 3, y por eso `atr_key=cedula` en la URL devuelve `null`.
+
+**El porqué de que un valor inexistente NO se descarte:** puede ser un valor que se
+borró al quitar una columna del catálogo. Descartarlo devolvería la pantalla entera
+sin decir por qué; dejarlo sale vacío y es la respuesta honesta a lo que se está
+mirando.
+
+**El porqué de que el CSV lleve el filtro:** un botón que descarga un archivo
+**distinto** de lo que se ve solo se descubre abriendo el archivo. Y la columna del CSV
+no se añade, porque el filtro es de las respuestas que entran y no un dato más del
+formulario.
+
+**El porqué de las columnas solo con filtro puesto:** son los datos de quién es quién y
+nadie los ha pedido ver sin haber filtrado. Un guion en vez de un hueco porque en un
+`table-hover` un hueco vacío no se lee, y «no lo rellenó» y «se olvidó la columna» se
+confunden.

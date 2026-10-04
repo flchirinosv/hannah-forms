@@ -358,6 +358,48 @@ class Submission
     }
 
     /**
+     * El filtro por atributo del listado, como fragmento de `WHERE`.
+     *
+     * Vive aquí, y no en `FormParticipant`, porque es una condición sobre
+     * `submissions` y porque `Answer` ya depende de esta clase: el filtro tiene que
+     * ser **el mismo texto** en los dos caminos (la tabla de detalle y los
+     * agregados de los gráficos), y dos copias de la misma línea son dos sitios
+     * que pueden divergir sin que nada falle: el indicador marcaría «38
+     * respuestas» y la tabla de abajo tendría 12.
+     *
+     * Es una subconsulta `IN` —el patrón que ya usa `Form::byUser()`— y por eso
+     * **no cambia de forma** ninguna de las consultas existentes: sin filtro el
+     * fragmento es una cadena vacía.
+     *
+     * `key_name` y `value` viajan **enlazados como valores**, nunca embebidos en el
+     * SQL: son cabeceras de un `.xlsx` que subió el dueño, y lo único que se
+     * escribe dentro de la consulta es este texto fijo.
+     *
+     * @param array{form_id:int, key:string, value:string}|null $atr filtro ya
+     *        resuelto por `FormParticipant::filtroAtributo()` (`null` = sin filtro)
+     *
+     * @return array{0:string, 1:array<string,mixed>} [fragmento, parámetros]
+     */
+    public static function whereAtributo(?array $atr): array
+    {
+        if ($atr === null || !isset($atr['form_id'], $atr['key'], $atr['value'])) {
+            return ['', []];
+        }
+
+        return [
+            ' AND s.participant_id IN (
+                 SELECT pa.participant_id FROM form_participant_attrs pa
+                 WHERE pa.form_id = :atr_form_id AND pa.key_name = :atr_key AND pa.value = :atr_value
+             )',
+            [
+                'atr_form_id' => (int) $atr['form_id'],
+                'atr_key'     => (string) $atr['key'],
+                'atr_value'   => (string) $atr['value'],
+            ],
+        ];
+    }
+
+    /**
      * `byFormFiltered` + paginación server-side (P1, análisis de respuestas).
      *
      * El agregado de analítica sigue siendo global; esta consulta solo acota la
@@ -368,9 +410,18 @@ class Submission
      *
      * @return array{items: array, total: int, page: int, per_page: int, pages: int}
      */
-    public static function byFormFilteredPaginated(int $formId, string $from = '', string $to = '', int $page = 1, int $perPage = 15): array
-    {
+    public static function byFormFilteredPaginated(
+        int $formId,
+        string $from = '',
+        string $to = '',
+        int $page = 1,
+        int $perPage = 15,
+        ?array $atr = null
+    ): array {
         [$where, $params] = self::dateBounds($from, $to, 's.');
+        [$whereAtr, $paramsAtr] = self::whereAtributo($atr);
+        $where .= $whereAtr;
+        $params += $paramsAtr;
         $perPage = max(1, min(100, $perPage));
         $page = max(1, $page);
 
@@ -384,8 +435,12 @@ class Submission
 
         $limit = $perPage;
         $offset = ($page - 1) * $perPage;
+        // `participant_id` viene porque la tabla de detalle pinta los atributos del
+        // participante de cada respuesta, y sin él en la fila no hay forma de saber
+        // de quién son: es el cambio de forma más pequeño que hace posible una
+        // columna por atributo del catálogo.
         $items = self::db()->fetchAll(
-            "SELECT s.id, s.finished_at FROM submissions s
+            "SELECT s.id, s.finished_at, s.participant_id FROM submissions s
              WHERE s.form_id = :form_id$where
              ORDER BY s.finished_at DESC, s.id DESC
              LIMIT $limit OFFSET $offset",
@@ -408,9 +463,12 @@ class Submission
      * de empezar a escribir el cuerpo: con streaming, el histórico no está en
      * memoria y `count()` no existe.
      */
-    public static function countByFiltered(int $formId, string $from = '', string $to = ''): int
+    public static function countByFiltered(int $formId, string $from = '', string $to = '', ?array $atr = null): int
     {
         [$where, $params] = self::dateBounds($from, $to, 's.');
+        [$whereAtr, $paramsAtr] = self::whereAtributo($atr);
+        $where .= $whereAtr;
+        $params += $paramsAtr;
 
         $row = self::db()->fetch(
             "SELECT COUNT(*) AS c FROM submissions s WHERE s.form_id = :form_id$where",
@@ -433,11 +491,14 @@ class Submission
      *
      * @return iterable<array{0: array, 1: array}> [submissions, answersById] por tanda
      */
-    public static function exportBatches(int $formId, string $from = '', string $to = '', int $batch = 0): iterable
+    public static function exportBatches(int $formId, string $from = '', string $to = '', int $batch = 0, ?array $atr = null): iterable
     {
         $batch = $batch > 0 ? $batch : self::idBatch();
 
         [$where, $params] = self::dateBounds($from, $to, 's.');
+        [$whereAtr, $paramsAtr] = self::whereAtributo($atr);
+        $where .= $whereAtr;
+        $params += $paramsAtr;
         $lastAt = null;
         $lastId = 0;
 
@@ -485,9 +546,12 @@ class Submission
      * NULL en silencio (agrupamiento vacío y ninguna pista de por qué). Ver
      * `Clock::localSqlOffsetFor()` y su limitación con los cambios de hora.
      */
-    public static function dailyStats(int $formId, string $from = '', string $to = ''): array
+    public static function dailyStats(int $formId, string $from = '', string $to = '', ?array $atr = null): array
     {
         [$where, $params] = self::dateBounds($from, $to, 's.');
+        [$whereAtr, $paramsAtr] = self::whereAtributo($atr);
+        $where .= $whereAtr;
+        $params += $paramsAtr;
 
         $desfase = Clock::localSqlOffsetFor();
 

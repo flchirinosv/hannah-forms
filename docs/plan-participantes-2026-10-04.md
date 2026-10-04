@@ -178,7 +178,7 @@ el existente y lo dice.
 | 4 | **La puerta del fill** | **alto** | **Hecha** (23 tests nuevos) |
 | 5 | Pestaña Participantes + huecos | bajo | **Hecha** (24 tests nuevos) |
 | 6 | Exponer `roster` en el `<select>` | bajo | **Hecha** (17 tests nuevos) |
-| 7 | Filtro por atributo + detalle | bajo | Pendiente |
+| 7 | Filtro por atributo + detalle | bajo | **Hecha** (17 tests nuevos) |
 | 8 | Agrupar por atributo + techo | medio | Pendiente |
 | 9 | Quién respondió, `responses.pii` | bajo | Pendiente |
 | 10 | Correo de invitaciones, opt-in | bajo | Pendiente |
@@ -712,6 +712,84 @@ enlace viejo sigue entrando. El test compara el código antes y después.
 
 **Suite completa: 953, 0 fallos.**
 
+## Fase 7 — filtrar la analítica por un atributo del listado — **HECHA**
+
+El filtro es un `AND` más sobre `submissions.participant_id`, y por eso **no hay
+`JOIN` nuevo**: las consultas de la analítica no cambian de forma, solo growen tres
+condiciones. Lo que sí cambia es cuántas veces se repite la decisión.
+
+### Un filtro, cuatro caminos
+
+`AnalyticsController` lo resuelve **una vez** (`FormParticipant::filtroAtributo()`) y
+el mismo array viaja a:
+
+1. el detalle (`Submission::byFormFilteredPaginated()`),
+2. los agregados de los gráficos (`Answer::valueCountsInForm()` y
+   `nonEmptyCountsInForm()`, vía `FieldAggregator::forForm()`),
+3. el gráfico por día (`Submission::dailyStats()`),
+4. el CSV (`Submission::exportBatches()`).
+
+Los dos primeros son el contrato de la fase —«el indicador marca «38 respuestas»
+y la tabla de abajo tiene 12»— y los otros dos son una decisión que no estaba escrita:
+un botón que descarga un archivo **distinto** de lo que se está viendo es un fallo
+que solo se descubre abriendo el archivo, así que el filtro viaja también al CSV. La
+columna del CSV no se añade: el filtro es de las respuestas que entran, no una
+columna más.
+
+### El catálogo se pide SIEMPRE, aunque no haya filtro
+
+La primera versión lo pedía solo con filtro puesto, y el filtro quedaba **muerto
+desde el primer día**: no hay ningún botón ni enlace que ponga `atr_key` en la URL,
+así que los desplegables nunca se pintaban y no había forma de tener el primero. La
+vista necesita tres cosas y son tres variables distintas:
+
+- `$catalogo` — **siempre**: es la lista de opciones del desplegable de atributos.
+- `$atrClave` — la fila del catálogo de la clave **pedida**, aunque no haya valor:
+  sin esto, elegir «Sede» y guardar devuelve la pantalla a «Todo el listado» y el
+  filtro se deselige solo.
+- `$atr` — el filtro **resuelto** (`null` sin valor): esto es lo que filtra, y lo
+  único que decide las columnas del detalle.
+
+Elegir el atributo y filtrar por un valor son **dos pasos**, y el segundo no existe
+si el primero se pierde. `atributoDeCatalogo()` es la puerta que los separa.
+
+### Solo se filtra por lo que el dueño definió
+
+La lista blanca es el catálogo, y la cédula, el nombre y el correo **no pueden
+estar en él** porque el importador trata esas cabeceras como columnas fijas
+(`COLUMNA_IDENTIFICADOR`). Por eso `atr_key=cedula` en la URL no filtra por la
+cédula de nadie: `filtroAtributo()` devuelve `null` y sale la pantalla entera. Un
+valor que **no** existe en ese atributo, en cambio, **no se descarta**: se queda el
+filtro y la pantalla sale vacía, que es la respuesta honesta a un valor que se borró
+al quitar una columna del catálogo.
+
+### Las columnas del detalle
+
+Una columna por atributo del catálogo, y **solo con filtro puesto**: son los datos
+de quién es quién y nadie los ha pedido ver sin haber filtrado. El valor que falta
+se pinta como `—` y no como un hueco, que en un `table-hover` no se lee. La
+identidad no sale nunca por aquí: ni la cédula ni el nombre aparecen como columna ni
+como celda, también para el admin.
+
+### El detalle es una consulta más
+
+`atributosDe()` trae los atributos de los 15 participantes de la página en **una**
+consultada, en tandas de 5000 como `withAnswersByIds()`: `attributesOf()` por fila
+serían 15 consultas por página, que es el N+1 que la fase 3 de la analítica vino a
+quitar.
+
+### Lo que se encontró de paso
+
+- **`Answer` mezclaba `?` con `:nombrado`.** Con `ATTR_EMULATE_PREPARES = false`,
+  añadir el filtro al WHERE obligaba a unificar los marcadores, porque PDO no deja
+  mezclarlos en la misma sentencia (HY093). Ahora `marcadoresDeCampos()` genera los
+  `:val_f0, :val_f1…` y `queryField()` usa `:field_id` en vez de `?`.
+- **El total del CSV es `countByFiltered()`**, así que el envelope del archivo lleva
+  el `total` del grupo y no el del formulario: si solo se hubiera filtrado el
+  `foreach`, el archivo tendría una fila y su envoltorio anunciaría cinco.
+
+**Suite completa: 970, 0 fallos.**
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -748,8 +826,8 @@ enlace viejo sigue entrando. El test compara el código antes y después.
 | 3 | **Hecha** — 886 tests |
 | 4 | **Hecha** — 912 tests |
 | 5 | **Hecha** — `b9f131e`, 936 tests |
-| 6 | Pendiente |
-| 7 | Pendiente |
+| 6 | **Hecha** — `2f715db`, 953 tests |
+| 7 | **Hecha** — 970 tests |
 | 8 | Pendiente |
 | 9 | Pendiente |
 | 10 | Pendiente |

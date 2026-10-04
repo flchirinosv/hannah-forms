@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 86 archivos, 953 métodos, ~5 min;
+- Suite completa: `php scripts/test.php` → 87 archivos, 970 métodos, ~5 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **50 de los 86 archivos tocan la BD real** (los que llaman
+- **51 de los 87 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -395,6 +395,38 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   atado al número; el 25 es una decisión de pantalla, porque cada fila lleva su
   `<details>` de edición con un input por atributo y a 50 el botón de «Quitar» deja
   de notarse. Si se cambian, se cambian los dos sitios y sus tests.
+
+**El filtro de la analítica (fase 7)**
+
+- **El catálogo se pide SIEMPRE, filtre quien filtre.** `$catalogo` alimenta el
+  desplegable del filtro y no hay ningún botón ni enlace que ponga `atr_key` en la
+  URL: pedirlo solo con filtro puesto deja la pantalla **sin forma de tener el
+  primero** y el filtro nace muerto sin un solo error.
+- **Elegir el atributo y filtrar por un valor son dos pasos, y son tres
+  variables**: `$catalogo` (siempre), `$atrClave` (la fila del catálogo de la clave
+  **pedida**, aunque no haya valor) y `$atr` (el filtro **resuelto**, `null` sin
+  valor). Sin `$atrClave`, elegir «Sede» y guardar devuelve la pantalla a «Todo el
+  listado» y el filtro se deselcciona solo. Lo que **filtra** es solo `$atr`: las
+  columnas del detalle van con `$atr`, no con `$atrClave`.
+- **La lista blanca es el catálogo, y por eso la identidad no se puede filtrar**:
+  `cedula`, `nombre` y `correo` no pueden estar en `form_participant_fields` porque
+  el importador trata esas cabeceras como columnas fijas
+  (`FormParticipant::COLUMNA_IDENTIFICADOR`), así que `atr_key=cedula` en la URL
+  devuelve `null` y sale la pantalla entera. En sentido contrario, un **valor** que
+  no existe **no** se descarta: sale la pantalla vacía con el valor marcado en su
+  desplegable, que es lo que se está mirando.
+- **Un filtro, cuatro caminos**: detalle, agregados (`Answer`), gráfico por día y
+  CSV. El CSV es una decisión y no una consecuencia, y el motivo es que un botón que
+  descarga un archivo **distinto** de lo que se ve solo se descubre abriendo el
+  archivo. La columna del CSV **no** se añade: el filtro es de las respuestas que
+  entran, no una columna más.
+- **`Answer` ya no mezcla `?` con `:nombrado`**: con
+  `ATTR_EMULATE_PREPARES = false` PDO no los mezcla en la misma sentencia (HY093),
+  así que `marcadoresDeCampos()` genera los `:val_f0, :val_f1…` y `queryField()`
+  usa `:field_id`.
+- El `total` del envelope del CSV es `countByFiltered()` con el mismo filtro: si
+  solo se filtrara el `foreach`, el archivo tendría una fila y su envoltorio
+  anunciaría cinco.
 
 **Elegir con qué se identifica (fase 6)**
 
@@ -1045,10 +1077,11 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 348 comprobaciones manuales en 23 bloques (A–W,
+- `docs/pruebas-funcionales.md`: 362 comprobaciones manuales en 24 bloques (A–X,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
-  participantes V y el identificador de la lista W), para
+  participantes V, el identificador de la lista W y el filtro de la analítica
+  por atributo X), para
   detectar problemas que la suite no ve (teclado, maquetación, flujo en
   pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la lista
   mínima.

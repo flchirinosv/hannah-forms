@@ -29,16 +29,15 @@ class Answer
      * @param int[] $fieldIds
      * @return array<int, int> `[fieldId => respuestas no vacías]`
      */
-    public static function nonEmptyCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = ''): array
+    public static function nonEmptyCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = '', ?array $atr = null): array
     {
         $ids = self::normalizarIds($fieldIds);
         if ($ids === []) {
             return [];
         }
 
-        [$where, $params] = self::whereFormulario($formId, $from, $to);
-        $ph = implode(',', array_fill(0, count($ids), '?'));
-        $params = array_merge($params, $ids);
+        [$where, $params] = self::whereFormulario($formId, $from, $to, $atr);
+        $ph = self::marcadoresDeCampos($ids, 'cnt', $params);
 
         $rows = self::db()->fetchAll(
             "SELECT a.field_id, COUNT(*) AS c
@@ -75,16 +74,15 @@ class Answer
      * @param int[] $fieldIds
      * @return array<int, array<int, array{value: mixed, c: int}>>
      */
-    public static function valueCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = ''): array
+    public static function valueCountsInForm(int $formId, array $fieldIds, string $from = '', string $to = '', ?array $atr = null): array
     {
         $ids = self::normalizarIds($fieldIds);
         if ($ids === []) {
             return [];
         }
 
-        [$where, $params] = self::whereFormulario($formId, $from, $to);
-        $ph = implode(',', array_fill(0, count($ids), '?'));
-        $params = array_merge($params, $ids);
+        [$where, $params] = self::whereFormulario($formId, $from, $to, $atr);
+        $ph = self::marcadoresDeCampos($ids, 'val', $params);
 
         $rows = self::db()->fetchAll(
             "SELECT a.field_id, a.value, COUNT(*) AS c
@@ -142,21 +140,64 @@ class Answer
      *
      * @return array{0: string, 1: array<string, mixed>}
      */
-    private static function whereFormulario(int $formId, string $from, string $to): array
+    private static function whereFormulario(int $formId, string $from, string $to, ?array $atr = null): array
     {
-        $where = 'WHERE s.form_id = ?';
-        $params = [$formId];
+        $where = 'WHERE s.form_id = :form_id';
+        $params = ['form_id' => $formId];
 
         if (Submission::isValidDay($from)) {
-            $where .= ' AND s.finished_at >= ?';
-            $params[] = Clock::dayStartUtc(trim($from));
+            $where .= ' AND s.finished_at >= :day_from';
+            $params['day_from'] = Clock::dayStartUtc(trim($from));
         }
         if (Submission::isValidDay($to)) {
-            $where .= ' AND s.finished_at < ?';
-            $params[] = Clock::dayEndUtc(trim($to));
+            $where .= ' AND s.finished_at < :day_to';
+            $params['day_to'] = Clock::dayEndUtc(trim($to));
         }
 
+        // Fase 7 — el filtro por atributo entra AQUÍ y no en cada consulta, para que
+        // los dos caminos (el detalle y los agregados) no puedan separarse: es el
+        // mismo fragmento que usa `Submission::whereAtributo()`, sin filtro vacío.
+        [$whereAtr, $paramsAtr] = Submission::whereAtributo($atr);
+        $where .= $whereAtr;
+        $params += $paramsAtr;
+
         return [$where, $params];
+    }
+
+    /**
+     * Los marcadores del `IN (...)` de los ids de campo, con nombre y con el prefijo
+     * que le toca, y los deja en `$params`.
+     *
+     * Existía como `implode(',', array_fill(0, count($ids), '?'))` con los ids
+     * concatenados **al final** del array de parámetros. Eso obliga a que el orden
+     * de los parámetros sea exactamente el orden en que salen en el SQL, y al
+     * añadir el filtro por atributo (tres valores más) cualquier consulta nueva
+     * que se olvidara de colocarlos en su sitio **no daría error**: contaría
+     * respuestas de otro formulario o de otro día, que es el peor fallo posible
+     * en una analítica porque parece un dato y no un fallo. Con nombre, el orden
+     * deja de importar.
+     *
+     * El prefijo también es necesario por el otro motivo conocido de este proyecto:
+     * con `ATTR_EMULATE_PREPARES = false`, un marcador repetido lanza HY093, así que
+     * cada id necesita el suyo.
+     *
+     * @param int[] $ids
+     * @param array<string,mixed> $params se rellena aquí
+     *
+     * @return string el `IN (…)` listo para concatenar
+     */
+    private static function marcadoresDeCampos(array $ids, string $prefijo, array &$params): string
+    {
+        $marcas = [];
+        foreach ($ids as $i => $id) {
+            // Sin la barra delante en la clave, como el resto del proyecto: PDO
+            // acepta las dos formas, y mezclar estilos dentro del mismo fichero
+            // es lo que hace que el siguiente parámetro se place mal sin aviso.
+            $params[$prefijo . '_f' . $i] = $id;
+            $marcas[] = ':' . $prefijo . '_f' . $i;
+        }
+
+        return implode(',', $marcas);
     }
 
     public static function create(int $submissionId, int $fieldId, string $value): void
@@ -521,8 +562,8 @@ class Answer
         // Fase 3: los límites de día salen de Clock (UTC/local), no de
         // concatenar ' 00:00:00' / ' 23:59:59'. Ver whereFormulario().
         [$where, $params] = self::whereFormulario($formId, $from, $to);
-        $where .= ' AND a.field_id = ?';
-        $params[] = $fieldId;
+        $where .= ' AND a.field_id = :field_id';
+        $params['field_id'] = $fieldId;
 
         $sql = "SELECT $select
                 FROM answers a

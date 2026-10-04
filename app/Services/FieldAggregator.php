@@ -41,6 +41,11 @@ final class FieldAggregator
      * @param array $fields     campos del formulario (`id`, `type`, `options`)
      * @param int[] $fieldIds   ids de los campos ya filtrados (sin secciones)
      * @param array $piiTypes   field_id => tipo de los campos marcados (F1)
+     * @param array|null $atr   filtro por atributo del listado (fase 7). Viaja a las
+     *                           DOS consultas de abajo, y no a una: si el filtro
+     *                           entrara solo en los valores, los «no vacíos» y los
+     *                           promedios saldrían del formulario entero mientras los
+     *                           gráficos salían del subconjunto.
      * @return array<int, array{field: array, values: mixed, count: int, non_empty: int, nps?: array}>
      */
     public static function forForm(
@@ -50,10 +55,11 @@ final class FieldAggregator
         int $total,
         string $from = '',
         string $to = '',
-        array $piiTypes = []
+        array $piiTypes = [],
+        ?array $atr = null
     ): array {
-        $nonEmpty = Answer::nonEmptyCountsInForm($formId, $fieldIds, $from, $to);
-        $values   = Answer::valueCountsInForm($formId, $fieldIds, $from, $to);
+        $nonEmpty = Answer::nonEmptyCountsInForm($formId, $fieldIds, $from, $to, $atr);
+        $values   = Answer::valueCountsInForm($formId, $fieldIds, $from, $to, $atr);
 
         // F1: el enmascarado va ANTES de agregar, no después. La consulta agrupa
         // por `(field_id, value)`, así que a estas alturas los valores crudos ya

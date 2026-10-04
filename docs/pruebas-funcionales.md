@@ -2,9 +2,9 @@
 
 Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
-(verificada contra el código, sin commit aún).
+(verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 765 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 970 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,10 +23,11 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**312 pruebas** en 21 bloques: A–Q, las regresiones (R) de fallos que ya
+**362 pruebas** en 24 bloques: A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
-el fill, las acciones sin recarga (T), y el diálogo de confirmación con el alta
-de la lista de acceso (U).
+el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
+la lista de acceso (U), la pestaña de participantes (V), el identificador del
+listado (W) y el filtro de la analítica por atributo (X).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -36,6 +37,8 @@ Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
 - Antes de un despliegue: A, B, N y O enteras.
 - Después de tocar el constructor: D, G y R enteras.
 - Después de tocar el fill o el panel: E, F, K, R, T y U enteras.
+- Después de tocar la analítica: K y X enteras.
+- Después de tocar el listado de participantes: V, W y X enteras.
 - Después de tocar seguridad o permisos: M, N y O enteras.
 
 ---
@@ -616,7 +619,35 @@ Para llegar: ficha del formulario → *Ajustes* → *Quién puede responder*.
 | W13 | El formulario en `roster`, con los botones de la ficha (*Publicar*, *Compartir*) | Los botones son los de siempre: el identificador no toca el estado | M | |
 
 
+## X. Filtrar la analítica por un atributo del listado (fase 7, 2026-10-04)
+
+El filtro es lo único de la analítica que **no** se ve en la barra de fechas: son dos
+desplegables más que solo existen si el formulario tiene catálogo. Lo que se mira es
+que los tres números de la pantalla (el indicador, las barras y las filas) sean del
+**mismo grupo**, y que el filtro no se pierda al cambiar de página ni al exportar.
+
+Para llegar: panel → un formulario en «Solo el listado de participantes» → *Analítica*.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| X1 | Abrir la analítica de un formulario **con** lista importada | Aparecen dos desplegables junto a las fechas: el del atributo («Todo el listado») y ningún segundo desplegable todavía | A | |
+| X2 | Abrir la analítica de un formulario **normal**, sin lista | No hay ningún desplegable de atributo: no hay nada que filtrar | A | |
+| X3 | Elegir un atributo y pulsar «Filtrar» sin elegir valor | Aparece el segundo desplegable con «Todos los valores» y el atributo **sigue marcado**; la pantalla todavía muestra todo | A | |
+| X4 | Elegir un valor con respuestas y pulsar «Filtrar» | El indicador, las barras y la tabla de abajo salen **todas** del grupo elegido, y la tabla gana una columna con el nombre del atributo | A | |
+| X5 | La tabla con el filtro puesto | Una columna por atributo del catálogo; **no** salen columnas con la cédula, el nombre ni el correo del participante | A | |
+| X6 | Alguien de la lista sin el atributo, dentro del grupo filtrado | Su celda sale con «—», no un hueco en blanco | M | |
+| X7 | Cambiar de página con el filtro puesto | Las filas que entran son del mismo grupo y la columna del atributo sigue ahí | A | |
+| X8 | Un formulario que además tiene respuestas de gente **sin** estar en la lista | Con filtro no salen (no son de ningún grupo); **sin** filtro sí salen | A | |
+| X9 | Editar la URL a mano con `atr_key=cedula` y una cédula real | No filtra nada: sale la pantalla entera, y no se rompen los gráficos | A | |
+| X10 | Editar la URL con un valor que no existe (`atr_value=Oeste`) | Pantalla vacía y el valor **sigue marcado** en su desplegable: es lo que se está mirando | A | |
+| X11 | Editar la URL con `atr_key` inventada | Pantalla completa, sin errores, y el desplegable vuelve a «Todo el listado» | A | |
+| X12 | Con el filtro puesto, pulsar «Exportar CSV» | El archivo trae **solo** las respuestas del grupo, y su número de filas coincide con el indicador | A | |
+| X13 | Un formulario de listado con **muchos** valores en un atributo libre | El desplegable no se hace interminable (está topado) y sigue siendo usable | M | |
+| X14 | Poner un filtro de fechas **y** un de atributo | Se acumulan: el CSV y la tabla salen con los dos a la vez | A | |
+
+
 ## Cuando encuentres un fallo
+
 
 Anota para que el diagnóstico sea rápido:
 
