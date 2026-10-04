@@ -400,6 +400,87 @@ class ParticipantImporterTest
         );
     }
 
+    /**
+     * Una etiqueta que no se puede crear no debe dejar columnas de las anteriores.
+     *
+     * El fallo viejo era **de la transacción, no del resultado**: `asegurarAtributos()`
+     * devolvía `null` a mitad y la callback de `Database::transaccionar()` salía con
+     * un `return` normal, que es exactamente lo que hace `commit()`. El dueño veía el
+     * mensaje correcto («esa etiqueta no se puede guardar») y una columna que no
+     * había pedido en el catálogo, sin ninguna fila que la usara.
+     *
+     * Con tres columnas, la primera se creaba, la segunda también y la tercera —la de
+     * 250 caracteres— no cabía. Este test mira el catálogo entero, no «que no hay
+     * personas»: una lista vacía y un catálogo inflado son fallos distintos.
+     */
+    public function testUnaEtiquetaImposibleNoDejaLasColumnasAnterioresEnElCatalogo(): void
+    {
+        $larga = str_repeat('S', 250);
+        $r = self::importar([
+            ['Cédula', 'Nombre', 'Sede', 'Turno', $larga],
+            ['V-1', 'Ana', 'Caracas', 'Mañana', 'lo que sea'],
+        ]);
+
+        assertFalse($r['ok'], 'la cabecera imposible tumba la importación');
+        assertEquals('atributo_no_creable', $r['error']);
+        assertEquals(0, FormParticipant::countForForm((int) self::$formId), 'nadie entra');
+        assertEquals(
+            0,
+            count(FormParticipant::catalogFor((int) self::$formId)),
+            'y el catálogo se queda como estaba: ni «Sede» ni «Turno»'
+        );
+    }
+
+    /**
+     * El contador de omitidos cuenta los problemas, no las líneas del informe.
+     *
+     * El informe está topado (`MAX_PROBLEMAS`), y medir con `count($problemas)` daba
+     * «200 omitidos» de un archivo con 260: quien lee el informe no puede saber si se
+     * le quedó gente fuera a propósito o si el archivo traía lo que parecía.
+     */
+    public function testElContadorDeOmitidosCuentaMasAllaDelTopeDelInforme(): void
+    {
+        $filas = [['Cédula', 'Nombre']];
+        for ($i = 1; $i <= 260; $i++) {
+            // Sin identificador: cada fila se cuela como problema de validación.
+            $filas[] = ['', 'Persona ' . $i];
+        }
+
+        $r = self::importar($filas);
+
+        assertTrue($r['ok'], 'una fila mala no tumba el resto: ' . (string) $r['error']);
+        assertEquals(260, $r['omitidos'], 'los 260, no los del tope');
+        assertTrue(count($r['problemas']) < 260, 'pero el informe sí está topado: ' . count($r['problemas']));
+    }
+
+    /**
+     * Las dos cabeceras que solo se diferencian en los espacios son UN atributo.
+     *
+     * El catálogo ya las pegaba (por eso el `UNIQUE (form_id, label)` no revienta),
+     * pero el informe las contaba como dos atributos nuevos: el dueño leía «se
+     * crearon 2 columnas» y tenía una.
+     *
+     * El caso que de verdad distingue es el espacio **interior** y no el del final:
+     * el lector hace `trim()` de cada celda al leerla, así que `Sede` y `Sede ` le
+     * llegan igual y no hay nada que deduplicar. `Sede Norte` y `Sede  Norte` sí
+     * llegan distintas —la celda no colapsa espacios— y `FormParticipant::normalizar()`
+     * las pega al buscar la etiqueta.
+     */
+    public function testDosCabecerasQueSoloCambianEnLosEspaciosSeAnuncianComoUna(): void
+    {
+        $r = self::importar([
+            ['Cédula', 'Nombre', 'Sede Norte', 'Sede  Norte'],
+            ['V-1', 'Ana', 'Caracas', 'Maracay'],
+        ]);
+
+        assertTrue($r['ok'], (string) $r['error']);
+        assertEquals(1, count(FormParticipant::catalogFor((int) self::$formId)), 'una columna');
+        assertTrue(
+            count($r['atributos_nuevos']) === 1,
+            'y el informe la anuncia una vez: ' . json_encode($r['atributos_nuevos'])
+        );
+    }
+
     public function testElAtributoQueNoEstaEnElArchivoNoSeBorraAlActualizar(): void
     {
         // Dos archivos distintos: el segundo no trae la columna «Sede». Como la

@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 83 archivos, 886 métodos, ~4 min;
+- Suite completa: `php scripts/test.php` → 84 archivos, 912 métodos, ~4.5 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -48,7 +48,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   controlador. `public/index.php` es el único PHP que ve el web server.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
-  es un directorio **vacío**), `Models` (10), `Services` (15), `lang/{es,en}.php`.
+  es un directorio **vacío**), `Models` (10), `Services` (16), `lang/{es,en}.php`.
   `views/` = 53 plantillas y partials con `View` (siete con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
@@ -94,7 +94,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **47 de los 83 archivos tocan la BD real** (los que llaman
+- **48 de los 84 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -247,10 +247,11 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 **Acceso por email (F4)**
 
-- `settings.access.mode` tiene **tres** valores: `public` (default, para no
-  romper lo existente), `email` (cualquiera que reciba el enlace) y `allowlist`
-  (solo emails de `form_access_emails`). La allowlist se edita **en la ficha del
-  formulario**, no en el builder.
+- `settings.access.mode` tiene **cuatro** valores: `public` (default, para no
+  romper lo existente), `email` (cualquiera que reciba el enlace), `allowlist`
+  (solo emails de `form_access_emails`) y `roster` (solo quien tiene código
+  personal; su puerta está en la sección del listado). La allowlist se edita **en
+  la ficha del formulario**, no en el builder.
 - El gate vive en `FillController::resolveAccess()` y se aplica a **GET, embed y
   POST**: el POST sin acceso corta con 403 **antes** del `post-max` y del `csrf`,
   que si no responderían «algo va mal» a un visitante sin ningún problema.
@@ -324,10 +325,37 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 **Listado de participantes (roster)**
 
-- `roster` **aún no es una puerta**: hasta que la fase 4 lo meta en
-  `FillController::resolveAccess()`, un formulario en modo `roster` se comporta
-  como `public` para quien responde. Si alguien lo encuentra antes de tiempo,
-  lo que se arregla es la fase 4, no el `fallback`.
+- **`roster` ES una puerta, y su `<option>` en el selector todavía NO**: la
+  fase 4 metió el gate y la fase 6 el selector. Un formulario en `roster` se
+  alcanza hoy solo si alguien edita sus ajustes a mano.
+- **`roster` fuera de `FormSettings::RESTRICTED_MODES` deja el formulario
+  ABIERTO**, sin error en el log ni en la respuesta: `isRestricted()` es lo que
+  decide que el GET pida identificación y que el POST corte. La lista y el gate
+  van **siempre en el mismo commit**, y `RosterDoorTest` mira la lista.
+- **La credencial entra por `?t=`, el mismo hueco que el token de F4**, y por eso
+  el `action` del POST no se tocó. En `resolveAccess()` se busca **primero** el
+  token: en un formulario de listado un `?t=` que casa con `form_access_tokens`
+  sigue siendo ese token, y los dos tipos de fila no se buscan en la misma tabla.
+- **El código no caduca** (vive en la URL, en cadenas de reenvío y correos) y lo
+  que lo cierra es que la persona **siga en la lista**. En sesión eso es
+  `['id' => <participante>, 'exp' => 0, 'kind' => 'participant']`: el `exp = 0`
+  significa «sin caducidad» y se comprueba **antes** que la caducidad, porque
+  comparar `0 <= time()` como fecha tira la puerta en cada petición. La
+  revalidación es `FormParticipant::existeEnFormulario()`, y su consecuencia es
+  **borrar a alguien de la lista le cierra la puerta en la petición siguiente**.
+  Los permisos de F4 no llevan `kind` y siguen siendo tokens.
+- **`POST /f/{slug}/code` es un PRG** y un rate limit con dos claves (formulario+IP
+  y código) **antes de buscar**, contando también los fallidos: si solo sumaran
+  los válidos, enumerar códigos sería gratis. La respuesta es **uniforme**
+  (inexistente, ajeno y mal tecleo dicen lo mismo) y da **404** si el formulario
+  no es de lista. En embed **no hay variante con `/embed`**: el canje redirige el
+  frame entero.
+- **Responder marca `responded_at` en la MISMA transacción** que la submission, y
+  el `UPDATE` es idempotente con estado objetivo (`WHERE responded_at IS NULL`):
+  responder dos veces no mueve la primera fecha **pero sí guarda las dos
+  respuestas** (`roster` no es «una respuesta por persona»). La atribución viaja en
+  el quinto argumento de `Submission::create()` y es **NULL** en los otros tres
+  modos.
 - **Tres devoluciones que se parecen y no son lo mismo**, y confundirlas hace que
   un test pase probando otra cosa: `Form::create()` devuelve **un `int`** (leer
   `$form['id']` de un entero da `null` y la llamada se va a `/forms/0`, que
@@ -360,6 +388,24 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Importar y vaciar son **acciones distintas**: «reemplazar con un archivo vacío»
   se rechaza, y vaciar tiene que poder existir igual aunque el importador no lo
   acepte. `truncate` por eso no mira el `modo` del POST.
+
+- **`Database::transaccionar()` confirma cuando la closure DEVUELVE**, así que un
+  `return` dentro de la closure es un `return` normal y deja confirmado todo lo que ya
+  se había escrito. `ParticipantImporter::asegurarAtributos()` lanza por eso en vez de
+  devolver `null`: devolviendo, una etiqueta de 250 caracteres (que no cabe en `label`)
+  confirmaba las columnas **anteriores** del catálogo y el dueño veía el mensaje
+  correcto con un catálogo inflado que no había pedido. Y el `catch` compara el mensaje
+  y **re-lanza** cualquier otro `RuntimeException`, para que un fallo real de escritura
+  no acabe contestando «renombra la columna». Lo vigila
+  `testUnaEtiquetaImposibleNoDejaLasColumnasAnterioresEnElCatalogo`.
+- **El informe de la importación está topado (`MAX_PROBLEMAS` = 200) y el contador
+  `omitidos` NO**: se cuentan por separado, porque `count($problemas)` daría «200
+  omitidos» de un archivo con 260 y quien lee el informe no puede saber si se le quedó
+  gente fuera a propósito. La lista topeada es lo cómodo; el número es lo honesto.
+- **`atributos_nuevos` se deduplica por etiqueta NORMALIZADA**, no por cabecera cruda:
+  `Sede Norte` y `Sede  Norte` son la misma columna del catálogo (el `UNIQUE (form_id,
+  label)` las pega) y el lector solo hace `trim()`, así que el espacio interior llega
+  intacto. Anunciar dos atributos nuevos donde hay uno hace que el informe mienta.
 
 **Adjuntos**
 

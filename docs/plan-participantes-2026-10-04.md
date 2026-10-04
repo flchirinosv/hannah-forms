@@ -175,7 +175,7 @@ el existente y lo dice.
 | 1 | Escritor xlsx (`RosterTemplate`) | **cero** | **Hecha** (15 tests nuevos) |
 | 2 | Migración `0014` | **cero** | **Hecha** (11 tests nuevos) |
 | 3 | `FormParticipant`, CRUD, importar | bajo | **Hecha** (85 tests nuevos) |
-| 4 | **La puerta del fill** | **alto** | Pendiente |
+| 4 | **La puerta del fill** | **alto** | **Hecha** (23 tests nuevos) |
 | 5 | Pestaña Participantes + huecos | bajo | Pendiente |
 | 6 | Exponer `roster` en el `<select>` | bajo | Pendiente |
 | 7 | Filtro por atributo + detalle | bajo | Pendiente |
@@ -460,18 +460,127 @@ Tres cosas del controlador que parecen no código y son la puerta:
 escribirlo se esperaba `V-51` al final. Está anotado en el test porque «arreglarlo» por
 cambiar el `ORDER BY` a algo numérico rompería la búsqueda, que es textual también.
 
-### Lo que sigue sin hacer, y es lo importante
+### Lo que seguía sin hacer al cerrar la fase 3
 
-**`roster` sigue sin ser una puerta.** No se ha tocado `FillController`, ni
-`FormSettings::RESTRICTED_MODES`, ni el `<select>` de los modos de acceso. Un
-formulario en modo `roster` se comporta como `public` para quien responde: se puede
-llenar sin invitación. Es exactamente lo que dice la fase 4, y por eso la fase 3 no
-se puede dar por buena en pantalla: **nada de esto es visible todavía.**
+**`roster` no era una puerta.** No se había tocado `FillController`, ni
+`FormSettings::RESTRICTED_MODES`, ni el `<select>` de los modos de acceso, así que un
+formulario en modo `roster` se comportaba como `public` para quien responde: se podía
+llenar sin invitación. Es lo que hizo la fase 4 (ver más abajo), y por eso la fase 3 no
+se podía dar por buena en pantalla: **nada de esto era visible todavía.**
 
 **Suite completa: 886, 0 fallos. 8 mutaciones comprobadas** (quitar el `form_id` del
 `update`, del `destroy` y del alta; quitar el `canEdit`; no exigir el modo `roster`;
 dejar pasar cualquier `key_name`; ignorar la búsqueda en el total y en las filas; dejar
 elegir `per_page`). Las ocho se ponen rojas.
+
+## Fase 4 — la puerta del fill — **HECHA**
+
+Veintitrés tests en `tests/unit/RosterDoorTest.php` y **912 en total, 0 fallos**. Es la
+fase de riesgo alto del plan, y el riesgo no es el código: es que **un `roster` fuera
+de `RESTRICTED_MODES` deja el formulario abierto** sin un error en el log ni en la
+respuesta. Por eso la puerta y su `<option>` van en fases distintas pero la lista y el
+gate van **en el mismo commit**, y por eso uno de los tests mira la lista.
+
+### La credencial viaja en `?t=`, y eso no es casualidad
+
+F4 ya usa `?t=` para el token de email, así que el código entra por ahí y **no hay
+que tocar el `action` del POST**: el enlace con el código ya reenvía la credencial al
+enviar. Un segundo parámetro habría significado un segundo camino de entrada en el
+formulario, y el corte del POST (que va **antes** que `post-max` y `csrf`, igual que
+F4) solo podía mirar uno.
+
+El orden de resolución es deliberado: **primero el token de F4**, y solo si ese no
+casó, el código. En un formulario de listado un `?t=` que casa con
+`form_access_tokens` sigue siendo ese token, y los dos tipos de fila no se buscan en
+la misma tabla.
+
+### El identificador identifica, el código autentica
+
+Un código de 16 caracteres del alfabeto sin `0/O/1/I/L` (32 símbolos, ~80 bits) vive
+en la URL, así que **no lleva caducidad**: caducaría en una cadena de reenvíos y de
+correos, y el problema se trasladaría al sitio que lo reenvió. Lo que lo cierra es
+que la persona **siga en la lista**, y eso se comprueba en cada request.
+
+### La sesión guarda el id, y revalida
+
+`$_SESSION['vf_form_access'][$formId] = ['id' => <participante>, 'exp' => 0,
+'kind' => 'participant']`. El `exp = 0` significa «sin caducidad» y se comprueba
+**antes** que la caducidad, porque comparar `0 <= time()` como si fuera una fecha
+tira la puerta en cada petición. La revalidación es `FormParticipant::existeEnFormulario()`
+y su consecuencia es la que importa: **borrar a alguien de la lista le cierra la puerta
+en la petición siguiente**, y no solo a quien aún no había entrado.
+
+Los permisos de F4 no llevan `kind` y se siguen tratando como tokens, que es lo
+único compatible con lo ya repartido.
+
+### La puerta también es un formulario
+
+El enlace se equivoca: se parte al pegarlo, se teclea en minúsculas, se le copia un
+carácter de más. Sin `POST /f/{slug}/code`, un código con un carácter mal deja al
+visitor en una pantalla de la que no puede salir —la puerta no se abre «a medias»
+porque no hay forma de decir cuál de los 16 caracteres falló—, y su salida sería
+escribirle al dueño.
+
+- El **rate limit va antes de buscar el código** (10 intentos / 15 min) y por dos
+  claves: formulario+IP y código. **Un intento fallido cuenta igual que uno bueno**: si
+  solo sumaran los válidos, enumerar códigos sería gratis y esto sería un adorno.
+- La **respuesta es uniforme**: inexistente, de otro formulario o con un carácter mal
+  dicen exactamente lo mismo. Distinguirlos convierte la página en un oráculo.
+- Es un **PRG**: un código válido redirige a `/f/{slug}?t=<código>`, y un refresco no
+  vuelve a canjear nada. En un embed **no hay variante con `/embed`** porque el canje
+  redirige el frame entero, que es lo que se quiere.
+- La página devuelve **404** (no 403) si el formulario no es de lista: que tenga o no
+  listado es información que no se le da a quien solo lo ve.
+
+### La respuesta queda atribuida, y marcada en la lista
+
+`Submission::create()` acepta un quinto argumento `?int $participantId` y
+`FormParticipant::marcarRespondido()` va **en la misma transacción** que la respuesta.
+Si la respuesta se guarda y la marca no, la lista de «quién NO ha respondido» enseña a
+alguien que ya contestó y no hay forma de saber que las dos cosas se separaron. El
+`UPDATE` es idempotente con estado objetivo (`WHERE responded_at IS NULL`): responder
+dos veces no mueve la fecha de la primera, y **las dos respuestas se guardan** (es
+fácil querer lo contrario por error: `roster` no es «una respuesta por persona»).
+
+En `public`, `email` y `allowlist` la columna queda **NULL**: existe para atribuir
+respuestas de un listado, no para marcar «alguien entró con un correo», que ya está en
+`form_access_tokens`.
+
+### Lo que sigue sin verse
+
+Sigue sin haber `<option>` en el selector de modos (fase 6) ni pestaña de
+participantes (fase 5): hoy un formulario en `roster` solo se alcanza si alguien edita
+sus ajustes a mano o viene de una fase anterior. **La puerta está probada y no se ve.**
+
+### Tres correcciones de la fase 3 que salieron al revisar la puerta
+
+No eran de la puerta, pero se encontraron al mirar el importador con otros ojos, y las
+tres son de las que no dan ningún error:
+
+1. **`asegurarAtributos()` devolvía `null` a mitad y la transacción se confirmaba.**
+   `Database::transaccionar()` confirma cuando la closure **devuelve**, y un `return`
+   dentro de la closure es un `return` normal: una etiqueta de 250 caracteres (que no
+   cabe en `label`) dejaba **creadas y confirmadas** las columnas anteriores del
+   catálogo. El dueño veía el mensaje correcto y un catálogo que no había pedido. Ahora
+   lanza, y el `catch` compara el mensaje y re-lanza cualquier otro `RuntimeException`
+   para que un fallo de escritura no acabe contestando «renombra la columna».
+2. **`omitidos` se medía con `count($problemas)`**, que está topado en 200: un archivo
+   con 260 filas malas informaba «200 omitidos». La lista topeada es lo cómodo, pero
+   el número es lo honesto, así que ahora se cuentan por separado.
+3. **`atributos_nuevos` se deduplicaba por la cabecera cruda.** El lector hace `trim()`
+   de cada celda pero **no** colapsa espacios interiores, así que `Sede Norte` y
+   `Sede  Norte` llegaban distintas y el catálogo las pegaba en una: el informe
+   anunciaba dos atributos nuevos donde había uno. Se deduplica por etiqueta
+   **normalizada**.
+
+Las tres tienen su test, y **tres mutaciones** las ponen rojas (volver al `null`, medir
+el contador con la lista topada y deduplicar por la cabecera cruda).
+
+**Suite completa: 912, 0 fallos. 9 mutaciones comprobadas** — quitar `roster` de
+`RESTRICTED_MODES` (13 tests), scope del código sin `form_id`, revalidación de sesión
+contra la lista, `participant_id` al guardar, `marcarRespondido()`, el cupo en la página
+del código, el rate limit que solo cuenta los aciertos, el mensaje que distingue el
+código ajeno y el corte del POST sin acceso. Las nueve se ponen rojas.
 
 ## Decisiones de correo
 
@@ -507,7 +616,7 @@ elegir `per_page`). Las ocho se ponen rojas.
 | 1 | **Hecha** — 790 tests |
 | 2 | **Hecha** — 801 tests |
 | 3 | **Hecha** — 886 tests |
-| 4 | Pendiente |
+| 4 | **Hecha** — 912 tests |
 | 5 | Pendiente |
 | 6 | Pendiente |
 | 7 | Pendiente |

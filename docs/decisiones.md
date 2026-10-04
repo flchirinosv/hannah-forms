@@ -953,12 +953,105 @@ el test pasaría sin comprobar nada.
 correo, y también lo es la búsqueda. Ordenar «como número» solo funciona para un
 subconjunto y cambia la página 2 sin avisar.
 
-### Lo que la fase 3 NO hace, y es lo importante
+### Lo que la fase 3 NO hace, y era lo importante
 
-**`roster` todavía no es una puerta.** No se ha tocado `FillController`, ni
+**`roster` todavía no era una puerta.** No se había tocado `FillController`, ni
 `FormSettings::RESTRICTED_MODES`, ni el `<select>` de los modos: un formulario en
-modo `roster` se puede llenar sin invitación. Todo lo de esta fase es la
-maquinaria de gestión, y la puerta es la fase 4, que tiene que tocar doce sitios
-en ocho archivos (`FormSettings::normalize()` lo convierte a `public`,
-`RESTRICTED_MODES` no lo incluye, `/f/{slug}/access` da 404…). Por eso la fase 3
-**no se puede dar por buena en pantalla**: nada de esto es visible todavía.
+modo `roster` se podía llenar sin invitación. Todo lo de esa fase era la
+maquinaria de gestión. [Ya lo hizo la fase 4](#fase-4-la-puerta-del-fill-portero-y-404-por-qué).
+
+## Fase 4: la puerta del fill — por qué y por qué ahora
+
+### La lista y el gate van en el mismo commit
+
+`roster` entró en `FormSettings::RESTRICTED_MODES` **al mismo tiempo** que su puerta
+en `resolveAccess()`. Un commit antes, un formulario en modo `roster` habría estado
+**abierto al mundo sin un error en ningún sitio**: `isRestricted()` es lo que decide
+que el GET pida identificación y que el POST corte, y una lista a la que no se le
+añade el valor no falla, simplemente no hace nada. Por eso `RosterDoorTest` tiene un
+test que **mira la lista** y no el comportamiento: quitar `roster` de ahí pone 13 tests
+en rojo.
+
+Lo que sí está separado en el tiempo es el `<option>` del selector de la ficha (fase
+6). Esa separación es segura porque sin `<option>` nadie alcanza el modo, y es
+preferible a tener la puerta sin poder probarla en una instalación real.
+
+### El identificador identifica; el código autentica
+
+Es la primera asimetría real del diseño y conviene decirla: en un listado, «quién eres»
+y «puedes responder» son cosas distintas. `V-51` puede estar repetido en dos surveys de
+distintas-RV, y `correo` es un dato que la gente escribe mal. Si la puerta fuera por
+identificador, dos personas con el mismo dato se pisarían y quien lo escribió mal se
+quedaría fuera. El código es de 16 caracteres del alfabeto sin `0/O/1/L` (32 símbolos,
+~80 bits), se genera en el alta y se reparte fuera de banda.
+
+### El código no caduca, y esa es una decisión, no una comodidad
+
+Vive en la URL, y una URL se copia a mano, se pega en un correo, se mete en un reenvío
+y acaba en un historial de chat. Una caducidad se acabaría rompiendo en alguno de
+esos sitios, y el síntoma sería «el enlace de la semana pasada ya no funciona», que es
+la clase de queja que no se arregla con un correo. Lo que lo cierra es que la persona
+**siga en la lista**, y eso se comprueba contra la fila en cada request
+(`FormParticipant::existeEnFormulario()`).
+
+En sesión, el permiso es `['id' => <participante>, 'exp' => 0, 'kind' =>
+'participant']`. El `exp = 0` se comprueba **antes** que la caducidad: comparar
+`0 <= time()` como si fuera una fecha deja la puerta cerrada en cada petición, y ese
+es el fallo que cuesta más de encontrar porque la primera vez que funciona parece
+milagro. Los permisos de F4 no llevan `kind` y se siguen tratando como tokens, que es
+lo único compatible con lo ya repartido.
+
+La consecuencia de revalidar en cada request es la que hay que querer: **borrar a
+alguien de la lista le cierra la puerta en la petición siguiente**, y no solo a quien
+no había entrado. Es exactamente lo que significa «la lista es la que dice quién
+responde».
+
+### `?t=` y por qué no un parámetro nuevo
+
+F4 ya llena `?t=` con el token de email. Meter el código en otro parámetro habría
+significado un segundo camino de entrada al formulario —y el corte del POST, que va
+antes que `post-max` y que `csrf` para no contestarle «algo va mal» a alguien que solo
+necesita un código, solo podía mirar uno de los dos—. Además, el `action` del POST no
+habría tenido que cambiar: el enlace ya reenvía la credencial al enviar.
+
+En `resolveAccess()` el **token se busca primero** y el código después. En un formulario
+de listado un `?t=` que casa con `form_access_tokens` sigue siendo ese token, y los dos
+tipos de fila no se buscan en la misma tabla: `findByCode()` sin `form_id` sería la
+puerta maestra de todos los listados, que es la mutación que mata
+`testUnCodigoDeOtroFormularioNoAbreEste`.
+
+### La puerta también es un formulario
+
+El enlace se equivoca, y esa es la razón de `POST /f/{slug}/code`: se parte al pegarlo,
+se teclea en minúsculas, se le copia un carácter de más. Sin esta página, un código con
+un carácter mal deja al visitante en una pantalla de la que no puede salir —la puerta no
+se abre «a medias» porque no hay forma de decir cuál de los 16 caracteres falló— y su
+única salida sería escribirle al dueño para que le mande otro enlace.
+
+- El **cupo va antes de buscar el código**, con dos claves (formulario+IP y código), y
+  **cuenta los intentos fallidos**. Si solo sumara los aciertos, enumerar códigos sería
+  gratis y el rate limit sería un adorno.
+- La **respuesta es uniforme**: inexistente, de otro formulario o mal tecleo dicen
+  exactamente lo mismo. Distinguirlos convierte la página en un oráculo de qué códigos
+  existen, que es justo lo que el cupo intenta que no se pueda averiguar. El test
+  compara el **texto** del flash, no el tipo: con el tipo, dos mensajes distintos serían
+  indistinguibles y la uniformidad no estaría comprobada.
+- Es un **PRG**: el canje válido redirige a `/f/{slug}?t=<código>` y un refresco no
+  vuelve a canjear nada. En embed no hay variante con `/embed` porque el canje redirige
+  el frame entero, que es lo que se quiere en un iframe.
+- Da **404** (no 403) si el formulario no es de lista: que tenga o no listado es
+  información que no se le da a quien solo lo ve.
+
+### La atribución va en la quinta transacción
+
+`responded_at` se marca **en la misma transacción** que la respuesta, con un `UPDATE`
+idempotente con estado objetivo (`WHERE responded_at IS NULL`). Si fueran dos cosas, una
+falla y la otra no: la lista de «quién NO ha respondido» enseñaría a alguien que ya
+contestó, sin forma de saber que se separaron. Y responder dos veces **no mueve la
+primera fecha pero sí guarda las dos respuestas**, porque `roster` no es «una respuesta
+por persona» (eso, si se quisiera, es una regla de negocio, no una consecuencia de la
+base de datos).
+
+`submissions.participant_id` es **NULL** en `public`, `email` y `allowlist`: existe para
+atribuir respuestas de un listado, no para marcar «alguien entró con un correo», que ya
+está en `form_access_tokens` y ahí sí se puede ver quién usó qué enlace.

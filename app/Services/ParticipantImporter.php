@@ -57,6 +57,17 @@ final class ParticipantImporter
     /** Cuántos problemas concretos se guardan en el informe antes de resumir. */
     private const MAX_PROBLEMAS = 200;
 
+    /**
+     * Motivo de «el archivo trae una etiqueta que no se puede guardar».
+     *
+     * Va en el **mensaje** de la excepción porque el importador no tiene una clase
+     * propia para eso: el autoload es PSR-4 de una clase por fichero y meter un
+     * segundo nombre en este archivo haría que no se encontrara nunca. El `catch`
+     * compara el mensaje y **re-lanza** cualquier otro `RuntimeException`, así que un
+     * fallo de verdad durante la escritura no se traduce a «etiqueta».
+     */
+    private const ERROR_ATRIBUTO = 'atributo_no_creable';
+
     private static function db(): Database
     {
         return Database::getInstance(Config::db());
@@ -143,7 +154,7 @@ final class ParticipantImporter
             // estaba.
             $vacio['error'] = 'reemplazar_con_errores';
             $vacio['total'] = count($filas);
-            $vacio['omitidos'] = count($preparadas['problemas']);
+            $vacio['omitidos'] = (int) ($preparadas['omitidos'] ?? 0);
             $vacio['problemas'] = $preparadas['problemas'];
 
             return $vacio;
@@ -155,28 +166,31 @@ final class ParticipantImporter
         $fallo = null;
         $resumen = ['insertados' => 0, 'actualizados' => 0, 'sin_cambios' => 0];
 
-        self::db()->transaccionar(function () use ($formId, $modo, $filas, $columnas, $preparadas, $identificador, &$fallo, &$resumen): void {
-            $atributos = self::asegurarAtributos($formId, $columnas['atributos']);
-            if ($atributos === null) {
-                // No se propaga como excepción porque la respuesta que se quiere es
-                // «el archivo trae una etiqueta que no se puede guardar», y eso
-                // solo lo sabe este sitio. Devolviendo por referencia deja la
-                // transacción sin confirmar y sin nada escrito.
-                $fallo = 'atributo_no_creable';
+        try {
+            self::db()->transaccionar(function () use ($formId, $modo, $filas, $columnas, $preparadas, $identificador, &$resumen): void {
+                $atributos = self::asegurarAtributos($formId, $columnas['atributos']);
 
-                return;
+                // El borrado va AQUÍ y no antes: si fuera fuera de la transacción y la
+                // inserción fallara, la lista quedaría vacía con el error ya mostrado y
+                // sin vuelta atrás. Adentro, un fallo posterior deshace también el
+                // `DELETE`.
+                if ($modo === self::MODO_REEMPLAZAR) {
+                    FormParticipant::truncate($formId);
+                }
+
+                $resumen = self::escribir($formId, $preparadas['filas'], $identificador, $atributos);
+            });
+        } catch (\RuntimeException $e) {
+            // La excepción sale DESPUÉS del `rollBack()` que hace `transaccionar()`
+            // en su `catch`, así que solo se traduce a «el archivo trae una etiqueta
+            // que no se puede guardar» cuando es ÉSTA. Cualquier otro error de
+            // escritura se re-lanza: si no, un fallo de verdad acabaría contestando
+            // «renombra la columna».
+            if ($e->getMessage() !== self::ERROR_ATRIBUTO) {
+                throw $e;
             }
-
-            // El borrado va AQUÍ y no antes: si fuera fuera de la transacción y la
-            // inserción fallara, la lista quedaría vacía con el error ya mostrado y
-            // sin vuelta atrás. Adentro, un fallo posterior deshace también el
-            // `DELETE`.
-            if ($modo === self::MODO_REEMPLAZAR) {
-                FormParticipant::truncate($formId);
-            }
-
-            $resumen = self::escribir($formId, $preparadas['filas'], $identificador, $atributos);
-        });
+            $fallo = self::ERROR_ATRIBUTO;
+        }
 
         if ($fallo !== null) {
             $vacio['error'] = $fallo;
@@ -193,7 +207,7 @@ final class ParticipantImporter
             'insertados'       => $resumen['insertados'],
             'actualizados'     => $resumen['actualizados'],
             'sin_cambios'      => $resumen['sin_cambios'],
-            'omitidos'         => count($preparadas['problemas']),
+            'omitidos'         => (int) ($preparadas['omitidos'] ?? 0),
             'atributos_nuevos' => $preparadas['nuevos'],
             'problemas'        => $preparadas['problemas'],
         ];
@@ -265,6 +279,7 @@ final class ParticipantImporter
                 'error'     => 'falta_columna_identificador',
                 'filas'     => [],
                 'problemas' => [],
+                'omitidos'  => 0,
                 'nuevos'    => [],
             ];
         }
@@ -272,6 +287,7 @@ final class ParticipantImporter
         $buenas  = [];
         $vistas  = [];
         $problemas = [];
+        $omitidos = 0;
         $nuevos  = [];
 
         foreach ($filas as $n => $fila) {
@@ -303,7 +319,7 @@ final class ParticipantImporter
             // misma función la que usan `create()` y `update()`.
             $motivo = FormParticipant::validarDatos($identificador, $identificadorValor, $campos['correo']);
             if ($motivo !== 'ok') {
-                self::anotar($problemas, $numero, $motivo, null);
+                self::anotar($problemas, $numero, $motivo, null, $omitidos);
                 continue;
             }
 
@@ -313,14 +329,21 @@ final class ParticipantImporter
             // misma dos veces en lugar de avisar de que el archivo está repetido.
             $clave = $identificadorValor;
             if (isset($vistas[$clave])) {
-                self::anotar($problemas, $numero, FormParticipant::MOTIVO_DUPLICADO, 'la fila ' . $vistas[$clave]);
+                self::anotar($problemas, $numero, FormParticipant::MOTIVO_DUPLICADO, 'la fila ' . $vistas[$clave], $omitidos);
                 continue;
             }
             $vistas[$clave] = $numero;
 
             foreach (array_keys($bruto) as $cabecera) {
-                if (!in_array($cabecera, $nuevos, true)) {
-                    $nuevos[] = $cabecera;
+                // La deduplicación es por etiqueta **normalizada**, no por cabecera
+                // cruda: `Sede` y `Sede ` son la misma columna del catálogo (se
+                // pegan a propósito y gana la de la derecha), así que anunciarlas
+                // como dos atributos nuevos sería mentirle sobre lo que se
+                // guardó. Se guarda la etiqueta normalizada porque es la que queda
+                // en la fila.
+                $etiqueta = FormParticipant::normalizar($cabecera);
+                if (!in_array($etiqueta, $nuevos, true)) {
+                    $nuevos[] = $etiqueta;
                 }
             }
 
@@ -331,7 +354,29 @@ final class ParticipantImporter
             ];
         }
 
-        return ['error' => null, 'filas' => $buenas, 'problemas' => $problemas, 'nuevos' => $nuevos];
+        return [
+            'error'     => null,
+            'filas'     => $buenas,
+            'problemas' => $problemas,
+            'omitidos'  => $omitidos,
+            'nuevos'    => $nuevos,
+        ];
+    }
+
+    /**
+     * Una cabecera del archivo que no se puede convertir en columna del catálogo.
+     *
+     * Sale como **excepción**, y no como `null`, por una razón que no se ve leyendo el
+     * camino feliz: `Database::transaccionar()` confirma la transacción cuando la
+     * closure **devuelve**, y un `return` dentro de la closure es un `return` normal.
+     * Devolviendo `null` a mitad, las columnas anteriores ya se habían creado y la
+     * callback salía «sin error»: se confirmaban columnas sin las filas que las iban
+     * a usar, y el dueño se encontraba un catálogo inflado con el mensaje de «esa
+     * etiqueta no se puede guardar». Lanzar es lo que deshace la transacción entera.
+     */
+    private static function cabeceraNoCreable(): \RuntimeException
+    {
+        return new \RuntimeException(self::ERROR_ATRIBUTO);
     }
 
     /**
@@ -339,15 +384,17 @@ final class ParticipantImporter
      *
      * @param list<string> $atributos
      *
-     * @return array<string,string>|null `null` si alguna cabecera no se pudo crear
+     * @return array<string,string>
+     *
+     * @throws RuntimeException si alguna cabecera no se pudo crear
      */
-    private static function asegurarAtributos(int $formId, array $atributos): ?array
+    private static function asegurarAtributos(int $formId, array $atributos): array
     {
         $mapa = [];
         foreach ($atributos as $cabecera) {
             $clave = FormParticipant::ensureAttribute($formId, $cabecera);
             if ($clave === null) {
-                return null;
+                throw self::cabeceraNoCreable();
             }
             $mapa[$cabecera] = $clave;
         }
@@ -483,10 +530,17 @@ final class ParticipantImporter
     /**
      * Anota un problema, sin pasarse del tope.
      *
+     * La lista que se devuelve al dueño está **topada** (`MAX_PROBLEMAS`: nadie
+     * quiere leer 2000 líneas de errores), pero el **contador va entero**. Medir
+     * con `count($problemas)` daría «200 omitidos» de un archivo con 2000, que es
+     * peor que no dar ninguno: quien lee el informe no puede saber si se le quedó
+     * gente fuera a propósito o si el archivo tenía lo que parecía.
+     *
      * @param list<array{fila:int,motivo:string,detalle:?string}> $problemas
      */
-    private static function anotar(array &$problemas, int $fila, string $motivo, ?string $detalle): void
+    private static function anotar(array &$problemas, int $fila, string $motivo, ?string $detalle, int &$total): void
     {
+        $total++;
         if (count($problemas) < self::MAX_PROBLEMAS) {
             $problemas[] = ['fila' => $fila, 'motivo' => $motivo, 'detalle' => $detalle];
         }

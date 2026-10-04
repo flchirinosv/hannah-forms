@@ -125,6 +125,7 @@ aprobado lo devuelve a la cola.
 |--------|------|------------|-------------|
 | POST | `/f/{slug}/access` | csrf | Pedir acceso (403 si el formulario está en `email`/`allowlist` sin token). Respuesta uniforme |
 | POST | `/f/{slug}/access/embed` | csrf | Ídem para el iframe de embed |
+| POST | `/f/{slug}/code` | csrf | Canjear el código personal de un formulario de listado (`roster`): 404 si no lo es, PRG a `/f/{slug}?t=<código>` o a la puerta. Rate limit de 10 intentos/15 min por formulario+IP y por código, contando los fallidos; respuesta uniforme |
 | POST | `/forms/{int}/access/email` | auth, csrf | Añadir un email a la allowlist (modo `allowlist`). Con `X-Requested-With: XMLHttpRequest` responde JSON (`ok`, `email`, `message`, `html`, `count`) en vez del 302 con flash |
 | POST | `/forms/{int}/access/email/remove` | auth, csrf | Quitar email y revocar sus tokens (transacción) |
 | POST | `/forms/{int}/access/link` | auth, csrf-header | Emitir/copiar enlace de acceso para un email de la lista (JSON) |
@@ -166,14 +167,27 @@ siempre.
 servidor (50). Aceptarlo sería un `per_page=100000` que se come la tabla entera en
 memoria.
 
-> **Hasta que la fase 4 esté hecha, `roster` no es una puerta**: el GET y el POST de
-> `/f/{slug}` siguen aceptando a cualquiera. Ver `docs/plan-participantes-2026-10-04.md`.
+### La puerta del listado
+
+Con el formulario en modo `roster`, `GET /f/{slug}` y `GET /f/{slug}/embed` pintan la
+página de identificación (`views/fill/access.php`, con un campo de código) y el `POST`
+del formulario **corta con 403** si no hay acceso: el corte va antes que `post-max` y
+que `csrf`.
+
+La credencial entra por **`?t=`**, el mismo hueco que usa el token de F4, y por eso el
+`action` del POST no cambia. La sesión guarda el **id del participante** (`kind =>
+participant`, `exp = 0` = sin caducidad) y lo revalida contra la lista en cada
+petición: **borrar a alguien de la lista le cierra la puerta en la siguiente**. La
+identidad que entra es la fila de `form_participants`, no el correo.
+
+Hasta la fase 6 **no hay `<option>` de `roster` en el selector** de la ficha: un
+formulario en ese modo solo se alcanza si alguien edita sus ajustes a mano.
 
 ## Llenado público
 
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
-| GET | `/f/{slug}` | — | Muestra el formulario (páginas `closed`/`draft`/`in_review` si aplica; 403 si `email`/`allowlist` sin acceso) |
+| GET | `/f/{slug}` | — | Muestra el formulario (páginas `closed`/`draft`/`in_review` si aplica; 403 si `email`/`allowlist`/**`roster`** sin acceso) |
 | POST | `/f/{slug}` | post-max, csrf | Enviar respuestas. **Rate limit: 10 por IP+formulario cada 10 min (429)**. El 403 de acceso va ANTES del `post-max` y del `csrf` |
 | GET | `/f/{slug}/thanks` | — | Gracias, identificado por `submissions.public_token` (`?t=`), nunca por el `id` |
 | GET | `/f/{slug}/embed` | — | Embebible (solo con `settings.embed.enabled`) |
