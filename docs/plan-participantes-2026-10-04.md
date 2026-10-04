@@ -179,7 +179,7 @@ el existente y lo dice.
 | 5 | Pestaña Participantes + huecos | bajo | **Hecha** (24 tests nuevos) |
 | 6 | Exponer `roster` en el `<select>` | bajo | **Hecha** (17 tests nuevos) |
 | 7 | Filtro por atributo + detalle | bajo | **Hecha** (17 tests nuevos) |
-| 8 | Agrupar por atributo + techo | medio | Pendiente |
+| 8 | Agrupar por atributo + techo | medio | **Hecha** (13 tests nuevos) |
 | 9 | Quién respondió, `responses.pii` | bajo | Pendiente |
 | 10 | Correo de invitaciones, opt-in | bajo | Pendiente |
 | 11 | Documentación y recuentos | — | Pendiente |
@@ -790,6 +790,79 @@ quitar.
 
 **Suite completa: 970, 0 fallos.**
 
+## Fase 8 — agrupar por atributo, con techo — **HECHA**
+
+La fase 7 dejó el filtro (una fila = un valor). Esta es la pregunta contraria: **¿se
+parece la gente de cada grupo?** Solo se agrupa cuando hay un atributo **elegido** y
+**no** hay valor filtrado: comparar los grupos de un atributo mientras se está
+mirando uno de ellos no dice nada — una columna con los datos de todos y el resto en
+cero — y quien quiere ese detalle lo tiene en la tabla de abajo.
+
+### Dos consultas fijas, no una por grupo
+
+El plan.initial hablaba de una consulta con `key_name, value, field_id, value,
+COUNT(*)`. Se acabó haciendo **dos**, y la razón es el techo:
+
+- `numericStatsByGroup()` trae, por grupo y campo, `COUNT`, `SUM`, y los tres cubos
+  del NPS (`SUM(CASE …)`). El promedio sale de `SUM/COUNT` en SQL y **no** de la
+  media de las medias: con un grupo de 2 personas y otro de 200 saldría otra cosa, y
+  no con un error sino con un número plausible.
+- `topValueCountsByGroup()` trae los `TOP_VALORES` más repetidos por grupo y campo,
+  con `ROW_NUMBER()` + `SUM() OVER (PARTITION BY …)`. El `total` de la ventana es el
+  de **todas** las respuestas del grupo, no el de las que han sobrevivido al tope:
+  con un recorte, el porcentaje de la celda sería una proporción de lo enseñado y
+  saldría **más alto**, que es la clase de número que parece un dato.
+
+Las dos son el mismo número de consultas que ya hacía `forForm()`, así que la
+decisión de `FieldAggregator.php:11-34` sigue valiendo. **Las preguntas se eligen
+antes de consultar** (`FILAS_MAX` primeras, comparables y no marcadas como PII): si
+el techo se aplicara después, serían dos consultas de 200 ids.
+
+### El techo, y por qué el «resto» es la resta
+
+`FormParticipant::valoresConConteo()` trae los valores **con su gente** y el total
+completo, sin `LIMIT`: el cubo de «resto» es `total − lo que ocupa cada columna`, y
+con solo los 200 valores del desplegable un atributo de 800 daría un resto que en
+realidad es la cola del `LIMIT`. `valuesOf()` (el desplegable del filtro) topa en PHP
+con ese mismo array.
+
+El resto **no se pinta si no queda nadie**: con 8 valores exactos la resta da 0 y una
+columna en cero diría que hay gente sin el atributo.
+
+Y en SQL el resto es `CASE WHEN pa.value IN (…) THEN pa.value ELSE NULL END`, no un
+centinela de texto tipo `__resto__`: un valor puede ser cualquier cosa que venga en
+un `.xlsx`, y `NULL` no puede colisionar con nada. `pa.form_id = s.form_id` va **en
+el `ON`** y no en el `WHERE`, porque es la condición de la unión.
+
+### Qué preguntas se comparan, y cuáles no
+
+| Tipo | En la comparación | Por qué |
+|---|---|---|
+| `number`, `scale`, `range`, `star` | sí | promedio y `n` por grupo |
+| `nps` | sí | NPS y sus tres cubos por grupo |
+| `select`, `radio` | sí | valor más repetido y proporción |
+| `checkbox` | **no** | lo guardado es la combinación entera en JSON: «el valor más repetido» sería la combinación, no lo que eligió la gente. Se podría descifrar en PHP, pero el recorte por combinaciones perdería las opciones que solo salen en combinaciones minoritarias y su porcentaje saldría mal |
+| `matrix`, `ranking` | **no** | el valor es un JSON con la respuesta entera: el «valor más repetido» sería literalmente la respuesta |
+| `text`, `textarea`, `email`, `date`, `file` | no | no tienen métrica comparable |
+
+Las marcadas como PII **no se consultan** si quien mira no tiene `responses.pii` (la
+misma lista que decide el resto de la pantalla). El test comprueba los dos lados: sin
+permiso la pregunta no sale, con permiso sí.
+
+### Lo que se encontró de paso
+
+- **El segundo enlace de CSV se armaba a mano** con `from`/`to` y se olvidaba del
+  filtro por atributo: un archivo que no corresponde a lo que hay en pantalla, y solo
+  se nota al abrirlo. Ahora los dos usan el mismo `$qsAnalytics`. Es una regresión de
+  la fase 7 que salió al leer la vista para la fase 8, y por eso el test vive en el
+  fichero de la fase 8: **«se arregló y se comprobó» en una superficie no es nada
+  sobre la otra.**
+- **La primera columna va con `sticky`.** Con 9 columnas el `.table-responsive` la
+  desplaza y el nombre de la pregunta es la única columna que tiene que estar a la
+  vista; sin fondo, las celdas que pasan por debajo se ven a través del texto.
+
+**Suite completa: 983, 0 fallos.**
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -828,7 +901,7 @@ quitar.
 | 5 | **Hecha** — `b9f131e`, 936 tests |
 | 6 | **Hecha** — `2f715db`, 953 tests |
 | 7 | **Hecha** — 970 tests |
-| 8 | Pendiente |
+| 8 | **Hecha** — 983 tests |
 | 9 | Pendiente |
 | 10 | Pendiente |
 | 11 | Pendiente |

@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 87 archivos, 970 métodos, ~5 min;
+- Suite completa: `php scripts/test.php` → 88 archivos, 983 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **51 de los 87 archivos tocan la BD real** (los que llaman
+- **52 de los 88 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -427,6 +427,39 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - El `total` del envelope del CSV es `countByFiltered()` con el mismo filtro: si
   solo se filtrara el `foreach`, el archivo tendría una fila y su envoltorio
   anunciaría cinco.
+
+**La comparación por atributo (fase 8)**
+
+- Solo se agrupa con **clave elegida y sin valor filtrado**: comparar los grupos de un
+  atributo mientras se mira uno de ellos da una columna con todos los datos y el resto
+  en cero. Quien quiere ese detalle lo tiene en la tabla de abajo, que ya trae los
+  atributos de cada respuesta.
+- **El techo son tres números** (`FieldAggregator::GRUPOS_MAX`/`FILAS_MAX`/
+  `TOP_VALORES`) y las filas se eligen **antes** de consultar: si el tope se aplicara
+  después, las dos consultas fijas serían de 200 ids. Un `.xlsx` con 800 sedes son 9
+  columnas, no 800.
+- **El «resto» es una resta, no un centinela**: `total − lo que ocupa cada columna`, y
+  por eso `valoresConConteo()` no trae `LIMIT` (el de `valuesOf()` son 200 valores del
+  **desplegable**, y se topa en PHP sobre el mismo array). En SQL el resto es
+  `CASE WHEN pa.value IN (…) THEN pa.value ELSE NULL END` y no `__resto__`: un valor
+  puede ser literalmente eso. «Resto» **no se pinta si no queda nadie** (columna en
+  cero = decir que hay gente sin el atributo).
+- **El `total` de una celda viene de `SUM() OVER`, no de sumar lo que sobrevivió al
+  tope**: si no, «2 de 5» saldría 40 % donde la verdad es «2 de 12» = 17 %, y dos
+  grupos con la misma proporción se verían distintos. El `WHERE rn <= N` va **fuera**
+  del nivel de la ventana.
+- **El promedio sale de `SUM/COUNT` en SQL**, nunca de la media de las medias: con un
+  grupo de 2 y otro de 200 sale otro número, y plausible.
+- **`checkbox`, `matrix` y `ranking` no se comparan**: su valor guardado es un JSON con
+  la respuesta entera, así que «el valor más repetido» sería la combinación o la
+  respuesta literal. No es un olvido; la métrica no es la que se cree.
+- Las PII **no se consultan** si quien mira no tiene `responses.pii` (misma lista que
+  decide el resto de la pantalla): si se consultaran, esta tabla sería el canal limpio
+  de las otras tres.
+- **Los dos enlaces de CSV usan el mismo `$qsAnalytics`**. El segundo se armaba a mano
+  con `from`/`to` y se olvidaba del filtro de atributo (fase 7), que solo se nota al
+  abrir el archivo; lo vigila
+  `RosterAnalyticsGroupTest::testLosDosEnlacesDeCsvLlevanElFiltroDeAtributo`.
 
 **Elegir con qué se identifica (fase 6)**
 
@@ -1077,11 +1110,11 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 362 comprobaciones manuales en 24 bloques (A–X,
+- `docs/pruebas-funcionales.md`: 379 comprobaciones manuales en 25 bloques (A–Y,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
-  participantes V, el identificador de la lista W y el filtro de la analítica
-  por atributo X), para
+  participantes V, el identificador de la lista W, el filtro de la analítica
+  por atributo X y la comparación por atributo con su techo Y), para
   detectar problemas que la suite no ve (teclado, maquetación, flujo en
   pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la lista
   mínima.

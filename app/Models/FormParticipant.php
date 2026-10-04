@@ -75,6 +75,9 @@ class FormParticipant
      * cero). Con 16 caracteres de 31 sale a unos 79 bits, que es de sobra para una
      * lista de miles.
      */
+    /** Tope de opciones del desplegable de valores del filtro de la analítica. */
+    public const VALORES_FILTRO = 200;
+
     private const ALFABETO = '23456789ABCDEFGHJKMNPQRSTWXYZ';
 
     private static function db(): Database
@@ -996,10 +999,42 @@ class FormParticipant
      *
      * @return list<string>
      */
-    public static function valuesOf(int $formId, string $keyName, int $limite = 200): array
+    public static function valuesOf(int $formId, string $keyName, int $limite = self::VALORES_FILTRO): array
+    {
+        // El tope se aplica AQUÍ y no con un `LIMIT` de SQL: la misma consulta
+        // necesita además el total de personas para el «resto» de la comparación, y
+        // un `LIMIT` haría que ese total no se pudiera saber (y se acaba
+        // re-preguntando con una segunda consulta que puede no cuadrar).
+        return array_slice(
+            array_keys(self::valoresConConteo($formId, $keyName)['valores']),
+            0,
+            max(1, $limite)
+        );
+    }
+
+    /**
+     * Los valores de un atributo con **cuántas personas** los tienen, y el total de
+     * personas que lo tienen (sin tope de valores).
+     *
+     * Es una consulta, no dos, y el total viene de la misma: el agrupar en la
+     * analítica necesita el `n` de cada grupo **y** el `n` de «los que no están en
+     * ningún grupo de la tabla», que es la resta del total. Pedirlos por separado
+     * serían dos consultas para el mismo `GROUP BY`, y un total que se calcula con
+     * otra consulta puede no cuadrar con la suma de los grupos.
+     *
+     * **No se topa en SQL** (a diferencia de `valuesOf()`, que topa en PHP): un
+     * atributo libre con 800 valores son 800 filas de «una persona», que es nada,
+     * y el que decide qué grupos se teach es el agregador, no la base de datos.
+     * El `LIMIT` de SQL además haría imposible saber cuántos valores hay detrás
+     * del último.
+     *
+     * @return array{total:int, valores:array<string,int>} valor => personas, del
+     *         más frecuente al menos y con la etiqueta tal como está guardada
+     */
+    public static function valoresConConteo(int $formId, string $keyName): array
     {
         if (trim($keyName) === '') {
-            return [];
+            return ['total' => 0, 'valores' => []];
         }
 
         $filas = self::db()->fetchAll(
@@ -1008,20 +1043,23 @@ class FormParticipant
              JOIN form_participants p ON p.id = pa.participant_id
              WHERE pa.form_id = :fid AND pa.key_name = :k
              GROUP BY pa.value
-             ORDER BY c DESC, pa.value ASC
-             LIMIT ' . max(1, $limite),
+             ORDER BY c DESC, pa.value ASC',
             ['fid' => $formId, 'k' => trim($keyName)]
         );
 
-        $out = [];
+        $valores = [];
+        $total = 0;
         foreach ($filas as $fila) {
             $valor = (string) ($fila['v'] ?? '');
-            if ($valor !== '') {
-                $out[] = $valor;
+            if ($valor === '') {
+                continue;
             }
+            $c = (int) ($fila['c'] ?? 0);
+            $valores[$valor] = $c;
+            $total += $c;
         }
 
-        return $out;
+        return ['total' => $total, 'valores' => $valores];
     }
 
     /**

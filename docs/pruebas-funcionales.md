@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 970 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 983 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,11 +23,12 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**362 pruebas** en 24 bloques: A–Q, las regresiones (R) de fallos que ya
+**379 pruebas** en 25 bloques: A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
 la lista de acceso (U), la pestaña de participantes (V), el identificador del
-listado (W) y el filtro de la analítica por atributo (X).
+listado (W), el filtro de la analítica por atributo (X) y la comparación por
+atributo con su techo (Y).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -644,6 +645,37 @@ Para llegar: panel → un formulario en «Solo el listado de participantes» →
 | X12 | Con el filtro puesto, pulsar «Exportar CSV» | El archivo trae **solo** las respuestas del grupo, y su número de filas coincide con el indicador | A | |
 | X13 | Un formulario de listado con **muchos** valores en un atributo libre | El desplegable no se hace interminable (está topado) y sigue siendo usable | M | |
 | X14 | Poner un filtro de fechas **y** un de atributo | Se acumulan: el CSV y la tabla salen con los dos a la vez | A | |
+
+
+## Y. Comparar la analítica por un atributo del listado (fase 8, 2026-10-04)
+
+La tarjeta que responde «¿se parece la gente de cada grupo?». Lo que se mira es que
+**cada celda sea la de su columna** y que el techo no mienta: con un `.xlsx` de una
+sola hoja el atributo puede tener 800 valores, y ahí lo interesante no es el número
+sino que la pantalla siga siendo usable y que el «resto» sea de verdad el resto.
+
+Para llegar: panel → un formulario en «Solo el listado de participantes» → *Analítica*
+→ elegir un atributo y pulsar «Filtrar» (**sin** elegir valor).
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| Y1 | Elegir atributo y pulsar «Filtrar» sin elegir valor | Sale una tarjeta «Comparar por …» **encima** del detalle, con una columna por valor y su «n = personas» | A | |
+| Y2 | La tabla de comparación con un campo numérico | Cada columna tiene **su** promedio (el de su grupo), no el del formulario entero | A | |
+| Y3 | Un campo NPS | Cada columna sale con su NPS y su «n = …» | A | |
+| Y4 | Un desplegable de opciones | Cada columna dice el valor más repetido y **su proporción de todas las respuestas del grupo** | A | |
+| Y5 | Con un valor filtrado puesto | La tarjeta **desaparece**: comparar los grupos de un atributo mientras se mira uno de ellos no dice nada | A | |
+| Y6 | Un grupo con dos respuestas y otro con doscientas | Los promedios son los de cada uno (no una media de medias), y se pueden comparar | A | |
+| Y7 | Alguien de la lista que no ha respondido | Su columna sale con «—», **no** con un 0,00 | A | |
+| Y8 | Un atributo libre con **más de ocho** valores distintos | Sale la última columna como «Resto», con su «n»; el número de columnas no crece con el `.xlsx` | A | |
+| Y9 | Ese mismo atributo, con **ocho** valores justos | **No** hay columna «Resto»: no queda nadie y una columna en cero diría que hay gente sin el atributo | A | |
+| Y10 | Una tabla con nueve columnas y una ventana estrecha | El nombre de la pregunta **se queda pegado al borde** al desplazar, y no se ve texto de otras celdas por detrás | M | |
+| Y11 | Una pregunta de opción múltiple, de matriz o de ranking | **No** salen en la comparación (siguen en su tarjeta de arriba); su valor guardado es un JSON con la respuesta entera | A | |
+| Y12 | Una pregunta marcada como dato personal, entrando **sin** el permiso | No sale en la comparación | A | |
+| Y13 | La misma pregunta entrando **con** el permiso | Sale, con sus números | A | |
+| Y14 | Con un filtro de fechas puesto y la comparación abierta | Los promedios son solo de las respuestas del rango, no de todas | A | |
+| Y15 | El botón «Descargar CSV» de la tarjeta de **detalle**, con filtro de atributo y fechas | El archivo trae **solo** ese grupo y ese rango (los dos botones llevan lo mismo) | A | |
+| Y16 | Un formulario sin lista importada | No hay tarjeta de comparación ni ningún desplegable de atributo | A | |
+| Y17 | Una lista importada de 800 filas con la columna «Sede» vacía para la mayoría | Sale «Resto» con casi toda la gente, y la pantalla no se arrastra | M | |
 
 
 ## Cuando encuentres un fallo

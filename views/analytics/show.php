@@ -264,12 +264,91 @@ $qsAnalytics = http_build_query(array_filter([
             <?php endif; ?>
         <?php endforeach; ?>
 
+        <?php /* Fase 8 — Comparar por atributo. Va antes del detalle porque es
+               una lectura de la MISMA tabla de abajo en otra forma (por columnas):
+               primero la vista de conjunto y luego el detalle que la respalda. */ ?>
+        <?php if (!empty($agrupacion['filas'])): ?>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h3 class="h6 fw-bold mb-1">Comparar por <?= View::escape($agrupacion['label']) ?></h3>
+                        <span class="text-muted small">Una columna por valor del atributo del listado. «n» son las personas que lo tienen, no las respuestas.</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0 app-stat-matrix app-group-table">
+                            <thead>
+                                <tr>
+                                    <th class="small text-muted">Pregunta</th>
+                                    <?php foreach ($agrupacion['grupos'] as $grupo): ?>
+                                        <th class="small fw-semibold text-center"<?= $grupo['clave'] === '' ? ' title="' . View::escape((string) ($grupo['nota'] ?? '')) . '"' : '' ?>>
+                                            <?= View::escape($grupo['label']) ?>
+                                            <div class="text-muted fw-normal">n = <?= (int) $grupo['n'] ?></div>
+                                        </th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($agrupacion['filas'] as $fila): ?>
+                                <?php $esOpcion = $fila['tipo'] === 'select' || $fila['tipo'] === 'radio'; ?>
+                                <tr>
+                                    <th scope="row" class="small fw-normal text-start"><?= View::escape($fila['field']['label']) ?></th>
+                                    <?php foreach ($fila['celdas'] as $celda): ?>
+                                        <td class="text-center">
+                                            <?php if ($esOpcion): ?>
+                                                <?php if ($celda['items'] === []): ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php else: ?>
+                                                    <?php foreach ($celda['items'] as $item): ?>
+                                                        <div class="small"><?= View::escape($item['label']) ?> <span class="text-muted"><?= (int) $item['c'] ?> (<?= (int) $item['pct'] ?> %)</span></div>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            <?php elseif ($fila['tipo'] === 'nps'): ?>
+                                                <?php if ($celda['nps'] === null): ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php else: ?>
+                                                    <div class="fw-semibold <?= $celda['nps'] >= 50 ? 'text-success' : ($celda['nps'] >= 0 ? 'text-warning' : 'text-danger') ?>"><?= (int) $celda['nps'] ?></div>
+                                                    <div class="text-muted small">n = <?= (int) $celda['n'] ?></div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <?php if ($celda['avg'] === null): ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php else: ?>
+                                                    <div class="fw-semibold"><?= number_format((float) $celda['avg'], 2) ?></div>
+                                                    <div class="text-muted small">n = <?= (int) $celda['n'] ?></div>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php /* Los techos no se esconden: una tabla con 8 columnas y un
+                           «Resto» necesita decir que el resto existe, o parece el
+                           listado entero. */ ?>
+                    <p class="text-muted small mb-0 mt-3">
+                        <?= count($agrupacion['filas']) ?> de <?= count($answerableFields) ?> preguntas.
+                        Se comparan promedio, NPS y la respuesta más repetida; el resto está en su tarjeta.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="h6 fw-bold m-0">Detalle de respuestas <?= $total > 0 ? '(' . $total . ')' : '' ?></h3>
-                        <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $from !== '' || $to !== '' ? '?from=' . urlencode($from) . '&to=' . urlencode($to) : '' ?>" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-download me-1"></i>Descargar CSV</a>
+                        <?php /* El MISMO `$qsAnalytics` que el botón de arriba. Este
+                              enlace se reconstruía a mano con `from`/`to` y se
+                              olvidaba del filtro por atributo: un archivo que no
+                              corresponde a lo que hay en pantalla, y solo se
+                              nota al abrirlo. Los dos query strings se componen en
+                              un solo sitio a propósito. */ ?>
+                        <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-download me-1"></i>Descargar CSV</a>
                     </div>
                     <?php if ($total === 0): ?>
                         <div class="text-center py-5 text-muted">

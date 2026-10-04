@@ -200,6 +200,202 @@ class Answer
         return implode(',', $marcas);
     }
 
+    /**
+     * Fase 8 — promedios y NPS **por grupo de atributo del listado**, en una
+     * consulta por camino.
+     *
+     * La dimensión de grupo se mete con un `CASE` y no con un filtro:
+     *
+     * ```sql
+     * CASE WHEN pa.value IN (:g0, :g1, …) THEN pa.value ELSE NULL END AS grupo
+     * ```
+     *
+     * Eso es **el techo de la fase**. Los grupos que se enseñan son los N más
+     * frecuentes y todo lo demás cae en un cubo `NULL` («resto»): un atributo libre
+     * con 800 valores son 9 grupos en memoria, no 800, y sin `LIMIT` en la consulta
+     * (los agregados de la analítica no los traen, y un `LIMIT` por celda no
+     * existe). Y el `NULL` es mejor que un centinela de texto tipo `__resto__`,
+     * porque un valor puede ser cualquier cosa que venga en un `.xlsx`.
+     *
+     * `pa.form_id = s.form_id` va **en el `ON`** y no en el `WHERE` a propósito: es
+     * la condición de la unión, y comprobarla por respuesta es lo que impide que
+     * un listado de otro formulario se cuele en los grupos.
+     *
+     * El filtro numérico (`REGEXP`) es el MISMO de `numerico()` en PHP, y los tres
+     * cubos del NPS (`prom`/`pasi`/`det`) son `SUM(CASE …)`: son tres números de más
+     * por fila y **evitan una tercera consulta** solo para el NPS, que es
+     * precisamente la métrica que se quiere comparar entre grupos.
+     *
+     * @param int[]    $fieldIds    campos numéricos a comparar
+     * @param string[] $groupValues valores que tienen columna propia (los N + resto)
+     *
+     * @return array<int, array<string, array{n:int,suma:float,prom:int,pasi:int,det:int}>>
+     *         field_id => grupo => agregado. El «resto» es la clave `''`.
+     */
+    public static function numericStatsByGroup(
+        int $formId,
+        array $fieldIds,
+        string $keyName,
+        array $groupValues,
+        string $from = '',
+        string $to = '',
+        ?array $atr = null
+    ): array {
+        $ids = self::normalizarIds($fieldIds);
+        if ($ids === [] || $groupValues === [] || trim($keyName) === '') {
+            return [];
+        }
+
+        [$where, $params] = self::whereFormulario($formId, $from, $to, $atr);
+        $where .= ' AND pa.key_name = :grp_key';
+        $params['grp_key'] = trim($keyName);
+        $where .= ' AND a.field_id IN (' . self::marcadoresDeCampos($ids, 'grp', $params) . ')';
+        $where .= " AND a.value REGEXP '^-?[0-9]+(\\.[0-9]+)?$'";
+
+        $sql = <<<SQL
+            SELECT a.field_id,
+                   %s AS grupo,
+                   COUNT(*) AS c,
+                   SUM(a.value + 0) AS suma,
+                   SUM(CASE WHEN a.value REGEXP '^[0-9]+$' AND a.value + 0 >= 9 THEN 1 ELSE 0 END) AS prom,
+                   SUM(CASE WHEN a.value REGEXP '^[0-9]+$' AND a.value + 0 BETWEEN 7 AND 8 THEN 1 ELSE 0 END) AS pasi,
+                   SUM(CASE WHEN a.value REGEXP '^[0-9]+$' AND a.value + 0 <= 6 THEN 1 ELSE 0 END) AS det
+            FROM answers a
+            JOIN submissions s ON s.id = a.submission_id
+            JOIN form_participant_attrs pa ON pa.participant_id = s.participant_id AND pa.form_id = s.form_id
+            {$where}
+            GROUP BY a.field_id, grupo
+            SQL;
+
+        $filas = self::db()->fetchAll(sprintf($sql, self::expresionGrupo($groupValues, $params)), $params);
+
+        $out = [];
+        foreach ($filas as $fila) {
+            $grupo = (string) ($fila['grupo'] ?? '');
+            $out[(int) $fila['field_id']][$grupo] = [
+                'n'    => (int) ($fila['c'] ?? 0),
+                'suma' => (float) ($fila['suma'] ?? 0),
+                'prom' => (int) ($fila['prom'] ?? 0),
+                'pasi' => (int) ($fila['pasi'] ?? 0),
+                'det'  => (int) ($fila['det'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Fase 8 — los valores más repetidos de cada campo en cada grupo de atributo.
+     *
+     * Es la forma «una respuesta = una fila» que usan las barras de la analítica,
+     * pero **con el tope puesto en SQL** por el motivo del techo: la celda solo
+     * necesita el valor que gana, y traerlos todos convertiría una casilla de
+     * opción múltiple con 1 023 combinaciones en 1 023 filas por grupo.
+     *
+     * El `ROW_NUMBER()` y el `SUM() OVER (...)` van en el MISMO nivel, sobre el
+     * subconjunto ya agrupado, y el `WHERE rn <= N` en el de fuera. Ese orden es el
+     * que hace que `total` sea el total real y no el de las filas que han
+     * sobrevivido al tope: si `total` se calculara después del recorte, el
+     * porcentaje de la celda sería una proporción de lo que se enseñó en vez de lo
+     * que la gente respondió, y saldría **más alto** —un número inflado que parece
+     * un dato—.
+     *
+     * @param int[]    $fieldIds    campos de opción única
+     * @param string[] $groupValues valores que tienen columna propia
+     *
+     * @return array<int, array<string, array{total:int, valores:list<array{value:string,c:int}>>>
+     */
+    public static function topValueCountsByGroup(
+        int $formId,
+        array $fieldIds,
+        string $keyName,
+        array $groupValues,
+        string $from = '',
+        string $to = '',
+        ?array $atr = null,
+        int $topPorGrupo = 5
+    ): array {
+        $ids = self::normalizarIds($fieldIds);
+        if ($ids === [] || $groupValues === [] || trim($keyName) === '') {
+            return [];
+        }
+
+        [$where, $params] = self::whereFormulario($formId, $from, $to, $atr);
+        $where .= ' AND pa.key_name = :grp_key';
+        $params['grp_key'] = trim($keyName);
+        $where .= ' AND a.field_id IN (' . self::marcadoresDeCampos($ids, 'top', $params) . ')';
+        $params['grp_top'] = max(1, $topPorGrupo);
+
+        $sql = <<<SQL
+            SELECT t.field_id, t.grupo, t.value, t.c, t.total
+            FROM (
+                SELECT g.field_id, g.grupo, g.value, g.c,
+                       ROW_NUMBER() OVER (PARTITION BY g.field_id, g.grupo ORDER BY g.c DESC, g.value ASC) AS rn,
+                       SUM(g.c) OVER (PARTITION BY g.field_id, g.grupo) AS total
+                FROM (
+                    SELECT a.field_id AS field_id,
+                           %s AS grupo,
+                           a.value AS value,
+                           COUNT(*) AS c
+                    FROM answers a
+                    JOIN submissions s ON s.id = a.submission_id
+                    JOIN form_participant_attrs pa ON pa.participant_id = s.participant_id AND pa.form_id = s.form_id
+                    {$where}
+                    GROUP BY a.field_id, grupo, a.value
+                ) g
+            ) t
+            WHERE t.rn <= :grp_top
+            SQL;
+
+        $filas = self::db()->fetchAll(sprintf($sql, self::expresionGrupo($groupValues, $params, 'top')), $params);
+
+        $out = [];
+        foreach ($filas as $fila) {
+            $campo = (int) $fila['field_id'];
+            $grupo = (string) ($fila['grupo'] ?? '');
+            if (!isset($out[$campo][$grupo])) {
+                // El total viene de la ventana y es el MISMO en todas las filas del
+                // grupo, así que se lee de la primera. Si se calculara sumando los
+                // valores que sobreviven al tope, el porcentaje de la celda sería
+                // una proporción de lo enseñado y saldría más alto.
+                $out[$campo][$grupo] = ['total' => (int) ($fila['total'] ?? 0), 'valores' => []];
+            }
+            $out[$campo][$grupo]['valores'][] = [
+                'value' => (string) ($fila['value'] ?? ''),
+                'c'     => (int) ($fila['c'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * La expresión que reparte a cada respuesta en su columna: los valores de la
+     * lista con su propio nombre y todo lo demás en `NULL` (el «resto»).
+     *
+     * Los valores viajan **enlazados** y el nombre de la columna sale de la propia
+     * tabla: no hay forma de meter SQL del `.xlsx` del dueño por aquí.
+     */
+    private static function expresionGrupo(array $groupValues, array &$params, string $prefijo = 'grp'): string
+    {
+        return 'CASE WHEN pa.value IN (' . self::marcadoresDeGrupos($groupValues, $prefijo, $params) . ')'
+            . ' THEN pa.value ELSE NULL END';
+    }
+
+    /** Marcadores del `IN (...)` de los valores de grupo. */
+    private static function marcadoresDeGrupos(array $values, string $prefijo, array &$params): string
+    {
+        $marcas = [];
+        $i = 0;
+        foreach ($values as $valor) {
+            $params[$prefijo . '_g' . $i] = (string) $valor;
+            $marcas[] = ':' . $prefijo . '_g' . $i;
+            $i++;
+        }
+
+        return implode(',', $marcas);
+    }
+
     public static function create(int $submissionId, int $fieldId, string $value): void
     {
         self::db()->execute(

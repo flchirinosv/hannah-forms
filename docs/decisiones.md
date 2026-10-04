@@ -1160,3 +1160,69 @@ formulario.
 nadie los ha pedido ver sin haber filtrado. Un guion en vez de un hueco porque en un
 `table-hover` un hueco vacío no se lee, y «no lo rellenó» y «se olvidó la columna» se
 confunden.
+
+## Fase 8: comparar por atributo — el techo es la decisión, y el resto es una resta
+
+**El porqué de agrupar solo con la clave elegida y sin valor:** comparar los grupos de
+un atributo mientras se está mirando uno de ellos no dice nada — una columna con los
+datos de todos y el resto en cero — y quien quiere ese detalle lo tiene en la tabla de
+abajo, que además trae los atributos de cada respuesta. Son dos lecturas de la misma
+tabla y se eligen por el filtro que ya existía, no con un interruptor nuevo.
+
+**El porqué de dos consultas y no una:** el plan inicial pensaba en una consulta con
+`key_name, value, field_id, value, COUNT(*)`. Se acabó en dos porque el techo obliga.
+Los promedios necesitan `SUM`/`COUNT` por grupo (la media de las medias no es la media,
+y sale un número plausible, no un error), y el «valor más repetido» necesita un tope
+**por celda**, que en esa consulta única no se puede poner sin convertir 1 023
+combinaciones de una casilla múltiple en 1 023 filas por grupo. Son las mismas dos
+consultas fijas que ya hacía `forForm()`, así que la decisión de `FieldAggregator` de
+no multiplicar por preguntas ni por grupos sigue valiendo.
+
+**El porqué de que el total venga de `SUM() OVER` y no de sumar lo que sobrevivió:** el
+porcentaje de la celda necesita el denominador de **todas** las respuestas del grupo.
+Con un campo de 6 opciones en un grupo de 12 respuestas, el recorte deja 5 valores y
+sumarlos daría «2 de 5 = 40 %» donde la verdad es «2 de 12 = 17 %». El número inflado
+no se distingue de uno bueno, y dos grupos con la misma proporción se verían distintos.
+Por eso `total` se lee de la ventana del nivel de arriba y el `WHERE rn <= N` va en el
+de fuera.
+
+**El porqué de `valoresConConteo()` sin `LIMIT`:** el cubo de resto es
+`total − lo que ocupa cada columna`. Con el `LIMIT` de 200 valores del desplegable, un
+atributo de 800 daría un resto que en realidad es la cola del `LIMIT`, y el total
+dejaría de cuadrar con la suma de las columnas. El tope del desplegable se aplica ahora
+en PHP sobre el mismo array, que además es lo que ya hace `valuesOf()`.
+
+**El porqué de que «Resto» no se pinte vacío:** con 8 valores exactos la resta da 0, y
+una columna en cero con un «n = 0» diría que hay gente sin el atributo. No hay nadie, y
+eso es un dato distinto.
+
+**El porqué de `NULL` y no de un centinela de texto:** los valores vienen de un `.xlsx`
+que sube el dueño. Un valor puede ser literalmente `__resto__`, y `NULL` no puede
+colisionar con nada. Por el mismo motivo `pa.form_id = s.form_id` va **en el `ON`** y
+no en el `WHERE`: es la condición de la unión, y comprobarla por respuesta es lo que
+impide que un listado de otro formulario se cuele en los grupos.
+
+**El porqué de dejar fuera `checkbox`, `matrix` y `ranking`:** los tres guardan un JSON
+con la respuesta entera. «El valor más repetido» de una casilla múltiple es la
+combinación, no lo que eligió la gente, y el de una matriz es literalmente la
+respuesta. Se podría descifrar en PHP, pero el recorte por combinaciones perdería las
+opciones que solo aparecen en combinaciones minoritarias y su porcentaje saldría mal —
+que es peor que no tener la fila. No es un olvido ni una decisión de estilo: es que
+la métrica no es la que se cree.
+
+**El porqué de que las PII no se consulten:** la comparación es una de las cuatro
+columnas de la analítica que ya se enmascaran sin el permiso. Si aquí se consultaran,
+esta pantalla sería el canal limpio de las otras tres. Y la lista de tipos la decide el
+controlador, no la vista: una lista vacía es la forma de decir «este usuario puede
+verlos».
+
+**El porqué de la primera columna `sticky`:** con 9 columnas la tabla se desplaza en
+horizontal dentro del `.table-responsive`, y el nombre de la pregunta es la única
+columna que hay que tener siempre a la vista. El fondo es el de la tabla porque sin él
+las celdas que pasan por debajo se ven a través del texto.
+
+**El porqué de arreglar aquí el segundo enlace de CSV:** se armaba a mano con
+`from`/`to` y se olvidaba del filtro por atributo, que la fase 7 acababa de añadir. Es
+una regresión de la fase 7 que salió al leer la vista para la fase 8, y el test vive en
+el fichero de la fase 8 a propósito: la comprobación que se añadió cuando se
+encontró, en la misma superficie donde se encontró.

@@ -1759,6 +1759,22 @@ body {
 .app-stat-matrix th, .app-stat-matrix td { text-align: center; }
 .app-stat-matrix th:first-child { text-align: left; }
 
+/* Fase 8 — Comparación por atributo del listado.
+   Con 8 grupos más «Resto» la tabla se va de ancho y el `.table-responsive` la
+   desplaza en horizontal: el nombre de la pregunta es la única columna que hay
+   que tener siempre a la vista (si no, se lee una celda sin saber qué pregunta
+   es), así que la primera columna se pega al borde con `sticky`.
+   El fondo es el de la tabla y NO transparente: sin él, las celdas que pasan por
+   debajo se ven a través del texto. */
+.app-group-table th[scope="row"] {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bs-table-bg, #fff);
+    box-shadow: 1px 0 0 var(--bs-table-border-color, #dee2e6);
+}
+.app-group-table thead th { vertical-align: bottom; }
+
 /* P8 — Resultados de quiz en el thanks */
 .app-quiz-badge { width: 48px; height: 48px; font-size: 1.1rem; box-shadow: 0 .25rem .6rem rgba(0,0,0,.15); }
 .app-quiz-bar { border-radius: 4px; background: #e9ecef; }

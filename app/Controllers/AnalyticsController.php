@@ -105,6 +105,34 @@ class AnalyticsController
             $atr
         );
 
+        // Fase 8 — Comparar por un atributo del listado. Solo se agrupa cuando hay
+        // una clave ELEGIDA y NO hay valor filtrado: comparar los grupos de un
+        // atributo mientras se está mirando uno de ellos no dice nada (una columna
+        // con los datos de todos y el resto en cero), y quien quiere ese detalle
+        // lo tiene en la tabla de abajo.
+        //
+        // Las columnas salen de `gruposDeAtributo()`, que ya aplican los techos (los N
+        // más frecuentes + «Resto»), y `$atr` viaja igualmente a las consultas por
+        // si algún día se decide pintar las dos cosas: los números tienen que
+        // salir del mismo subconjunto que el resto de la pantalla.
+        $agrupacion = [];
+        if ($atrClave !== null && $atr === null) {
+            $atrLabel = (string) ($atrClave['label'] ?? $atrClave['key_name'] ?? '');
+            $agrupacion = FieldAggregator::forFormByGroup(
+                $formId,
+                $campos,
+                FieldAggregator::gruposDeAtributo($formId, (string) $atrClave['key_name']),
+                (string) $atrClave['key_name'],
+                (string) $from,
+                (string) $to,
+                $piiTypes,
+                $atr
+            );
+            if ($agrupacion !== []) {
+                $agrupacion['label'] = $atrLabel;
+            }
+        }
+
         // Progreso diario (migrado a Models)
         $daily = Submission::dailyStats($formId, (string) $from, (string) $to, $atr);
 
@@ -132,6 +160,10 @@ class AnalyticsController
             'atr'         => $atr,
             'atrClave'    => $atrClave,
             'atrValues'   => $valores,
+            // Fase 8 — la comparación por atributo, o `[]` si no se puede/puede no
+            // agrupar: un formulario sin listado, sin atributo elegido, con un
+            // valor filtrado, o cuyas preguntas no son comparables.
+            'agrupacion'  => $agrupacion,
             'attrsByPid'  => FormParticipant::atributosDe(array_map(
                 static fn(array $s): int => (int) ($s['participant_id'] ?? 0),
                 $submissions

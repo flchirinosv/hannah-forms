@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Answer;
+use App\Models\FormParticipant;
 use App\Models\Submission;
 
 /**
@@ -96,6 +97,224 @@ final class FieldAggregator
         }
 
         return $stats;
+    }
+
+    /**
+     * Fase 8: los TEchos de la comparación por atributo.
+     *
+     * Son tres números y están juntos porque los tres responde a la misma
+     * pregunta («¿qué pasa con un atributo libre?»): un `.xlsx` con 800 sedes
+     * distintas no puede traer 800 columnas.
+     */
+    public const GRUPOS_MAX = 8;
+    public const FILAS_MAX  = 20;
+    public const TOP_VALORES = 5;
+
+    /** Un grupo del que no se teach su nombre: el cubo de «todo lo demás». */
+    public const CLAVE_RESTO = '';
+
+    /**
+     * Fase 8 — Las columnas de la comparación: los `GRUPOS_MAX` valores más
+     * frecuentes del atributo y un cubo «Resto» con lo que queda.
+     *
+     * El cubo se calcula con la **resta** del total menos lo que ocupa cada
+     * columna, y por eso `valoresConConteo()` necesita traer el total entero (sin
+     * `LIMIT`): con solo los 200 valores del desplegable, un atributo de 800
+     * daría un resto negativo o, peor, un resto que en realidad es la cola del
+     * `LIMIT` y no del atributo.
+     *
+     * Y **«Resto» no se pinta si no queda nadie**: con 8 valores exactos la resta
+     * da 0, y una columna en cero diría que hay gente sin el atributo.
+     */
+    public static function gruposDeAtributo(int $formId, string $keyName): array
+    {
+        $conteo = FormParticipant::valoresConConteo($formId, $keyName);
+
+        $grupos = [];
+        $enColumnas = 0;
+        foreach ($conteo['valores'] as $valor => $n) {
+            if (count($grupos) >= self::GRUPOS_MAX) {
+                break;
+            }
+            $grupos[] = ['clave' => (string) $valor, 'label' => (string) $valor, 'n' => $n];
+            $enColumnas += $n;
+        }
+
+        $resto = $conteo['total'] - $enColumnas;
+        if ($resto > 0) {
+            $grupos[] = [
+                'clave' => self::CLAVE_RESTO,
+                'label' => 'Resto',
+                'n'     => $resto,
+                'nota'  => 'Los ' . $resto . ' valores menos frecuentes, agrupados.',
+            ];
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * Fase 8 — Una fila por pregunta comparable, con una celda por grupo.
+     *
+     * Sigue el mismo principio que `forForm()`: **DOS consultas fijas** para todo
+     * el formulario (`numericStatsByGroup()` y `topValueCountsByGroup()`) y el
+     * resto de la aritmética en PHP. Una consulta por grupo y otra por pregunta
+     * serían 9 × 20 = 180 SELECTs con la misma forma de filtro, que es
+     * exactamente el problema que este servicio existe para no tener.
+     *
+     * Las preguntas se eligen ANTES de consultar, y solo se consultan las que se
+     * van a pintar (las `FILAS_MAX` primeras): una lista de 200 preguntas no
+     * puede convertir dos consultas fijas en dos consultas de 200 ids.
+     *
+     * **Qué preguntas son comparables y por qué el resto no aparece**:
+     *
+     *  - numéricas (`number`, `scale`, `range`, `star`): promedio y cuántas
+     *    respuestas hay en cada grupo.
+     *  - `nps`: además el NPS y sus tres cubos.
+     *  - `select`/`radio`: el valor más repetido y con qué proporción.
+     *  - `checkbox` **no**: lo que se guarda es la combinación entera en JSON
+     *    (`["A","B"]`), así que «el valor más repetido» sería la combinación y no
+     *    la respuesta a «qué eligen más». Se podría descifrar en PHP, pero el
+     *    recorte por combinaciones (que es lo que se trae) perdería la cuenta de
+     *    las opciones que solo salen en combinaciones minoritarias, y un
+     *    porcentaje de esas sale mal. Se queda fuera de la comparación y sigue
+     *    estando en su gráfico de arriba, que sí lo hace bien.
+     *  - `matrix`/`ranking`: el valor es un JSON con toda la respuesta, por lo
+     *    mismo. Un «valor más repetido» sería literalmente la respuesta entera.
+     *
+     * Y los campos marcados como PII **no se consultan** si quien mira no tiene el
+     * permiso: es el mismo criterio que el resto de la analítica (una lista de
+     * tipos vacía = puede verlos), aplicado aquí para que la comparación no se
+     * convierta en el canal limpio que el resto de la pantalla tapa.
+     *
+     * @param array $grupos    columnas, de `gruposDeAtributo()`
+     * @param array $piiTypes  field_id => tipo de los campos enmascarados (F1)
+     *
+     * @return array{key: string, grupos: array, filas: array}|array vazío
+     */
+    public static function forFormByGroup(
+        int $formId,
+        array $fields,
+        array $grupos,
+        string $keyName,
+        string $from = '',
+        string $to = '',
+        array $piiTypes = [],
+        ?array $atr = null
+    ): array {
+        if ($grupos === [] || trim($keyName) === '') {
+            return [];
+        }
+
+        // Las filas se eligen primero (y solo las comparables), porque son las que
+        // van a la consulta.
+        $numericos = [];
+        $opciones  = [];
+        $elegidas  = [];
+        foreach ($fields as $field) {
+            $type = (string) ($field['type'] ?? '');
+            if (!self::esComparable($type) || isset($piiTypes[(int) $field['id']])) {
+                continue;
+            }
+            $elegidas[] = $field;
+            if ($type === 'select' || $type === 'radio') {
+                $opciones[] = (int) $field['id'];
+            } else {
+                $numericos[] = (int) $field['id'];
+            }
+            if (count($elegidas) >= self::FILAS_MAX) {
+                break;
+            }
+        }
+
+        if ($elegidas === []) {
+            return [];
+        }
+
+        $claves = array_column($grupos, 'clave');
+        $stats  = Answer::numericStatsByGroup($formId, $numericos, $keyName, $claves, $from, $to, $atr);
+        $tops   = Answer::topValueCountsByGroup($formId, $opciones, $keyName, $claves, $from, $to, $atr, self::TOP_VALORES);
+
+        $filas = [];
+        foreach ($elegidas as $field) {
+            $fieldId = (int) $field['id'];
+            $type = (string) $field['type'];
+            $celdas = [];
+            foreach ($grupos as $grupo) {
+                $celdas[] = ($type === 'select' || $type === 'radio')
+                    ? self::celdaOpcion($tops[$fieldId][$grupo['clave']] ?? null)
+                    : self::celdaNumerica($stats[$fieldId][$grupo['clave']] ?? null, $type === 'nps');
+            }
+            $filas[] = ['field' => $field, 'tipo' => $type, 'celdas' => $celdas];
+        }
+
+        return ['key' => $keyName, 'grupos' => $grupos, 'filas' => $filas];
+    }
+
+    /** ¿El tipo tiene una métrica que tenga sentido comparar entre grupos? */
+    private static function esComparable(string $type): bool
+    {
+        return in_array($type, ['number', 'scale', 'range', 'star', 'nps', 'select', 'radio'], true);
+    }
+
+    /**
+     * Celda numérica: el promedio y cuántas respuestas lo llenaron.
+     *
+     * El promedio sale de la `SUM`/`COUNT` de SQL, no de promediar promedios: las
+     * celdas tienen `n` distintos y la media de las medias no es la media (con un
+     * grupo de 2 personas y otro de 200, sale otra cosa).
+     *
+     * Sin respuestas no hay celda: `null` y la vista pinta «—». Un 0,00 sería un
+     * promedio inventado.
+     */
+    private static function celdaNumerica(?array $stat, bool $esNps): array
+    {
+        if ($stat === null || $stat['n'] === 0) {
+            return ['n' => 0, 'avg' => null, 'nps' => null, 'prom' => 0, 'pasi' => 0, 'det' => 0];
+        }
+
+        $celda = [
+            'n'   => $stat['n'],
+            'avg' => round($stat['suma'] / $stat['n'], 2),
+            'nps' => null,
+            'prom' => $stat['prom'],
+            'pasi' => $stat['pasi'],
+            'det'  => $stat['det'],
+        ];
+
+        if ($esNps) {
+            $celda['nps'] = (int) round((($stat['prom'] - $stat['det']) / $stat['n']) * 100);
+        }
+
+        return $celda;
+    }
+
+    /**
+     * Celda de opción única: los valores más repetidos y qué proporción de las
+     * respuestas del grupo son.
+     *
+     * El denominador es el `total` de la ventana, que es el de TODAS las respuestas
+     * del grupo, no el de las que han sobrevivido al `TOP_VALORES`. Por eso en un
+     * grupo con 12 respuestas y 6 valores distintos sale «2 de 12 (17 %)» en vez
+     * de «2 de 5 (40 %)»: el segundo número está inflado y no se puede
+     * comparar con el de al lado.
+     */
+    private static function celdaOpcion(?array $top): array
+    {
+        if ($top === null || $top['total'] === 0) {
+            return ['total' => 0, 'items' => []];
+        }
+
+        $items = [];
+        foreach ($top['valores'] as $v) {
+            $items[] = [
+                'label' => (string) $v['value'],
+                'c'     => $v['c'],
+                'pct'   => (int) round(($v['c'] / $top['total']) * 100),
+            ];
+        }
+
+        return ['total' => $top['total'], 'items' => $items];
     }
 
     /**
