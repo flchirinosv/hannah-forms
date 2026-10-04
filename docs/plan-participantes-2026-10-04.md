@@ -34,9 +34,11 @@ las decisiones ya tomadas y su porqué están aquí, no en la conversación.
 ## Restricciones del entorno (verificadas, no recordadas)
 
 - **`zip` SÍ está instalada**: `ZipArchive` existe. La plantilla se puede generar hoy.
-- **`php-xml` NO está**: no hay `DOMDocument`, `SimpleXMLElement` ni `XMLReader`.
-  Hace falta solo para *leer* el archivo que sube el usuario; hay que instalarla
-  (`apt-get install php-xml`) y el plan avisa si falta.
+- **`php-xml` SÍ está instalada**: hay `DOMDocument`, `SimpleXMLElement`, `XMLReader`
+  y `mbstring` (`php -m` lo confirma). Ojo: `class_exists('mbstring')` devuelve
+  «no» porque `mbstring` es una extensión, no una clase, así que la comprobación
+  de disponibilidad tiene que hacerse con `extension_loaded()`, no con
+  `class_exists()` salvo para clases de verdad como `ZipArchive`.
 - **En MariaDB 11.8.6 los operadores `->` y `->>` NO parsean** (error 1064): hay que
   usar `JSON_EXTRACT`. El proyecto **nunca** usa funciones JSON de SQL; todo el JSON
   se decodifica en PHP. Por eso el diseño de abajo **no usa JSON en SQL**.
@@ -170,7 +172,7 @@ el existente y lo dice.
 | # | Fase | Riesgo | Estado |
 |---|---|---|---|
 | 0 | Bug de PII en la analítica | bajo | **Hecha** (6 tests nuevos) |
-| 1 | Escritor xlsx (`RosterTemplate`) | **cero** | Pendiente |
+| 1 | Escritor xlsx (`RosterTemplate`) | **cero** | **Hecha** (15 tests nuevos) |
 | 2 | Migración `0014` | **cero** | Pendiente |
 | 3 | `FormParticipant`, CRUD, importar | bajo | Pendiente |
 | 4 | **La puerta del fill** | **alto** | Pendiente |
@@ -230,6 +232,67 @@ barra `[oculto]` con el total de respuestas, que además es información útil.
 no se reinterpreta como JSON, la fusión de barras, el promedio que no se inventa y
 los gráficos en claro con permiso). **775 tests en verde.**
 
+## Fase 1 — el escritor `.xlsx` — **HECHA**
+
+`app/Services/RosterTemplate.php`. Función pura: sin BD, sin rutas, sin puerta, sin
+sesión. Eso la hace verificable por separado de todo lo demás, y es por eso que se
+puede hacer antes de tocar el esquema.
+
+Un `.xlsx` son **cinco partes XML dentro de un ZIP** y no hay formato intermedio:
+
+| Parte | Para qué |
+|---|---|
+| `[Content_Types].xml` | Declara qué es cada parte |
+| `_rels/.rels` | Apunta al workbook |
+| `xl/workbook.xml` | Nombra la hoja |
+| `xl/_rels/workbook.xml.rels` | Apunta a la hoja |
+| `xl/worksheets/sheet1.xml` | Los datos |
+
+**Tres decisiones deliberadas, no accidentales:**
+
+1. **Celdas `inlineStr`, sin tabla de cadenas compartidas.** Una hoja de 500×6
+   repite 3000 cadenas y sigue pesando ~100 KB, a cambio de no mantener una quinta
+   parte sincronizada con sus índices. Excel y LibreOffice leen las dos formas.
+2. **Sin `styles.xml`.** Se aplica el estilo por defecto, que es lo que quiere quien
+   rellena la plantilla. Una sexta parte sin consumidor es una fuente más de «el
+   archivo está dañado».
+3. **Sin fila de ejemplo.** Una fila de ejemplo es un participante de mentira que
+   alguien se deja puesta. La plantilla son cabeceras y nada más.
+
+**Todo el texto va como cadena, nunca como número.** Una cédula `00123` o un código
+`0007` guardados como número pierden los ceros por la izquierda en cuanto se reabre
+el archivo, y para una lista de participantes eso es un dato perdido sin aviso.
+
+**Los tres fallos que de verdad rompen un archivo, y que por eso son los que se
+comprueban:**
+
+| Fallo | Síntoma si ocurre |
+|---|---|
+| Columna contada por celdas escritas, no por posición | La hoja abre **desplazada**, sin error |
+| `&`, `<` o tilde sin escapar | Rompe el XML **entero**, no una celda |
+| Carácter de control (`\x01`, `\x0B`) de una cabecera de Excel | El archivo **no abre**, con un error de Excel que no menciona la plantilla |
+
+Por eso el test **no mira el binario**: abre el ZIP con `ZipArchive`, parsea cada
+parte con DOM y lee la hoja como la leería una hoja de cálculo. Un test que solo
+comprobarse que el archivo «no está vacío» pasaría con un ZIP corrupto.
+
+El orden de columnas del archivo es **un contrato con la importación** y por eso
+tiene test propio: fijas, atributos, código. Si el código no fuera el último, la
+importación se lo leería como un atributo libre. Lo mismo con las cabeceras
+reservadas, que se reconocen aunque el dueño las escriba distintas («Cédula»,
+«CEDULA», «E-mail»): si no se normalizaran, se crearía un atributo «Cédula» que el
+dueño no puede filtrar de forma estable y que se solapa con la cédula real.
+
+**Verificación independiente:** además de los 15 tests de PHP, el archivo generado se
+validó con un script aparte en Python que usa `zipfile` y `xml.etree` —otro ZIP y
+otro parser XML, ninguno compartido con el escritor— comprobando el grafo de
+relaciones, que `Content_Types` declare cada parte por su extensión, y que cada
+referencia de celda decodifique y recodifique. 142 comprobaciones en verde. Ese
+script no entra al repo: añadir Python a una base sin CI es peor que la cobertura
+que aporta, que ya está en `RosterTemplateTest`.
+
+**15 tests nuevos. Suite completa: 790, 0 fallos.**
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -260,8 +323,8 @@ los gráficos en claro con permiso). **775 tests en verde.**
 
 | Fase | Estado |
 |---|---|
-| 0 | Pendiente |
-| 1 | Pendiente |
+| 0 | **Hecha** — `4b4d31b`, 775 tests |
+| 1 | **Hecha** — 790 tests |
 | 2 | Pendiente |
 | 3 | Pendiente |
 | 4 | Pendiente |
