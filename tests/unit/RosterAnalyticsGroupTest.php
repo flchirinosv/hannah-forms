@@ -556,7 +556,11 @@ class RosterAnalyticsGroupTest
 
     private static function cleanupResiduals(): void
     {
-        Database::getInstance(Config::db())->execute("DELETE FROM users WHERE email LIKE 'rostergrp-%'");
+        // Sin el guion después de «rostergrp»: el admin del test de PII se crea
+        // como `rostergrpa-…`, y `LIKE 'rostergrp-%'` no lo cogía (el comodín
+        // empieza en la «a»). Se积累了 un admin por corrida y la limpieza
+        // parecía funcionar porque los dueños sí se borraban.
+        Database::getInstance(Config::db())->execute("DELETE FROM users WHERE email LIKE 'rostergrp%'");
         self::$ownerId = null;
         self::$formId = null;
         self::$sedeKey = null;
