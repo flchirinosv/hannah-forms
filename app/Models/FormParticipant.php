@@ -1099,6 +1099,81 @@ class FormParticipant
         return $out;
     }
 
+    /**
+     * Identidad de varios participantes de una vez, indexada por id.
+     *
+     * Es el hermano de `atributosDe()` para la atribución de las respuestas: lo
+     * que se necesita ahí es QUIÉN respondió, y el nombre no puede vivir en
+     * `submissions` (que es la tabla que se exporta) porque duplicaría un dato
+     * que el listado ya tiene y que además se borra con `ON DELETE SET NULL`.
+     *
+     * El `form_id` va en el WHERE y no se filtra después: los ids vienen de las
+     * filas de `submissions` de UN formulario, así que la condición nunca
+     * descarta nada — y es la mitad de la autorización, como en
+     * `FormAccess::findValidToken()`. Con el identificador del formulario a
+     * menos, un id de otra lista no se resuelve ni por error.
+     *
+     * @param list<int> $participantIds
+     *
+     * @return array<int, array<string,mixed>> participant_id => fila
+     */
+    public static function identidadesDe(int $formId, array $participantIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $participantIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $out = [];
+
+        // Troceado a 5000 como en atributosDe(): el techo de marcadores de
+        // MariaDB. El listado de respuestas va paginado (15) y el detalle son
+        // uno, pero la función es general y no debe romper en el día que alguien
+        // la llame con la lista entera.
+        foreach (array_chunk($ids, 5000) as $tanda) {
+            $marcas = implode(',', array_fill(0, count($tanda), '?'));
+            // Solo las cuatro columnas que `identidadDe()` lee: `identifier_value`
+            // ya trae el identificador que el formulario use, así que `cedula` e
+            // `indicador` serían dos columnas de la fila que nadie mira (y
+            // `responded_at` lo dice la ficha, no el detalle de una respuesta).
+            $stmt = self::db()->getPdo()->prepare(
+                'SELECT id, identifier_value, nombre, correo
+                 FROM form_participants
+                 WHERE form_id = ? AND id IN (' . $marcas . ')'
+            );
+            $stmt->execute(array_merge([$formId], $tanda));
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+                $out[(int) $fila['id']] = $fila;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Las piezas de la identidad de una persona, para pintar lo mismo en la ficha
+     * del formulario y en el detalle de una respuesta.
+     *
+     * Devuelve datos, no markup: el `·` y el icono del correo son de la vista.
+     * La regla del correo duplicado sale de que con identificador `correo` el
+     * `identifier_value` YA es el correo, y es justo lo mismo que hace
+     * `_roster_list.php`.
+     *
+     * @return array{principal:string,nombre:string,correo:string}
+     */
+    public static function identidadDe(array $fila, string $identificador): array
+    {
+        $correo = trim((string) ($fila['correo'] ?? ''));
+
+        return [
+            'principal' => trim((string) ($fila['identifier_value'] ?? '')),
+            'nombre'    => trim((string) ($fila['nombre'] ?? '')),
+            // Con identificador `correo` el correo es el principal: repetirlo
+            // debajo sería la misma dirección dos veces en la misma celda.
+            'correo'    => $identificador === 'correo' ? '' : $correo,
+        ];
+    }
+
     // =====================================================================
     // Utilidades internas
     // =====================================================================

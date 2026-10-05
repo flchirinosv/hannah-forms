@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 983 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 996 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,12 +23,12 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**379 pruebas** en 25 bloques: A–Q, las regresiones (R) de fallos que ya
+**391 pruebas** en 26 bloques: A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
 la lista de acceso (U), la pestaña de participantes (V), el identificador del
-listado (W), el filtro de la analítica por atributo (X) y la comparación por
-atributo con su techo (Y).
+listado (W), el filtro de la analítica por atributo (X), la comparación por
+atributo con su techo (Y) y quién respondió (Z).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -676,6 +676,31 @@ Para llegar: panel → un formulario en «Solo el listado de participantes» →
 | Y15 | El botón «Descargar CSV» de la tarjeta de **detalle**, con filtro de atributo y fechas | El archivo trae **solo** ese grupo y ese rango (los dos botones llevan lo mismo) | A | |
 | Y16 | Un formulario sin lista importada | No hay tarjeta de comparación ni ningún desplegable de atributo | A | |
 | Y17 | Una lista importada de 800 filas con la columna «Sede» vacía para la mayoría | Sale «Resto» con casi toda la gente, y la pantalla no se arrastra | M | |
+
+## Z. Quién respondió (fase 9, 2026-10-04)
+
+La atribución se guardaba desde la fase 4 y no se veía en ninguna parte: el listado
+de respuestas tenía #, fecha, IP y acciones, y el detalle tenía fecha, IP y
+navegador. Lo que se mira aquí es que la columna **solo** exista con el permiso, que
+diga lo mismo que la ficha, y que su ausencia **se explique** (una tabla con lista
+que no dice quién respondió parece un fallo, y no lo es).
+
+Para llegar: panel → un formulario en «Solo el listado de participantes» → *Respuestas*.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| Z1 | El listado entrando **como admin** | Sale una columna «Participante» entre la fecha y la IP, con el identificador, el nombre y el correo de quien respondió | A | |
+| Z2 | El mismo listado entrando **como user** (o cualquier rol sin `responses.pii`) | **No** hay columna, y no hay ni una cédula ni un nombre en el HTML | A | |
+| Z3 | Ese mismo listado sin permiso | Abajo sale un aviso que explica que el rol no incluye `responses.pii` y que en la ficha sí se marca quién respondió | A | |
+| Z4 | Un formulario **normal** (sin lista), entrando como admin | No hay columna de participante: nadie está atribuido y sería de «—» en todas las filas | A | |
+| Z5 | Una respuesta de alguien que **no está en la lista** (entró por un formulario público antes de tener lista) | La columna sale y esa celda dice «—»; las demás dicen su nombre | A | |
+| Z6 | Una página de respuestas donde **ninguna** está atribuida | La columna **sigue** ahí: se decide por el formulario, no por si esa página casó con alguien | A | |
+| Z7 | El detalle de una respuesta, como admin | Sale una casilla «Participante» con el identificador, el nombre y el correo | A | |
+| Z8 | El detalle de una respuesta sin atribución | No sale la casilla (ni vacía, ni con «—»): el aviso de «enmascarados» ya explica que no hay permiso | B | |
+| Z9 | Con el identificador del formulario puesto en «correo» | El correo sale **una sola vez** (es el identificador), no repetido debajo | M | |
+| Z10 | Una lista de mil personas, pagina a pagina hasta una página sin atribuir | La columna está en todas las páginas; no aparece y desaparece al paginar | A | |
+| Z11 | Descargar el CSV y el JSON de un formulario con lista | **No** llevan ni el nombre ni la cédula ni el identificador del participante (un archivo lo descarga cualquiera con el botón) | A | |
+| Z12 | El detalle de una respuesta de un campo marcado como dato personal, sin permiso | Sigue apareciendo el aviso de datos enmascarados, y ahora además **no** se dice quién respondió | A | |
 
 
 ## Cuando encuentres un fallo

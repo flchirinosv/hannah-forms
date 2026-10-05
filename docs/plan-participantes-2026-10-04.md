@@ -180,7 +180,7 @@ el existente y lo dice.
 | 6 | Exponer `roster` en el `<select>` | bajo | **Hecha** (17 tests nuevos) |
 | 7 | Filtro por atributo + detalle | bajo | **Hecha** (17 tests nuevos) |
 | 8 | Agrupar por atributo + techo | medio | **Hecha** (13 tests nuevos) |
-| 9 | Quién respondió, `responses.pii` | bajo | Pendiente |
+| 9 | Quién respondió, `responses.pii` | bajo | **Hecha** (13 tests nuevos) |
 | 10 | Correo de invitaciones, opt-in | bajo | Pendiente |
 | 11 | Documentación y recuentos | — | Pendiente |
 
@@ -800,7 +800,7 @@ cero — y quien quiere ese detalle lo tiene en la tabla de abajo.
 
 ### Dos consultas fijas, no una por grupo
 
-El plan.initial hablaba de una consulta con `key_name, value, field_id, value,
+El plan inicial hablaba de una consulta con `key_name, value, field_id, value,
 COUNT(*)`. Se acabó haciendo **dos**, y la razón es el techo:
 
 - `numericStatsByGroup()` trae, por grupo y campo, `COUNT`, `SUM`, y los tres cubos
@@ -863,6 +863,74 @@ permiso la pregunta no sale, con permiso sí.
 
 **Suite completa: 983, 0 fallos.**
 
+## Fase 9 — quién respondió, con la puerta de `responses.pii` — **HECHA**
+
+La atribución se guardaba desde la fase 4 (`submissions.participant_id`, escrito en la
+misma transacción que la respuesta) y **no se veía en ninguna parte**: el listado de
+respuestas tenía #, fecha, IP y acciones, y el detalle tenía fecha, IP y navegador. La
+ficha marcaba «respondió» por participante, así que el dato existía en dos sitios y no
+se podía cruzar respuesta → persona.
+
+### La tensión con la analítica, y por qué aquí sí se ve
+
+Para la analítica se decidió que cédula, nombre y correo **no aparecen ni para el
+admin** (la decisión está en la tabla de arriba): esa pantalla existe para agrupar, y
+un nombre en un gráfico no agrupa nada. El detalle de una respuesta es lo contrario:
+existe para leer *esa* respuesta, y quién la envió es parte de lo que se viene a ver.
+Por eso la puerta es `responses.pii` —el permiso que ya significa «puedes leer datos
+personales en claro»— y no uno nuevo que nadie tendría, ni `responses.view_own`, que
+decide el alcance pero no la lectura en claro.
+
+### Sin permiso no hay columna, y no una columna enmascarada
+
+Con `Pii::canView()` falso **no se pinta la columna**: ni con `[oculto]`, ni con «—».
+Dos razones, y las dos importan:
+
+- En un formulario que **no** es de listado, la columna sería de «—» en todas las
+  filas siempre. Ruido en el 90 % de las instalaciones.
+- Una celda con `[oculto]` en cada fila no dice nada que el aviso no diga. El aviso sí
+  lo dice, y además **explica dónde está la información**: en la ficha, la lista marca
+  quién respondió. Un formulario con lista que no dice quién respondió parece un
+  fallo, y no lo es.
+
+La columna se decide por el **formulario y el permiso**, nunca por si esa página casó
+con alguien: si no, al paginar una lista de mil aparecería y desaparecería por
+casualidad.
+
+### `identidadesDe($formId, $ids)`: el `form_id` en el WHERE
+
+Es el hermano de `atributosDe()` para el caso de la atribución, y por eso va troceado
+a 5000 igual. Los ids salen de las filas de `submissions` de **un** formulario, así
+que el `form_id` del WHERE nunca descarta nada — y es la mitad de la autorización, como
+en `FormAccess::findValidToken()`: un id de otra lista no resuelve identidad aunque la
+fila exista. Los `null` (una respuesta sin atribución) se filtran antes de consultar,
+porque `intval(null)` es 0 y un `IN (0)` hace trabajo de más.
+
+`identidadDe()` devuelve **datos, no markup** (`principal`, `nombre`, `correo`), y con
+identificador `correo` el `correo` sale vacío a propósito: el `identifier_value` ya es
+esa dirección y repetirla debajo sería la misma dirección dos veces en la misma celda.
+
+### La columna se comprueba por estructura
+
+El `<td>` va en la fila dentro del mismo `if` que el `<th>` del encabezado, y el test
+cuenta las celdas de cada `<tr data-vf-row>` (5 con columna, 4 sin ella). Es
+exactamente el fallo que el proyecto ya se encontró dos veces en el builder: una
+columna en el encabezado que no llega a las filas se ve «casi bien» y no da ningún
+error. Quitar el `<td>` de las filas dejando el `<th>` pone el test en rojo.
+
+### Lo que NO cambia: los archivos exportados
+
+Ni el CSV ni el JSON llevan el nombre, la cédula, el identificador **ni el
+`participant_id`** (que tampoco estaba: `exportSubmissionRow()` solo mete id, fecha,
+IP, user agent y answers). Es una decisión, no un olvido: un archivo lo descarga
+cualquiera que tenga el botón, y el CSV además **enmascara siempre** porque su puerta
+es `forms.export_own`, no `responses.pii`. Poner un nombre ahí daría el «canal
+limpio» que F1 cerró: lo que se ve en pantalla es lo que sale en el JSON, y en un
+archivo eso va en la otra dirección. La unión sigue disponible para quien tenga los
+dos ficheros.
+
+**Suite completa: 996, 0 fallos.**
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -902,6 +970,6 @@ permiso la pregunta no sale, con permiso sí.
 | 6 | **Hecha** — `2f715db`, 953 tests |
 | 7 | **Hecha** — 970 tests |
 | 8 | **Hecha** — 983 tests |
-| 9 | Pendiente |
+| 9 | **Hecha** — 996 tests |
 | 10 | Pendiente |
 | 11 | Pendiente |

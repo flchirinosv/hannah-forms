@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 88 archivos, 983 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 89 archivos, 996 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **52 de los 88 archivos tocan la BD real** (los que llaman
+- **53 de los 89 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -460,6 +460,37 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   con `from`/`to` y se olvidaba del filtro de atributo (fase 7), que solo se nota al
   abrir el archivo; lo vigila
   `RosterAnalyticsGroupTest::testLosDosEnlacesDeCsvLlevanElFiltroDeAtributo`.
+
+**Quién respondió (fase 9)**
+
+- La atribución se ve en el **listado de respuestas** y en el **detalle**, detrás de
+  `Pii::canView()` (que es `responses.pii`). No de `responses.view_own`: ese decide el
+  alcance y no la lectura en claro, y con él la identidad le tocaría a cualquiera que
+  pueda abrir el formulario.
+- **Sin permiso no hay columna, y no una columna de `[oculto]`**: en un formulario que
+  no es de listado sería de «—» siempre, y una celda enmascarada en cada fila no dice
+  nada que el aviso no diga. Lo que sí hay es el **aviso** que explica la ausencia, y
+  dice dónde está la información (la ficha marca quién respondió). Una columna que
+  desaparece en un formulario con lista parece un fallo y no lo es.
+- La columna se decide por el **formulario y el permiso**, nunca por si esa página casó
+  con alguien: si dependiera de la página, al paginar una lista de mil aparecería y
+  desaparecería por casualidad.
+- `identidadesDe($formId, $ids)` lleva el `form_id` en el WHERE aunque los ids salgan
+  de `submissions` de un solo formulario: es la mitad de la autorización, como en
+  `FormAccess::findValidToken()`. Los `null` se filtran antes de consultar, porque
+  `intval(null)` es 0 y un `IN (0)` hace trabajo de más. El mapa va **indexado por
+  `participant_id`**, así que se busca `[$pid]`, no `[0]`.
+- `identidadDe()` devuelve **datos, no markup**, y con identificador `correo` el
+  `correo` sale vacío: el `identifier_value` ya es esa dirección y repetirla debajo
+  sería la misma dos veces en la misma celda.
+- El `<td>` de la fila va **dentro del mismo `if` que el `<th>`** del encabezado, y el
+  test cuenta celdas por `<tr data-vf-row>` (5 con columna, 4 sin ella). Un encabezado
+  con la columna y filas sin ella se ve «casi bien» y no da ningún error: es el mismo
+  fallo que el `</div>` perdido del modal en el builder.
+- **Los exports NO cambian**: ni nombre, ni cédula, ni `participant_id` (que tampoco
+  estaba). Un archivo lo descarga cualquiera con el botón y el CSV enmascara siempre
+  porque su puerta es `forms.export_own`. No lo cambies por simetría con la pantalla:
+  en un archivo, «lo que se ve en pantalla» va en la dirección de no añadir.
 
 **Elegir con qué se identifica (fase 6)**
 
@@ -1110,14 +1141,14 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 379 comprobaciones manuales en 25 bloques (A–Y,
+- `docs/pruebas-funcionales.md`: 391 comprobaciones manuales en 26 bloques (A–Z,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
-  por atributo X y la comparación por atributo con su techo Y), para
-  detectar problemas que la suite no ve (teclado, maquetación, flujo en
-  pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la lista
-  mínima.
+  por atributo X, la comparación por atributo con su techo Y y quién respondió
+  Z), para detectar problemas que la suite no ve (teclado, maquetación, flujo
+  en pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la
+  lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.

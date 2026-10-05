@@ -1,9 +1,15 @@
 <?php
 use App\Core\View;
+use App\Models\FormParticipant;
 $pg = $pagination;
 $total = (int) $pg['total'];
 $pages = (int) $pg['pages'];
 $cur = (int) $pg['page'];
+
+// Fase 9: `null` = sin columna (no hay `responses.pii`, o el formulario no es
+// de listado) y `[]` = columna pintada y ninguna fila atribuida.
+$participantes = $participantes ?? null;
+$identificador = (string) ($identificador ?? 'cedula');
 
 // Ventana de páginas (server-side) con primera/última y elipsis en saltos.
 $window = array_values(array_filter(
@@ -56,6 +62,9 @@ if ($window !== []) {
                             <tr>
                                 <th class="small text-muted" style="width: 60px;">#</th>
                                 <th class="small text-muted">Fecha</th>
+                                <?php if ($participantes !== null): ?>
+                                    <th class="small text-muted">Participante</th>
+                                <?php endif; ?>
                                 <th class="small text-muted">IP<?php if (!empty($pii_masked)): ?> <span class="text-muted" title="Tu rol no incluye el permiso responses.pii">(enmascarada)</span><?php endif; ?></th>
                                 <th class="small text-muted text-end" style="width: 170px;">Acciones</th>
                             </tr>
@@ -75,6 +84,30 @@ if ($window !== []) {
                             <tr data-vf-row>
                                 <td class="text-muted"><?= $num ?></td>
                                 <td><?= View::datetime($r['finished_at']) ?></td>
+                                <?php if ($participantes !== null):
+                                    // La fila se busca por `participant_id`, no por
+                                    // posición: `array_column` de la página y el
+                                    // mapa del modelo no tienen por qué venir en
+                                    // el mismo orden.
+                                    $quien = $participantes[(int) ($r['participant_id'] ?? 0)] ?? null;
+                                    $pie = $quien === null ? null : FormParticipant::identidadDe($quien, $identificador);
+                                ?>
+                                    <td class="small">
+                                        <?php if ($pie === null || $pie['principal'] === ''): ?>
+                                            <span class="text-muted">—</span>
+                                        <?php else: ?>
+                                            <span class="fw-semibold"><?= View::escape($pie['principal']) ?></span>
+                                            <?php if ($pie['nombre'] !== ''): ?>
+                                                <span class="text-muted d-block small"><?= View::escape($pie['nombre']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($pie['correo'] !== ''): ?>
+                                                <span class="text-muted d-block small">
+                                                    <i class="fa-solid fa-envelope me-1" aria-hidden="true"></i><?= View::escape($pie['correo']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
                                 <td class="small"><?= $r['ip_address'] !== null && $r['ip_address'] !== '' ? View::escape($r['ip_address']) : '—' ?></td>
                                 <td class="text-end">
                                     <a href="/forms/<?= (int) $form['id'] ?>/responses/<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-eye me-1"></i>Ver</a>
@@ -89,6 +122,15 @@ if ($window !== []) {
                         </tbody>
                     </table>
                 </div>
+
+                <?php if (!empty($aviso_atribucion)): ?>
+                    <div class="alert alert-light border small text-muted mt-3 mb-0" role="status">
+                        <i class="fa-solid fa-user-lock me-1"></i>
+                        Este formulario tiene lista de participantes y sus respuestas llevan anotada la atribución. Aquí no se dice
+                        <strong>quién</strong> respondió porque tu rol no incluye el permiso <code>responses.pii</code>; en la ficha del
+                        formulario, la lista sí marca a quién le falta responder.
+                    </div>
+                <?php endif; ?>
 
                 <?php if ($pages > 1): ?>
                     <nav aria-label="Paginación de respuestas" class="mt-3">

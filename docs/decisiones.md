@@ -1226,3 +1226,42 @@ las celdas que pasan por debajo se ven a través del texto.
 una regresión de la fase 7 que salió al leer la vista para la fase 8, y el test vive en
 el fichero de la fase 8 a propósito: la comprobación que se añadió cuando se
 encontró, en la misma superficie donde se encontró.
+
+## Fase 9: quién respondió — la puerta es `responses.pii`, y sin permiso no hay columna
+
+La atribución estaba guardada (`submissions.participant_id`, en la misma transacción
+que la respuesta) y no se veía en ninguna parte. Se cruza ahora en el listado de
+respuestas y en el detalle de una respuesta, detrás de `Pii::canView()`, y hay tres
+decisiones que conviene no deshacer:
+
+1. **`responses.pii`, no `responses.view_own`.** El primero ya significa «puedes leer
+   datos personales en claro» y por defecto es solo del admin; el segundo decide el
+   alcance (a quién puedes ver) y no la lectura en claro. Conceder la identidad con el
+   segundo sería dársela a cualquiera que pueda abrir el formulario, que es justo lo que
+   F1 selló al revés.
+2. **Sin permiso no hay columna, y no una columna de `[oculto]`.** En un formulario que
+   no es de listado la columna sería de «—» siempre; y una celda enmascarada en cada
+   fila no dice nada que el aviso no diga. Lo que sí se hace es **explicar la ausencia**
+   («tu rol no incluye `responses.pii`, en la ficha sí se marca quién respondió»), porque
+   un formulario con lista que no dice quién respondió parece un fallo y no lo es. La
+   columna se decide por el formulario y el permiso, nunca por si esa página casó con
+   alguien: si dependiera de la página, al paginar una lista de mil aparecería y
+   desaparecería por casualidad.
+3. **Los exports no cambian.** Ni nombre, ni cédula, ni identificador, ni el
+   `participant_id` (que tampoco estaba). Un archivo lo descarga cualquiera que tenga el
+   botón, y el CSV además enmascara siempre porque su puerta es `forms.export_own`, no
+   `responses.pii`. Poner un nombre en un export fabricaría el «canal limpio» que F1
+   cerró: la regla de una sola política para todos los canales va en los dos sentidos,
+   y en un archivo va en la dirección de no añadir.
+
+Y el detalle técnico que más fácil se rompe: **el `<td>` de la fila va dentro del mismo
+`if` que el `<th>` del encabezado**, y `RosterResponseAttributionTest` cuenta las
+celdas de cada `<tr data-vf-row>` (5 con columna, 4 sin ella). Un encabezado con la
+columna y filas sin ella se ve «casi bien» y no da ningún error — el mismo fallo que el
+`</div>` perdido del modal en el builder. Mutación comprobada: quitar el `<td>` de las
+filas dejando el `<th>` pone el test en rojo.
+
+`identidadesDe()` lleva el `form_id` en el WHERE aunque los ids salgan de `submissions`
+de un solo formulario: es la mitad de la autorización, como en
+`FormAccess::findValidToken()`, y la mutación (quitar el `AND form_id = ?`) rompe el
+test en limpio. Los `null` se filtran antes de consultar porque `intval(null)` es 0.

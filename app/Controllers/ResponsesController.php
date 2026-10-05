@@ -13,7 +13,10 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\FormAccess;
+use App\Models\FormParticipant;
 use App\Models\Submission;
+use App\Services\FormSettings;
 
 /**
  * Gestión de respuestas (P3): listado con paginación server-side,
@@ -49,6 +52,17 @@ class ResponsesController
             $pagination['items']
         );
 
+        // Fase 9 (quién respondió): una columna que solo existe en dos casos
+        // combinados — que el formulario sea de listado y que quien mira tenga
+        // `responses.pii`. En cualquier otro caso NO se pinta columna, ni
+        // enmascarada: una columna de «—» en todos los formularios normales
+        // (donde nadie está nunca atribuido) es ruido, y una celda con
+        // `[oculto]` en cada fila no dice nada que el aviso de abajo no diga.
+        $esListado = self::esListado($form);
+        $participantes = $esListado && \App\Services\Pii::canView()
+            ? self::identidades($form, array_column($pagination['items'], 'participant_id'))
+            : null;
+
         View::render('responses/index', [
             'form'       => $form,
             'pagination' => $pagination,
@@ -56,6 +70,19 @@ class ResponsesController
             // en el controlador, y no como una llamada a Pii desde la plantilla,
             // para que ninguna vista tenga que decidir permisos.
             'pii_masked' => !\App\Services\Pii::canView(),
+            // `null` = sin columna (no hay permiso, o no es un formulario de
+            // listado); `[]` = columna pintada y ninguna respuesta atribuida.
+            // Las dos cosas se distinguen porque con permiso y sin participantes
+            // la columna tiene que verse y decir «—».
+            'participantes' => $participantes,
+            // Con la columna fuera por falta de permiso, el motivo se explica:
+            // un formulario con lista que no dice quién respondió parece un
+            // fallo, y no lo es.
+            'aviso_atribucion' => $esListado && $participantes === null,
+            // La vista solo pinta datos: el identificador configurado lo decide
+            // el controlador, porque `settingsFrom()` normaliza el bloque entero
+            // y hacerlo en la plantilla sería trabajo por cada fila.
+            'identificador' => FormParticipant::identifierOf(Form::settingsFrom($form)),
             'csrf'       => Csrf::token(),
         ]);
     }
@@ -88,12 +115,28 @@ class ResponsesController
         $canSeePii = \App\Services\Pii::canView();
         $files = $canSeePii ? self::filesByField($sid) : self::filesByField($sid, self::piiFieldIds($form));
 
+        // Fase 9: quién respondió, con la misma puerta que el listado. La fila
+        // puede no estar (respuesta de alguien que no estaba en la lista, o una
+        // respuesta vieja anterior al listado) y eso se dice con «—» en vez de
+        // con un hueco en la maquetación.
+        $participante = null;
+        if ($canSeePii && self::esListado($form)) {
+            $pid = (int) ($data['submission']['participant_id'] ?? 0);
+            $participante = self::identidades($form, [$pid])[$pid] ?? null;
+        }
+
         View::render('responses/show', [
             'form'       => $form,
             'submission' => $data['submission'] === null ? null : \App\Services\Pii::maybeMaskSubmission($data['submission']),
             'answers'    => \App\Services\Pii::maybeMaskAnswers($data['answers'], $form['fields']),
             'files'      => $files,
             'pii_masked' => !$canSeePii,
+            // `null` cuando no hay permiso, no es de listado o no hay fila en la
+            // lista. El rótulo de la casilla no se pinta: una casilla «—» al
+            // lado de fecha, IP y navegador parece un dato que falta cuando lo
+            // que falta es el permiso, y eso ya lo dice el aviso de abajo.
+            'participante' => $participante,
+            'identificador' => FormParticipant::identifierOf(Form::settingsFrom($form)),
             'csrf'       => Csrf::token(),
         ]);
     }
@@ -237,6 +280,41 @@ class ResponsesController
     private function canAccess(int $ownerId): bool
     {
         return Access::canReadOwn($ownerId, 'responses.view_own');
+    }
+
+    /**
+     * ¿El formulario es de los que atribuyen respuestas a una persona?
+     *
+     * Sale de los settings YA cargados (`f.*` trae la columna) y no de
+     * `Form::settings()`, que sería una consulta de más por petición.
+     */
+    private static function esListado(array $form): bool
+    {
+        return FormAccess::mode(Form::settingsFrom($form)) === FormSettings::ACCESS_ROSTER;
+    }
+
+    /**
+     * Identidades de los participantes de una página de respuestas, indexadas por
+     * `participant_id`.
+     *
+     * Los `null` (una respuesta sin atribución) se filtran antes de la consulta:
+     * `intval(null)` es 0, y un `IN (0)` no da error pero sí hace trabajo de más
+     * delatando que alguien no está atribuido.
+     *
+     * @param list<mixed> $participantIds
+     *
+     * @return array<int, array<string,mixed>>
+     */
+    private static function identidades(array $form, array $participantIds): array
+    {
+        $ids = [];
+        foreach ($participantIds as $id) {
+            if ($id !== null && $id !== '' && (int) $id > 0) {
+                $ids[] = (int) $id;
+            }
+        }
+
+        return FormParticipant::identidadesDe((int) $form['id'], $ids);
     }
 
     /**

@@ -1,8 +1,17 @@
 <?php
 use App\Core\View;
 use App\Models\Answer;
+use App\Models\FormParticipant;
 $sid = (int) $submission['id'];
 $files = is_array($files ?? null) ? $files : [];
+// Fase 9: `null` cuando no hay permiso, cuando el formulario no es de listado y
+// también cuando la respuesta no tiene fila en la lista (alguien que respondió
+// sin estar, o una respuesta anterior al listado). Los tres casos **no pintan
+// casilla**: el aviso de «enmascarados» de más abajo ya explica la falta de
+// permiso, y una casilla «—» al lado de fecha, IP y navegador parece un dato que
+// falta cuando lo que falta es el permiso.
+$participante = $participante ?? null;
+$quien = $participante === null ? null : FormParticipant::identidadDe($participante, (string) ($identificador ?? 'cedula'));
 ?>
 <div class="container px-lg-4" style="max-width: 860px;">
     <div class="mb-4">
@@ -25,6 +34,26 @@ $files = is_array($files ?? null) ? $files : [];
                     <div class="text-uppercase mb-1">Navegador</div>
                     <div class="text-dark app-truncate-1" title="<?= View::escape($submission['user_agent'] ?? '') ?>"><?= View::escape($submission['user_agent'] ?? '—') ?></div>
                 </div>
+                <?php if ($quien !== null): ?>
+                    <div class="col-sm-6">
+                        <div class="text-uppercase mb-1">Participante</div>
+                        <div class="text-dark">
+                            <?php if ($quien['principal'] === ''): ?>
+                                <span class="text-muted">—</span>
+                            <?php else: ?>
+                                <span class="fw-semibold"><?= View::escape($quien['principal']) ?></span>
+                                <?php if ($quien['nombre'] !== ''): ?>
+                                    <span class="d-block"><?= View::escape($quien['nombre']) ?></span>
+                                <?php endif; ?>
+                                <?php if ($quien['correo'] !== ''): ?>
+                                    <span class="d-block small">
+                                        <i class="fa-solid fa-envelope me-1" aria-hidden="true"></i><?= View::escape($quien['correo']) ?>
+                                    </span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <?php if (!empty($pii_masked)): ?>
