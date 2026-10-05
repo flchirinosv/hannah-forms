@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1012 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1032 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,12 +23,15 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**417 pruebas** en 27 bloques: A–Q, las regresiones (R) de fallos que ya
+**436 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+el 417 que decía aquí antes no cuadraba con el fichero y era un número
+recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
 la lista de acceso (U), la pestaña de participantes (V), el identificador del
 listado (W), el filtro de la analítica por atributo (X), la comparación por
-atributo con su techo (Y), quién respondió (Z) y el correo de invitación (AA).
+atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA) y
+el listado paginado del panel (AB).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -737,6 +740,44 @@ Para llegar: panel → el formulario → *Participantes*.
 | AA20 | Pulsa el botón **sin JavaScript** (desactivado en el navegador) | Pide confirmación, envía y recarga; el resultado sale y el número de pendientes es correcto | A | |
 | AA21 | Pulsa el botón y el servidor devuelve error (por ejemplo con la BD parada a mitad) | Sale el aviso del fallo y los pendientes **no** bajan: nadie se queda marcado sin haber recibido | A | |
 | AA22 | Con teclado: tabula hasta el botón y pulsa `Enter` | Abre la confirmación y, en «Cancelar», vuelve el foco al botón | M | |
+## AB. El listado del panel, paginado y filtrado (2026-10-05)
+
+La búsqueda, los filtros por estado y el orden del panel pasaron de ser de
+JavaScript sobre el listado entero a viajar en la URL (`?q=…&estado=…&orden=…`),
+igual que hace el listado de participantes de la ficha. Lo que se mira aquí es lo
+que la suite no ve: que se **sienta** como antes (o que el cambio se note y se
+pueda escribir en el manual), que sin JavaScript haya un camino, y que el rótulo
+de página no mienta.
+
+Hace falta un panel con más de una pantalla de formularios (doce o más), y para
+las comprobaciones de búsqueda, uno con títulos reconocibles.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AB1 | Con 30 formularios | Sale una pantalla de tarjetas y debajo «30 formularios · Página 1 de 3» | A | |
+| AB2 | El botón de la derecha del paginador | Va a la página 2 y las tarjetas **cambian**: no es un scroll | A | |
+| AB3 | Escribe en el buscador y para | A los ~medio segundo la pantalla se recarga con solo lo que casa; el texto queda en el buscador | M | |
+| AB4 | Escribe otra cosa después | Busca lo nuevo, no acumula: el filtro viaja en la URL, no en memoria | M | |
+| AB5 | Escribe lo mismo que ya estaba (un espacio de más) | **No** recarga: la URL ya era esa | M | |
+| AB6 | Pulsa «Borradores» | La URL lleva `estado=draft`, el botón queda marcado y solo salen borradores | A | |
+| AB7 | Con un filtro puesto, escribe en el buscador | El filtro **se conserva**: no se pierde al buscar | A | |
+| AB8 | Con filtro y búsqueda, cambia el orden | Los tres viajan juntos en la URL | A | |
+| AB9 | Cambia el orden a «Alfabético» | Ordena por título, y con acentos y mayúsculas de forma estable (que dos títulos iguales no se salten uno) | M | |
+| AB10 | Ordena por «Más respuestas» | La tarjeta que más tiene sale primero, y su número coincide con el de la tarjeta | M | |
+| AB11 | Copia la URL del filtro a otra pestaña | Sale exactamente la misma lista | A | |
+| AB12 | Pulsa el **atrás** del navegador tras filtrar | Vuelve a la lista sin filtro, en orden de verdad | M | |
+| AB13 | Escribe una URL a mano con `?estado=inventado` | No se rompe ni filtra a la nada: sale el listado normal | A | |
+| AB14 | Escribe una URL a mano con `?page=999` | Aterriza en la última página, con su rótulo, y no en un panel vacío | A | |
+| AB15 | Filtra por un estado donde no tienes nada | Sale «Sin resultados» con un enlace para quitar el filtro, **no** «Aún no tienes formularios» | A | |
+| AB16 | Borra todos tus formularios y entra al panel | «Aún no tienes formularios» con su botón de crear, y **sin** la barra de filtros | A | |
+| AB17 | Con filtro puesto, mira las cuatro tarjetas de arriba | Siguen diciendo el total del panel, no el de lo filtrado | A | |
+| AB18 | Todo esto **sin JavaScript** (desactivado) | El `Enter` del buscador busca, el botón «Aplicar» ordena, y los enlaces de estado y de página funcionan | A | |
+| AB19 | Con teclado: `/` con el foco fuera de un campo | El foco va al buscador | M | |
+| AB20 | `/admin` → «Formularios» con más de veinte | Sale una pantalla de tarjetas y el paginador; «Siguiente» cambia el listado | A | |
+| AB21 | `/admin/forms?page=999` | Aterriza en la última, sin panel vacío | A | |
+| AB22 | `/admin/forms` sin JavaScript | El paginador es un enlace y funciona | A | |
+| AB23 | Con veinte formularios en la base, mira `/dashboard` con el profiler (o `EXPLAIN`) | La consulta del listado trae `LIMIT` y el conteo de respuestas va sobre los formularios de la página, no sobre todos | A | |
+
 ## Cuando encuentres un fallo
 
 

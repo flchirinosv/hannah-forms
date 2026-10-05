@@ -6,7 +6,8 @@ Si algo de este manual y lo que ves en pantalla no coinciden, el código manda:
 ajustes y `config/permissions.php` para los permisos.
 
 Documento terminado: 2026-09-30. Última revisión: 2026-10-05, con el
-listado de participantes (fases 1 a 10) y las invitaciones por correo.
+listado de participantes (fases 1 a 10), las invitaciones por correo y el
+listado del panel paginado en el servidor (sección 5.1).
 
 ---
 
@@ -297,6 +298,26 @@ abiertas de esa cuenta se cierran** en el siguiente paso por la web.
 5. **Guardar** (estructura) y luego **Publicar**.
 
 Se pueden crear hasta 30 formularios por hora y usuario; duplicar también cuenta.
+
+### 5.1 La lista del panel
+
+La lista sale **paginada** (doce formularios por pantalla) y con buscador, filtro
+por estado y cuatro órdenes. Los tres viajan en la dirección de la página:
+
+| Quiero… | Cómo |
+|---|---|
+| Buscar por título o descripción | Escribe en el buscador. La lista se actualiza sola al parar; sin JavaScript, `Enter` |
+| Ver solo de un estado | Pulsa el botón del estado: es un enlace, así que la URL queda con `?estado=…` y el botón de atrás funciona |
+| Cambiar el orden | El desplegable de la derecha (más recientes, alfabético, más respuestas, última actividad). Sin JavaScript, el botón **Aplicar** |
+| Ver los siguientes | Los botones del paginador, abajo. **Conservan la búsqueda y el filtro** |
+
+Las cuatro cifras de arriba (formularios, publicados, borradores, respuestas) son
+de **toda tu cuenta**, no de lo que estás viendo: con un filtro puesto no cambian,
+porque dicen cuántos hay y no cuántos se ven. Si un filtro no encuentra nada, sale
+«Sin resultados» con un enlace para quitarlo — no un panel vacío.
+
+Ojo: `100%` se busca como texto (no es un comodín), así que `100%` encuentra los
+títulos que llevan ese porcentaje y solo esos.
 
 ---
 
@@ -878,7 +899,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 
 | Ruta | Qué es |
 |---|---|
-| `/dashboard` | Lista de tus formularios. |
+| `/dashboard` | Lista de tus formularios, paginada y con búsqueda, filtro de estado y orden en la URL. |
 | `/forms/{id}` | Ficha: enlace, QR, embed, respuestas, analítica, ajustes y la tarjeta **Acceso** (con el panel del listado si el formulario es de lista). |
 | `/forms/{id}/builder` | Constructor. |
 | `/responses` | Respuestas de todos tus formularios. |

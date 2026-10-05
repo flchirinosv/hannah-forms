@@ -1,11 +1,17 @@
 /* VanillaForms — dashboard.js
- * Búsqueda, filtros por estado, ordenación y copia de enlace.
+ * Búsqueda, ordenación y copia de enlace.
  * Sin dependencias (usa Bootstrap solo para el dropdown del menú).
+ *
+ * M2 — La búsqueda y el orden ya NO filtran el listado entero en el
+ * navegador: van en la URL (`?q=…&orden=…`) y el servidor pinta una página.
+ * Aquí solo queda lo que hace que se sienta igual de rápido: el buscador
+ * envía el formulario del GET con un retardo (como se escribe, no en cada
+ * tecla) y el desplegable de orden envía al cambiar. Sin JS los dos son un
+ * formulario GET normal y funcionan igual, y por eso no hay que replicar aquí
+ * ningún filtro: lo que no se puede filtrar es lo que no se pinta.
  */
 (function () {
     'use strict';
-
-    const grid = document.getElementById('dashGrid');
 
     /* Copiar enlace: delegado a nivel documento para que funcione también en el
      * detalle del formulario (views/dashboard/forms/show.php), que no tiene
@@ -18,68 +24,21 @@
         }
     });
 
-    if (!grid) {
-        return;
-    }
-
+    const searchForm = document.querySelector('[data-vf-dash-search]');
     const search = document.getElementById('dashSearch');
     const sort = document.getElementById('dashSort');
-    const noResults = document.getElementById('dashNoResults');
-    const cols = Array.prototype.slice.call(grid.querySelectorAll('.app-dash-card-col'));
 
-    let filter = 'all';
-
-    function visibleCards() {
-        const term = (search && search.value ? search.value.trim().toLowerCase() : '');
-        return cols.filter((col) => {
-            if (filter !== 'all' && col.dataset.status !== filter) {
-                return false;
-            }
-            if (term !== '') {
-                const hay = (col.dataset.title || '').toLowerCase();
-                if (hay.indexOf(term) === -1) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    }
-
-    function render() {
-        const cards = visibleCards();
-
-        cols.forEach((col) => {
-            col.classList.toggle('d-none', cards.indexOf(col) === -1);
-        });
-
-        if (noResults) {
-            noResults.classList.toggle('d-none', cards.length > 0);
+    /* ---------- envío del GET ----------
+     * `requestSubmit()` y no `submit()`: relanza el evento submit, así que un
+     * enganche al formulario (o el diálogo de confirmación, si algún día lo
+     * hubiera) lo ve igual. En su `else` se cae al envío nativo, que también
+     * navega: un `Enter` del buscador nunca se queda sin hacer nada. */
+    function send(form) {
+        if (form.requestSubmit) {
+            form.requestSubmit();
+        } else {
+            form.submit();
         }
-
-        // M2: avisar a la paginación client-side para que re-renderice la página
-        // sobre el nuevo conjunto de tarjetas visibles tras el filtrado.
-        window.dispatchEvent(new CustomEvent('vf:refilter'));
-    }
-
-    function sortCards() {
-        const key = sort ? sort.value : 'updated';
-        const get = {
-            updated: (c) => parseInt(c.dataset.updated || 0, 10),
-            activity: (c) => parseInt(c.dataset.activity || 0, 10),
-            subs: (c) => parseInt(c.dataset.subs || 0, 10),
-            alpha: (c) => (c.dataset.title || '').trim(),
-        }[key];
-
-        const ordered = cols.slice();
-        ordered.sort((a, b) => {
-            if (key === 'alpha') {
-                return get(a).localeCompare(get(b));
-            }
-            return get(b) - get(a);
-        });
-
-        ordered.forEach((col) => grid.appendChild(col));
-        render();
     }
 
     /* ---------- toast ----------
@@ -99,8 +58,8 @@
     /**
      * Copia texto tal cual. `copyLink` le antepone el origen, pero el enlace de
      * acceso (F4) llega ABSOLUTO desde el servidor —que es quien sabe cuál es la
-     * URL pública real, con `PublicUrl`— y anteponerle el origen lo convertiría en
-     * `http://localhost/https://formularios.example/f/...`.
+     * URL pública real, con `PublicUrl`— y anteponerle el origen lo convertiría
+     * en `http://localhost/https://formularios.example/f/...`.
      */
     function copyText(text, okMsg) {
         const done = () => toast(okMsg || 'Copiado');
@@ -127,24 +86,28 @@
 
     /* ---------- init ---------- */
     function attach() {
-        if (search) {
-            search.addEventListener('input', render);
-        }
-        if (sort) {
-            sort.addEventListener('change', sortCards);
+        if (search && searchForm) {
+            let timer = null;
+            let last = search.value;
+            search.addEventListener('input', () => {
+                if (timer) {
+                    clearTimeout(timer);
+                }
+                timer = setTimeout(() => {
+                    // Escribir lo mismo que ya estaba no recarga nada: con el
+                    // buscador de antes solo reordenaba las tarjetas, y aquí
+                    // sería tirar la página entera por un espacio de más.
+                    if (search.value === last) {
+                        return;
+                    }
+                    last = search.value;
+                    send(searchForm);
+                }, 400);
+            });
         }
 
-        const filterGroup = document.getElementById('dashFilters');
-        if (filterGroup) {
-            filterGroup.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-filter]');
-                if (!btn) {
-                    return;
-                }
-                filter = btn.dataset.filter;
-                filterGroup.querySelectorAll('[data-filter]').forEach((b) => b.classList.toggle('active', b === btn));
-                render();
-            });
+        if (sort && searchForm) {
+            sort.addEventListener('change', () => send(searchForm));
         }
 
         document.addEventListener('keydown', (e) => {
@@ -154,8 +117,6 @@
                 search.focus();
             }
         });
-
-        sortCards();
     }
 
     attach();

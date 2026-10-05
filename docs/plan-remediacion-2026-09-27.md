@@ -149,7 +149,9 @@ el archivo siguen ahí.
   `IN (?,?,…)` **sin lotear** contra el techo de 65 535 placeholders de MariaDB
   (un formulario de 70 000 respuestas reventaba con un `HY093`), y
   `byFormFiltered` no pagina. Loteo de 5 000 ids y una sola pasada de
-  agregación. **HECHO** — ver "Fase 3 · D8" abajo. La paginación sigue abierta
+  agregación. **HECHO** — ver "Fase 3 · D8" abajo. La paginación del listado de
+  formularios se cerró el 2026-10-05 (D14) y la del detalle de respuestas en la
+  fase 5; ninguna sigue abierta
   porque es un cambio de interfaz, no de capa de datos.
 - **Queries redundantes:** `Form::settings()` se ejecuta 2 veces por render con
   datos ya en memoria; `Form::find()` carga `fields` que el listado de respuestas
@@ -261,7 +263,7 @@ Verificado:
 | 0 | Regresiones del 2026-09-27 | HECHO |
 | 1 | Pérdida de datos | HECHO |
 | 2 | Seguridad | HECHO (los 8 ítems cerrados, 362 tests) |
-| 3 | Capa de datos | HECHO (índice/FK, limpieza de `rate_limits`, contrato horario, loteo y `settingsFrom()`/`Form::find($id,false)` contra las queries redundantes; la paginación del detalle de respuestas se cerró en `Submission::byFormPaginated`) |
+| 3 | Capa de datos | HECHO (índice/FK, limpieza de `rate_limits`, contrato horario, loteo y `settingsFrom()`/`Form::find($id,false)` contra las queries redundantes; la paginación del detalle de respuestas se cerró en `Submission::byFormPaginated` y la del listado de formularios en `Form::page()`, D14) |
 | 4 | Calidad y docs | HECHO (historial por fase, `ControllerActionsTest` recorre todas las rutas, asserts reales, `Request::ip()` fijado) |
 | 5 | Decisiones de producto | HECHO (F0–F5, ver `docs/evaluacion-propuestas.md`) |
 
@@ -941,6 +943,12 @@ Suite completa: **401 tests, 0 fallos, 0 errores**.
 > **CERRADO 2026-09-28 por D13** (paginación server-side de la tabla de
 > analítica, `Submission::byFormFilteredPaginated()`, 15/página, página 1
 > renderizada en servidor). El texto se conserva como registro de la fase 5.
+>
+> Y el listado de formularios del panel y de `/admin/forms` —el otro `LIMIT` que
+> faltaba de M2— quedó cerrado el **2026-10-05 por D14**. Aquí se decía «cambia
+> de interfaz, se decide aparte»: el argumento era que paginar un listado no es
+> una limpieza de datos sino un cambio de producto, y es cierto. Se decidió
+> aparte, tres semanas después, en D14.
 
 `AnalyticsController` carga **todas** las submissions del formulario
 (`byFormFiltered()` no tiene `LIMIT`) y la vista las pinta una a una. Con un

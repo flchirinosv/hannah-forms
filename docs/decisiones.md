@@ -1326,3 +1326,75 @@ no «te toca entre 400»), y `invited_at` **no aparece en las exportaciones ni e
 analítica** — es una marca operativa de a quién se escribió, no un atributo del
 listado. La pantalla donde se ve es la ficha del formulario, en la insignia de los
 números.
+
+## M2 — el listado del panel pagina en el servidor, y por eso la búsqueda también
+
+**El hallazgo (auditoría 2026-09-25, M2).** `Form::byUser()` y `Form::all()`
+devolvían el alcance entero y el `LIMIT` estaba en el navegador: el grid llevaba
+`data-paginate data-rows="9"`, así que con doscientos formularios la página
+pintaba doscientas tarjetas para mostrar nueve, y la subconsulta
+`LEFT JOIN (SELECT … FROM submissions GROUP BY form_id)` agregaba la tabla
+entera de respuestas **en cada consulta**, porque el `LIMIT` del exterior no la
+reduce. La caché de un minuto solo tapaba el síntoma.
+
+**La decisión que se aplazó y ahora se toma.** En el propio plan de remediación
+esto quedó anotado como «cambia de interfaz, se decide aparte a propósito, para no
+meter un cambio de producto disfrazado de Fix de capa de datos». Correcto: aquí
+no se puede poner un `LIMIT` sin más, porque la búsqueda, los cinco filtros de
+estado y los cuatro órdenes eran **de cliente**. Un `LIMIT` a secas habría dejado
+un buscador que solo mira las doce tarjetas de la página: se busca «norte», se
+pintan las doce y se ocultan todas. Un buscador que no encuentra lo que hay se ve
+igual que uno que funciona.
+
+Así que el arreglo del `LIMIT` es **la mitad** del trabajo, y la otra mitad es
+mover los tres filtros a la consulta. Es exactamente lo que ya se había hecho con
+el listado de participantes de la ficha (`?q=…&page=…&sort=…`), y el panel se
+queda con la misma forma: la página vive en la URL, el botón de atrás funciona, el
+enlace se puede copiar y sin JavaScript hay un formulario GET.
+
+**Lo que cambió en la pantalla.**
+
+1. Los botones de estado son **enlaces** con el filtro puesto. Un `active` que
+   solo existe en memoria no se puede compartir ni sobrevive al «atrás».
+2. El buscador y el desplegable de orden están dentro del mismo `GET`. Con JS,
+   el buscador envía con un retardo de 400 ms (como se escribe, no en cada tecla)
+   y el desplegable al cambiar; sin JS, el `Enter` busca y hay un botón
+   «Aplicar» en un `<noscript>` para el orden.
+3. El paginador son **enlaces** que conservan los filtros, y a una página por
+   encima del final se recorta a la última.
+4. Se fue el paginador de cliente de `app.js` (`[data-paginate]`, el evento
+   `vf:refilter`) y su CSS `.app-pg-hidden`: con los filtros en el servidor no
+   queda nada que ocultar.
+
+**Las tres cosas que se pudieron hacer mal y se notaron al hacerlas.**
+
+- **Los dos vacíos.** El «Sin resultados» se puso primero dentro de la rama
+  `else` de `empty($forms)` —que es un error de lectura, no de PHP: un filtro que
+  no casa con nada deja la página vacía, así que caía en el «Aún no tienes
+  formularios», con su botón de crear el primero. Es mentira cuando hay catorce.
+  Lo decide `$stats['total']` (el alcance entero) y no `$listado['total']`, que
+  viene filtrado y vale cero en los dos casos.
+- **Las cuentas de arriba.** Salían de recorrer el array de formularios. Con una
+  página de doce, «Formularios: 12» con catorce en la cuenta. Ahora son
+  `Form::counts()`, una consulta aparte, sin filtros y cacheada: son datos de la
+  instalación, no de lo que hay en pantalla. Y la insignia de cada tarjeta y el
+  aviso de «hay N en revisión» siguen saliendo de ese MISMO array, que es lo que
+  llevaba desde F3.
+- **El desempate del orden.** `ORDER BY updated_at DESC` solo, con dos
+  formularios creados en el mismo segundo, deja la frontera entre páginas
+  indeterminada: uno sale en dos páginas o en ninguna. Todos los órdenes acaban
+  en `f.id`.
+
+**Dos trampas de la capa de datos**, la misma de siempre: `ATTR_EMULATE_PREPARES =
+false` no admite un marcador repetido, así que el `IN` del agregado y el del
+`WHERE` usan juegos distintos (`:c0…` y `:w0…`), y la búsqueda es un
+`CONCAT(title, ' ', description) LIKE :q` con **un** marcador en vez de dos `LIKE`
+con el mismo `:q`. Y los `%`/`_` de lo que se escribe se escapan: sin eso, buscar
+«100%» devuelve el alcance entero.
+
+**Lo que no se hizo.** No hay selector de tamaño de página, ni se recuerda la
+página al volver, ni hay filtro por propietario en el panel (el de `/admin/forms`
+tampoco): son cosas que se pueden pedir cuando alguien las pida, y ahora el
+`LIMIT` es de una pantalla. Y el `LIMIT` de 12 es del modelo
+(`Form::POR_PAGINA`), con `/admin/forms` usando 20 porque su tarjeta es más
+pequeña.

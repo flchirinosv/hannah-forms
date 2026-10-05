@@ -62,7 +62,14 @@ $relativeTs = static function (string $timestamp): string {
         </div>
     <?php endif; ?>
 
-    <?php if (empty($forms)): ?>
+    <?php // M2 — Los DOS vacíos se distinguen por las CUENTAS del alcance, no
+          // por `empty($forms)`: un filtro que no casa con nada también deja la
+          // página sin filas, y con el criterio viejo eso caía en el «aún no
+          // tienes formularios», con su botón de crear el primero, que es
+          // mentira cuando hay catorce. `$listado['total']` no vale para
+          // distinguirlos porque viene filtrado: con el filtro puesto es 0 en
+          // los dos casos. ?>
+    <?php if ((int) $stats['total'] === 0): ?>
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-5">
                 <div class="app-empty-icon mb-3"><i class="fa-solid fa-clipboard-list"></i></div>
@@ -74,30 +81,87 @@ $relativeTs = static function (string $timestamp): string {
             </div>
         </div>
     <?php else: ?>
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <?php // M2 — La barra de búsqueda/filtro/orden es un formulario GET de verdad:
+          // los tres viajan en la URL (`?q=…&estado=…&orden=…`) y el servidor
+          // pinta solo la página que toca. Antes era todo de cliente sobre el
+          // listado entero, y eso con el `LIMIT` en SQL solo habría roto la
+          // pantalla. Los botones de estado son enlaces porque el estado que
+          // está puesto tiene que ser un estado de la URL, no un `active` que
+          // solo existe en memoria. ?>
+    <?php $filtroQs = static function (array $cambios) use ($filtros): string {
+        $qs = array_filter([
+            'q'      => $filtros['q'] !== '' ? $filtros['q'] : null,
+            'estado' => $filtros['estado'] !== '' ? $filtros['estado'] : null,
+            'orden'  => $filtros['orden'] !== 'updated' ? $filtros['orden'] : null,
+        ], static fn ($v): bool => $v !== null);
+        foreach ($cambios as $k => $v) {
+            if ($v === '' || $v === null) {
+                unset($qs[$k]);
+            } else {
+                $qs[$k] = $v;
+            }
+        }
+        return $qs === [] ? '' : '?' . http_build_query($qs);
+    }; ?>
+        <form method="get" action="/dashboard" class="d-flex flex-wrap align-items-center gap-2 mb-3" data-vf-dash-search>
+            <?php // El filtro que se está aplicando viaja escondido: el
+                  // buscador conserva el estado y el enlace de estado conserva
+                  // lo escrito. Sin esto, filtrar borraba la búsqueda. ?>
+            <input type="hidden" name="estado" value="<?= View::escape($filtros['estado']) ?>">
+            <input type="hidden" name="orden" value="<?= View::escape($filtros['orden']) ?>">
             <div class="input-group input-group-sm app-dash-search">
                 <span class="input-group-text app-dash-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-                <input type="search" id="dashSearch" class="form-control form-control-sm" placeholder="Buscar por título o descripción…" aria-label="Buscar formulario">
+                <input type="search" id="dashSearch" name="q" value="<?= View::escape($filtros['q']) ?>" class="form-control form-control-sm" placeholder="Buscar por título o descripción…" aria-label="Buscar formulario">
             </div>
             <div class="btn-group btn-group-sm app-dash-filters" id="dashFilters" role="group" aria-label="Filtrar por estado">
-                <button type="button" class="btn btn-outline-secondary active" data-filter="all">Todos</button>
-                <button type="button" class="btn btn-outline-secondary" data-filter="published">Publicados</button>
-                <button type="button" class="btn btn-outline-secondary" data-filter="draft">Borradores</button>
-                <?php // F3 — Su propio filtro: un formulario en revisión NO es un borrador
-                      // y filtrarlo con los borradores lo escondería de quien tiene
-                      // la tarea de aprobarlo. ?>
-                <button type="button" class="btn btn-outline-secondary" data-filter="in_review">En revisión</button>
-                <button type="button" class="btn btn-outline-secondary" data-filter="closed">Cerrados</button>
+                <?php foreach ([
+                    'all'       => 'Todos',
+                    'published' => 'Publicados',
+                    'draft'     => 'Borradores',
+                    // F3 — Su propio filtro: un formulario en revisión NO es un borrador
+                    // y filtrarlo con los borradores lo escondería de quien tiene
+                    // la tarea de aprobarlo.
+                    'in_review' => 'En revisión',
+                    'closed'    => 'Cerrados',
+                ] as $clave => $texto): ?>
+                    <a class="btn btn-outline-secondary<?= $filtros['estado'] === $clave ? ' active' : '' ?>"
+                       href="/dashboard<?= $filtroQs(['estado' => $clave === 'all' ? '' : $clave, 'page' => null]) ?>"
+                       <?= $filtros['estado'] === $clave ? 'aria-current="true"' : '' ?>><?= $texto ?></a>
+                <?php endforeach; ?>
             </div>
-            <select id="dashSort" class="form-select form-select-sm app-dash-sort" aria-label="Ordenar">
-                <option value="updated">Más recientes</option>
-                <option value="alpha">Alfabético</option>
-                <option value="subs">Más respuestas</option>
-                <option value="activity">Última actividad</option>
+            <select id="dashSort" name="orden" class="form-select form-select-sm app-dash-sort" aria-label="Ordenar">
+                <?php foreach ([
+                    'updated'  => 'Más recientes',
+                    'alpha'    => 'Alfabético',
+                    'subs'     => 'Más respuestas',
+                    'activity' => 'Última actividad',
+                ] as $clave => $texto): ?>
+                    <option value="<?= $clave ?>"<?= $filtros['orden'] === $clave ? ' selected' : '' ?>><?= $texto ?></option>
+                <?php endforeach; ?>
             </select>
-        </div>
+            <?php // Sin JS el `Enter` del buscador envía el formulario, pero el
+                  // desplegable no tiene a dónde ir solo: este botón es su
+                  // camino, y con JS no lo enseña nadie. ?>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
+        </form>
 
-        <div class="row g-3" id="dashGrid" data-paginate data-rows="9">
+        <?php if (empty($forms)): ?>
+            <?php // Con la barra todavía arriba: quitar el filtro se hace desde
+                  // aquí, sin tener que saber la URL del dashboard. ?>
+            <div id="dashNoResults">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="app-empty-icon mb-3"><i class="fa-solid fa-magnifying-glass"></i></div>
+                        <h4 class="h6 fw-bold">Sin resultados</h4>
+                        <p class="text-muted small mb-3">Ningún formulario coincide con tu búsqueda o filtro.</p>
+                        <?php if ($filtros['q'] !== '' || $filtros['estado'] !== '' || $filtros['orden'] !== 'updated'): ?>
+                            <a href="/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-rotate-left me-1"></i>Quitar el filtro</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php else: ?>
+        <div class="row g-3" id="dashGrid">
             <?php foreach ($forms as $form): ?>
             <?php
             $subCount = (int) ($form['submissions_count'] ?? 0);
@@ -238,15 +302,12 @@ $relativeTs = static function (string $timestamp): string {
             <?php endforeach; ?>
         </div>
 
-        <div id="dashNoResults" class="d-none">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center py-5">
-                    <div class="app-empty-icon mb-3"><i class="fa-solid fa-magnifying-glass"></i></div>
-                    <h4 class="h6 fw-bold">Sin resultados</h4>
-                    <p class="text-muted small mb-0">Ningún formulario coincide con tu búsqueda o filtro.</p>
-                </div>
-            </div>
-        </div>
+        <?= View::partial('dashboard/_pagination', [
+            'listado' => $listado,
+            'base'    => '/dashboard',
+            'qs'      => $filtroQs([]),
+        ]) ?>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 

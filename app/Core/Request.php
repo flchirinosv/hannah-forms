@@ -39,9 +39,17 @@ class Request
         return $_POST[$key] ?? $default;
     }
 
+    /**
+     * Query y cuerpo juntos, como los dos Superc globals de siempre: en web los
+     * dos existen siempre, pero en CLI (el runner de tests) no están definidos
+     * hasta que algún test los asigna. `postAll()` ya lo contemplaba y `all()` no,
+     * así que un `--filter` estrecho podía terminar con un
+     * `array_merge(): Argument #1 must be of type array, null given` según qué
+     * test corriera primero.
+     */
     public static function all(): array
     {
-        return array_merge($_GET, $_POST);
+        return array_merge(is_array($_GET) ? $_GET : [], is_array($_POST) ? $_POST : []);
     }
 
     /**

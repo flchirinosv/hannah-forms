@@ -1679,7 +1679,6 @@ body {
     border-radius: 8px;
 }
 .app-palette-grid .app-palette-grip { display: none; }
-.app-pg-hidden { display: none !important; }
 
 /* ---- P2: tipos de encuesta (NPS, estrellas, matriz, ranking) ---- */
 .nps-selector { display: flex; gap: .3rem; flex-wrap: wrap; }

@@ -30,23 +30,30 @@ class FormTest
         $this->formId = Form::create((int) $this->userId, 'Mi formulario de prueba');
     }
 
-    public function testByUserIncluyeConteoDeSubmissions(): void
+    public function testPageIncluyeConteoDeSubmissions(): void
     {
         Submission::create((int) $this->formId, '127.0.0.1');
         Submission::create((int) $this->formId, '127.0.0.1');
 
-        $forms = Form::byUser((int) $this->userId);
-        assertSame(1, count($forms), 'debería existir 1 formulario para el usuario');
-        assertSame('2', (string) ($forms[0]['submissions_count'] ?? '0'), 'submissions_count debería ser 2');
+        $page = Form::page((int) $this->userId, false);
+        assertSame(1, count($page['items']), 'debería existir 1 formulario para el usuario');
+        assertSame('2', (string) ($page['items'][0]['submissions_count'] ?? '0'), 'submissions_count debería ser 2');
     }
 
-    public function testAllDevuelveListaConConteo(): void
+    public function testPageEnAlcanceDeTodosTraePropietarioYConteo(): void
     {
         Submission::create((int) $this->formId, '127.0.0.1');
 
-        $rows = Form::all();
-        assertTrue(count($rows) > 0, 'Form::all() debería devolver al menos el formulario creado');
-        assertArrayHasKey('submissions_count', $rows[0]);
+        $page = Form::page(0, true);
+        $mio = null;
+        foreach ($page['items'] as $fila) {
+            if ((int) $fila['id'] === (int) $this->formId) {
+                $mio = $fila;
+            }
+        }
+        assertNotNull($mio, 'el formulario creado debería salir en el alcance de todos');
+        assertArrayHasKey('submissions_count', $mio);
+        assertArrayHasKey('owner_name', $mio, '/admin/forms pinta el propietario de cada tarjeta');
     }
 
     public function testByFormOrdenaSeccionYSusHijos(): void

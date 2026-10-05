@@ -12,7 +12,7 @@ use App\Core\View;
         <a href="/admin" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left me-1"></i>Volver a usuarios</a>
     </div>
 
-    <div class="row g-3" data-paginate data-rows="9">
+    <div class="row g-3">
         <?php if (empty($forms)): ?>
             <div class="col-12">
                 <div class="card border-0 shadow-sm">
@@ -42,4 +42,12 @@ use App\Core\View;
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+
+    <?php // M2 — Mismo paginador que el dashboard: aquí no hay filtros, así que
+          // el query string va vacío. ?>
+    <?= View::partial('dashboard/_pagination', [
+        'listado' => $listado,
+        'base'    => '/admin/forms',
+        'qs'      => '',
+    ]) ?>
 </div>

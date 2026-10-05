@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 90 archivos, 1012 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 92 archivos, 1032 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -50,7 +50,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
   es un directorio **vacío**), `Models` (10), `Services` (17), `lang/{es,en}.php`.
-  `views/` = 61 plantillas y partials con `View` (diecinueve con prefijo `_`, sin ruta
+  `views/` = 62 plantillas y partials con `View` (veinte con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **54 de los 90 archivos tocan la BD real** (los que llaman
+- **55 de los 92 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -112,6 +112,12 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   con otro nombre, `ensureCleanupHook()`, porque su guard evita que se registre
   una vez por test. `EnvTest` es la excepción: prueba el cargador en sí, con un
   `.env` temporal.
+- Los superglobales llegan al runner **sin inicializar**: en CLI no hay `$_GET`
+  ni `$_POST` hasta que un test los asigna. Por eso `Request::all()` los
+  comprueba con `is_array()`, como hacía `postAll()`, y no con `array_merge()` a
+  pelo: si no, un `--filter` estrecho puede acabar con un `array_merge(): Argument
+  #1 must be of type array, null given` **según qué test haya corrido primero**
+  (con la suite entera otro test los define antes y nadie lo ve).
 
 ## Invariantes que fallan en silencio
 
@@ -692,7 +698,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 61 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 62 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
   anti-vacío —59 vistas, >1800 aperturas vistas y los 6 modales encontrados—
@@ -836,6 +842,51 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **`Form::statusLabel()`** es la fuente de los cuatro estados en las tres vistas
   (`ucfirst($status)` pintaba «In_review»); la **clase** CSS sigue siendo
   `app-status-<status>` sin traducir, que es la que lleva el color.
+
+**El listado del panel (M2)**
+
+- La búsqueda, los filtros por estado y el orden **viajan en la URL**
+  (`/dashboard?q=…&estado=…&orden=…`) y los decide `Form::page()`. Antes eran de
+  cliente sobre el listado entero, y con el `LIMIT` en SQL eso solo habría roto
+  la pantalla: buscando «norte» se pintaban las doce tarjetas de la página y se
+  ocultaban todas. **Un filtro que no va en la consulta no es un filtro**: es un
+  filtro que funciona con doce filas.
+- Los dos vacíos se distinguen por **`$stats['total']`** (el alcance entero), no
+  por `empty($forms)` ni por `$listado['total']`: los dos últimos valen cero
+  cuando un filtro no casa con nada, y con el criterio viejo salía «Aún no tienes
+  formularios» con su botón de crear el primero, que es mentira con catorce.
+- Las **tarjetas de arriba son del alcance entero y sin filtros**: son datos de la
+  instalación, no de lo que hay en pantalla. De ahí que `counts()` sea una
+  consulta aparte (y la cacheada) en vez de un `foreach` sobre la página. Lo
+  atan `testLasCuentasSonDelAlcanceEnteroYNoDeLaPagina` y
+  `testLaUrlMandaYLasTarjetasNoCambianConElFiltro`.
+- El **conteo de respuestas va sobre los ids de la página**, no sobre el alcance:
+  son dos consultas (`rowsDeListado()`) porque el agregado de la segunda solo
+  cuenta las respuestas de las doce tarjetas que se pintan. Los marcadores van
+  numerados **y por juego** (`:c0…` para el `IN` del agregado, `:w0…` para el
+  `WHERE`): `Database` va con `ATTR_EMULATE_PREPARES = false` y un marcador
+  repetido lanza HY093. El `CONCAT` del buscador es el mismo motivo: dos `LIKE`
+  con `:q` repetido también lo lanzarían.
+- **Todo `ORDER BY` acaba en `f.id`**: `updated_at` se empata entre formularios
+  creados en el mismo segundo y el título entre dos formularios con el mismo
+  nombre, y sin desempate la frontera entre páginas es indeterminada — un
+  formulario sale en dos páginas o en ninguna. Lo vigila
+  `testElOrdenNoReparteUnFormularioEnDosPaginasAunqueSeEmpaten`.
+- Una página de la URL **por encima del final se recorta a la última**, no pinta
+  un grid vacío: con un filtro puesto es el camino normal —filtrar deja menos
+  filas de las que había—, y una URL escrita a mano o un enlace viejo también
+  llegan así. Lo que **no** lo justifica ya es la caché (solo cachea las
+  cuentas, no el listado).
+- El paginador son **enlaces**, no botones: la página vive en la URL, el «atrás»
+  funciona y el enlace se puede copiar. Y **conserva los filtros**: un
+  `/dashboard?page=2` sin el `q` es la página 2 de todo lo demás. Lo atan
+  `DashboardListMarkupTest`.
+- `Form::page()` es **la única forma de listar formularios**: `byUser()` y `all()`
+  ya no existen (devolvían el alcance entero). `/admin/forms` la usa con 20 por
+  página y sin filtros.
+- Lo `%` y el `_` de lo que se escribe en el buscador **se escapan**
+  (`addcslashes`): sin eso, buscar «100%» devuelve el alcance entero y parece un
+  buscador roto.
 
 **Router, params y respuestas**
 
@@ -1202,12 +1253,13 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 417 comprobaciones manuales en 27 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 436 comprobaciones manuales en 28 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
-  por atributo X, la comparación por atributo con su techo Y, quién respondió Z
-  y el correo de invitación AA), para detectar problemas que la suite no ve
+  por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
+  el correo de invitación AA y el listado paginado del panel AB), para detectar
+  problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
   panel, R, S, T, U y AA son la
   lista mínima.

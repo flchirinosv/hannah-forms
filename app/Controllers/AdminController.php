@@ -475,9 +475,14 @@ class AdminController
             return;
         }
 
-        $forms = Form::all();
+        // M2 — El mismo listado paginado que el dashboard: aquí sin filtros
+        // (la vista es "todos los formularios" a secas) y por página propia,
+        // que es más corta porque la tarjeta es más pequeña. Con veinte mil
+        // formularios la consulta devolvía veinte mil filas para pintar nueve.
+        $listado = Form::page(0, true, [], max(1, (int) Request::query('page', '1')), 20);
         View::render('admin/forms', [
-            'forms' => $forms,
+            'forms' => $listado['items'],
+            'listado' => $listado,
             'csrf'  => Csrf::token(),
         ]);
     }

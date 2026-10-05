@@ -2,7 +2,7 @@
 
 **Proyecto:** VanillaForms
 **Version:** 1.2.0
-**Fecha:** 2026-10-02 (panel sin recarga)
+**Fecha:** 2026-10-05 (listado del panel paginado)
 **Estado:** Estable
 
 ---
@@ -13,7 +13,7 @@ VanillaForms es un sistema de formularios web self-hosted construido con PHP 8.2
 
 **Objetivo principal:** Sistema auto-hospedado de creacion y gestion de formularios con control total sobre datos y privacidad.
 
-**Estado actual:** Funcional, con la suite en verde (**1012 tests**) y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5) y el 2026-10-02 (F0.4-uno…cuatro: el panel y `/admin` contestan JSON por fetch y el camino sin JavaScript sigue siendo un POST normal, `docs/decisiones.md`).
+**Estado actual:** Funcional, con la suite en verde (**1032 tests**) y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5) y el 2026-10-02 (F0.4-uno…cuatro: el panel y `/admin` contestan JSON por fetch y el camino sin JavaScript sigue siendo un POST normal, `docs/decisiones.md`). Y el 2026-10-05, M2: el listado de formularios pagina en el servidor y por eso su búsqueda, filtro y orden viajan en la URL (`docs/decisiones.md`).
 
 ---
 
@@ -451,8 +451,8 @@ php scripts/test.php --path tests/unit
 - Indices en subclaves consultadas (forms.status, fields.form_id, answers*)
 - PDO con `EMULATE_PREPARES=false`
 - N+1 resuelto en analytics (submissions + answers en una consulta)
-- Paginación client-side en dashboard, admin y tabla de analítica
-- Caché del dashboard (2026-09-28, fase 6): `Cache::remember('dash:...', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
+- Listado de formularios paginado EN EL SERVIDOR (2026-10-05, M2): `Form::page()` (12 por página; 20 en `/admin/forms`) con búsqueda, filtro de estado y orden en la URL (`/dashboard?q=…&estado=…&orden=…&page=…`); el conteo de respuestas va sobre los ids de la página y las tarjetas de arriba son el alcance entero sin filtros (`Form::counts()`, cacheado). El paginador de cliente de `app.js` se fue con la caché: ya no hay nada que ocultar
+- Caché del dashboard (2026-09-28, fase 6; ajustada el 2026-10-05): solo las CUENTAS, `Cache::remember('dash:stats:…', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
 - Tabla de analítica paginada EN EL SERVIDOR (2026-09-28): `Submission::byFormFilteredPaginated` + `GET /forms/{id}/analytics/rows` (15/página, lazy-load por fetch); los agregados siguen globales
 - Revisión/aprobación (2026-09-29, F3): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` (solo `admin` por defecto) y controlador aparte `ReviewController` con las tres transiciones. Opt-in por formulario (`settings.review.enabled`); el estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
 - `defer` en scripts no críticos (dashboard.js, sortable+builder, chart+analytics), preservando el orden de dependencias

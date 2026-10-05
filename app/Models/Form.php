@@ -122,30 +122,206 @@ class Form
         return $form;
     }
 
-    public static function byUser(int $userId): array
+    /** Los cuatro estados de `forms.status`, y la lista blanca del filtro. */
+    public const STATUS = ['draft', 'in_review', 'published', 'closed'];
+
+    /** Filas por página del listado de formularios (dashboard y /admin/forms). */
+    public const POR_PAGINA = 12;
+
+    /**
+     * Los cuatro órdenes del desplegable. Las claves son las de `<option
+     * value>` del `dashSort`, así que quien llame a esto no puede inventarse
+     * una quinta por un `match` sin default.
+     */
+    public const ORDENES = ['updated', 'alpha', 'subs', 'activity'];
+
+    /**
+     * M2 — Una página del listado de formularios, con su total.
+     *
+     * Antes `byUser()`/`all()` devolvían el alcance entero y el `LIMIT` era de
+     * cliente: con doscientos formularios la página pintaba doscientas tarjetas
+     * para mostrar nueve, y la subconsulta de `submissions` agregaba la tabla
+     * entera en cada consulta. Aquí son DOS consultas porque el agregado va
+     * sobre los ids de la página y no sobre el alcance: la segunda solo cuenta
+     * las respuestas de los doce formularios que se van a pintar.
+     *
+     * `$filtros` acepta `q` (texto), `estado` (uno de `STATUS`) y `orden` (uno
+     * de `ORDENES`). Un filtro desconocido se ignora en vez de romper: quien lo
+     * manda es la URL.
+     *
+     * El `id` como segundo criterio de orden no es decoración: `ORDER BY
+     * updated_at DESC` solo sobre una columna que se empata deja la frontera
+     * entre páginas indeterminada, y con ella un formulario que aparece en dos
+     * páginas o en ninguna al paginar. Lo mismo con dos títulos iguales.
+     */
+    public static function page(int $userId, bool $scopeAll, array $filtros = [], int $page = 1, ?int $porPagina = null): array
     {
-        return self::db()->fetchAll(
-            'SELECT f.*,
-                    COALESCE(sc.c, 0) AS submissions_count,
-                    COALESCE(sc.last_at, "") AS last_submission_at
-             FROM forms f
-             LEFT JOIN (SELECT form_id, COUNT(*) AS c, MAX(finished_at) AS last_at FROM submissions GROUP BY form_id) sc ON sc.form_id = f.id
-             WHERE f.user_id = :user_id
-             ORDER BY f.updated_at DESC',
-            ['user_id' => $userId]
+        $db = self::db();
+        $porPagina = max(1, min(60, $porPagina ?? self::POR_PAGINA));
+        $page = max(1, $page);
+
+        [$where, $params] = self::whereListado($userId, $scopeAll, $filtros);
+
+        $row = $db->fetch("SELECT COUNT(*) AS c FROM forms f WHERE 1 = 1$where", $params);
+        $total = (int) ($row['c'] ?? 0);
+        $pages = max(1, (int) ceil($total / $porPagina));
+        // Una página de la URL por encima del final se recorta a la última en
+        // vez de pintar un grid vacío: con el filtro puesto es el caso normal
+        // (filtrar deja menos filas que las que había).
+        $page = min($page, $pages);
+
+        $orden = self::orderBy($filtros['orden'] ?? 'updated');
+        $ids = $db->fetchAll(
+            "SELECT f.id FROM forms f WHERE 1 = 1$where ORDER BY $orden LIMIT $porPagina OFFSET " . (($page - 1) * $porPagina),
+            $params
         );
+        $ids = array_map(static fn (array $r): int => (int) $r['id'], $ids);
+
+        return [
+            'items'     => $ids === [] ? [] : self::rowsDeListado($db, $ids, $orden),
+            'total'     => $total,
+            'page'      => $page,
+            'pages'     => $pages,
+            'per_page'  => $porPagina,
+        ];
     }
 
-    public static function all(): array
+    /**
+     * Las cuentas de las tarjetas del dashboard, del alcance entero y **sin
+     * filtros**: son datos de la instalación («publicados: 12»), no de lo que
+     * hay en pantalla. Por eso van en su propia consulta y no se derivan de la
+     * página — derivarlas de la página hacía que en la segunda apareciera
+     * «Total 12» con doce tarjetas pero solo las de la primera.
+     */
+    public static function counts(int $userId, bool $scopeAll): array
     {
-        return self::db()->fetchAll(
-            'SELECT f.*, u.name AS owner_name,
+        $db = self::db();
+        $where = $scopeAll ? '' : ' WHERE f.user_id = :user_id';
+        $params = $scopeAll ? [] : ['user_id' => $userId];
+
+        $row = $db->fetch(
+            "SELECT COUNT(*) AS total,
+                    COALESCE(SUM(f.status = 'draft'), 0) AS draft,
+                    COALESCE(SUM(f.status = 'in_review'), 0) AS in_review,
+                    COALESCE(SUM(f.status = 'published'), 0) AS published,
+                    COALESCE(SUM(f.status = 'closed'), 0) AS closed
+             FROM forms f$where",
+            $params
+        ) ?? [];
+
+        // COUNT por estado y no COUNT con WHERE: cinco escaneos del índice
+        // `idx_forms_user_status` para sacar una fila.
+        $stats = ['submissions' => 0];
+        foreach (self::STATUS as $estado) {
+            $stats[$estado] = (int) ($row[$estado] ?? 0);
+        }
+        $stats['total'] = (int) ($row['total'] ?? 0);
+
+        $row = $db->fetch(
+            'SELECT COUNT(*) AS c FROM submissions s JOIN forms f ON f.id = s.form_id' . ($scopeAll ? '' : ' WHERE f.user_id = :user_id'),
+            $params
+        );
+        $stats['submissions'] = (int) ($row['c'] ?? 0);
+
+        return $stats;
+    }
+
+    /** El WHERE del listado, con los filtros ya validados. */
+    private static function whereListado(int $userId, bool $scopeAll, array $filtros): array
+    {
+        $where = '';
+        $params = [];
+
+        if (!$scopeAll) {
+            $where .= ' AND f.user_id = :user_id';
+            $params['user_id'] = $userId;
+        }
+
+        $q = trim((string) ($filtros['q'] ?? ''));
+        if ($q !== '') {
+            // Un solo marcador con el `CONCAT`, no dos `LIKE` con `:q`
+            // repetido: `Database` va con `ATTR_EMULATE_PREPARES = false` y un
+            // marcador repetido lanza HY093. Y así busca sobre título y
+            // descripción a la vez, que es lo que hacía el buscador de cliente
+            // (`data-title` era los dos textos juntos).
+            //
+            // El `%` y el `_` de lo que se escribe son texto, comodines. Sin
+            // escaparlos, buscar «100%» devuelve el alcance entero y parece que
+            // el buscador está roto.
+            $where .= ' AND CONCAT(f.title, " ", f.description) LIKE :q';
+            $params['q'] = '%' . addcslashes($q, '%_\\') . '%';
+        }
+
+        $estado = (string) ($filtros['estado'] ?? '');
+        if (in_array($estado, self::STATUS, true)) {
+            $where .= ' AND f.status = :estado';
+            $params['estado'] = $estado;
+        }
+
+        return [$where, $params];
+    }
+
+    /**
+     * El `ORDER BY` como fragmento de SQL, con el `id` de desempate.
+     *
+     * `subs` y `activity` necesitan un valor por formulario, así que van como
+     * subconsulta correlacionada: con `idx_submissions_form_finished` cada una es
+     * una búsqueda en el índice, no un escaneo. Y las dos se usan en el listado
+     * **y** en la página de filas con el mismo texto, para que el orden de lo
+     * pintado sea el que pidió la persona y no el que saliera de un array.
+     */
+    private static function orderBy(string $orden): string
+    {
+        return match ($orden) {
+            'alpha'    => 'f.title ASC, f.id ASC',
+            'subs'     => '(SELECT COUNT(*) FROM submissions s WHERE s.form_id = f.id) DESC, f.id DESC',
+            'activity' => '(SELECT MAX(s.finished_at) FROM submissions s WHERE s.form_id = f.id) DESC, f.id DESC',
+            default    => 'f.updated_at DESC, f.id DESC',
+        };
+    }
+
+    /**
+     * Las filas de los ids de la página, con su conteo de respuestas.
+     *
+     * Los marcadores van numerados y **por juego**: `:c0, :c1…` para el `IN` del
+     * agregado y `:w0, :w1…` para el `WHERE`, aunque valgan lo mismo. Es el
+     * motivo por el que `Database` (con `ATTR_EMULATE_PREPARES = false`) lanza
+     * HY093 ante un marcador repetido, y por el que `Answer::marcadoresDeCampos()`
+     * también los numera.
+     */
+    private static function rowsDeListado(Database $db, array $ids, string $orden): array
+    {
+        $phCount = implode(', ', array_map(
+            static fn (int $id, int $i): string => ':c' . $i,
+            $ids,
+            array_keys($ids)
+        ));
+        $phWhere = implode(', ', array_map(
+            static fn (int $id, int $i): string => ':w' . $i,
+            $ids,
+            array_keys($ids)
+        ));
+        $params = [];
+        foreach ($ids as $i => $id) {
+            $params['c' . $i] = $id;
+            $params['w' . $i] = $id;
+        }
+
+        return $db->fetchAll(
+            "SELECT f.*, u.name AS owner_name,
                     COALESCE(sc.c, 0) AS submissions_count,
-                    COALESCE(sc.last_at, "") AS last_submission_at
+                    COALESCE(sc.last_at, '') AS last_submission_at
              FROM forms f
              JOIN users u ON u.id = f.user_id
-             LEFT JOIN (SELECT form_id, COUNT(*) AS c, MAX(finished_at) AS last_at FROM submissions GROUP BY form_id) sc ON sc.form_id = f.id
-             ORDER BY f.updated_at DESC'
+             LEFT JOIN (
+                SELECT s.form_id, COUNT(*) AS c, MAX(s.finished_at) AS last_at
+                FROM submissions s
+                WHERE s.form_id IN ($phCount)
+                GROUP BY s.form_id
+             ) sc ON sc.form_id = f.id
+             WHERE f.id IN ($phWhere)
+             ORDER BY $orden",
+            $params
         );
     }
 

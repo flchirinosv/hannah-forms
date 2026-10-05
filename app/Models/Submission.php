@@ -367,7 +367,7 @@ class Submission
      * que pueden divergir sin que nada falle: el indicador marcaría «38
      * respuestas» y la tabla de abajo tendría 12.
      *
-     * Es una subconsulta `IN` —el patrón que ya usa `Form::byUser()`— y por eso
+     * Es una subconsulta `IN` —el patrón que usa `Form::rowsDeListado()`— y por eso
      * **no cambia de forma** ninguna de las consultas existentes: sin filtro el
      * fragmento es una cadena vacía.
      *
