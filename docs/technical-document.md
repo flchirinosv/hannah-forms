@@ -13,7 +13,7 @@ VanillaForms es un sistema de formularios web self-hosted construido con PHP 8.2
 
 **Objetivo principal:** Sistema auto-hospedado de creacion y gestion de formularios con control total sobre datos y privacidad.
 
-**Estado actual:** Funcional, con la suite en verde (**912 tests**) y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5) y el 2026-10-02 (F0.4-uno…cuatro: el panel y `/admin` contestan JSON por fetch y el camino sin JavaScript sigue siendo un POST normal, `docs/decisiones.md`).
+**Estado actual:** Funcional, con la suite en verde (**1012 tests**) y auditoría de seguridad (2026-09-25) con remediaciones aplicadas. Reconciliado el 2026-09-28 (fase 3 horaria/analítica, fase 4 de limpieza y decisiones F5) y el 2026-10-02 (F0.4-uno…cuatro: el panel y `/admin` contestan JSON por fetch y el camino sin JavaScript sigue siendo un POST normal, `docs/decisiones.md`).
 
 ---
 
@@ -100,9 +100,10 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 ```
 
 El listado de participantes son tres tablas: `form_participants` (una fila por
-persona, con su `code` de acceso y `responded_at`), `form_participant_fields` (el
-catálogo de atributos, que sobrevive a vaciar la lista) y `form_participant_attrs`
-(el valor de un atributo para una persona).
+persona, con su `code` de acceso, su `responded_at` y su `invited_at`, que es
+«cuándo se le mandó el correo de invitación», justo detrás de `responded_at`),
+`form_participant_fields` (el catálogo de atributos, que sobrevive a vaciar la lista)
+y `form_participant_attrs` (el valor de un atributo para una persona).
 
 Todo lo demás son tablas soporte: `rate_limits` (anti-abuso), `migrations`
 (qué migraciones se aplicaron), `password_resets` (F2),

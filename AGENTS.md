@@ -1215,9 +1215,12 @@ probando la rama equivocada).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
 - `docs/technical-document.md`: arquitectura y modelo de datos (22 tablas, con
-  F2/F3/F4 y RBAC).
+  F2/F3/F4, RBAC y el listado de participantes con su `invited_at`).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
-  P1–P10 con su diagnóstico; los mapas de estado quedaron al día el 2026-09-29.
+  P1–P10 con su diagnóstico, **todas cerradas**.
+- `docs/plan-participantes-2026-10-04.md`: fases 0–11 del listado de participantes,
+  con `invited_at` y el correo de invitación; su tabla de estado es la que se
+  actualiza al cerrar cada fase.
 - `docs/design.md`: spec del builder (tokens, componentes, reglas para código
   nuevo).
 - `docs/api-spec.md`: referencia de endpoints. Para el middleware EXACTO de cada

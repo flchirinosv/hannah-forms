@@ -1,7 +1,11 @@
 # Plan — Ajustes operativos fuera del builder, registro global, roles y limpieza visual
 
 **Fecha:** 2026-10-01
-**Estado:** en ejecución, un commit por bloque.
+**Estado:** **cerrado** — los siete bloques y la ronda visual están hechos, uno por commit,
+y la suite completa en verde. Queda solo la verificación manual en navegador (bloques
+R, S, T y U de [docs/pruebas-funcionales.md](pruebas-funcionales.md)), que es lo único
+que este documento no puede cerrar: el arnés de JS comprueba el envío contra un DOM
+mínimo, no el píxel.
 **Alcance:** seis bloques independientes (más una ronda visual posterior, bloque 7), en el orden en que se listan porque cada uno
 depende del anterior (el bloque 2 crea la puerta por la que entra el ajuste de acceso
 del bloque 3).

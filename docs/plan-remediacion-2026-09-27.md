@@ -952,7 +952,7 @@ disfrazado de Fix de capa de datos.
 
 ---
 
-# Fase 6 — RBAC, log de seguridad y rendimiento (2026-09-28)
+## Fase 6 — RBAC, log de seguridad y rendimiento (CERRADA 2026-09-28)
 
 Cierre del ciclo pendiente de la fase 5: **controles de acceso por permisos**,
 **registro de eventos de seguridad** y **rendimiento del dashboard** (caché) +
