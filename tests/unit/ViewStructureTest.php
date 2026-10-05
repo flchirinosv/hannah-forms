@@ -32,7 +32,7 @@ namespace Tests\Unit;
  * Lo que se fija aquí es la clase de fallo, no este modal: el HTML que una vista
  * emite tiene que estar anidado como se lee, y un modal no puede vivir dentro de
  * otra cosa (todo lo que lo contiene es, casi por definición, algo con
- * `display: none`). Ningún test recorría la estructura de las 59 vistas, así que
+ * `display: none`). Ningún test recorría la estructura de las 61 vistas, así que
  * el error podía entrar con la suite en verde.
  */
 class ViewStructureTest
@@ -196,7 +196,7 @@ class ViewStructureTest
     public function testNingunaVistaDejaEtiquetasSinCerrar(): void
     {
         $vistas = $this->vistas();
-        assertTrue(count($vistas) >= 50, 'Se esperaban las 59 vistas y se encontraron ' . count($vistas));
+        assertTrue(count($vistas) >= 50, 'Se esperaban las 61 vistas y se encontraron ' . count($vistas));
 
         $rotas = [];
         $analizadas = 0;
@@ -209,7 +209,7 @@ class ViewStructureTest
         }
 
         // Guard anti-vacío: un recorrido que no recorre pasa las dos
-        // comprobaciones. Las 59 vistas suman unas 2000 aperturas,
+        // comprobaciones. Las 61 vistas suman unas 2000 aperturas,
         // y así un `preg_match_all` que no casa o un `foreach` sobre el retorno (un int)
         // salen como fallo y no como un test verde.
         assertTrue(

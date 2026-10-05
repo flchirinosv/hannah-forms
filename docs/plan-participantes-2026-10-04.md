@@ -1063,4 +1063,4 @@ siguen siendo lo que exportaban antes, sin una columna nueva.
 | 8 | **Hecha** — 983 tests |
 | 9 | **Hecha** — 996 tests |
 | 10 | **Hecha** — 1012 tests |
-| 11 | Pendiente |
+| 11 | **Hecha** — manual (§12), bloque manual AA y recuentos |

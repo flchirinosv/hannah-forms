@@ -1,12 +1,12 @@
 # Manual de usuario — VanillaForms
 
-Manual de instalación y uso de la aplicación, escrito **contra el código**
-(verificado en el commit `751602c`). Si algo de este manual y lo que ves en
-pantalla no coinciden, el código manda: `config/routes.php` para las rutas,
-`app/Services/FormSettings.php` para los ajustes y `config/permissions.php`
-para los permisos.
+Manual de instalación y uso de la aplicación, escrito **contra el código**.
+Si algo de este manual y lo que ves en pantalla no coinciden, el código manda:
+`config/routes.php` para las rutas, `app/Services/FormSettings.php` para los
+ajustes y `config/permissions.php` para los permisos.
 
-Documento terminado: 2026-09-30.
+Documento terminado: 2026-09-30. Última revisión: 2026-10-05, con el
+listado de participantes (fases 1 a 10) y las invitaciones por correo.
 
 ---
 
@@ -664,8 +664,9 @@ fallo.
 
 ## 11. Correos
 
-Cinco plantillas: aviso de respuesta recibida, confirmación al que responde,
-solicitud de acceso, recuperación de contraseña y aviso de revisión.
+Seis plantillas: aviso de respuesta recibida, confirmación al que responde,
+solicitud de acceso, recuperación de contraseña, aviso de revisión y la
+invitación a un listado de participantes (ver §12.3).
 
 Dos comportamientos que conviene conocer:
 
@@ -680,9 +681,124 @@ El enlace de recuperación de contraseña sale de la URL pública, no de
 
 ---
 
-## 12. Seguridad y operación
+## 12. Un formulario para una lista de personas (modo «Solo el listado de participantes»)
 
-### 12.1 Lo que protege cada capa
+Este modo sirve para un caso concreto: **sabes de antemano quién tiene que
+responder** (un padrón, un censo, un equipo) y quieres dos cosas a la vez —que
+respondan solo esas personas y que puedas ver quién respondió y comparar sus
+respuestas por atributos (sede, zona, segmento).
+
+Se activa en la **ficha** del formulario, en *Acceso*, eligiendo «Solo el listado
+de participantes» y con qué se identifica cada persona:
+
+| Identificador | Qué es | Cuándo usarlo |
+|---|---|---|
+| **Correo electrónico** | Cada persona entra con la dirección de la lista. | Cuando ya tienes el correo de todo el mundo y quieres que entren solos. |
+| **Cédula** | Cada persona entra con un documento. | Cuando el correo no es fiable o no lo tienes. |
+| **Nombre** | Cada persona entra con su nombre. | Listados cortos, donde el nombre es único. |
+| **Indicador propio** | Un código que tú defines (nº de cliente, expediente…). | Cuando tu identificador es un código interno. |
+
+Sin lista, un formulario es público, por lista de correos o por enlace (ver
+*Acceso*). Con lista, el formulario **no se sirve a quien no esté en ella**: se le
+pide su **código personal** de 16 caracteres (el de la columna «Código»). El
+correo no sirve para entrar por sí mismo, ni siquiera si es el del identificador:
+quien esté en la lista entra con el código, y si se pierde, hay que repartirlo
+a mano o usar el botón de invitar por correo.
+
+### 12.1 El panel de Participantes
+
+Una vez cargada la lista, la tarjeta **Acceso** de la ficha tiene el panel del
+listado, con dos zonas (Lista / Importar) y siete cosas en total:
+
+**Lista** — todo lo del día a día:
+
+1. **Los números**: cuántas personas hay en total, cuántas han respondido,
+   cuántas quedan por responder y cuántas han recibido el enlace por correo.
+2. **El botón de invitar por correo** (ver §12.3).
+3. **El alta de una persona** suelta, para quien llega tarde.
+4. **La lista** en sí: con buscador, orden por columna, edición de cada persona
+   y su código de entrada.
+
+**Importar** — la lista en sí y su formato:
+
+5. **Descargar la plantilla** o **subir un `.xlsx`**. La plantilla tiene una hoja
+   con una fila de encabezados; los identificadores posibles (`cédula`, `nombre`,
+   `indicador`, `correo`) se reconocen por su encabezado, y **cualquier otro
+   encabezado es un atributo**.
+6. **El informe de una importación**: qué filas entraron, cuántas quedaron
+   fuera y por qué, con el detalle de las omitidas.
+7. **El catálogo de atributos**: las columnas extra (sede, zona, segmento…) que
+   puedes renombrar o quitar. Se administra en el mismo panel, junto al
+   importador, porque **es el formato del `.xlsx`**: vaciar la lista no lo borra.
+
+> La búsqueda es un «contiene»: buscar `V-1` también encuentra `V-10`. Usa
+> identificadores de ancho fijo (`V-01`) si te importa. La lista se muestra de
+> 25 en 25.
+
+### 12.2 Importar
+
+1. Descarga la plantilla y rellénala. Los identificadores van **como texto**, no
+   como número (una cédula `00123` tiene tres ceros).
+2. En el panel Participantes, en la zona **Importar**, sube el archivo.
+3. Elige si **fusiona** con lo que ya había o si **reemplaza** toda la lista.
+4. Lee el informe: dice cuántas filas entraron, cuántas quedaron fuera y por qué.
+
+Dos cosas que conviene saber:
+
+- **Reemplazar con un archivo vacío se rechaza.** Para vaciar la lista hay un
+  botón propio, y existe para que el catálogo de atributos sobreviva: vaciar la
+  lista no borra las columnas, para que el próximo archivo tenga el mismo formato.
+- **Importar no manda ningún correo.** Ver §12.3.
+
+### 12.3 Invitar por correo
+
+Si el formulario se identifica por **correo**, el panel muestra un botón
+**«Enviar invitaciones»** con el número de pendientes entre paréntesis. Púlsalo y
+cada persona recibe un correo con un enlace al formulario.
+
+Cinco reglas, para que no te sorprenda nada:
+
+1. **No hay botón si el identificador no es el correo.** Con cédula, nombre o
+   indicador, el enlace de cada persona está en la columna «Código» y lo repartes
+   tú. Es a propósito: el correo es un dato opcional de la lista, no la identidad
+   con la que se entra.
+2. **No hay botón si no hay servidor de correo configurado.** El panel te lo
+   dice. Los códigos de la columna «Código» siguen funcionando.
+3. **La importación no manda correos.** Los 400 correos de un archivo de 400
+   filas son un accidente esperando, así que el envío es un botón aparte que
+   pulsas tú.
+4. **De 50 en 50.** El botón dice cuántos quedan y envía como mucho 50 por
+   pulsación. Si quedan 87, después del primer clic dirá 37. El tope es para que
+   un envío no se quede colgando; no es un fallo.
+5. **A quien ya respondió no se le escribe**, y a quien ya recibió el enlace no
+   se le vuelve a escribir. Si le cambias el correo a alguien, vuelve a contar como
+   pendiente: el correo nuevo es el que hay que mandar.
+
+Si el servidor de correo se cae a mitad de una tanda, el aviso dice cuántos
+salieron y cuántos quedan, y **los que fallaron siguen en la lista**: no se marca
+a nadie a quien no le llegó el correo. Repite el botón para reintentar.
+
+> **Cambiar el identificador del formulario con gente dentro.** Al cambiar de
+> cédula a correo (o al revés) la app comprueba que toda la lista tenga el dato
+> nuevo y, si algo falta, te dice exactamente a quién antes de tocar nada. Los
+> **códigos no cambian** al cambiar el identificador: los enlaces repartidos siguen
+> sirviendo.
+
+### 12.4 Ver y comparar respuestas
+
+Dos cosas aparecen ahora en la ficha y en la analítica del formulario:
+
+- **Quién respondió.** En el listado de respuestas y en el detalle hay una
+  columna «Participante» con la identidad de quien envió cada respuesta, **detrás
+  del permiso `responses.pii`**. Sin ese permiso no hay columna (y hay un aviso
+  que lo explica); los archivos exportados **no** llevan nunca esa identidad.
+- **Comparar por atributo.** En la analítica puedes filtrar las respuestas por un
+  valor de un atributo (sede Norte, por ejemplo) y comparar los grupos así
+  filtrados por otro atributo. El número de filas está topado a propósito.
+
+## 13. Seguridad y operación
+
+### 13.1 Lo que protege cada capa
 
 | Capa | Qué hace |
 |---|---|
@@ -694,7 +810,7 @@ El enlace de recuperación de contraseña sale de la URL pública, no de
 | Registro de seguridad | Eventos relevantes en `/admin/security-log`. |
 | Cabeceras | `X-Frame-Options: DENY` salvo que se cambie. |
 
-### 12.2 Copias de seguridad
+### 13.2 Copias de seguridad
 
 Hay dos cosas que respaldar, y **juntas**: la base de datos (respuestas,
 usuarios, tokens) y `storage/uploads/` (adjuntos). Una copia de la base sin los
@@ -702,16 +818,16 @@ adjuntos conserva el texto de las respuestas pero pierde los archivos; una copia
 de los adjuntos sin la base deja archivos sin saber a qué respuesta pertenecen.
 Haz las dos en el mismo momento.
 
-### 12.3 Limpieza
+### 13.3 Limpieza
 
 `scripts/clean-uploads.php` encuentra adjuntos huérfanos (los que se quedan
 sin fila de respuesta tras un borrado). Ejecuta con `--dry-run` primero.
 
 ---
 
-## 13. Problemas frecuentes
+## 14. Problemas frecuentes
 
-### 13.1 Páginas de error propias
+### 14.1 Páginas de error propias
 
 | Código | Significa en esta app | Qué hacer |
 |---|---|---|
@@ -728,7 +844,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 `post_max_size`, PHP vacía `$_POST` y el error honesto es «demasiado grande», no
 «sesión inválida».
 
-### 13.2 Síntomas frecuentes
+### 14.2 Síntomas frecuentes
 
 | Síntoma | Causa probable |
 |---|---|
@@ -738,13 +854,14 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | La tabla de respuestas se queda «cargando» | Debe ser un bug de `analytics.js`. Comprobado en `751602c`. |
 | Un campo con condición sigue apareciendo al enviar | La condición se cumple: se muestra, y sus respuestas sí se guardan. |
 | Los correos no llegan | Sin SMTP configurado. Revisa `MAIL_*` y que el remitente esté autorizado. |
+| No aparece el botón de invitar por correo | El formulario tiene que ser de lista **y** de identificación por correo (ver §12.3). |
 | El webhook no llega a una IP local | Faltan los **dos** opt-ins. |
 | Los adjuntos no se suben | Permisos de escritura en `storage/uploads/`, o el tipo no está en la lista. |
 | Un usuario ve todo enmascarado | Es correcto: le falta `responses.pii`. |
 | La analítica muestra horas raras | `APP_TIMEZONE` solo afecta a la presentación. Ajusta esa variable, no los datos. |
 | Faltan extensiones (`php -m` no lista `mbstring` o `fileinfo`) | La app arranca, pero falla justo cuando usas respuestas con texto o adjuntos |
 
-### 13.3 Antes de decir que algo está roto
+### 14.3 Antes de decir que algo está roto
 
 1. ¿Está el formulario **publicado**? Es la causa número uno de un 403.
 2. ¿Estás viendo la información equivocada por falta de un permiso? Comprueba
@@ -755,14 +872,14 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 
 ---
 
-## 14. Referencia rápida
+## 15. Referencia rápida
 
 ### Rutas del panel
 
 | Ruta | Qué es |
 |---|---|
 | `/dashboard` | Lista de tus formularios. |
-| `/forms/{id}` | Ficha: enlace, QR, embed, respuestas, analítica, ajustes. |
+| `/forms/{id}` | Ficha: enlace, QR, embed, respuestas, analítica, ajustes y la tarjeta **Acceso** (con el panel del listado si el formulario es de lista). |
 | `/forms/{id}/builder` | Constructor. |
 | `/responses` | Respuestas de todos tus formularios. |
 | `/analytics` | Analítica agregada. |

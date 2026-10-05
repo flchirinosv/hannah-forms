@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 996 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1012 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,12 +23,12 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**391 pruebas** en 26 bloques: A–Q, las regresiones (R) de fallos que ya
+**417 pruebas** en 27 bloques: A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
 la lista de acceso (U), la pestaña de participantes (V), el identificador del
 listado (W), el filtro de la analítica por atributo (X), la comparación por
-atributo con su techo (Y) y quién respondió (Z).
+atributo con su techo (Y), quién respondió (Z) y el correo de invitación (AA).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -37,7 +37,7 @@ Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
 
 - Antes de un despliegue: A, B, N y O enteras.
 - Después de tocar el constructor: D, G y R enteras.
-- Después de tocar el fill o el panel: E, F, K, R, T y U enteras.
+- Después de tocar el fill o el panel: E, F, K, R, T, U y AA enteras.
 - Después de tocar la analítica: K y X enteras.
 - Después de tocar el listado de participantes: V, W y X enteras.
 - Después de tocar seguridad o permisos: M, N y O enteras.
@@ -703,6 +703,40 @@ Para llegar: panel → un formulario en «Solo el listado de participantes» →
 | Z12 | El detalle de una respuesta de un campo marcado como dato personal, sin permiso | Sigue apareciendo el aviso de datos enmascarados, y ahora además **no** se dice quién respondió | A | |
 
 
+## AA. El correo de invitación (fase 10, 2026-10-05)
+
+El botón escribe a la gente de la lista. Lo que se mira aquí es lo que la suite no
+ve: que el correo **se entienda**, que el botón **no prometa más de lo que hace**, y
+que lo que queda pendiente después de un envío a medias **se vea** en la misma pantalla.
+La lista tiene que estar cargada y el identificador del formulario en «correo» para
+que el botón exista.
+
+Para llegar: panel → el formulario → *Participantes*.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AA1 | El botón con la lista vacía | Sale «No hay invitaciones por correo pendientes»; sin botón, sin error en el log | A | |
+| AA2 | Con 37 pendientes | El botón dice «Enviar invitaciones (37)»: el número es el de pendientes, no el de la lista | M | |
+| AA3 | Pulsa el botón con SMTP configurado | Desaparece el aviso de confirmación, aparece un aviso con cuántos correos salieron y **el número de pendientes baja** | A | |
+| AA4 | Con más de 50 pendientes | Se mandan 50 y el botón vuelve a decir cuántos quedan (37); no dice «50 enviados» | A | |
+| AA5 | Con SMTP apagado (`MAIL_HOST` vacío) y pendientes | Sale el aviso de que no hay correo configurado, **no** un error de servidor, y el número de pendientes **no** baja | A | |
+| AA6 | Con identificador «cédula» o «indicador» | **No hay botón**: en su lugar se lee que el enlace se reparte desde la columna «Código» | A | |
+| AA7 | Pulsa el botón con pendientes pero **identificador cambiado a cédula** justo antes | Un 403 y no se manda nada; no se ve un correo a medias | A | |
+| AA8 | Pulsa el botón en un formulario que **no es de lista** | Un 404, sin correo | A | |
+| AA9 | El correo que llega | Dice que hay un formulario que responder, trae el botón y **no menciona la lista ni cuántas personas son** | A | |
+| AA10 | El correo a alguien **sin nombre** | No saluda a nadie: el saludo solo aparece si hay nombre | M | |
+| AA11 | Abre el enlace del correo con un navegador sin sesión | Entra al formulario en el paso 1 y sin pedir identificación: el `?t=` es la credencial | A | |
+| AA12 | Pulsa el botón dos veces seguidas | La segunda vez dice «No hay invitaciones por correo pendientes»: nadie recibe el correo dos veces | A | |
+| AA13 | Deja caer el SMTP a mitad de una tanda (con 10 pendientes) | Sale un aviso con cuántos salieron y **cuántos quedan**, y el botón sigue ahí para reintentar | A | |
+| AA14 | Con una dirección **inválida** entre las pendientes (por ejemplo `sin-arroba`) | Esa fila no se marca y el resto sí sale: un fallo suelto no corta la tanda | A | |
+| AA15 | Tras AA14, mira la insignia de números | Dice cuántos quedan, y son exactamente los no marcados | M | |
+| AA16 | Importa un `.xlsx` de 400 filas con identificador «correo» | **No se manda ningún correo** y el número de pendientes sube a 400 | A | |
+| AA17 | Marca a alguien como «respondió» en la lista y vuelve a mirar el botón | Ya no está entre los pendientes: a quien ya respondió no se le escribe desde el botón | A | |
+| AA18 | Borra a una persona de la lista y mira el botón | El número de pendientes baja en uno | M | |
+| AA19 | Edita el correo de una persona y mira el botón | Si la persona ya había recibido el correo, **vuelve a contar como pendiente**: el correo nuevo es el que hay que mandar | A | |
+| AA20 | Pulsa el botón **sin JavaScript** (desactivado en el navegador) | Pide confirmación, envía y recarga; el resultado sale y el número de pendientes es correcto | A | |
+| AA21 | Pulsa el botón y el servidor devuelve error (por ejemplo con la BD parada a mitad) | Sale el aviso del fallo y los pendientes **no** bajan: nadie se queda marcado sin haber recibido | A | |
+| AA22 | Con teclado: tabula hasta el botón y pulsa `Enter` | Abre la confirmación y, en «Cancelar», vuelve el foco al botón | M | |
 ## Cuando encuentres un fallo
 
 
