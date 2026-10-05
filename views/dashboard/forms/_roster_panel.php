@@ -77,9 +77,21 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
         </li>
     </ul>
 
-    <?php // «Lista»: los números, el alta de uno, la búsqueda y las filas. ?>
+    <?php // «Lista»: los números, las invitaciones por correo, el alta de uno, la
+          // búsqueda y las filas. ?>
     <div id="vfPaneRosterLista" role="tabpanel" aria-labelledby="vfTabRosterLista" data-vf-pane>
         <?= View::partial('dashboard/forms/_roster_stats', ['roster' => $roster]) ?>
+
+        <?php // FASE 10: el botón de invitar va aquí, debajo de los números y SIN
+              // `<details>`. Es un hueco (`rosterInvites`) y no una fila más de la
+              // tabla porque lo que lo decide —el identificador del formulario y si
+              // hay SMTP— no es estado de la lista, y un alta de una persona no
+              // puede reponer algo que no ha cambiado. Los tres estados se DICEN
+              // (ver el partial): un hueco callado no se distingue de uno roto. ?>
+        <?= View::partial('dashboard/forms/_roster_invites', [
+            'roster' => $roster,
+            'formId' => $formId,
+        ]) ?>
 
         <?php // El alta va por fetch con el resto de las acciones
               // (`data-vf-async="slots"`), y vuelve en `html.rosterAddForm`, que

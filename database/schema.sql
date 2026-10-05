@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS form_participants (
     identifier_value VARCHAR(190) NOT NULL COMMENT 'Denormalizado: la puerta busca siempre por aquí',
     code             CHAR(16) NOT NULL COMMENT 'Credencial personal; NO es la fila ni el identificador',
     responded_at     DATETIME DEFAULT NULL COMMENT 'Su único escritor es el mismo POST que crea la respuesta',
+    invited_at       DATETIME DEFAULT NULL COMMENT 'Invitación por correo enviada (fase 10); NULL = nunca',
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_form_participant_identifier (form_id, identifier_value),

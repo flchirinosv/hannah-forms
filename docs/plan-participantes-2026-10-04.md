@@ -181,7 +181,7 @@ el existente y lo dice.
 | 7 | Filtro por atributo + detalle | bajo | **Hecha** (17 tests nuevos) |
 | 8 | Agrupar por atributo + techo | medio | **Hecha** (13 tests nuevos) |
 | 9 | Quién respondió, `responses.pii` | bajo | **Hecha** (13 tests nuevos) |
-| 10 | Correo de invitaciones, opt-in | bajo | Pendiente |
+| 10 | Correo de invitaciones, opt-in | bajo | **Hecha** (13 tests nuevos) |
 | 11 | Documentación y recuentos | — | Pendiente |
 
 ### Tres reglas que no son sugerencias
@@ -931,6 +931,86 @@ dos ficheros.
 
 **Suite completa: 996, 0 fallos.**
 
+## Fase 10 — el correo de invitación, opt-in y por tandas — **HECHA**
+
+Con la lista cargada, el dueño tenía una operación manual: abrir una hoja, copiar la
+columna de correos en su cliente de correo y mandar uno por uno. Para una lista de 400
+personas eso es media mañana y, sobre todo, es **imposible de auditar**: nadie sabe a
+quién se le escribió y a quién no, así que el «a V-237 no le llegó nada» del correo es
+siempre el mismo correo.
+
+### Una columna que dice cuándo, no solo que
+
+`form_participants.invited_at DATETIME NULL` (migración `0015`). Podría haber sido un
+`TINYINT(1) invited`: al botón le basta «¿ya le escribí?». Lo que cambia con una fecha
+es la pregunta que se le hace a la lista dos meses después —«¿a quién le escribí la
+semana pasada?»—, y además es lo que permite un informe honesto sin una segunda tabla
+de historial. `NULL` de verdad, no `DEFAULT '0000-00-00'`: `IS NOT NULL` sobre la fecha
+cero contaría a todo el mundo como invitado desde el primer día y el botón no mandaría
+nada nunca.
+
+El `invited_at` va con `AFTER responded_at` en la migración para que una base migrada y
+una limpia salgan con las columnas en el mismo orden. Es el mismo criterio con el que
+una comparación real de `information_schema` encuentra las diferencias que ninguna
+prueba de esquema del runner ve.
+
+### Las cinco condiciones de entrada
+
+1. **El formulario es de lista**: `rosterForm()` (sesión + `canEdit` + modo `roster`).
+   La ruta es un `POST` con `auth` y `csrf`, y **no** lleva `post-max` porque no recibe
+   archivo (el `post-max` del fill existe por los adjuntos, no por este botón).
+2. **El identificador es `correo`**. Con `cedula` o `indicador` la dirección es un dato
+   opcional de la lista, no la identidad con la que se entra, así que **no hay botón**:
+   el enlace se reparte desde la columna «Código», que ya está en pantalla. Es la misma
+   razón que en la fase 6: la invitación es para *quien tiene que responder*, y con
+   cédula eso lo decide una persona.
+3. **Hay SMTP configurado**: `Mailer::isConfigured()` va primero, porque `Mailer::send()`
+   lanza con `MAIL_HOST` vacío y eso se leería como «el servidor de correo falló»
+   cuando lo que falta es configuración.
+4. **Queda alguien pendiente**: `invited_at IS NULL AND responded_at IS NULL AND
+   correo <> ''`, ordenados por `id` para que dos tandas seguidas manden a la misma
+   gente en el mismo orden. `responded_at IS NULL` porque a quien ya respondió no se le
+   escribe: se le puede escribir otra vez desde el correo, pero no desde el botón.
+5. **El dueño pulsa.** Importar una lista **nunca** manda correo (400 correos desde un
+   `POST` es un accidente esperando), y tampoco hay envío al crear una fila a mano.
+
+### Un botón, tres decisiones, y por qué hay un tope
+
+`Mailer::send()` lanza y no devuelve nada, así que 400 personas son 400 iteraciones sin
+límite en una sola petición. De ahí:
+
+- **50 por tanda** (`INVITE_POR_TANDA`). El botón dice cuántos quedan
+  (`Enviar invitaciones (37)`), de modo que el tope es información para el dueño y no
+  un fallo: si quedan 87, la primera tanda manda 50 y el botón vuelve a decir 37.
+- **Se para tras 3 fallos seguidos** (`INVITE_FALLOS_SEGUIDOS`). Un SMTP caído produce
+  400 excepciones idénticas en cuatro segundos y un `ok:false` que solo dice «algo
+  falló»; con el tope de fallos se para y el mensaje dice cuántos salieron y que los
+  fallidos **siguen en la lista**. Un fallo suelto **no** corta la tanda, porque de
+  verdad pasa (una dirección que el cliente acepta y el servidor no) y cortar por eso
+  castiga al resto.
+- **Se marca solo lo que se mandó.** `markInvited()` va **después** del `send()` con
+  éxito, así que nadie que no recibió el correo se queda marcado como invitado y
+  desaparece de la cola. El fallo no es «se pierde el correo»: es «el correo sigue
+  pendiente», que es justo lo que permite reintentar.
+
+### El botón, el hueco y el fallo en el sitio
+
+`rosterInvites` es el **sexto** slot de `RosterPanel`, junto a `rosterStats`,
+`rosterList`, `rosterCatalog`, `rosterAddForm` y `rosterImportReport`. Lo reponen las
+acciones que cambian el conjunto de pendientes —alta, edición, borrado, vaciado,
+importación y el propio envío— y **no** `destroyAttribute`, que no toca correos.
+
+El formulario del botón **no declara `data-vf-error`**, y es a propósito. En un
+`ok:false` por fallos el servidor devuelve `html` con `invites` repintado, de modo que
+un `data-vf-error` dentro del slot se quedaría **desacoplado** del nodo que lo contiene
+y no se vería nunca. El resultado de la tanda va al aviso flotante (`vfToast`), que es
+donde ya se ven los avisos del panel.
+
+`invited_at` no aparece en la lista ni en las exportaciones: es una marca operativa de
+quien escribió a quien, no una respuesta ni un atributo del listado. Quien gestiona la
+lista la ve en la insignia de los números (`37 invitations enviadas`); las exportaciones
+siguen siendo lo que exportaban antes, sin una columna nueva.
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -971,5 +1051,5 @@ dos ficheros.
 | 7 | **Hecha** — 970 tests |
 | 8 | **Hecha** — 983 tests |
 | 9 | **Hecha** — 996 tests |
-| 10 | Pendiente |
+| 10 | **Hecha** — 1010 tests |
 | 11 | Pendiente |

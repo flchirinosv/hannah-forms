@@ -123,6 +123,28 @@ final class PublicUrl
     }
 
     /**
+     * Fase 10 — URL de invitación de un participante.
+     *
+     * Es la MISMA forma que `accessUrl()` y a propósito lleva su propio nombre,
+     * no un alias: las dos credenciales son distintas y se confundían fácil. El
+     * `?t=` de F4 es un token de `form_access_tokens`, con caducidad y revocable
+     * desde la ficha; el `?t=` del listado es el **código personal** de la fila
+     * (`form_participants.code`), que no caduca y lo que lo cierra es que la
+     * persona siga en la lista. En `FillController::resolveAccess()` se busca
+     * primero el token de F4, así que un `?t=` que casara con los dos seguiría
+     * siendo el token; y para un formulario de listado, que no tiene tokens, esto
+     * es lo único que hay.
+     *
+     * Que las dos credenciales compartan el hueco de la query es lo que hace que
+     * el `action` del POST del formulario no se toque: la invitación es un enlace
+     * al GET y el canje del código va por su propia ruta (`/f/{slug}/code`).
+     */
+    public static function rosterUrl(string $slug, string $code): string
+    {
+        return self::fillUrl($slug) . '?t=' . rawurlencode($code);
+    }
+
+    /**
      * ¿La base resuelta es una dirección de red local (localhost, 127.x,
      * ::1, RFC1918) o un nombre sin dominio?
      *

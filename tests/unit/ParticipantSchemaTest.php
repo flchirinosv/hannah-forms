@@ -133,6 +133,51 @@ class ParticipantSchemaTest
         assertSame('NO', $code['IS_NULLABLE']);
     }
 
+    public function testLaInvitacionEsUnaFechaYNoUnSiNo(): void
+    {
+        // Fase 10: `invited_at` dice CUÁNDO se mandó el correo, no solo que se
+        // mandó. Un `TINYINT` con el mismo nombre serviría para todo lo que hace el
+        // botón (filtrar los ya invitados, no reenviarles) y por eso mismo es el
+        // que no vale: dentro de un mes la pregunta de quien gestiona la lista es
+        // «¿a quién le escribí la semana pasada?», y un booleano no la contesta.
+        //
+        // Y `NULL` de verdad (no `NOT NULL DEFAULT '0000-00-00'`) porque la columna
+        // tiene que distinguir «nunca le escribimos» de «le escribimos en el año
+        // cero»; con la fecha cero, un `IS NOT NULL` contaría a todo el mundo como
+        // invitado y el botón no mandaría nada nunca.
+        $invitado = self::columna('form_participants', 'invited_at');
+        assertNotNull($invitado, 'sin invited_at no se puede no reenviar el correo');
+        assertSame('datetime', strtolower((string) $invitado['COLUMN_TYPE']));
+        assertSame('YES', $invitado['IS_NULLABLE'], 'NULL = todavía no le hemos escrito');
+        // MariaDB devuelve la palabra «NULL» como TEXTO en `COLUMN_DEFAULT` (y no
+        // un SQL NULL) en una columna nullable sin valor por defecto, así que
+        // `assertNull` no sirve aquí. Lo que importa es que no sea una fecha: un
+        // `DEFAULT '0000-00-00'` haría que `IS NOT NULL` contara a todo el mundo
+        // como invitado desde el primer día.
+        assertTrue(
+            $invitado['COLUMN_DEFAULT'] === null || $invitado['COLUMN_DEFAULT'] === 'NULL',
+            'y el valor de fábrica no es una fecha (viene: ' . var_export($invitado['COLUMN_DEFAULT'], true) . ')'
+        );
+
+        // Al lado de `responded_at`, que es el otro hecho sobre la misma persona.
+        // La posición importa para comparar una instalación limpia con una
+        // migrada: la migración 0015 la pone con `AFTER` y `schema.sql` también.
+        $posiciones = [];
+        $st = self::pdo()->query(
+            "SELECT COLUMN_NAME, ORDINAL_POSITION FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'form_participants'
+              ORDER BY ORDINAL_POSITION"
+        );
+        foreach ($st->fetchAll() as $fila) {
+            $posiciones[(string) $fila['COLUMN_NAME']] = (int) $fila['ORDINAL_POSITION'];
+        }
+        assertTrue(
+            $posiciones['invited_at'] === $posiciones['responded_at'] + 1,
+            'invited_at va justo detrás de responded_at (posiciones: '
+                . json_encode($posiciones) . ')'
+        );
+    }
+
     public function testRespondioQuedaMarcadoSinBorrarLaRespuesta(): void
     {
         $respondio = self::columna('form_participants', 'responded_at');
@@ -255,6 +300,27 @@ class ParticipantSchemaTest
                 'la FK de submissions debe ser SET NULL en ' . $nombre
             );
         }
+
+        // Fase 10: `invited_at` es de una migración DISTINTA (0015), y ese es
+        // justo el momento en que las dos fuentes se separan: la 0014 no la lleva,
+        // así que este bloque lee su propio fichero. Se comprueba la columna y su
+        // POSICIÓN, porque `AFTER responded_at` está en la migración (para que una
+        // base migrada salga igual que una limpia) pero en `schema.sql` la posición
+        // la dan las líneas de la tabla, y no es un `AFTER` que se pueda copiar.
+        $invitacion = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/database/migrations/0015_form_participants_invited_at.php'
+        );
+        foreach (['schema.sql' => $schema, 'la migración 0015' => $invitacion] as $nombre => $fuente) {
+            assertTrue(str_contains($fuente, 'invited_at'), 'invited_at no aparece en ' . $nombre);
+        }
+        assertTrue(
+            (bool) preg_match('/ADD COLUMN invited_at.*AFTER responded_at/s', $invitacion),
+            'la migración 0015 debe poner invited_at AFTER responded_at'
+        );
+        assertTrue(
+            (bool) preg_match('/invited_at[^,]*DATETIME[^,]*DEFAULT NULL/s', $schema),
+            'en schema.sql invited_at es DATETIME DEFAULT NULL (nullable = nunca invitado)'
+        );
     }
 
     public function testSchemaSqlNoTieneComentariosRotos(): void

@@ -144,6 +144,28 @@ return [
     'roster.imported_merge' => '{cambios} updated and {iguales} unchanged.',
     'roster.imported_skipped' => '{n} row(s) were left out.',
     'roster.imported_attrs' => 'New attributes: {lista} ({n}).',
+    // Phase 10 — the roster invitation email. These keys are the panel and button
+    // MESSAGES; the text inside the email is the `mail.*` below. The button labels
+    // are deliberately not here: this panel is hardcoded Spanish like the other
+    // partials of the tab.
+    // `mail.invite_body` is what the person reads and must NOT mention that there
+    // is a list behind it (same rule as the F4 email: the link is the credential,
+    // not the bill).
+    'roster.invite_no_cedula'  => 'Email is only sent when the form identifier is «email address». With {id} the link is in the list’s «Code» column, and whoever manages it hands it out.',
+    'roster.invite_no_smtp'    => 'No mail server is configured (MAIL_HOST is empty), so sending is off. The links in the «Code» column still work.',
+    'roster.invite_subject'    => 'Invitation to {form}',
+    'roster.invite_sent'       => '{n} invitations sent.',
+    'roster.invite_sent_some'  => '{n} invitations sent and {f} failed. The ones that failed are still pending.',
+    'roster.invite_sent_cap'   => '{n} invitations sent (the cap for this batch). {q} still pending.',
+    'roster.invite_stopped'    => 'Stopped after {n} failures in a row: the mail server is not accepting messages. {s} had been sent before.',
+    'roster.invite_none_left'  => 'Nobody was pending an invitation.',
+    'mail.invite_subject'      => 'You have been invited to a form',
+    'mail.invite_title'        => 'Invitation to a form',
+    'mail.invite_body'         => 'You can reply with this link. You do not need an account and the link is personal.',
+    'mail.invite_greeting'     => 'Hello {nombre},',
+    'mail.invite_cta'          => 'Reply to the form',
+    'mail.invite_ignore'       => 'If you were not expecting this email you can ignore it: the link only gives access to this form.',
+    'mail.invite_alt'          => 'To reply to the form «{form}», go to this address: {url}',
     'mail.access_subject'     => 'Your link to the form',
     'mail.access_title'       => 'Access link to the form',
     'mail.access_body'        => 'You can open the form with this link. You do not need an account.',

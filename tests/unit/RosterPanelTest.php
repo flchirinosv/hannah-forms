@@ -169,7 +169,7 @@ class RosterPanelTest
         self::modo(FormSettings::ACCESS_ROSTER);
         $html = self::tarjeta();
 
-        foreach (['rosterStats', 'rosterList', 'rosterCatalog', 'rosterAddForm', 'rosterImportReport'] as $hueco) {
+        foreach (['rosterStats', 'rosterInvites', 'rosterList', 'rosterCatalog', 'rosterAddForm', 'rosterImportReport'] as $hueco) {
             assertTrue(
                 str_contains($html, 'id="' . $hueco . '"'),
                 'falta el hueco ' . $hueco
@@ -249,6 +249,7 @@ class RosterPanelTest
 
         assertTrue(isset($html['rosterList']), 'la lista cambia');
         assertTrue(isset($html['rosterStats']), 'los números cambian');
+        assertTrue(isset($html['rosterInvites']), 'y el botón de invitar, que acaba de tener una persona más que escribirle');
         assertTrue(!isset($html['rosterCatalog']), 'el alta no cambia el catálogo');
         assertTrue(!isset($html['rosterAddForm']), 'ni el formulario de alta, que el dueño podría estar rellenando');
         assertTrue(str_contains((string) $html['rosterList'], 'V-1'), 'y la fila nueva sale en la lista repuesta');
@@ -286,6 +287,10 @@ class RosterPanelTest
 
         assertTrue(isset($html['rosterCatalog']), 'el catálogo cambia');
         assertTrue(isset($html['rosterAddForm']), 'y el alta, que tenía un campo por atributo');
+        assertTrue(
+            !isset($html['rosterInvites']),
+            'pero NO el botón de invitar: quitar una columna no cambia a quién falta escribirle'
+        );
         assertTrue(isset($html['rosterList']), 'y la lista, que tenía el atributo como etiqueta');
         assertTrue(
             !str_contains((string) $html['rosterAddForm'], 'data[sede]'),
@@ -341,7 +346,7 @@ class RosterPanelTest
     // 5. El informe de la importación, por los dos caminos
     // =====================================================================
 
-    public function testLaImportacionReponeLosCincoHuecos(): void
+    public function testLaImportacionReponeLosSeisHuecos(): void
     {
         self::modo(FormSettings::ACCESS_ROSTER);
         self::subir([
@@ -353,9 +358,17 @@ class RosterPanelTest
         $out = self::llamar('import', ['modo' => ParticipantImporter::MODO_FUSIONAR]);
         $html = $out['json']['html'] ?? [];
 
-        foreach (['rosterList', 'rosterStats', 'rosterCatalog', 'rosterAddForm', 'rosterImportReport'] as $hueco) {
+        foreach (['rosterList', 'rosterStats', 'rosterInvites', 'rosterCatalog', 'rosterAddForm', 'rosterImportReport'] as $hueco) {
             assertTrue(isset($html[$hueco]), 'la importación repone ' . $hueco);
         }
+        // Y el hueco de las invitaciones (fase 10) se repone también. Este
+        // formulario se identifica por cédula, así que lo que tiene que decir es
+        // la rama de «el enlace va en la columna Código» y NO un botón de correo
+        // que este formulario no puede usar.
+        assertTrue(
+            str_contains((string) $html['rosterInvites'], 'No hay invitaciones por correo'),
+            'el hueco de invitar se repone con lo que corresponde a este identificador'
+        );
         assertTrue(
             str_contains((string) $html['rosterAddForm'], 'data[sede]'),
             'y el alta ya tiene el campo del atributo que acaba de crear el archivo'

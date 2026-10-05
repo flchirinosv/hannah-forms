@@ -18,6 +18,11 @@
 $total      = (int) $roster['total'];
 $respondidos = (int) $roster['respondidos'];
 $sinResponder = max(0, $total - $respondidos);
+// Fase 10: el histórico de invitaciones. Va con los números y no en el botón de
+// invitar porque es un hecho que NO cambia al mandar (el botón dice lo que falta,
+// esto dice lo que ya está hecho), y porque al pintar las cifras se ve que el
+// correo salió y no solo que el botón se apagó.
+$invitados  = (int) ($roster['invitados'] ?? 0);
 ?>
 <div id="rosterStats" class="d-flex flex-wrap gap-2 small mb-3">
     <span class="badge rounded-pill text-bg-secondary">
@@ -29,4 +34,9 @@ $sinResponder = max(0, $total - $respondidos);
     <span class="badge rounded-pill <?= $sinResponder > 0 ? 'text-bg-warning' : 'text-bg-light text-muted' ?>">
         <i class="fa-solid fa-clock me-1"></i><?= $sinResponder ?> sin responder
     </span>
+    <?php if ($invitados > 0) { ?>
+        <span class="badge rounded-pill text-bg-info">
+            <i class="fa-solid fa-envelope me-1"></i><?= $invitados ?> invitada<?= $invitados === 1 ? '' : 's' ?>
+        </span>
+    <?php } ?>
 </div>

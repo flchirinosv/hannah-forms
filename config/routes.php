@@ -99,6 +99,9 @@ $router->post('/forms/{id}/participants/delete', [ParticipantController::class, 
 $router->post('/forms/{id}/participants/import', [ParticipantController::class, 'import'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/truncate', [ParticipantController::class, 'truncate'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/attribute', [ParticipantController::class, 'destroyAttribute'], ['auth', 'post-max', 'csrf']);
+// Fase 10 — el correo de invitación del listado. Sin `post-max` (no hay archivo) y
+// con `csrf` como el resto de acciones que cambian algo.
+$router->post('/forms/{id}/participants/invitations', [ParticipantController::class, 'invitations'], ['auth', 'csrf']);
 // P7
 $router->post('/forms/{id}/duplicate', [FormController::class, 'duplicate'], ['auth', 'csrf']);
 $router->get('/forms/{id}/qr.svg', [FormController::class, 'qrSvg'], ['auth']);

@@ -61,6 +61,18 @@ class FormParticipant
         'correo'    => 'correo',
     ];
 
+    /**
+     * Identificador por correo electrónico, y el ÚNICO con el que hay invitación
+     * por correo (fase 10).
+     *
+     * Con `cedula` o `indicador` el enlace va en la columna «Código» de la lista y
+     * lo reparte quien la gestiona: no hay a quién escribirle, porque la fila no
+     * promete que la persona tenga correo. Es una constante y no el literal
+     * `'correo'` repetido en el controlador, la vista y el test, porque este
+     * nombre decide si aparece un botón que manda correos a la gente.
+     */
+    public const IDENT_CORREO = 'correo';
+
     /** Tope de `identifier_value`, que es `VARCHAR(190)`. */
     public const MAX_IDENTIFICADOR = 190;
 
@@ -71,7 +83,7 @@ class FormParticipant
      * Alfabeto del `code`: sin `0/O`, `1/I/L` ni `U/V`.
      *
      * Es un código que se **lee en voz alta y se teclea**, y esos cuatro pares son
-     * exactamente los que una lista deReserved se equivoca al transcribir («O» por
+     * exactamente los que una lista se equivoca al transcribir («O» por
      * cero). Con 16 caracteres de 31 sale a unos 79 bits, que es de sobra para una
      * lista de miles.
      */
@@ -576,10 +588,126 @@ class FormParticipant
         return (int) ($row['c'] ?? 0);
     }
 
+    /**
+     * Cuántos han recibido el correo de invitación (fase 10).
+     *
+     * Va con el total del formulario y no con el de la búsqueda, por la misma
+     * razón que `respondedCountForForm()`: el dueño pregunta «¿a quién le escribí
+     * de las 800 que tiene?», y 800 es un hecho del formulario, no de la página
+     * que está mirando.
+     */
+    public static function invitedCountForForm(int $formId): int
+    {
+        $row = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM form_participants
+              WHERE form_id = :form_id AND invited_at IS NOT NULL',
+            ['form_id' => $formId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * A quién falta mandarle el correo, y solo lo que el correo necesita.
+     *
+     * Tres filtros, y cada uno quita un correo que no se debe enviar:
+     *
+     *  - `invited_at IS NULL`: sin esto el botón reenvía los mismos 400 mensajes.
+     *    Es el sentido de la columna, no un adorno.
+     *  - `responded_at IS NULL`: quien YA respondió no necesita que le inviten, y
+     *    el correo le diría a alguien que tiene el formulario delante que se le ha
+     *    mandado algo. Es el filtro que hace que la lista y el correo no se
+     *    contradigan («2 de 40 respondieron» y llegan 40 invitaciones).
+     *  - `correo <> ''`: un participante con cédula y sin correo no es un error,
+     *    es una fila de la lista que se reparte por otro canal (impreso, un
+     *    chat). Entrarían en el lote, fallarían, y el contador de fallos dejaría
+     *    de significar «el servidor de correo está caído».
+     *
+     * Que el identificador del formulario sea `correo` NO se comprueba aquí y a
+     * propósito: eso es una propiedad del FORMULARIO, no de la fila, y la
+     * comprueba el controlador antes de llegar (`identifierFor()`). Meter aquí un
+     * filtro que no puede existir —la tabla no tiene columna `identifier`, el
+     * identificador vive en los ajustes— sería un `WHERE` sobre una puerta que
+     * otro ya cerró.
+     *
+     * El `ORDER BY id` NO es un detalle: el lote se corta en `$limite` y el
+     * botón dice «quedan 612», así que tiene que mandar siempre a los MISMOS
+     * primero. Ordenar por fecha de alta sería casi lo mismo, pero `id` es el
+     * orden en que se repartió el código y es el único que no depende de que dos
+     * altas caigan en el mismo segundo.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function pendingInvites(int $formId, int $limite): array
+    {
+        if ($limite <= 0) {
+            return [];
+        }
+
+        return self::db()->fetchAll(
+            'SELECT id, nombre, correo, code FROM form_participants
+              WHERE form_id = :form_id
+                AND invited_at IS NULL
+                AND responded_at IS NULL
+                AND correo <> \'\'
+              ORDER BY id
+              LIMIT ' . (int) $limite,
+            ['form_id' => $formId]
+        );
+    }
+
+    /**
+     * Cuántos quedan sin invitación, con el MISMO criterio que `pendingInvites()`.
+     *
+     * Es un `COUNT` con los mismos filtros y no la longitud de un `fetchAll()`
+     * sin tope: con 800 filas, el número que va en el botón («quedan 612») tiene
+     * que ser el de TODAS las que faltan, no el del lote que se va a mandar ahora.
+     * Si las dos cosas salieran del mismo sitio habría que traerlas todas para
+     * contar lo que se puede contar en la base.
+     */
+    public static function pendingInviteCount(int $formId): int
+    {
+        $row = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM form_participants
+              WHERE form_id = :form_id
+                AND invited_at IS NULL
+                AND responded_at IS NULL
+                AND correo <> \'\'',
+            ['form_id' => $formId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Marca los enviados, y SOLO los que se han enviado.
+     *
+     * `markInvited()` escribe por persona, no por lote, porque el envío es por
+     * persona: un lote de 20 en el que se mandan 14 y fallan 6 no puede marcar
+     * los 20, o los 6 que fallaron nunca volverían a salir del «pendientes» y su
+     * dueño no se entera nunca de que no les llegó nada.
+     *
+     * `Database::execute()` devuelve el `rowCount`, así que lo que sale de aquí es
+     * un `int`: `1` si esta fila estaba sin invitar, `0` si ya lo estaba. No
+     * hace falta llamarle `rowCount()` encima.
+     *
+     * Idempotente con estado objetivo, como `marcarRespondido()`: `invited_at IS
+     * NULL` en el `WHERE`, así que marcar dos veces la misma fila no mueve la
+     * fecha del primer envío.
+     */
+    public static function markInvited(int $id): int
+    {
+        return self::db()->execute(
+            'UPDATE form_participants SET invited_at = UTC_TIMESTAMP()
+              WHERE id = :id AND invited_at IS NULL',
+            ['id' => $id]
+        );
+    }
+
     public static function find(int $id): ?array
     {
         return self::db()->fetch(
-            'SELECT id, form_id, cedula, nombre, indicador, correo, identifier_value, code, responded_at, created_at
+            'SELECT id, form_id, cedula, nombre, indicador, correo, identifier_value, code, responded_at, invited_at, created_at
              FROM form_participants WHERE id = :id',
             ['id' => $id]
         );
@@ -1024,7 +1152,7 @@ class FormParticipant
      *
      * **No se topa en SQL** (a diferencia de `valuesOf()`, que topa en PHP): un
      * atributo libre con 800 valores son 800 filas de «una persona», que es nada,
-     * y el que decide qué grupos se teach es el agregador, no la base de datos.
+     * y el que decide qué grupos se tejen es el agregador, no la base de datos.
      * El `LIMIT` de SQL además haría imposible saber cuántos valores hay detrás
      * del último.
      *

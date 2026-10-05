@@ -110,7 +110,7 @@ final class FieldAggregator
     public const FILAS_MAX  = 20;
     public const TOP_VALORES = 5;
 
-    /** Un grupo del que no se teach su nombre: el cubo de «todo lo demás». */
+    /** Un grupo del que no se teje su nombre: el cubo de «todo lo demás». */
     public const CLAVE_RESTO = '';
 
     /**

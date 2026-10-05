@@ -1265,3 +1265,54 @@ filas dejando el `<th>` pone el test en rojo.
 de un solo formulario: es la mitad de la autorización, como en
 `FormAccess::findValidToken()`, y la mutación (quitar el `AND form_id = ?`) rompe el
 test en limpio. Los `null` se filtran antes de consultar porque `intval(null)` es 0.
+
+## Fase 10: el correo de invitación — `invited_at` es una fecha, el botón es por tandas y falla donde se ve
+
+El listado ya cargaba, se editaba y se repartía el «Código» a mano. Faltaba escribirle
+a la gente, y la forma obvia de hacerlo —mandar el correo al importar— es la que no se
+puede hacer. Hay cinco decisiones detrás de lo que quedó:
+
+1. **`invited_at DATETIME NULL`, no un `TINYINT` «invitado».** El botón solo necesita
+   «¿ya le escribí?», así que el booleano basta para la función y por eso mismo es el
+   que no vale: un mes después la pregunta de quien gestiona la lista es «¿a quién le
+   escribí la semana pasada?», y un booleano no la contesta. `NULL` de verdad y no
+   `DEFAULT '0000-00-00'`, porque `IS NOT NULL` sobre la fecha cero marcaría a toda la
+   lista como invitada desde el primer día y el botón no mandaría nada nunca.
+2. **Solo con identificador `correo`; con cédula, la columna «Código».** Con `cedula` o
+   `indicador` el correo es un dato opcional de la lista, no la identidad con la que se
+   entra: mandar un correo ahí es escribirle a quien *tiene* una dirección, no a quien
+   *debe* responder, y el enlace sigue siendo el mismo de la columna que ya está en
+   pantalla. Es la misma razón por la que `roster` no se añadió al `<select>` de la
+   fase 6 solo por existir en el código.
+3. **Ni importación ni alta manual envían correo; los manda un botón.** Un `.xlsx` de
+   400 filas son 400 correos desde un `POST`, y un envío automático que nadie ha pedido
+   no se puede deshacer. La importación deja la lista con `invited_at IS NULL` y quien
+   gestiona la lista decide cuándo escribir. Es la razón por la que
+   `RosterInvitationMailTest::testImportarNoMandaCorreoNiConIdentificadorCorreo` existe:
+   la puerta se comprueba por el camino que **no** manda.
+4. **50 por tanda y tres fallos seguidos, y el botón lo dice.** `Mailer::send()` lanza,
+   así que una lista de 400 es 400 iteraciones sin límite en una petición: un SMTP caído
+   da 400 excepciones idénticas y un «algo falló» que no dice a quién. Con el tope de
+   50 el botón rotula `Enviar invitaciones (37)` —el tope es información, no un fallo— y
+   con el de 3 se para y explica que los fallidos **siguen en la lista**. Un fallo suelto
+   no corta la tanda porque de verdad pasa (una dirección que el cliente acepta y el
+   servidor no) y cortar por eso castiga al resto.
+5. **`markInvited()` va después del `send()`, nunca antes.** Marcar antes de saber si el
+   correo salió es perder el envío sin avisar: la fila desaparece de la cola y nadie la
+   vuelve a mirar. Con el orden correcto, un fallo no es «se perdió el correo» sino «el
+   correo sigue pendiente», que es lo que hace posible reintentar. Mutación comprobada:
+   marcar antes del `send()` pone en rojo los dos tests de fallos.
+
+Y el detalle de la vista que más fácil se rompe: **el botón no declara
+`data-vf-error`**. En un `ok:false` por fallos el servidor devuelve `html` con el slot
+`invites` repintado, así que un `data-vf-error` dentro de ese slot quedaría
+**desacoplado** del nodo que lo contiene y el error no se vería nunca. El resultado de
+la tanda va al aviso flotante. Es la regla general de los slots (`data-vf-error` vive en
+un formulario estable) aplicada a un formulario que vive dentro de un hueco.
+
+Dos cosas más que quedan escritas porque son fáciles de deshacer sin querer: el
+correo **no menciona que existe una lista** (dice que hay un formulario que responder,
+no «te toca entre 400»), y `invited_at` **no aparece en las exportaciones ni en la
+analítica** — es una marca operativa de a quién se escribió, no un atributo del
+listado. La pantalla donde se ve es la ficha del formulario, en la insignia de los
+números.

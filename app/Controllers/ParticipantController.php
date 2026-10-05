@@ -8,10 +8,13 @@ use App\Core\Access;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\I18n;
+use App\Core\Mailer;
+use App\Core\PublicUrl;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\SecurityLog;
 use App\Core\Session;
+use App\Core\View;
 use App\Models\Form;
 use App\Models\FormAccess;
 use App\Models\FormParticipant;
@@ -44,8 +47,9 @@ use App\Services\RosterTemplate;
  *
  * Subir 400 filas y disparar 400 correos desde un POST es un accidente esperando. El
  * botón de invitaciones es otro action, opt-in y con control de lo ya enviado (fase
- * 10). Aquí no hay ni una llamada al `Mailer`, y `testLaImportacionNoDisparaCorreo()`
- * lo comprueba contando correos con el sumidero puesto.
+ * 10, `invitations()`), y es la ÚNICA llamada al `Mailer` de este archivo. `import()`
+ * no tiene ni una, y `testLaImportacionNoDisparaCorreo()` lo comprueba contando
+ * correos con el sumidero puesto.
  */
 class ParticipantController
 {
@@ -253,7 +257,7 @@ class ParticipantController
         // —que `data-vf-clear` devuelve al campo del identificador— se quedaría
         // en un nodo que ya no está en el documento. Lo que sí cambia son las
         // filas y los números.
-        $this->ok($id, I18n::t('roster.created', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats']);
+        $this->ok($id, I18n::t('roster.created', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
     public function update(int $id): void
@@ -299,7 +303,7 @@ class ParticipantController
         // Editar a alguien no cambia el catálogo ni el número de personas, así
         // que solo se repone la lista. Y aunque cambiara el `responded_at` (que
         // este POST no toca), eso ya está en las filas.
-        $this->ok($id, I18n::t('roster.saved', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats']);
+        $this->ok($id, I18n::t('roster.saved', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
     public function destroy(int $id): void
@@ -322,7 +326,7 @@ class ParticipantController
         }
 
         FormParticipant::delete($pid);
-        $this->ok($id, I18n::t('roster.deleted', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats']);
+        $this->ok($id, I18n::t('roster.deleted', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
     // =====================================================================
@@ -394,7 +398,7 @@ class ParticipantController
         // los números y el informe de golpe. Reponerlos de menos dejaría la
         // pantalla con los números de antes, que es la clase de mentira que no
         // da ningún error.
-        $this->ok($id, self::textoResumen($r, $locale), true, $r, ['list', 'stats', 'catalog', 'addForm', 'report'], $r);
+        $this->ok($id, self::textoResumen($r, $locale), true, $r, ['list', 'stats', 'invites', 'catalog', 'addForm', 'report'], $r);
     }
 
     public function truncate(int $id): void
@@ -412,7 +416,218 @@ class ParticipantController
         SecurityLog::record('roster.truncated', $borrados . ' participantes en /forms/' . $id);
         // El catálogo NO se repone y esa es la idea de `truncate()`: vaciar quita
         // gente y deja las columnas, que son el formato del próximo archivo.
-        $this->ok($id, I18n::t('roster.truncated', I18n::forRequest(Form::settings($id)), ['n' => $borrados]), true, [], ['list', 'stats']);
+        $this->ok($id, I18n::t('roster.truncated', I18n::forRequest(Form::settings($id)), ['n' => $borrados]), true, [], ['list', 'stats', 'invites']);
+    }
+
+    // =====================================================================
+    // Fase 10 — el correo de invitación
+    // =====================================================================
+
+    /**
+     * Fallos **seguidos** antes de parar la tanda.
+     *
+     * Tres y no uno, porque un rechazo de un destinatario concreto (buzón lleno,
+     * una dirección que el servidor de destino no quiere) es normal en un envío en
+     * lote y no dice nada del resto. Lo que delata el servidor caído es que NO
+     * acepte NADA, y para eso tres seguidos bastan. Con el tope en tres, el peor
+     * caso de una tanda caída son 3 × `MAIL_TIMEOUT` segundos en vez de los 50 ×
+     * que costaría agotarlos.
+     *
+     * Al parar NO se abandona el resto en un estado raro: los que no se han
+     * marcado siguen con `invited_at IS NULL`, o sea que la siguiente tanda los
+     * recoge. Por eso el corte es un `break` y no un `return` que se lleve el
+     * `$cambia` de la respuesta.
+     */
+    private const INVITE_FALLOS_SEGUIDOS = 3;
+
+    /**
+     * POST /forms/{id}/participants/invitations — manda el enlace a quien no lo
+     * ha recibido todavía.
+     *
+     * ## Opt-in de verdad: la importación no envía nada
+     *
+     * Esta es la ÚNICA acción del listado que llama al `Mailer`, y existe separada
+     * de `import()` por lo que dijo el plan: subir 400 filas y disparar 400
+     * correos desde un mismo POST es un accidente esperando. Aquí hay un botón, un
+     * `data-confirm` que dice cuántos se van a mandar, y una columna (`invited_at`)
+     * que recuerda lo ya enviado.
+     *
+     * ## Las dos puertas, y por qué son dos
+     *
+     * `rosterForm()` ya ha comprobado sesión, `canEdit` y que el formulario esté
+     * en `roster`. Las dos que quedan son de otro tipo y se dicen antes de tocar la
+     * lista:
+     *
+     *  - **El identificador.** Solo hay invitación con `correo`: con `cedula` o
+     *    `indicador` la fila no promete que la persona tenga correo y el enlace va
+     *    en la columna «Código». Es un aviso, no un 403: el botón no se pinta en
+     *    ese caso, así que llegar aquí es un POST a mano.
+     *  - **El SMTP.** `Mailer::send()` lanza `RuntimeException` si `MAIL_HOST`
+     *    está vacío, y sin esta puerta eso saldría como «falló el envío» cuando en
+     *    realidad no se intentó nada.
+     *
+     * ## Por qué el envío es por persona y el marcado también
+     *
+     * En un lote de 50 que se mandan 43 y fallan 7 hay que marcar 43. Marcar los 50
+     * dejaría a los 7 fuera de «pendientes» para siempre y su dueño no se enteraría
+     * nunca de que no les llegó nada. Y en sentido inverso: si la petición se corta
+     * a mitad (por `max_execution_time`), lo que se llegó a mandar queda marcado y
+     * lo que no, pendiente. Esa es la propiedad que hace que el botón sea
+     * idempotente de verdad: repetirlo nunca duplica un envío.
+     */
+    public function invitations(int $id): void
+    {
+        $form = $this->rosterForm($id, 'send_invitations');
+        if ($form === null) {
+            return;
+        }
+
+        if (!$this->csrfOk($id, 'roster.invalid_csrf')) {
+            return;
+        }
+
+        $locale = I18n::forRequest(Form::settings($id));
+
+        $identificador = FormParticipant::identifierFor($id);
+        if ($identificador !== FormParticipant::IDENT_CORREO) {
+            $this->ok(
+                $id,
+                I18n::t('roster.invite_no_cedula', $locale, [
+                    'id' => self::nombreIdentificador($identificador, $locale),
+                ]),
+                false
+            );
+
+            return;
+        }
+
+        if (!Mailer::isConfigured()) {
+            $this->ok($id, I18n::t('roster.invite_no_smtp', $locale), false);
+
+            return;
+        }
+
+        $pendientes = FormParticipant::pendingInvites($id, RosterPanel::INVITE_POR_TANDA);
+        if ($pendientes === []) {
+            // No es un fallo: la acción se pidió bien y no había a quién avisar.
+            // El botón viene apagado cuando el contador es cero, así que esto es un
+            // POST a mano o un formulario que se quedó abierto mientras otro
+            // navegador mandaba las invitaciones.
+            $this->ok($id, I18n::t('roster.invite_none_left', $locale), true);
+
+            return;
+        }
+
+        $slug = (string) $form['slug'];
+        $titulo = (string) $form['title'];
+        $enviados = 0;
+        $fallidos = 0;
+        $seguidos = 0;
+        $parado = false;
+
+        foreach ($pendientes as $p) {
+            $correo = trim((string) ($p['correo'] ?? ''));
+            // El correo de la fila llega validado (`validarDatos()` lo comprueba
+            // aunque no sea el identificador, tanto en el alta manual como en la
+            // importación), así que no hay una rama «direcciones inválidas» que
+            // gestionar aquí: `Mailer::send()` es quien decide si un destinatario
+            // sirve, y su `RuntimeException` cae en el `catch` de abajo.
+            $url = PublicUrl::rosterUrl($slug, (string) $p['code']);
+
+            try {
+                // `send()` es `bool` y hoy nunca devuelve `false` (o sale bien o
+                // lanza), pero un `false` que no se mira sería un «enviado» que no
+                // se envió: se convierte en excepción y corre por el mismo camino
+                // de fallo que el resto.
+                if (!Mailer::send(
+                    [$correo],
+                    I18n::t('roster.invite_subject', $locale, ['form' => $titulo]),
+                    View::partial('mail/roster_invite', [
+                        'form'   => $form,
+                        'url'    => $url,
+                        'nombre' => (string) ($p['nombre'] ?? ''),
+                        'locale' => $locale,
+                    ]),
+                    I18n::t('mail.invite_alt', $locale, ['form' => $titulo, 'url' => $url])
+                )) {
+                    throw new \RuntimeException('Mailer::send() devolvió false.');
+                }
+            } catch (\Throwable $e) {
+                $fallidos++;
+                $seguidos++;
+                // El `error_log` y no un `SecurityLog`: es un fallo del servidor de
+                // correo de esta instalación, no una acción de un usuario sobre la
+                // app. Lo que sí va al log de seguridad es el resumen, más abajo.
+                error_log('[roster.invitations] no se pudo enviar a ' . $correo . ': ' . $e->getMessage());
+
+                if ($seguidos >= self::INVITE_FALLOS_SEGUIDOS) {
+                    $parado = true;
+                    break;
+                }
+
+                continue;
+            }
+
+            // Solo después del envío: la marca es el acta, no la intención.
+            FormParticipant::markInvited((int) $p['id']);
+            $enviados++;
+            $seguidos = 0;
+        }
+
+        $quedan = FormParticipant::pendingInviteCount($id);
+
+        SecurityLog::record(
+            'roster.invitations',
+            $enviados . ' invitaciones enviadas, ' . $fallidos . ' fallidas, ' . $quedan . ' pendientes en /forms/' . $id
+        );
+
+        // El mensaje va en este orden y cada rama dice una cosa distinta, porque se
+        // pueden dar tres: se paró (el dueño tiene que arreglar el SMTP), hubo
+        // fallos sueltos (los que fallaron siguen pendientes y hay que reintentar),
+        // se agotó la tanda (funcionó y quedan más) y se mandó todo.
+        if ($parado) {
+            $this->ok(
+                $id,
+                I18n::t('roster.invite_stopped', $locale, ['n' => $fallidos, 's' => $enviados]),
+                false,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        if ($fallidos > 0) {
+            $this->ok(
+                $id,
+                I18n::t('roster.invite_sent_some', $locale, ['n' => $enviados, 'f' => $fallidos]),
+                false,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        if ($quedan > 0) {
+            $this->ok(
+                $id,
+                I18n::t('roster.invite_sent_cap', $locale, ['n' => $enviados, 'q' => $quedan]),
+                true,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        $this->ok(
+            $id,
+            I18n::t('roster.invite_sent', $locale, ['n' => $enviados]),
+            true,
+            [],
+            ['invites', 'stats']
+        );
     }
 
     public function destroyAttribute(int $id): void
@@ -577,9 +792,9 @@ class ParticipantController
      * ficha, así que la lista que se repone tras un borrado es la misma que se
      * vería recargando, y no una segunda copia que se queda vieja.
      *
-     * Reponer los cinco en todo sería más corto de escribir y peor de leer:
+     * Reponer los seis en todo sería más corto de escribir y peor de leer:
      * `store` no cambia el catálogo ni el informe, `update` tampoco, y quien lea
-     * el `html` de un alta no sabría cuál de los cinco era el que de verdad
+     * el `html` de un alta no sabría cuál de los seis era el que de verdad
      * decía algo. El coste no es solo de lectura: cada hueco son consultas, y un
      * `catalogFor` por alta es un `information_schema` que nadie pidió.
      *
@@ -597,7 +812,8 @@ class ParticipantController
      * pestaña «Lista» y se encuentra con un aviso de una importación que ya
      * terminó de mirar.
      *
-     * @param list<string> $cambia `list`, `stats`, `catalog`, `addForm`, `report`
+     * @param list<string> $cambia `list`, `stats`, `invites`, `catalog`, `addForm`,
+     *                             `report`
      * @param array<string,mixed>|null $importacion el `$r` del importador, si esta
      *                                             acción ES una importación
      */

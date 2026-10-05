@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 89 archivos, 996 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 90 archivos, 1010 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -50,7 +50,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
   es un directorio **vacío**), `Models` (10), `Services` (17), `lang/{es,en}.php`.
-  `views/` = 59 plantillas y partials con `View` (dieciocho con prefijo `_`, sin ruta
+  `views/` = 61 plantillas y partials con `View` (dieciocho con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -95,7 +95,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **53 de los 89 archivos tocan la BD real** (los que llaman
+- **54 de los 90 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -396,6 +396,49 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `<details>` de edición con un input por atributo y a 50 el botón de «Quitar» deja
   de notarse. Si se cambian, se cambian los dos sitios y sus tests.
 
+**El correo de invitación (fase 10)**
+
+- **Solo hay botón si el identificador es `correo`.** `FormParticipant::identifierFor($id)
+  === FormParticipant::IDENT_CORREO`, comprobado en `ParticipantController::invitations()`,
+  que es la ÚNICA acción de participantes que manda correo. Con `cedula` o `indicador` el
+  correo es un dato opcional de la lista, no la identidad con la que se entra, así que el
+  enlace se reparte desde la columna «Código». Si añades otro sitio que escriba en
+  `form_participants.correo`, ese tampoco manda.
+- **`Mailer::isConfigured()` va ANTES de `Mailer::send()`**, porque `send()` lanza con
+  `MAIL_HOST` vacío y eso se leería como «el servidor de correo falló» cuando lo que
+  falta es configuración.
+- **La ruta NO lleva `post-max`**: el `post-max` del fill existe porque un cuerpo que
+  pasa de `post_max_size` vacía `$_FILES` y sin el guard el error es de CSRF. Aquí no
+  hay archivo, así que el middleware solo estorbaría (y obligaría a subir el límite).
+- **Se marca lo que se mandó, DESPUÉS del `send()`, nunca antes.** Marcado antes, un
+  fallo pierde el correo sin avisar: la fila desaparece de la cola. Con el orden correcto
+  un fallo es «sigue pendiente», que es lo que permite reintentar. Mutación comprobada
+  (`markInvited` antes del envío) → `testUnFalloSuelto…` y
+  `testSeParaTrasTresFallos…` en rojo.
+- **Tres cortes, y los tres son deliberados**: 50 por tanda
+  (`INVITE_POR_TANDA`, y el botón lo dice en el rótulo: el tope es información, no un
+  fallo), parada a los **3 fallos seguidos** (`INVITE_FALLOS_SEGUIDOS`, porque un SMTP
+  caído son 400 excepciones idénticas) y **el filtro `correo <> ''` en SQL**, que es la
+  segunda línea detrás de `planDeReidentificacion()`: si entrara una fila sin correo,
+  `Mailer::send()` lanzaría y el contador de fallos dejaría de significar «el servidor
+  está caído».
+- **A quien ya respondió no se le escribe** (`responded_at IS NULL`): se le puede
+  escribir otra vez desde el correo, pero no desde el botón, que es para los que no han
+  llegado.
+- **`invited_at` es una FECHA y no un «sí/no»**, y `NULL` de verdad (no
+  `DEFAULT '0000-00-00'`): `IS NOT NULL` sobre la fecha cero marcaría a toda la lista
+  como invitada desde el primer día. Lo fija
+  `ParticipantSchemaTest::testLaInvitacionEsUnaFechaYNoUnSiNo`, que además mira que vaya
+  justo detrás de `responded_at` (posición que una base limpia y una migrada tienen que
+  compartir).
+- **La importación NO manda correo** y `testImportarNoMandaCorreoNiConIdentificadorCorreo`
+  mira justo ese camino: 400 correos desde un `POST` son un accidente esperando.
+- **El `?t=` de la invitación es el mismo hueco que el de F4 y el del canje de código**,
+  y por eso `PublicUrl::rosterUrl($slug, $code)` y no `app.url` directo.
+- **El correo no menciona la lista** ni cuántas personas son: dice que hay un formulario
+  que responder. Escribir «te toca entre 400» es filtrarle el listado a quien todavía
+  no ha respondido nada, y `views/mail/roster_invite.php` no lleva el `form_id`.
+
 **El filtro de la analítica (fase 7)**
 
 - **El catálogo se pide SIEMPRE, filtre quien filtre.** `$catalogo` alimenta el
@@ -536,14 +579,21 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `roster` tiene su propia rama en `_access_card.php` y su propio partial:
   meterlo en el `else` habría producido un alta de correo por persona. Y el `else`
   sigue siendo exactamente la allowlist de F4 (`testLaRamaDeLaAllowlistNoSeHaTocado`).
-- **El panel son CINCO huecos y ninguno está en un `<form>`**: `rosterStats`,
-  `rosterList`, `rosterCatalog`, `rosterAddForm` y `rosterImportReport`. Los tres
-  markup salen de `RosterPanel::html()`, que pinta **los mismos partials** que la
-  ficha: con dos copias, la lista repuesta tras un borrado y la que se vería
-  recargando divergirían sin que nada fallara.
+- **El panel son SEIS huecos y ninguno está en un `<form>`**: `rosterStats`,
+  `rosterList`, `rosterCatalog`, `rosterAddForm`, `rosterImportReport` y
+  `rosterInvites`. Los tres markup salen de `RosterPanel::html()`, que pinta **los
+  mismos partials** que la ficha: con dos copias, la lista repuesta tras un borrado y
+  la que se vería recargando divergirían sin que nada fallara.
 - **Cada acción declara qué huecos cambian** (`$cambia` en `ok()`): alta/edición/
-  borrado/vaciar → lista+números; baja de atributo → lista+catalogo+alta;
-  importación → los cinco. Reponerlos todos hace un `catalogFor` por alta.
+  borrado/vaciar → lista+números+invitaciones; baja de atributo →
+  lista+catalogo+alta; importación → los seis. Reponerlos todos hace un
+  `catalogFor` por alta.
+- **`rosterInvites` NO lleva `data-vf-error`**, y es la excepción a la regla de los
+  formularios con ese atributo: en un `ok:false` por fallos el servidor devuelve `html`
+  con el slot repintado, así que el nodo del error quedaría **desacoplado** y no se
+  vería nunca. El resultado va a `vfToast`. El hueco se repone en alta, edición,
+  borrado, vaciado, importación y el propio envío (lo que cambia el número de
+  pendientes), y **no** en `destroyAttribute`, que no toca correos.
 - **El alta NO repone `rosterAddForm`**: el repintado borraría lo que el dueño
   tiene a medio escribir y el foco que devuelve `data-vf-clear` apuntaría a un nodo
   que ya no está.
@@ -631,7 +681,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 59 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 61 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
   anti-vacío —59 vistas, >1800 aperturas vistas y los 6 modales encontrados—
@@ -1141,13 +1191,14 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 391 comprobaciones manuales en 26 bloques (A–Z,
+- `docs/pruebas-funcionales.md`: 413 comprobaciones manuales en 27 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
-  por atributo X, la comparación por atributo con su techo Y y quién respondió
-  Z), para detectar problemas que la suite no ve (teclado, maquetación, flujo
-  en pantalla). Al tocar el builder, el fill o el panel, R, S, T y U son la
+  por atributo X, la comparación por atributo con su techo Y, quién respondió Z
+  y el correo de invitación AA), para detectar problemas que la suite no ve
+  (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
+  panel, R, S, T, U y AA son la
   lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis

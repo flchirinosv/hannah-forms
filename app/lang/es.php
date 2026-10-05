@@ -145,6 +145,28 @@ return [
     'roster.imported_merge' => '{cambios} actualizados y {iguales} sin cambios.',
     'roster.imported_skipped' => '{n} fila(s) quedaron fuera.',
     'roster.imported_attrs' => 'Atributos nuevos: {lista} ({n}).',
+    // Fase 10 — el correo de invitación del listado. Estas claves son los MENSAJES
+    // del panel y del botón; el texto que hay dentro del correo son las `mail.*` de
+    // abajo. Los rótulos del botón no están aquí a propósito: este panel pinta en
+    // español fijo, como los otros partials de la pestaña.
+    // `mail.invite_body` es lo que lee la persona y NO puede decir que hay una lista
+    // detrás (mismo criterio que el correo de F4: el enlace es la credencial, no la
+    // factura).
+    'roster.invite_no_cedula'  => 'El correo solo se manda cuando el identificador del formulario es «correo electrónico». Con {id} el enlace va en la columna «Código» de la lista, y cada uno lo reparte quien lo gestiona.',
+    'roster.invite_no_smtp'    => 'No hay servidor de correo configurado (MAIL_HOST vacío), así que el envío está apagado. Los enlaces de la columna «Código» siguen funcionando.',
+    'roster.invite_subject'    => 'Invitación a {form}',
+    'roster.invite_sent'       => 'Se mandaron {n} invitaciones.',
+    'roster.invite_sent_some'  => 'Se mandaron {n} invitaciones y {f} fallaron. Los que fallaron siguen en la lista de pendientes.',
+    'roster.invite_sent_cap'   => 'Se mandaron {n} invitaciones (el tope de esta tanda). Quedan {q} sin invitación.',
+    'roster.invite_stopped'    => 'Se paró tras {n} fallos seguidos: el servidor de correo no está aceptando mensajes. Se mandaron {s} antes.',
+    'roster.invite_none_left'  => 'No quedaba nadie pendiente de invitación.',
+    'mail.invite_subject'      => 'Te han invitado a un formulario',
+    'mail.invite_title'        => 'Invitación a un formulario',
+    'mail.invite_body'         => 'Puedes responder con este enlace. No necesitas crear ninguna cuenta y el enlace es personal.',
+    'mail.invite_greeting'     => 'Hola {nombre},',
+    'mail.invite_cta'          => 'Responder el formulario',
+    'mail.invite_ignore'       => 'Si no esperabas este correo, puedes ignorarlo: el enlace solo da acceso a este formulario.',
+    'mail.invite_alt'          => 'Para responder el formulario «{form}», entra en esta dirección: {url}',
     'mail.access_subject'     => 'Tu enlace para el formulario',
     'mail.access_title'       => 'Enlace de acceso al formulario',
     'mail.access_body'        => 'Puedes abrir el formulario con este enlace. No necesitas crear ninguna cuenta.',

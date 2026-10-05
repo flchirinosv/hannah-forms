@@ -24,11 +24,17 @@ use App\Models\FormParticipant;
  * que devuelve el `html` de la tarjeta de Acceso al guardar los ajustes. Va por
  * el mismo `data()` con la página 1 y sin búsqueda a propósito (ver allí).
  *
- * ## Los huecos son CINCO y cada uno depende de una cosa distinta
+ * ## Los huecos son SEIS y cada uno depende de una cosa distinta
  *
  * - `rosterList`: qué filas se ven (búsqueda, página y orden).
  * - `rosterStats`: los números de arriba. **No son los de la lista**: son del
  *   formulario entero, y por eso van aparte (ver `respondedCountForForm()`).
+ * - `rosterInvites`: el botón de invitar por correo y su contador (fase 10). Va
+ *   aparte por una razón de las que este archivo lleva todo el rato: lo que
+ *   depende de `Mailer::isConfigured()` no es una fila de la lista. Si el botón
+ *   fuera una fila más, un alta de una persona repintaría el botón con el
+ *   `MAIL_HOST` leído otra vez, y el número de pendientes viajaría atado a la
+ *   tabla en vez de al estado que lo produce.
  * - `rosterCatalog`: los atributos. Los crea y los quita la importación, no el
  *   alta de una persona, así que un alta no puede reponerlos.
  * - `rosterAddForm`: el formulario de alta, que tiene un input por atributo. No
@@ -40,8 +46,8 @@ use App\Models\FormParticipant;
  *   leyera sin borrarse volvería a enseñar las mismas filas omitidas después de
  *   cualquier alta.
  *
- * Reponer los cinco en las cinco acciones sería más simple de escribir y peor de
- * leer: quien lee el `html` de un borrado no puede saber cuál de los cinco era
+ * Reponer los seis en las seis acciones sería más simple de escribir y peor de
+ * leer: quien lee el `html` de un borrado no puede saber cuál de los seis era
  * el que de verdad cambió, y acaba **`innerHTML`-ando el catálogo entero en cada
  * alta** para no tener que pensarlo. La regla de la casa («un hueco va con lo
  * que depende de SU estado») es también una regla de coste: estos se calculan en
@@ -59,6 +65,20 @@ use App\Models\FormParticipant;
 final class RosterPanel
 {
     public const POR_PAGINA = 25;
+
+    /**
+     * FASE 10 — Cuántas invitaciones caben en una tanda.
+     *
+     * Vive aquí y no en el controlador porque el botón de `_roster_invites.php`
+     * **lo dice** («esta tanda manda 50», y el `data-confirm` lo repite): con el
+     * número en dos sitios, cambiar el tope sin cambiar el texto produce un
+     * botón que anuncia una cosa y manda otra, y eso no da ningún error. Es el
+     * mismo motivo por el que `POR_PAGINA` es de la pantalla y no de la API.
+     *
+     * El controlador lo lee para el `LIMIT` del lote, de modo que los dos caminos
+     * (cuánto se manda y qué se anuncia) no pueden separarse.
+     */
+    public const INVITE_POR_TANDA = 50;
 
     /** Identificadores que la columna del listado sabe ordenar. */
     public const ORDENES = ['cedula', 'nombre', 'correo', 'identificador', 'creado'];
@@ -102,9 +122,19 @@ final class RosterPanel
         );
 
         $atributos = FormParticipant::catalogFor($formId);
+        $identificador = FormParticipant::identifierFor($formId);
 
         return [
-            'identificador' => FormParticipant::identifierFor($formId),
+            'identificador' => $identificador,
+            // Fase 10. `invitados` es el histórico («a estos les escribimos»),
+            // `porInvitar` es lo que puede cambiar con el botón. El segundo solo
+            // se cuenta si el identificador es `correo`: en los otros dos el botón
+            // no existe, y un número que no se enseña es un `COUNT` que se paga en
+            // cada visita a la ficha.
+            'invitados'     => FormParticipant::invitedCountForForm($formId),
+            'porInvitar'    => $identificador === FormParticipant::IDENT_CORREO
+                ? FormParticipant::pendingInviteCount($formId)
+                : 0,
             'formId'        => $formId,
             'q'             => $q,
             'page'          => $page,
@@ -139,7 +169,7 @@ final class RosterPanel
         string $q = '',
         int $page = 1,
         string $sort = 'cedula',
-        array $cambia = ['list', 'stats', 'catalog'],
+        array $cambia = ['list', 'stats', 'invites', 'catalog'],
         ?array $informe = null
     ): array {
         $datos = self::data($formId, $q, $page, $sort);
@@ -153,6 +183,12 @@ final class RosterPanel
         }
         if (in_array('stats', $cambia, true)) {
             $html['rosterStats'] = View::partial('dashboard/forms/_roster_stats', ['roster' => $datos]);
+        }
+        if (in_array('invites', $cambia, true)) {
+            $html['rosterInvites'] = View::partial('dashboard/forms/_roster_invites', [
+                'roster' => $datos,
+                'formId' => $formId,
+            ]);
         }
         if (in_array('catalog', $cambia, true)) {
             // Solo el id, y no la fila del formulario. Aquí no hace falta releerla
