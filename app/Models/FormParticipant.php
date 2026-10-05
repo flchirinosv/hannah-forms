@@ -899,6 +899,19 @@ class FormParticipant
      * El `code` **no** se toca nunca, ni aunque venga en el POST: es la credencial
      * que ya se repartió y cambiarla dejaría sin acceso a quien la tiene escrita.
      *
+     * `invited_at` sí se toca, y solo cuando **el correo cambia**: la marca dice
+     * «a esta dirección se le mandó el enlace», así que una dirección nueva no
+     * puede heredar el acta de la anterior. Sin esto, corregir una errata en el
+     * correo deja la fila marcada, el botón dice «no queda nadie pendiente» y el
+     * nuevo correo no se puede invitar nunca (la puerta más cerrada de las tres:
+     * no hay error, no hay aviso y el botón es el que dice que no hay nadie).
+     *
+     * El filtro es **el correo y solo el correo**, y por eso reimportar el mismo
+     * `.xlsx` no deshace las invitaciones: la comparación es entre el correo
+     * guardado y el nuevo, y si son el mismo no hay nada que reenviar. Si en vez
+     * de comparar se borrara la marca en cada escritura, bastaría con subir otra
+     * vez el archivo para que las 400 invitaciones volvieran a salir.
+     *
      * @param array{cedula?:string,nombre?:string,indicador?:string,correo?:string} $campos
      * @param array<string,string>|null $data `null` deja los atributos como están
      *
@@ -916,6 +929,11 @@ class FormParticipant
         $indicador = self::normalizar((string) ($campos['indicador'] ?? $actual['indicador']));
         $correo    = self::normalizar((string) ($campos['correo'] ?? $actual['correo']));
         $identificadorValor = self::identifierValue($identificador, $cedula, $indicador, $correo);
+        // El `UPDATE` guarda el correo en minúsculas, así que la comparación va con
+        // las dos igual: si solo se normalizara una de las dos, escribir la misma
+        // dirección en mayúsculas borraría la marca y se volvería a invitar a
+        // alguien a quien ya se le mandó el enlace.
+        $correoCambia = mb_strtolower((string) ($actual['correo'] ?? '')) !== mb_strtolower($correo);
 
         $motivo = self::validarValores(
             (int) $actual['form_id'],
@@ -935,20 +953,22 @@ class FormParticipant
         // ficha nueva y la mitad de los atributos viejos. Se hace en una sola
         // transacción por eso, y con `transaccionar()` para que pueda ir dentro de la
         // de una importación sin que una de las dos se coma a la otra.
-        self::db()->transaccionar(function () use ($id, $actual, $cedula, $nombre, $indicador, $correo, $identificadorValor, $data, &$fallo): void {
+        self::db()->transaccionar(function () use ($id, $actual, $cedula, $nombre, $indicador, $correo, $identificadorValor, $data, $correoCambia, &$fallo): void {
             try {
                 self::db()->execute(
                     'UPDATE form_participants
                      SET cedula = :cedula, nombre = :nombre, indicador = :indicador,
-                         correo = :correo, identifier_value = :idval
+                         correo = :correo, identifier_value = :idval,
+                         invited_at = IF(:cambioCorreo = 1, NULL, invited_at)
                      WHERE id = :id',
                     [
-                        'id'        => $id,
-                        'cedula'    => $cedula,
-                        'nombre'    => $nombre,
-                        'indicador' => $indicador,
-                        'correo'    => mb_strtolower($correo),
-                        'idval'     => $identificadorValor,
+                        'id'            => $id,
+                        'cedula'        => $cedula,
+                        'nombre'        => $nombre,
+                        'indicador'     => $indicador,
+                        'correo'        => mb_strtolower($correo),
+                        'idval'         => $identificadorValor,
+                        'cambioCorreo'  => $correoCambia ? 1 : 0,
                     ]
                 );
             } catch (\PDOException $e) {

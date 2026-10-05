@@ -182,7 +182,7 @@ el existente y lo dice.
 | 8 | Agrupar por atributo + techo | medio | **Hecha** (13 tests nuevos) |
 | 9 | Quién respondió, `responses.pii` | bajo | **Hecha** (13 tests nuevos) |
 | 10 | Correo de invitaciones, opt-in | bajo | **Hecha** (13 tests nuevos) |
-| 11 | Documentación y recuentos | — | Pendiente |
+| 11 | Documentación y recuentos | — | **Hecha** |
 
 ### Tres reglas que no son sugerencias
 
@@ -954,6 +954,17 @@ una limpia salgan con las columnas en el mismo orden. Es el mismo criterio con e
 una comparación real de `information_schema` encuentra las diferencias que ninguna
 prueba de esquema del runner ve.
 
+**Y se borra cuando el correo cambia.** La marca dice «a esta dirección se le mandó el
+enlace», así que una dirección nueva no puede heredar el acta de la anterior:
+`update()` lleva `invited_at = IF(:cambioCorreo = 1, NULL, invited_at)` y la comparación
+de las dos direcciones va **en minúsculas** (el `UPDATE` guarda `mb_strtolower`, y si solo
+se normalizara una de las dos, escribir la misma dirección en mayúsculas borraría la
+marca). El filtro es **el correo y solo el correo**, y eso es lo que impide que
+**reimportar el mismo `.xlsx`** deshaga las invitaciones: la importación en modo
+fusionar llama a `update()` fila por fila, así que si la marca se borrara en cada
+escritura bastaría con volver a subir el archivo para que las 400 invitaciones
+volvieran a salir. Renombrar a alguien no deshace nada, porque el correo no cambió.
+
 ### Las cinco condiciones de entrada
 
 1. **El formulario es de lista**: `rosterForm()` (sesión + `canEdit` + modo `roster`).
@@ -1051,5 +1062,5 @@ siguen siendo lo que exportaban antes, sin una columna nueva.
 | 7 | **Hecha** — 970 tests |
 | 8 | **Hecha** — 983 tests |
 | 9 | **Hecha** — 996 tests |
-| 10 | **Hecha** — 1010 tests |
+| 10 | **Hecha** — 1012 tests |
 | 11 | Pendiente |

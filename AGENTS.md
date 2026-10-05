@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 90 archivos, 1010 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 90 archivos, 1012 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -50,7 +50,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
   es un directorio **vacío**), `Models` (10), `Services` (17), `lang/{es,en}.php`.
-  `views/` = 61 plantillas y partials con `View` (dieciocho con prefijo `_`, sin ruta
+  `views/` = 61 plantillas y partials con `View` (diecinueve con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -425,6 +425,17 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **A quien ya respondió no se le escribe** (`responded_at IS NULL`): se le puede
   escribir otra vez desde el correo, pero no desde el botón, que es para los que no han
   llegado.
+- **Corregir el correo devuelve la fila a la cola, y renombrar no**: `update()` hace
+  `invited_at = IF(:cambioCorreo = 1, NULL, invited_at)`, con la comparación de las dos
+  direcciones **en minúsculas** (el `UPDATE` guarda `mb_strtolower`, y si solo se
+  normalizara una de las dos, escribir la misma dirección en mayúsculas borraría la
+  marca y se volvería a invitar a quien ya la recibió). El filtro es **el correo y solo
+  el correo** por lo que **reimportar el mismo `.xlsx` no deshace las invitaciones**: si
+  en vez de comparar se borrara la marca en cada escritura, bastaría con volver a subir
+  el archivo para que las 400 invitaciones volvieran a salir. Lo atan
+  `testCorregirElCorreoDevuelveLaFilaAPendientesYRenombrarNo` y
+  `testReimportarElMismoArchivoNoDeshaceLasInvitaciones`. Sin la mitad del correo, la
+  puerta se cierra sin error ni aviso: el botón dice «no queda nadie pendiente».
 - **`invited_at` es una FECHA y no un «sí/no»**, y `NULL` de verdad (no
   `DEFAULT '0000-00-00'`): `IS NOT NULL` sobre la fecha cero marcaría a toda la lista
   como invitada desde el primer día. Lo fija

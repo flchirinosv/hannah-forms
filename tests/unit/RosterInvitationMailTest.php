@@ -455,6 +455,86 @@ class RosterInvitationMailTest
         );
     }
 
+    public function testCorregirElCorreoDevuelveLaFilaAPendientesYRenombrarNo(): void
+    {
+        // `invited_at` dice «a ESTA dirección se le mandó el enlace», así que una
+        // dirección nueva no puede heredar el acta de la anterior. Sin esto, corregir
+        // una errata dejaba la fila marcada, el botón decía «no queda nadie
+        // pendiente» y el correo nuevo no se podía invitar nunca: la puerta más
+        // cerrada de las tres, porque no hay error ni aviso y el botón es el que
+        // dice que no hay nadie.
+        self::modo(FormSettings::ACCESS_ROSTER, 'correo');
+        FormParticipant::create((int) self::$formId, 'correo', ['correo' => 'ana@test.local']);
+
+        $primera = self::llamar('invitations');
+        assertEquals(1, count(self::$correos));
+        assertEquals(
+            0,
+            FormParticipant::pendingInviteCount((int) self::$formId),
+            'después de invitar no queda nadie: ' . (string) ($primera['json']['message'] ?? '')
+        );
+
+        $id = (int) FormParticipant::findByIdentifier((int) self::$formId, 'correo', 'ana@test.local')['id'];
+
+        // Renombrar NO deshace la invitación: el correo sigue siendo el mismo y a
+        // esa dirección ya se le escribió. Es el otro lado de la misma regla.
+        $editado = FormParticipant::update($id, 'correo', ['nombre' => 'Ana Ruiz']);
+        assertTrue($editado['ok'], 'editar el nombre no puede fallar: ' . (string) $editado['motivo']);
+        assertEquals(
+            0,
+            FormParticipant::pendingInviteCount((int) self::$formId),
+            'cambiar el nombre no devuelve la fila a la cola: el correo no cambió'
+        );
+
+        $editado = FormParticipant::update($id, 'correo', ['correo' => 'ana.ruiz@test.local']);
+        assertTrue($editado['ok'], 'corregir el correo no puede fallar: ' . (string) $editado['motivo']);
+        assertEquals(
+            1,
+            FormParticipant::pendingInviteCount((int) self::$formId),
+            'un correo nuevo no hereda la marca de la invitación anterior'
+        );
+
+        $segunda = self::llamar('invitations');
+
+        assertEquals(2, count(self::$correos), 'y el botón vuelve a tener a quién escribir');
+        assertEquals('ana.ruiz@test.local', (string) self::$correos[1]['to'][0], 'al correo NUEVO');
+        assertEquals(1, FormParticipant::invitedCountForForm((int) self::$formId));
+    }
+
+    public function testReimportarElMismoArchivoNoDeshaceLasInvitaciones(): void
+    {
+        // El otro lado de la regla del correo, y el que la hace de fácil de romper
+        // por la razón equivocada: si `update()` borrara la marca en cada
+        // escritura, bastaría con volver a subir el `.xlsx` para que las 400
+        // invitaciones volvieran a salir. La comparación es entre el correo guardado
+        // y el nuevo, así que reimportar lo mismo no reescribe nada que importar.
+        self::modo(FormSettings::ACCESS_ROSTER, 'correo');
+        FormParticipant::create((int) self::$formId, 'correo', ['correo' => 'ana@test.local']);
+
+        self::llamar('invitations');
+        assertEquals(1, count(self::$correos));
+
+        // El alta manual creó la fila con solo el correo; la importación con el
+        // mismo correo debe encontrarla y fusionar, no reenviar.
+        $reimportado = FormParticipant::update(
+            (int) FormParticipant::findByIdentifier((int) self::$formId, 'correo', 'ana@test.local')['id'],
+            'correo',
+            ['correo' => 'ana@test.local', 'nombre' => 'Ana']
+        );
+
+        assertTrue($reimportado['ok']);
+        assertEquals(
+            1,
+            FormParticipant::invitedCountForForm((int) self::$formId),
+            'reimportar el mismo correo no borra la fecha del envío'
+        );
+        assertEquals(
+            0,
+            FormParticipant::pendingInviteCount((int) self::$formId),
+            'ni lo devuelve a la cola'
+        );
+    }
+
     // =====================================================================
     // Utilidades
     // =====================================================================

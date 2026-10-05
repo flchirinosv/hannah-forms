@@ -1270,7 +1270,7 @@ test en limpio. Los `null` se filtran antes de consultar porque `intval(null)` e
 
 El listado ya cargaba, se editaba y se repartía el «Código» a mano. Faltaba escribirle
 a la gente, y la forma obvia de hacerlo —mandar el correo al importar— es la que no se
-puede hacer. Hay cinco decisiones detrás de lo que quedó:
+puede hacer. Hay seis decisiones detrás de lo que quedó:
 
 1. **`invited_at DATETIME NULL`, no un `TINYINT` «invitado».** El botón solo necesita
    «¿ya le escribí?», así que el booleano basta para la función y por eso mismo es el
@@ -1302,6 +1302,16 @@ puede hacer. Hay cinco decisiones detrás de lo que quedó:
    vuelve a mirar. Con el orden correcto, un fallo no es «se perdió el correo» sino «el
    correo sigue pendiente», que es lo que hace posible reintentar. Mutación comprobada:
    marcar antes del `send()` pone en rojo los dos tests de fallos.
+
+6. **Corregir el correo devuelve la fila a la cola; renombrar no.** La marca dice «a
+   esta dirección se le mandó el enlace», así que una dirección nueva no puede heredar el
+   acta de la anterior. Sin esto, arreglar una errata en el correo dejaba la fila
+   marcada, el botón decía «no queda nadie pendiente» y el correo nuevo no se podría
+   invitar nunca: la puerta más cerrada de las tres, porque no hay error, no hay aviso
+   y el botón es el que dice que no hay nadie. El filtro es **el correo y solo el
+   correo**: si la marca se borrara en cada escritura, bastaría con volver a subir el
+   mismo `.xlsx` para que las 400 invitaciones volvieran a salir, y eso sí ocurre con
+   la importación en modo fusionar, que llama a `update()` fila por fila.
 
 Y el detalle de la vista que más fácil se rompe: **el botón no declara
 `data-vf-error`**. En un `ok:false` por fallos el servidor devuelve `html` con el slot
