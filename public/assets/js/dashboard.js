@@ -307,7 +307,7 @@
         } else if (accessSel.value === 'email') {
             hint.textContent = 'Pide un correo y envía un enlace. No hay lista: cualquier correo válido entra.';
         } else if (accessSel.value === 'roster') {
-            hint.textContent = 'Solo entran las personas del listado, con su código. La lista se gestiona en la tarjeta de Acceso.';
+            hint.textContent = 'Solo entran las personas del listado, con su código o con el identificador elegido. La lista se gestiona en la tarjeta de Acceso.';
         } else {
             hint.textContent = 'Solo los correos de la lista reciben un enlace. La lista vacía cierra el formulario a todo el mundo.';
         }

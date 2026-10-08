@@ -48,7 +48,7 @@ final class FormSettings
      * identificador está **denormalizado** en `identifier_value` precisamente para
      * que la puerta del fill busque siempre en la misma columna indexada.
      */
-    public const ACCESS_IDENTIFIERS = ['cedula', 'indicador', 'correo'];
+    public const ACCESS_IDENTIFIERS = ['cedula', 'indicador', 'correo', 'codigo'];
 
     /**
      * El fill pide identificación con estos tres.

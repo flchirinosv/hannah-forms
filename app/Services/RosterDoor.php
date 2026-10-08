@@ -8,6 +8,7 @@ use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\SecurityLog;
 use App\Core\Session;
+use App\Models\Form;
 use App\Models\FormParticipant;
 
 /**
@@ -15,11 +16,18 @@ use App\Models\FormParticipant;
  *
  * ## Qué es la credencial
  *
- * El `code` de 16 caracteres que lleva cada participante. Lo que el dueño elige en
- * `access.identifier` (cédula, indicador o correo) es **qué campo lo identifica en
- * sus registros**, no el secreto con el que entra: un mismo participante no cambia
- * de código porque el dueño le cambie el identificador, que es lo que haría falta
- * para revocar a alguien.
+ * Hay DOS, y las dos valen:
+ *
+ *  - El `code` de 16 caracteres que lleva cada participante: es la credencial del
+ *    correo, del QR y de `?t=`, y no cambia nunca aunque el dueño cambie el
+ *    identificador (que es lo que haría falta para revocar a alguien).
+ *  - El dato con el que la persona figura en la lista, que es el que el dueño
+ *    elige en `access.identifier` (cédula, indicador, correo o el propio código).
+ *    La página de acceso lo pide por su nombre —`access.label_*`—, y por eso
+ *    aquí **solo se prueba ESE**: un formulario que pide la cédula no debería
+ *    dejar entrar con el correo de al lado, que es lo que hacía la lista de
+ *    candidatos antigua (`[$identificador, 'correo', 'cedula', 'indicador']`) y
+ *    lo que hacía que el texto y la puerta dijeran cosas distintas.
  *
  * ## Por qué vive en `?t=` y no en un parámetro propio
  *
@@ -48,6 +56,13 @@ final class RosterDoor
 
     private const GRANT_PARTICIPANTE = 'participant';
 
+    private static string $lastMotivo = 'not_found';
+
+    public static function lastMotivo(): string
+    {
+        return self::$lastMotivo;
+    }
+
     /**
      * Normaliza lo que alguien puede pegar o teclear.
      *
@@ -55,12 +70,15 @@ final class RosterDoor
      * pegado trae espacios y saltos de línea alrededor. Se quitan los espacios
      * internos y se pasa a mayúsculas porque el alfabeto del generador ya lo es;
      * buscar el código tal cual falla con un espacio invisible.
+     *
+     * La regla vive en `FormParticipant::normalizarCode()`, que es la que también
+     * usa el modelo al leer el `code` de una fila: dos copias de este `preg_replace`
+     * significan que un día alguien cambie una y la puerta deje de encontrar los
+     * códigos que el modelo acaba de guardar.
      */
     public static function normalizar(string $codigo): string
     {
-        $codigo = strtoupper(trim($codigo));
-
-        return (string) preg_replace('/[^A-Z0-9]/', '', $codigo);
+        return FormParticipant::normalizarCode($codigo);
     }
 
     /**
@@ -75,10 +93,71 @@ final class RosterDoor
     {
         $fila = FormParticipant::findByCodeInForm((int) $form['id'], self::normalizar($codigo));
         if ($fila === null) {
+            self::$lastMotivo = 'not_found';
             SecurityLog::record('roster.code_rejected', 'código no válido en /f/' . $form['slug']);
-
             return null;
         }
+        if (!empty($fila['responded_at'])) {
+            self::$lastMotivo = 'used';
+            SecurityLog::record('roster.code_rejected', 'código ya utilizado en /f/' . $form['slug']);
+            return null;
+        }
+        self::$lastMotivo = 'ok';
+        return $fila;
+    }
+
+    /**
+     * Busca a alguien por **las dos credenciales que la puerta acepta**: su código
+     * y el dato con el que figura en la lista (`access.identifier`).
+     *
+     * El código va primero porque es el que traen el correo, el QR y `?t=`, y
+     * porque su normalización es destructiva (`V-123` → `V123`): probarlo al final
+     * haría que una cédula con guion se buscara dos veces y con dos formas
+     * distintas.
+     *
+     * Después se prueba **el identificador del formulario y nada más**. La lista
+     * vieja probaba `[$identificador, 'correo', 'cedula', 'indicador']`, y eso
+     * significaba que un formulario que pide la cédula dejaba entrar con el correo
+     * de cualquier otra persona: la puerta hacía menos de lo que la página decía.
+     * Con `identifier = codigo` no hay segunda vuelta a propósito —el código ya se
+     * probó arriba—, así que un valor que no lo sea (una cédula pegada en un
+     * formulario cuyo identificador es el código) no se convierte en nadie.
+     *
+     * `lastMotivo()` (`ok` | `not_found` | `used`) es lo que luego decide el texto
+     * del error en `FillController::verifyCode()`.
+     */
+    public static function buscarAmbos(array $form, string $valor): ?array
+    {
+        self::$lastMotivo = 'not_found';
+        $fila = FormParticipant::findByCodeInForm((int) $form['id'], self::normalizar($valor));
+        if ($fila !== null) {
+            if (!empty($fila['responded_at'])) {
+                self::$lastMotivo = 'used';
+                SecurityLog::record('roster.code_rejected', 'credencial ya utilizada en /f/' . $form['slug']);
+                return null;
+            }
+            self::$lastMotivo = 'ok';
+            return $fila;
+        }
+
+        $identificador = FormParticipant::identifierOf(Form::settings((int) $form['id']));
+        $valorTrim = trim($valor);
+        if ($valorTrim === '' || $identificador === 'codigo') {
+            SecurityLog::record('roster.code_rejected', 'credencial no válida en /f/' . $form['slug']);
+            return null;
+        }
+
+        $fila = FormParticipant::findByIdentifier((int) $form['id'], $identificador, $valorTrim);
+        if ($fila === null) {
+            SecurityLog::record('roster.code_rejected', 'credencial no válida en /f/' . $form['slug']);
+            return null;
+        }
+        if (!empty($fila['responded_at'])) {
+            self::$lastMotivo = 'used';
+            SecurityLog::record('roster.code_rejected', 'credencial ya utilizada en /f/' . $form['slug']);
+            return null;
+        }
+        self::$lastMotivo = 'ok';
 
         return $fila;
     }
@@ -189,6 +268,24 @@ final class RosterDoor
     public static function ip(): string
     {
         return Request::ip();
+    }
+
+    /**
+     * Deja de contar los intentos de un par (formulario, IP).
+     *
+     * Lo usan los tests y, en el futuro, un botón de «no soy yo». Vive aquí y no
+     * en el llamador porque el nombre de la llave tiene que ser el mismo en los
+     * dos sitios, y una llave escrita dos veces es una llave que se desincroniza.
+     */
+    public static function revoke(int $formId): void
+    {
+        $grants = Session::get('vf_form_access', []);
+        if (!is_array($grants)) {
+            $grants = [];
+        }
+        self::podar($grants);
+        unset($grants[$formId]);
+        Session::set('vf_form_access', $grants);
     }
 
     /**

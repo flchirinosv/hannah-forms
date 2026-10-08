@@ -269,7 +269,7 @@ class RosterDoorTest
         assertTrue($fila['responded_at'] !== null, 'responder marca la lista');
     }
 
-    public function testResponderDosVecesNoMueveLaFecha(): void
+    public function testResponderDosVecesNoPermiteAccesoTrasPrimeraRespuesta(): void
     {
         $p = $this->crearParticipante();
         $this->getFill((string) $p['code']);
@@ -278,10 +278,11 @@ class RosterDoorTest
 
         sleep(1);
         $this->getFill((string) $p['code']);
+        // Tras haber respondido, el acceso debe ser rechazado y no debe enviarse otra respuesta
         $this->postSubmit(null);
 
-        assertSame($primera, (string) FormParticipant::find((int) $p['id'])['responded_at'], 'la marca es idempotente');
-        assertSame(2, $this->submits(), 'pero las dos respuestas se guardan');
+        assertSame($primera, (string) FormParticipant::find((int) $p['id'])['responded_at'], 'la marca no cambia');
+        assertSame(1, $this->submits(), 'no se guarda una segunda respuesta');
     }
 
     public function testUnFormularioNormalNoRecibeParticipantId(): void
@@ -360,7 +361,10 @@ class RosterDoorTest
         // existen, y el rate limit deja de ser la defensa.
         $inexistente = $this->postCode('ABCD2345ABCD2345');
         $ajeno = $this->postCode((string) $this->crearParticipante((int) self::$otherFormId)['code']);
-        $tecleado = $this->postCode('ABCD2345ABCD234');
+        // Tiene que PARECER un código (16 caracteres del alfabeto): la elección del
+        // mensaje es por forma, y una cadena de 15 se contestaría con el texto del
+        // identificador y este test estaría midiendo otra cosa.
+        $tecleado = $this->postCode('ABCD2345ABCD234X');
 
         assertSame('error', (string) ($inexistente['flash'] ?? ''), 'el inexistente avisa');
         assertSame($inexistente['mensaje'], $ajeno['mensaje'], 'y el de otro formulario dice exactamente lo mismo');
@@ -368,10 +372,98 @@ class RosterDoorTest
 
         // Comparar solo entre ellos NO basta: los tres salen del mismo `if`, así
         // que serían iguales con cualquier texto. Lo que ata el test es que el texto
-        // sea **el del código**: el mensaje de F4 habla de correos, y en un
-        // formulario de listado no hay ningún correo en juego.
-        assertSame(I18n::t('access.code_invalid'), $inexistente['mensaje'], 'el mensaje es el del código, no el del correo');
+        // sea **el del código**: el formulario pide la cédula, pero lo que parece
+        // código se contesta como código exista o no.
+        assertSame(I18n::t('access.invalid_codigo'), $inexistente['mensaje'], 'el mensaje es el del código, no el del identificador');
         assertTrue(!isset($_SESSION['vf_form_access'][(int) self::$formId]), 'ninguno abre la puerta');
+    }
+
+    public function testLoQueNoPareceCodigoSeContestaConElDelIdentificador(): void
+    {
+        // La otra mitad de la regla anterior: quien escribe el dato que la página
+        // pide (la cédula) tiene que recibir un mensaje que nombre ese dato, o el
+        // «Ese código no es válido» no le dice nada de lo que tiene que corregir.
+        $this->setIdentifier('cedula');
+        $mal = $this->postCode('V-999999');
+
+        assertSame('error', (string) ($mal['flash'] ?? ''), 'avisa');
+        assertSame(I18n::t('access.invalid_cedula'), $mal['mensaje'], 'el mensaje nombra la cédula');
+        assertTrue(!isset($_SESSION['vf_form_access'][(int) self::$formId]), 'y no abre');
+    }
+
+    public function testLaCedulaDelParticipanteAbreElFormularioYLaUrlQuedaConSuCodigo(): void
+    {
+        // El identificador por defecto es la cédula, y la puerta acepta el dato con
+        // el que la persona figura en la lista además de su código. Lo que queda en
+        // la URL es el CÓDIGO, porque es la credencial con la que se propaga el
+        // resto del formulario (y la que el QR y el correo traen).
+        $p = $this->crearParticipante();
+        $halt = $this->postCode((string) $p['cedula']);
+
+        assertSame(302, $halt['status'] === 302 ? 302 : 0, 'redirige');
+        assertTrue(str_contains((string) ($halt['to'] ?? ''), '/f/' . self::$slug . '?t=' . $p['code']), 'a la puerta con el código');
+        assertSame('participant', (string) ($_SESSION['vf_form_access'][(int) self::$formId]['kind'] ?? ''), 'y deja permiso');
+    }
+
+    public function testSoloEntraElIdentificadorQueElFormularioPide(): void
+    {
+        // La lista vieja probaba cédula, indicador y correo sin importar el ajuste,
+        // y eso hacía que la puerta dejara entrar por un dato que la página ni siquiera
+        // pide. Aquí el formulario pide el correo: la cédula de un participante real
+        // tiene que quedar fuera.
+        $p = $this->crearParticipante();
+        $this->setIdentifier('correo');
+
+        $porCedula = $this->postCode((string) $p['cedula']);
+        assertSame('error', (string) ($porCedula['flash'] ?? ''), 'la cédula no es el identificador que este formulario pide');
+        assertSame(I18n::t('access.invalid_correo'), $porCedula['mensaje'], 'y el mensaje nombra el campo que sí pide');
+        assertTrue(!isset($_SESSION['vf_form_access'][(int) self::$formId]), 'no abre');
+
+        $conCorreo = FormParticipant::create((int) self::$formId, 'correo', [
+            'cedula' => 'V-' . bin2hex(random_bytes(3)),
+            'correo' => 'puerta-' . bin2hex(random_bytes(3)) . '@test.local',
+        ]);
+        assertTrue((bool) $conCorreo['ok'], 'el participante se crea: ' . (string) $conCorreo['motivo']);
+        $fila = FormParticipant::find((int) $conCorreo['id']);
+        assertNotNull($fila, 'y se lee');
+
+        $halt = $this->postCode((string) $fila['correo']);
+        assertSame(302, $halt['status'] === 302 ? 302 : 0, 'con el correo sí entra');
+        assertTrue(str_contains((string) ($halt['to'] ?? ''), '?t=' . $fila['code']), 'y sale con la URL del código');
+    }
+
+    public function testUnFormularioPorCodigoNoAbreNiConLaCedulaNiConElCorreo(): void
+    {
+        // Con `identifier = codigo` la única puerta es el código: no hay segunda
+        // vuelta buscando la cédula o el correo de al lado, porque entonces la
+        // página pediría una cosa y la puerta abriría otra.
+        $p = $this->crearParticipante();
+        $this->setIdentifier('codigo');
+
+        assertTrue(str_contains($this->getFill((string) $p['cedula']), 'vfAccessCode'), 'la cédula sigue en la puerta');
+        assertTrue(str_contains($this->getFill((string) $p['code']), 'id="vfSubmit"'), 'y el código entra');
+    }
+
+    public function testLaPaginaDeAccesoPideElIdentificadorQueToca(): void
+    {
+        // El texto genérico («tu código personal o identificador») no le dice a
+        // nadie qué escribir, y el placeholder y el teclado tienen que corresponder
+        // al dato. Esto ata la página al `access.identifier` del formulario.
+        $html = $this->getFill(null);
+        assertTrue(str_contains($html, I18n::t('access.label_cedula')), 'pide la cédula, que es su identificador');
+        assertTrue(str_contains($html, I18n::t('access.placeholder_cedula')), 'con el placeholder de la cédula');
+        assertTrue(!str_contains($html, I18n::t('access.label_codigo')), 'y no el del código, que sería otra puerta');
+        assertTrue(str_contains($html, 'name="code"'), 'el campo sigue llamándose code: es el contrato de verifyCode()');
+
+        $this->setIdentifier('codigo');
+        $html = $this->getFill(null);
+        assertTrue(str_contains($html, I18n::t('access.label_codigo')), 'con identificador código, pide el código');
+        assertTrue(str_contains($html, I18n::t('access.placeholder_codigo')), 'y su placeholder');
+
+        $this->setIdentifier('correo');
+        $html = $this->getFill(null);
+        assertTrue(str_contains($html, I18n::t('access.label_correo')), 'con correo, pide el correo');
+        assertTrue(str_contains($html, 'type="email"'), 'y con el teclado de correo');
     }
 
     public function testDiezIntentosFallidosCierranLaPuertaYElCodigoBuenoTambien(): void
@@ -431,6 +523,27 @@ class RosterDoorTest
         $ajustes = json_decode((string) ($row['settings'] ?? '{}'), true);
         $ajustes = is_array($ajustes) ? $ajustes : [];
         $ajustes['access'] = ['mode' => $mode] + (is_array($ajustes['access'] ?? null) ? $ajustes['access'] : []);
+
+        $db->execute('UPDATE forms SET settings = :s WHERE id = :id', ['s' => json_encode($ajustes), 'id' => $id]);
+    }
+
+    /**
+     * Cambia SOLO el identificador del formulario, sin tocar el modo.
+     *
+     * Es el ajuste que decide qué le pide la puerta a la persona, y los tests de
+     * credencial necesitan poder moverlo sin reimplementar el merge de ajustes que
+     * ya hace `setMode()`.
+     */
+    private function setIdentifier(string $identificador, ?int $formId = null): void
+    {
+        $id = $formId ?? (int) self::$formId;
+        $db = Database::getInstance(Config::db());
+        $row = $db->fetch('SELECT settings FROM forms WHERE id = :id', ['id' => $id]);
+        $ajustes = json_decode((string) ($row['settings'] ?? '{}'), true);
+        $ajustes = is_array($ajustes) ? $ajustes : [];
+        $acceso = is_array($ajustes['access'] ?? null) ? $ajustes['access'] : [];
+        $acceso['identifier'] = $identificador;
+        $ajustes['access'] = $acceso;
 
         $db->execute('UPDATE forms SET settings = :s WHERE id = :id', ['s' => json_encode($ajustes), 'id' => $id]);
     }

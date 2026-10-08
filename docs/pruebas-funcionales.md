@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1032 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1042 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**436 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**442 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -602,7 +602,11 @@ Para llegar al panel: ficha del formulario → *Ajustes* → *Quién puede respo
 El identificador es lo que decide **quién puede entrar**: la puerta busca por esa
 columna, así que cambiarlo reescribe la identidad de toda la lista. Es el ajuste más
 peligroso de la ficha y el que más parece un detalle, así que lo que se mira es que
-**avise antes de romper** y que **sin JavaScript el camino exista**.
+**avise antes de romper** y que **sin JavaScript el camino exista**. Y, desde que la
+puerta pública nombra el dato, que **lo que pide la pantalla de acceso es lo que
+guarda el desplegable** y que la puerta solo admite el código y ese dato: un
+identificador que el formulario no pide no abre nada, aunque la persona esté en la
+lista.
 
 Para llegar: ficha del formulario → *Ajustes* → *Quién puede responder*.
 
@@ -621,6 +625,12 @@ Para llegar: ficha del formulario → *Ajustes* → *Quién puede responder*.
 | W11 | Con la lista reescrita, entrar por un enlace con el código viejo | Entra: el código no cambia, solo lo que se teclea | A | |
 | W12 | Poner `public` en un formulario que tenía lista | El formulario se abre y **la lista sigue ahí**, con su catálogo | A | |
 | W13 | El formulario en `roster`, con los botones de la ficha (*Publicar*, *Compartir*) | Los botones son los de siempre: el identificador no toca el estado | M | |
+| W14 | Abrir la puerta de un formulario en lista con identificador «Cédula», sin `?t=` | El rótulo es «Tu cédula», el placeholder pide la cédula y la nota habla de la cédula y del código de invitación: nada de un texto genérico de «código o identificador» | A | |
+| W15 | Cambiar el identificador a «Código» y volver a abrir la puerta sin `?t=` | El campo pide el código personal de 16 caracteres, con su placeholder | A | |
+| W16 | Con identificador «Correo electrónico», escribir en la puerta la **cédula** de alguien de la lista | No entra, y el aviso habla del **correo** (el dato que este formulario pide), no de «ese código» | A | |
+| W17 | Con identificador «Cédula», escribir la cédula de un participante | Entra y la URL queda con `?t=` del **código** de esa persona | A | |
+| W18 | Pulsar el «?» de ayuda del desplegable «Con qué se identifica» | El texto habla de lo que se teclea en la pantalla de acceso y del código de la invitación; ya no dice que «el correo solo sirve para mandarles el enlace» | M | |
+| W19 | Mirar el aviso de debajo del desplegable en modo lista | Dice que solo entran los de la lista «con su código o con el identificador elegido», no solo «con su código» | B | |
 
 
 ## X. Filtrar la analítica por un atributo del listado (fase 7, 2026-10-04)

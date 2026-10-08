@@ -56,6 +56,19 @@ $rotuloId = match ((string) $roster['identificador']) {
     default     => 'Cédula',
 };
 
+// Con identificador `codigo`, `identifier_value` ES el `code` (es lo que busca la
+// puerta) y la cédula se queda solo en su columna. Si la tarjeta pintara el
+// `identifier_value`, el código saldría dos veces —el identidad y el de
+// `<code>`— y la cédula no saldría en ninguna parte. Con los otros tres, la
+// columna de la identidad y el `identifier_value` son el mismo valor, así que
+// esto es la misma lectura de siempre, con la columna como red por si una fila
+// antigua estuviera guardando otra cosa.
+$identidad = static function (array $fila) use ($columnaId): string {
+    $columna = trim((string) ($fila[$columnaId] ?? ''));
+
+    return $columna !== '' ? $columna : (string) ($fila['identifier_value'] ?? '');
+};
+
 $url = static function (int $page, string $sort = '') use ($formId, $q): string {
     $params = ['page' => $page];
     if ($q !== '') {
@@ -69,7 +82,7 @@ $url = static function (int $page, string $sort = '') use ($formId, $q): string 
 };
 
 $ordenes = [
-    'identificador' => $rotuloId,
+    'identificador' => (string) $roster['identificador'] === 'codigo' ? 'Código' : $rotuloId,
     'nombre'        => 'Nombre',
     'creado'        => 'Añadido',
 ];
@@ -128,7 +141,7 @@ $ordenes = [
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                         <div class="flex-grow-1">
                             <div class="fw-semibold">
-                                <?= View::escape((string) $fila['identifier_value']) ?>
+                                <?= View::escape($identidad($fila)) ?>
                                 <?php if (!empty($fila['nombre'])) { ?>
                                     <span class="fw-normal text-muted"><?= View::escape((string) $fila['nombre']) ?></span>
                                 <?php } ?>
@@ -233,7 +246,7 @@ $ordenes = [
                               // a perder y qué no. ?>
                         <form method="post" action="/forms/<?= (int) $formId ?>/participants/delete"
                               class="d-inline-block" data-vf-async="slots"
-                              data-confirm="¿Quitar a <?= View::escape((string) $fila['identifier_value']) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
+                              data-confirm="¿Quitar a <?= View::escape($identidad($fila)) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
                               data-confirm-ok="Sí, quitar de la lista" data-confirm-tone="danger">
                             <?= Csrf::field() ?>
                             <input type="hidden" name="participant_id" value="<?= $pid ?>">

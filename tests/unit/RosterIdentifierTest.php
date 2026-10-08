@@ -277,6 +277,42 @@ class RosterIdentifierTest
         );
     }
 
+    public function testCambiarElIdentificadorACodigoConvierteLaIdentidadEnElCodigo(): void
+    {
+        // El cuarto identificador es el único cuyo valor NO viene de la lista: lo
+        // genera el servidor. Por eso el plan lo cuenta con la columna `code`
+        // (nadie se queda sin identidad) y `reidentificar()` copia esa misma
+        // columna: una mitad sin la otra deja la lista con un `identifier_value`
+        // que la puerta no busca, que es exactamente el fallo silencioso que el
+        // plan existe para evitar.
+        self::modo(FormSettings::ACCESS_ROSTER, 'cedula');
+        $ana = self::persona(['cedula' => 'V-1', 'nombre' => 'Ana']);
+        $luis = self::persona(['cedula' => 'V-2', 'nombre' => 'Luis']);
+
+        $plan = FormParticipant::planDeReidentificacion((int) self::$formId, 'codigo');
+        assertSame(0, $plan['sin_identidad'], 'todos tienen código: no falta nadie');
+        assertSame(2, $plan['a_cambiar'], 'las dos cambiarían de identidad');
+        assertSame(0, $plan['repetidos_cuento'], 'los códigos no se repiten');
+
+        $r = self::guardar(['access_mode' => 'roster', 'access_identifier' => 'codigo']);
+
+        assertTrue($r['json']['ok'] === true, 'el cambio se acepta: ' . (string) ($r['json']['error'] ?? ''));
+        assertSame('codigo', FormParticipant::identifierFor((int) self::$formId), 'el ajuste dice «codigo»');
+
+        assertSame($ana['code'], self::valorDe((int) $ana['id'])['identifier_value'], 'la identidad de Ana es su código');
+        assertSame($luis['code'], self::valorDe((int) $luis['id'])['identifier_value']);
+        assertSame($ana['code'], self::valorDe((int) $ana['id'])['code'], 'y su código no cambió');
+        assertSame($luis['code'], self::valorDe((int) $luis['id'])['code']);
+
+        // La puerta de verdad: se busca por el código, y la cédula ya no es la
+        // identidad (aunque sigue en su columna, que es la del archivo).
+        assertNotNull(
+            FormParticipant::findByIdentifier((int) self::$formId, 'codigo', (string) $ana['code']),
+            'el código encuentra a la persona'
+        );
+        assertSame('V-1', (string) self::valorDe((int) $ana['id'])['cedula'], 'la cédula sigue donde estaba');
+    }
+
     public function testSinGenteEnLaListaSePuedeCambiarElIdentificador(): void
     {
         self::modo(FormSettings::ACCESS_ROSTER, 'cedula');

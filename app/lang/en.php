@@ -92,12 +92,35 @@ return [
     'access.sent_body'        => 'If that address is authorized you will get a link to open the form. The message is the same either way, for privacy.',
     'access.note_email'       => 'The link is personal: do not share it.',
     'access.note_allowlist'   => 'The link is personal: do not share it.',
-    'access.note_roster'      => 'The code is personal: do not share it.',
-    'access.intro_roster'     => 'This form is only for the people on the list. Enter your personal code to get in.',
-    'access.code_label'       => 'Your personal code',
-    'access.code_placeholder' => 'The 16 characters of your code',
     'access.cta_code'         => 'Open the form',
-    'access.code_invalid'     => 'That code is not valid.',
+    'access.code_used'        => "We've already recorded your participation.",
+
+    // The `roster` door is written with the identifier the owner picked
+    // (`access.identifier`), so every string exists for all four: a page asking
+    // for "your personal code or identifier" without saying which one tells
+    // nobody what to type. The invitation code ALWAYS works (it is the
+    // credential of the email and the QR), which is why the other three mention
+    // it and the code's own string does not.
+    'access.intro_roster_cedula'    => 'This form is only for the people on the list. Enter the ID number you are listed with; if you have your invitation code, that works too.',
+    'access.intro_roster_indicador' => 'This form is only for the people on the list. Enter the centre code you are listed with; if you have your invitation code, that works too.',
+    'access.intro_roster_correo'    => 'This form is only for the people on the list. Enter the email address you are listed with; if you have your invitation code, that works too.',
+    'access.intro_roster_codigo'    => 'This form is only for the people on the list. Enter your personal code.',
+    'access.label_cedula'           => 'Your ID number',
+    'access.label_indicador'        => 'Your centre code',
+    'access.label_correo'           => 'Your email',
+    'access.label_codigo'           => 'Your personal code',
+    'access.placeholder_cedula'     => 'E.g. V-12345678',
+    'access.placeholder_indicador'  => 'E.g. 12345678',
+    'access.placeholder_correo'     => 'name@example.com',
+    'access.placeholder_codigo'     => 'The 16 characters of your code',
+    'access.note_roster_cedula'     => 'Your ID number and your invitation code are personal: do not share them.',
+    'access.note_roster_indicador'  => 'Your centre code and your invitation code are personal: do not share them.',
+    'access.note_roster_correo'     => 'Your email and your invitation code are personal: do not share them.',
+    'access.note_roster_codigo'     => 'The code is personal: do not share it.',
+    'access.invalid_cedula'         => 'That ID number is not on the list.',
+    'access.invalid_indicador'      => 'That centre code is not on the list.',
+    'access.invalid_correo'         => 'That email address is not on the list.',
+    'access.invalid_codigo'         => 'That code is not valid.',
     'access.code_blocked'     => 'Too many attempts. Wait a few minutes and try again.',
     'access.denied'           => 'You need an access link to respond to this form.',
     'access.invalid_email'    => 'That email address does not look valid.',

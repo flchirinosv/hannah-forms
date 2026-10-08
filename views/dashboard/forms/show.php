@@ -268,8 +268,9 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                     <option value="cedula"<?= $identificadorActual === 'cedula' ? ' selected' : '' ?>>Cédula</option>
                                     <option value="indicador"<?= $identificadorActual === 'indicador' ? ' selected' : '' ?>>Indicador del centro</option>
                                     <option value="correo"<?= $identificadorActual === 'correo' ? ' selected' : '' ?>>Correo electrónico</option>
+                                    <option value="codigo"<?= $identificadorActual === 'codigo' ? ' selected' : '' ?>>Código</option>
                                 </select>
-                                <?= $helpButton('No cambia lo que hace el formulario: dice qué columna del archivo es la identidad de cada persona. El código con el que entran es siempre el mismo, y el correo solo sirve para mandarles el enlace. Con gente en la lista, cambiarla reescribe la identidad de todos y se rechaza si alguno se queda sin ella o si dos personas acabarían con la misma.') ?>
+                                <?= $helpButton('Decide qué se le pide a la persona en la pantalla de acceso y qué columna del archivo es la identidad de cada fila; el código de la invitación sirve siempre, además de ese dato. Con gente en la lista, cambiarla reescribe la identidad de todos y se rechaza si alguno se queda sin ella o si dos personas acabarían con la misma.') ?>
                             </div>
                             <p class="small text-muted mb-0" id="stAccessHint" role="status"></p>
                             </div>

@@ -31,6 +31,12 @@ $identificador = (string) $roster['identificador'];
 $columnaId = match ($identificador) {
     'indicador' => 'indicador',
     'correo'    => 'correo',
+    // `codigo` cae aquí: la identidad de ese modo la genera el servidor (es el
+    // `code` de la fila, que el listado enseña), así que la cédula es un dato
+    // más de la persona y no la credencial con la que entra. Por eso este campo
+    // NO va `required` solo cuando el identificador es el código: un alta sin
+    // cédula sería un participante imposible de firmar en los otros tres modos
+    // y perfectamente posible en este.
     default     => 'cedula',
 };
 $rotuloId = match ($identificador) {
@@ -38,6 +44,7 @@ $rotuloId = match ($identificador) {
     'correo'    => 'Correo',
     default     => 'Cédula',
 };
+$requerido = $identificador !== 'codigo';
 ?>
 <form method="post" action="/forms/<?= (int) $formId ?>/participants"
       data-vf-async="slots" data-vf-error="rosterAddError" data-vf-clear="rosterAddId">
@@ -50,7 +57,7 @@ $rotuloId = match ($identificador) {
         <div class="col-12 col-md-4">
             <label class="form-label small mb-1" for="rosterAddId"><?= $rotuloId ?></label>
             <input type="<?= $identificador === 'correo' ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
-                   id="rosterAddId" class="form-control form-control-sm" maxlength="190" required>
+                   id="rosterAddId" class="form-control form-control-sm" maxlength="190"<?= $requerido ? ' required' : '' ?>>
         </div>
         <div class="col-12 col-md-4">
             <label class="form-label small mb-1" for="rosterAddNombre">Nombre (opcional)</label>

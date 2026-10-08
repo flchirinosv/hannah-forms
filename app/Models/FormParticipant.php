@@ -59,6 +59,7 @@ class FormParticipant
         'cedula'    => 'cedula',
         'indicador' => 'indicador',
         'correo'    => 'correo',
+        'codigo'    => 'code',
     ];
 
     /**
@@ -129,17 +130,46 @@ class FormParticipant
      * persona. El tipo de columna ya es insensible a mayúsculas, pero normalizar en
      * PHP deja la fila y la query del gate en la misma forma y no depende de cómo
      * esté creada la tabla.
+     *
+     * `codigo` devuelve **vacío**: el código no sale ni de la cédula, ni del
+     * indicador, ni del correo, sino del servidor (`nuevoCode()`), y es `create()`
+     * quien lo escribe en `identifier_value`. Devolver aquí la cédula —lo que hacía
+     * el `default` antes— daba una identidad que no coincide con la columna que
+     * busca la puerta: un formulario cuyo identificador es el código no podría
+     * reidentificar a nadie sin reescribir filas con un valor que nadie escribió.
+     * Quien necesita una identidad de ARCHIVO (el importador, que deduplica por
+     * cédula porque la columna `codigo` se ignora al leer) pide la cédula por su
+     * nombre, con `self::identificadorDeArchivo()`.
      */
     public static function identifierValue(string $identificador, string $cedula, string $indicador, string $correo): string
     {
         $crudo = match ($identificador) {
             'indicador' => $indicador,
             'correo'    => $correo,
+            'codigo'    => '',
             default     => $cedula,
         };
         $valor = self::normalizar($crudo);
 
         return $identificador === 'correo' ? mb_strtolower($valor) : $valor;
+    }
+
+    /**
+     * Qué identificador se usa para leer un ARCHIVO (`.xlsx`), que no siempre es el
+     * de la puerta.
+     *
+     * Es `codigo` → `cedula`: la columna `codigo` del archivo es la última de la
+     * exportación y el importador la IGNORA (no es un dato que quien prepara el
+     * archivo pueda conocer de antemano), así que un formulario cuyo identificador
+     * es el código necesitaría una columna imposible y rechazaría todos los
+     * archivos con `falta_columna_identificador`. La cédula sí está en el archivo y
+     * es con lo que se deduplica y con lo que se reencuentra a la persona en una
+     * reimportación (el código que se le asignó se conserva: `create()` solo corre
+     * cuando no hay coincidencia).
+     */
+    public static function identificadorDeArchivo(string $identificador): string
+    {
+        return $identificador === 'codigo' ? 'cedula' : $identificador;
     }
 
     /**
@@ -159,6 +189,24 @@ class FormParticipant
         $valor = preg_replace('/\s+/u', ' ', $valor) ?? $valor;
 
         return trim($valor);
+    }
+
+    /**
+     * Normaliza un `code` a la forma en la que se guarda y se busca.
+     *
+     * Mayúsculas (el alfabeto del generador ya lo es) y sin ningún carácter fuera
+     * de `A-Z0-9`: el código llega de un correo, de un QR o de un pegado con
+     * saltos de línea, y `codeValido()` exige exactamente 16 de esos caracteres.
+     *
+     * Es la ÚNICA regla de forma del código, y por eso vive aquí y no en
+     * `RosterDoor`: la puerta (`RosterDoor::normalizar()`) delega en esta, así que
+     * la forma con la que se busca y la con la que se guarda no pueden separarse.
+     */
+    public static function normalizarCode(string $codigo): string
+    {
+        $codigo = strtoupper(trim($codigo));
+
+        return (string) preg_replace('/[^A-Z0-9]/', '', $codigo);
     }
 
     /**
@@ -763,6 +811,16 @@ class FormParticipant
             return null;
         }
 
+        // `codigo` no pasa por `identifierValue()`: el valor no lo escribe nadie en
+        // los campos de la fila, lo genera el servidor, y su forma es la del código
+        // (mayúsculas y `A-Z0-9`). Se busca, por eso, con la misma función con la
+        // que se guarda (`findByCodeInForm()`), que además exige `codeValido()`:
+        // una cédula tecleada en un formulario cuyo identificador es el código no
+        // se convierte en un código a medias.
+        if ($identificador === 'codigo') {
+            return self::findByCodeInForm($formId, self::normalizarCode($valor));
+        }
+
         $valor = self::identifierValue(
             $identificador,
             $identificador === 'cedula' ? $valor : '',
@@ -838,7 +896,15 @@ class FormParticipant
         $nombre    = self::normalizar((string) ($campos['nombre'] ?? ''));
         $indicador = self::normalizar((string) ($campos['indicador'] ?? ''));
         $correo    = self::normalizar((string) ($campos['correo'] ?? ''));
-        $identificadorValor = self::identifierValue($identificador, $cedula, $indicador, $correo);
+
+        // El código se genera ANTES de validar cuando es la identidad: con
+        // `identifier = codigo` el único `identifier_value` posible es él, y
+        // `validarValores()` rechaza un valor vacío. En los otros tres nace en el
+        // INSERT, como siempre.
+        $code = self::nuevoCode();
+        $identificadorValor = $identificador === 'codigo'
+            ? $code
+            : self::identifierValue($identificador, $cedula, $indicador, $correo);
 
         $motivo = self::validarValores($formId, $identificador, $identificadorValor, $correo, $data);
         if ($motivo !== self::OK) {
@@ -853,7 +919,7 @@ class FormParticipant
         // normalización, un valor larguísimo) deja al participante guardado a medias:
         // alguien que no tiene atributos pero sí está en la lista, y el `code` que
         // se le repartió ya no lleva a nadie.
-        self::db()->transaccionar(function () use ($formId, $cedula, $nombre, $indicador, $correo, $identificadorValor, $data, &$id, &$fallo): void {
+        self::db()->transaccionar(function () use ($formId, $cedula, $nombre, $indicador, $correo, $identificadorValor, $code, $data, &$id, &$fallo): void {
             try {
                 self::db()->execute(
                     'INSERT INTO form_participants
@@ -866,7 +932,7 @@ class FormParticipant
                         'indicador'  => $indicador,
                         'correo'     => mb_strtolower($correo),
                         'idval'      => $identificadorValor,
-                        'code'       => self::nuevoCode(),
+                        'code'       => $code,
                     ]
                 );
             } catch (\PDOException $e) {
@@ -928,7 +994,13 @@ class FormParticipant
         $nombre    = self::normalizar((string) ($campos['nombre'] ?? $actual['nombre']));
         $indicador = self::normalizar((string) ($campos['indicador'] ?? $actual['indicador']));
         $correo    = self::normalizar((string) ($campos['correo'] ?? $actual['correo']));
-        $identificadorValor = self::identifierValue($identificador, $cedula, $indicador, $correo);
+        // Con `identifier = codigo`, la identidad es el código QUE YA TIENE esta
+        // fila: el código no se toca nunca (se dice más abajo), así que un editar
+        // no puede cambiar quién es la persona. Los otros tres salen de los campos,
+        // como siempre.
+        $identificadorValor = $identificador === 'codigo'
+            ? (string) $actual['code']
+            : self::identifierValue($identificador, $cedula, $indicador, $correo);
         // El `UPDATE` guarda el correo en minúsculas, así que la comparación va con
         // las dos igual: si solo se normalizara una de las dos, escribir la misma
         // dirección en mayúsculas borraría la marca y se volvería a invitar a
@@ -1036,7 +1108,7 @@ class FormParticipant
         }
 
         $fila = self::db()->fetch(
-            'SELECT id FROM form_participants WHERE id = :id AND form_id = :fid LIMIT 1',
+            'SELECT id FROM form_participants WHERE id = :id AND form_id = :fid AND responded_at IS NULL LIMIT 1',
             ['id' => $participantId, 'fid' => $formId]
         );
 
@@ -1455,11 +1527,18 @@ class FormParticipant
             }
         }
 
-        // Agotados los ocho intentos se devuelve una cadena que no existe, porque
-        // `false` en el INSERT sería un código vacío y eso SÍ colisiona siempre.
-        // Es una señal de que la tabla está en muy mal estado, no algo que deba
-        // poder pasar en operación normal.
-        return substr(bin2hex(random_bytes(16)), 0, 16);
+        // Agotados los ocho intentos se genera un código con el MISMO alfabeto, no
+        // con `bin2hex`: `codeValido()` exige el alfabeto del generador (sin `0`,
+        // `1`, `I`, `O`…), y una cadena de hex en minúsculas no pasaría esa
+        // comprobación, con lo que el participante tendría un código que ninguna
+        // puerta acepta. Es una señal de que la tabla está en muy mal estado, no
+        // algo que deba poder pasar en operación normal.
+        $code = '';
+        for ($i = 0; $i < 16; $i++) {
+            $code .= $alfabeto[random_int(0, $largo - 1)];
+        }
+
+        return $code;
     }
 
     public static function codeValido(string $code): bool

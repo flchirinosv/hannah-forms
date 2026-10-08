@@ -269,12 +269,19 @@ final class ParticipantImporter
             }
         }
 
+        // La columna del ARCHIVO no siempre es la de la puerta: con
+        // `identifier = codigo` la identidad la inventa el servidor (el código) y
+        // la columna `codigo` del archivo se ignora al leer, así que exigirla
+        // rechazaría todos los archivos con `falta_columna_identificador`. En ese
+        // caso se deduplica y se valida por la cédula, que sí está en el archivo.
+        $archivo = FormParticipant::identificadorDeArchivo($identificador);
+
         // Sin la columna del identificador no hay forma de saber QUIÉN es cada fila,
         // y una lista sin identidad no es una lista: es un directorio. Esto NO es un
         // problema de una fila sino del archivo entero —una columna que falta afecta
         // a todas—, así que sale como error y no como omisión: admitir «0 de 2000
         // importados» con un archivo entero de motivo es peor que un no claro.
-        if (!isset($reservadas[$identificador])) {
+        if (!isset($reservadas[$archivo])) {
             return [
                 'error'     => 'falta_columna_identificador',
                 'filas'     => [],
@@ -307,7 +314,7 @@ final class ParticipantImporter
             }
 
             $identificadorValor = FormParticipant::identifierValue(
-                $identificador,
+                $archivo,
                 $campos['cedula'],
                 $campos['indicador'],
                 $campos['correo']
@@ -420,6 +427,12 @@ final class ParticipantImporter
         $actualizados = 0;
         $sinCambios = 0;
 
+        // Se busca a la persona por la columna del ARCHIVO y se escribe con el
+        // identificador de la PUERTA: los dos pueden no ser el mismo (`codigo` →
+        // cédula en el archivo), y esta separación es lo que hace que una
+        // reimportación encuentre a quien ya estaba sin regenerarle el código.
+        $archivo = FormParticipant::identificadorDeArchivo($identificador);
+
         foreach ($filas as $fila) {
             // `null` y NO `[]` cuando el archivo no trae ninguna columna de
             // atributo. La diferencia es la que separa «no he tocado los atributos»
@@ -438,8 +451,8 @@ final class ParticipantImporter
 
             $existente = FormParticipant::findByIdentifier(
                 $formId,
-                $identificador,
-                self::columnaDe($fila['campos'], $identificador)
+                $archivo,
+                self::columnaDe($fila['campos'], $archivo)
             );
 
             if ($existente !== null) {

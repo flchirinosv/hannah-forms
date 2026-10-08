@@ -113,6 +113,45 @@ class FormParticipantTest
         assertSame('Ana Pérez', FormParticipant::normalizar($sucio));
     }
 
+    public function testConIdentificadorCodigoLaIdentidadDeLaFilaEsElCodigo(): void
+    {
+        // La puerta busca por `identifier_value`, y un formulario cuyo identificador
+        // es el código busca el código: si esta columna guardara la cédula, el code
+        // del participante no encontraría a nadie y la lista cerraría la puerta a
+        // todo el mundo sin un solo error.
+        $res = FormParticipant::create((int) self::$formId, 'codigo', [
+            'cedula' => 'V-777',
+            'nombre' => 'Persona con código',
+        ]);
+        assertTrue((bool) $res['ok'], 'el participante se crea: ' . (string) $res['motivo']);
+
+        $fila = FormParticipant::find((int) $res['id']);
+        assertNotNull($fila, 'y se lee');
+        assertSame((string) $fila['code'], (string) $fila['identifier_value'], 'la identidad es el código, no la cédula');
+
+        $reenc = FormParticipant::findByIdentifier((int) self::$formId, 'codigo', (string) $fila['code']);
+        assertNotNull($reenc, 'y se reencuentra por él');
+        assertSame((int) $fila['id'], (int) $reenc['id'], 'es la misma fila');
+        assertNull(
+            FormParticipant::findByIdentifier((int) self::$formId, 'codigo', 'V-777'),
+            'la cédula no es la puerta cuando se pide el código'
+        );
+    }
+
+    public function testElCodigoNoTieneColumnaEnElArchivo(): void
+    {
+        // `identifierValue()` convierte las columnas del archivo en el valor de la
+        // puerta, y el código no viene de ahí: se genera al alta. Devolver la cédula
+        // aquí encubriría el error dentro del importador, que deduplicaría y
+        // buscaría por el dato equivocado. Lo que sí dice es con qué columna se
+        // lee el archivo.
+        assertSame('', FormParticipant::identifierValue('codigo', 'V-1', 'IND-2', 'ana@test.local'));
+        assertSame('cedula', FormParticipant::identificadorDeArchivo('codigo'));
+        assertSame('cedula', FormParticipant::identificadorDeArchivo('cedula'));
+        assertSame('correo', FormParticipant::identificadorDeArchivo('correo'));
+        assertSame('indicador', FormParticipant::identificadorDeArchivo('indicador'));
+    }
+
     public function testCambiarElIdentificadorSeBloqueaSiDejaALaGenteSinIdentidad(): void
     {
         // Sin cédula pero con indicador: cambiar a `cedula` dejaría la lista entera

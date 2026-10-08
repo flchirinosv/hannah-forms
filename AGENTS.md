@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 92 archivos, 1032 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 92 archivos, 1042 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -353,10 +353,45 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   Los permisos de F4 no llevan `kind` y siguen siendo tokens.
 - **`POST /f/{slug}/code` es un PRG** y un rate limit con dos claves (formulario+IP
   y código) **antes de buscar**, contando también los fallidos: si solo sumaran
-  los válidos, enumerar códigos sería gratis. La respuesta es **uniforme**
-  (inexistente, ajeno y mal tecleo dicen lo mismo) y da **404** si el formulario
-  no es de lista. En embed **no hay variante con `/embed`**: el canje redirige el
-  frame entero.
+  los válidos, enumerar códigos sería gratis. La respuesta es **uniforme por
+  FORMA** (un tecleo con forma de código dice lo mismo exista o no; lo que no la
+  tiene se contesta con el texto del identificador que el formulario pide) y da
+  **404** si el formulario no es de lista. En embed **no hay variante con
+  `/embed`**: el canje redirige el frame entero.
+- **La puerta de un formulario de lista admite DOS credenciales y nada más: su
+  `code` y el dato `settings.access.identifier`.** `RosterDoor::buscarAmbos()`
+  prueba el código y a continuación **solo** el identificador configurado (antes
+  probaba cédula, correo e indicador a ciegas, de modo que un formulario en
+  «correo» se abría con la cédula de cualquiera de la lista); con
+  `identifier = codigo` no hay segunda vuelta, porque el código ya se probó. Es la
+  misma regla que el `form_id` en el `WHERE` de `FormAccess::findValidToken()`:
+  lo que la página no pide, no abre.
+- **Todo lo que dice la pantalla pública de acceso sale de `access.*_{identifier}`**
+  (rótulo, placeholder, intro, nota, icono y `type`/`inputmode`/`maxlength` del
+  campo): `views/fill/access.php` resuelve `$identificador` contra
+  `FormSettings::ACCESS_IDENTIFIERS` y compone la clave. Las claves genéricas
+  `access.code_label`, `access.code_placeholder`, `access.intro_roster`,
+  `access.note_roster` y `access.code_invalid` **se borraron** (con sus usos):
+  un texto que no nombra el dato no le dice a nadie qué escribir. El campo sigue
+  siendo `name="code"` con `id="vfAccessCode"` — es el contrato con
+  `verifyCode()` y con los tests, y no cambia aunque el rótulo diga cédula. Lo
+  atan `RosterDoorTest::testLaPaginaDeAccesoPideElIdentificadorQueToca` y las
+  filas W14–W19 de `docs/pruebas-funcionales.md`.
+- **El mensaje de acceso inválido se elige por FORMA y no por el motivo**: si lo
+  tecleado parece código (`FormParticipant::codeValido(RosterDoor::normalizar(...))`)
+  o el identificador es `codigo`, dice `access.invalid_codigo`; si no,
+  `access.invalid_{identifier}`. La uniformidad del oráculo se mantiene (el
+  alfabeto del código es público: 16 de esos caracteres dicen lo mismo existan o
+  no) y quien escribió su cédula recibe un mensaje que nombra su cédula, que es lo
+  único que le dice qué corregir.
+- **Con `identifier = codigo`, `identifier_value` ES el `code`** (`create()` lo
+  genera antes de validar y lo guarda como identidad; `update()` usa
+  `actual['code']`), mientras que **la columna del archivo sigue siendo la cédula**:
+  `identificadorDeArchivo('codigo') === 'cedula'`, porque nadie puede saber de
+  antemano el código que la lista va a generar y sin esa traducción el importador
+  pediría una columna imposible y rechazaría todos los archivos.
+  `identifierValue('codigo', …)` devuelve `''` a propósito: no hay columna de la
+  que leer, y un valor inventado ahí encubriría el error dentro del importador.
 - **Responder marca `responded_at` en la MISMA transacción** que la submission, y
   el `UPDATE` es idempotente con estado objetivo (`WHERE responded_at IS NULL`):
   responder dos veces no mueve la primera fecha **pero sí guarda las dos
@@ -406,7 +441,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 - **Solo hay botón si el identificador es `correo`.** `FormParticipant::identifierFor($id)
   === FormParticipant::IDENT_CORREO`, comprobado en `ParticipantController::invitations()`,
-  que es la ÚNICA acción de participantes que manda correo. Con `cedula` o `indicador` el
+  que es la ÚNICA acción de participantes que manda correo. Con `cedula`,
+  `indicador` o `codigo` el
   correo es un dato opcional de la lista, no la identidad con la que se entra, así que el
   enlace se reparte desde la columna «Código». Si añades otro sitio que escriba en
   `form_participants.correo`, ese tampoco manda.
@@ -1253,7 +1289,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 436 comprobaciones manuales en 28 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 442 comprobaciones manuales en 28 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica

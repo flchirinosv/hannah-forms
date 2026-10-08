@@ -91,12 +91,35 @@ return [
     'access.sent_body'        => 'Si ese correo está autorizado, recibirás un enlace para abrir el formulario. El mensaje es el mismo exista o no el acceso, por privacidad.',
     'access.note_email'       => 'El enlace es personal: no lo compartas.',
     'access.note_allowlist'   => 'El enlace es personal: no lo compartas.',
-    'access.note_roster'      => 'El código es personal: no lo compartas.',
-    'access.intro_roster'     => 'Este formulario es solo para las personas de la lista. Escribe tu código personal para entrar.',
-    'access.code_label'       => 'Tu código personal',
-    'access.code_placeholder' => 'Los 16 caracteres de tu código',
     'access.cta_code'         => 'Abrir el formulario',
-    'access.code_invalid'     => 'Ese código no es válido.',
+    'access.code_used'        => 'Ya registramos tu participación.',
+
+    // La puerta de `roster` se escribe con el identificador que el dueño eligió
+    // (`access.identifier`), así que cada texto existe por los cuatro: una página
+    // que pide «tu código personal o identificador» sin decir cuál no le dice a
+    // nadie qué tiene que escribir. El código de invitación entra SIEMPRE (es la
+    // credencial del correo y del QR), y por eso los textos de los otros tres lo
+    // mencionan y el del propio código no.
+    'access.intro_roster_cedula'    => 'Este formulario es solo para las personas de la lista. Escribe la cédula con la que figuras en ella; si tienes el código de tu invitación, también sirve.',
+    'access.intro_roster_indicador' => 'Este formulario es solo para las personas de la lista. Escribe el indicador con el que figuras en ella; si tienes el código de tu invitación, también sirve.',
+    'access.intro_roster_correo'    => 'Este formulario es solo para las personas de la lista. Escribe el correo con el que figuras en ella; si tienes el código de tu invitación, también sirve.',
+    'access.intro_roster_codigo'    => 'Este formulario es solo para las personas de la lista. Escribe el código personal que te tocó.',
+    'access.label_cedula'           => 'Tu cédula',
+    'access.label_indicador'        => 'Tu indicador',
+    'access.label_correo'           => 'Tu correo',
+    'access.label_codigo'           => 'Tu código personal',
+    'access.placeholder_cedula'     => 'Ej.: V-12345678',
+    'access.placeholder_indicador'  => 'Ej.: 12345678',
+    'access.placeholder_correo'     => 'nombre@ejemplo.com',
+    'access.placeholder_codigo'     => 'Los 16 caracteres de tu código',
+    'access.note_roster_cedula'     => 'La cédula y el código de invitación son personales: no los compartas.',
+    'access.note_roster_indicador'  => 'El indicador y el código de invitación son personales: no los compartas.',
+    'access.note_roster_correo'     => 'El correo y el código de invitación son personales: no los compartas.',
+    'access.note_roster_codigo'     => 'El código es personal: no lo compartas.',
+    'access.invalid_cedula'         => 'Esa cédula no está en la lista.',
+    'access.invalid_indicador'      => 'Ese indicador no está en la lista.',
+    'access.invalid_correo'         => 'Ese correo no está en la lista.',
+    'access.invalid_codigo'         => 'Ese código no es válido.',
     'access.code_blocked'     => 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
     'access.denied'           => 'Necesitas un enlace de acceso para responder a este formulario.',
     'access.invalid_email'    => 'Ese correo no parece válido.',

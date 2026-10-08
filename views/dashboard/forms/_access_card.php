@@ -67,8 +67,17 @@ use App\Core\View;
           // calculan los datos aquí, en vez de pintar un hueco vacío, porque un
           // formulario que acaba de pasar a «Solo el listado» sin lista parece que no
           // tiene puerta de entrada. ?>
+    <?php // La frase sigue al identificador del formulario, igual que la página pública:
+          // decir solo «con el código que le tocó» en un formulario cuyo identificador
+          // es la cédula escribe una puerta que no es la que se le pide al visitante. ?>
+    <?php $entradaRoster = match (\App\Models\FormParticipant::identifierFor((int) $form['id'])) {
+        'indicador' => 'con el indicador con el que figura en ella o con el código que le tocó',
+        'correo'    => 'con el correo con el que figura en ella o con el código que le tocó',
+        'codigo'    => 'con el código que le tocó',
+        default     => 'con la cédula con la que figura en ella o con el código que le tocó',
+    }; ?>
     <p class="text-muted small">
-        Solo puede responder quien esté en esta lista, con el código que le tocó.
+        Solo puede responder quien esté en esta lista, <?= View::escape($entradaRoster) ?>.
         Quitar a alguien de la lista <strong>le cierra la puerta</strong>.
     </p>
 

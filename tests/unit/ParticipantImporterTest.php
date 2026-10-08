@@ -335,6 +335,46 @@ class ParticipantImporterTest
         assertEquals(0, count($r['problemas']), 'no es una omisión: afecta a todas las filas');
     }
 
+    public function testConIdentificadorCodigoElArchivoSeLeePorCedulaYLaIdentidadEsElCodigo(): void
+    {
+        // Un formulario que identifica por código no pide una columna «Código» en el
+        // archivo: nadie puede saber de antemano el code que la lista va a generar.
+        // La columna de identidad sigue siendo la cédula (es con lo que se
+        // deduplica y con lo que se reencuentra a la persona), mientras que lo que
+        // guarda la fila —lo que busca la puerta— es el código.
+        $r = self::importar([['Cédula', 'Nombre'], ['V-1', 'Ana']], ParticipantImporter::MODO_FUSIONAR, 'codigo');
+
+        assertTrue($r['ok'], (string) $r['error']);
+        assertEquals(1, $r['insertados']);
+
+        $fila = FormParticipant::findByIdentifier((int) self::$formId, 'cedula', 'V-1');
+        assertNotNull($fila, 'la cédula sigue siendo la columna del archivo');
+        assertSame((string) $fila['code'], (string) $fila['identifier_value'], 'y la identidad guardada es el código');
+
+        $otra = self::importar([['Cédula', 'Nombre'], ['V-1', 'Ana']], ParticipantImporter::MODO_FUSIONAR, 'codigo');
+        assertEquals(1, $otra['sin_cambios'], 'reimportar la encuentra por cédula: no duplica y conserva el código');
+        assertEquals(1, FormParticipant::countForForm((int) self::$formId));
+    }
+
+    public function testDosFilasConLaMismaCedulaSeMarcanComoDuplicadasAunqueElIdentificadorSeaElCodigo(): void
+    {
+        // La deduplicación es por la columna del ARCHIVO (la cédula) y no por el
+        // identificador de la puerta: con `codigo` no hay columna que comparar y
+        // un deduplicador que comparara `identifier_value` vacío marcaría como
+        // repetida a cada fila después de la primera.
+        $r = self::importar(
+            [['Cédula', 'Nombre'], ['V-1', 'Ana'], ['V-1', 'Ana otra vez'], ['V-2', 'Luis']],
+            ParticipantImporter::MODO_FUSIONAR,
+            'codigo'
+        );
+
+        assertTrue($r['ok'], (string) $r['error']);
+        assertEquals(2, $r['insertados'], 'las dos personas de verdad');
+        assertEquals(1, $r['omitidos'], 'la repetida no entra');
+        assertEquals(FormParticipant::MOTIVO_DUPLICADO, (string) $r['problemas'][0]['motivo'], 'y dice por qué');
+        assertEquals(2, FormParticipant::countForForm((int) self::$formId));
+    }
+
     public function testUnModoQueNoExisteNoSeImporta(): void
     {
         $r = self::importar([['Cédula', 'Nombre'], ['V-1', 'Ana']], 'borrar-todo');

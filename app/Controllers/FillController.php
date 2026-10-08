@@ -394,18 +394,28 @@ class FillController
      * mil máquinas. **Un intento fallido cuenta igual que uno bueno**: si solo
      * sumaran los válidos, enumerar códigos sería gratis y esto sería un adorno.
      *
-     * ## La respuesta es uniforme
+     * ## La respuesta es uniforme por CREDENCIAL
      *
      * Un código inexistente, uno de otro formulario y uno con un carácter mal se
      * contestan igual. Distinguirlos convierte esta página en un oráculo de qué
      * códigos existen, que es justo lo que el rate limit intenta que no se pueda
      * averiguar.
      *
+     * Lo que SÍ cambia es el texto entre credenciales, y es a propósito: la página
+     * pide un campo concreto (`access.identifier`), así que contestar «ese código
+     * no es válido» a quien escribió su cédula no le dice nada de lo que tiene que
+     * corregir. La elección es por **forma** y no por qué haya fallado: lo que
+     * parece código (los 16 caracteres del alfabeto del generador) se contesta con
+     * `access.invalid_codigo` exista o no, y lo demás con el mensaje del
+     * identificador que el formulario pide. Una forma no es información de la
+     * lista: cualquiera puede ver el alfabeto de un código.
+     *
      * ## Y es un PRG
      *
      * Un código válido redirige a `/f/{slug}?t=<código>`: la credencial queda en la
      * URL, que es lo que la puerta del GET entiende, y un refresco no vuelve a
-     * canjear nada.
+     * canjear nada. Entras por la cédula y sales con la URL del código, que es la
+     * credencial con la que se propaga el resto del formulario.
      */
     public function verifyCode(string $slug): void
     {
@@ -437,9 +447,18 @@ class FillController
             return;
         }
 
-        $participante = RosterDoor::buscar($form, $codigo);
+        $participante = RosterDoor::buscarAmbos($form, $codigo);
         if ($participante === null) {
-            Session::flash('error', I18n::t('access.code_invalid', $locale));
+            // Forma antes que motivo: lo que parece código se contesta como código
+            // exista o no (uniformidad del oráculo), y lo demás como el campo que
+            // esta página pide (`access.identifier`).
+            $identificador = FormParticipant::identifierOf($settings);
+            $esCodigo = $identificador === 'codigo'
+                || FormParticipant::codeValido(RosterDoor::normalizar($codigo));
+            $msg = RosterDoor::lastMotivo() === 'used'
+                ? I18n::t('access.code_used', $locale)
+                : I18n::t($esCodigo ? 'access.invalid_codigo' : 'access.invalid_' . $identificador, $locale);
+            Session::flash('error', $msg);
             Response::redirect($volver);
             return;
         }
@@ -473,6 +492,10 @@ class FillController
             'csrf'     => Csrf::token(),
             'mode'     => FormAccess::mode($settings),
             'embed'    => $embed,
+            // El identificador es lo que la página tiene que PEDIR: el texto de la
+            // rama `roster` existe por los cuatro, y sin pasarlo la vista tendría
+            // que adivinarlo (o peor, preguntar «código o identificador»).
+            'identifier' => FormParticipant::identifierOf($settings),
             'sent'     => $sent !== '',
             'sentMessage' => $sent,
             'errorMessage' => $error !== '' ? $error : null,
@@ -521,10 +544,9 @@ class FillController
             // casa con `form_access_tokens` sigue siendo ese token, y los dos tipos
             // de fila no se buscan en la misma tabla.
             if (FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER) {
-                $participante = RosterDoor::buscar($form, $token);
+                $participante = RosterDoor::buscarAmbos($form, $token);
                 if ($participante !== null) {
                     RosterDoor::grant($formId, (int) $participante['id']);
-
                     return [true, $token, (int) $participante['id']];
                 }
             }
@@ -1085,6 +1107,15 @@ class FillController
         // (mismo origen) tras el PRG del envío desde el embed.
         if (!empty($settings['embed']['enabled'])) {
             $this->allowEmbedHeaders();
+        }
+
+        // Al llegar a la página de gracias en modo `roster`, se revoca el acceso
+        // concedido a este participante para este formulario, para que al volver
+        // a abrirlo deba identificarse de nuevo y no pueda acceder a una encuesta
+        // ya respondida.
+        $mode = FormAccess::mode($settings);
+        if ($mode === FormSettings::ACCESS_ROSTER) {
+            RosterDoor::revoke((int) $form['id']);
         }
 
         // F5.1 — Aviso de redirect externo bloqueado (lo fija redirectToThanks

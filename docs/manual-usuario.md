@@ -714,17 +714,19 @@ de participantes» y con qué se identifica cada persona:
 
 | Identificador | Qué es | Cuándo usarlo |
 |---|---|---|
+| **Cédula** | Cada persona entra con su documento. | Cuando no tienes el correo de todo el mundo, o el documento es lo que ya manejas. |
+| **Indicador del centro** | Cada persona entra con un código que tú defines (nº de cliente, expediente…). | Cuando tu identificador es un código interno. |
 | **Correo electrónico** | Cada persona entra con la dirección de la lista. | Cuando ya tienes el correo de todo el mundo y quieres que entren solos. |
-| **Cédula** | Cada persona entra con un documento. | Cuando el correo no es fiable o no lo tienes. |
-| **Nombre** | Cada persona entra con su nombre. | Listados cortos, donde el nombre es único. |
-| **Indicador propio** | Un código que tú defines (nº de cliente, expediente…). | Cuando tu identificador es un código interno. |
+| **Código** | Cada persona entra con el código de la columna «Código». | Cuando no quieres que la lista se pueda buscar por ningún dato: el código no se adivina. |
 
 Sin lista, un formulario es público, por lista de correos o por enlace (ver
-*Acceso*). Con lista, el formulario **no se sirve a quien no esté en ella**: se le
-pide su **código personal** de 16 caracteres (el de la columna «Código»). El
-correo no sirve para entrar por sí mismo, ni siquiera si es el del identificador:
-quien esté en la lista entra con el código, y si se pierde, hay que repartirlo
-a mano o usar el botón de invitar por correo.
+*Acceso*). Con lista, el formulario **no se sirve a quien no esté en él**: la
+pantalla de acceso pide **el código personal de 16 caracteres** (el de la columna
+«Código») **o el dato con el que figuras en la lista**, el mismo que dice el
+desplegable de la ficha — la cédula si el formulario identifica por cédula, el
+correo si identifica por correo, y nada más que esos dos. Quien se pierda el
+código entra con ese dato, y al revés también: el código sirve siempre, en
+cualquiera de los cuatro modos.
 
 ### 12.1 El panel de Participantes
 
@@ -743,8 +745,9 @@ listado, con dos zonas (Lista / Importar) y siete cosas en total:
 **Importar** — la lista en sí y su formato:
 
 5. **Descargar la plantilla** o **subir un `.xlsx`**. La plantilla tiene una hoja
-   con una fila de encabezados; los identificadores posibles (`cédula`, `nombre`,
-   `indicador`, `correo`) se reconocen por su encabezado, y **cualquier otro
+   con una fila de encabezados; las columnas fijas (`cédula`, `nombre`,
+   `indicador`, `correo`, y `código`, que al leer se ignora porque ese dato lo
+   genera la app) se reconocen por su encabezado, y **cualquier otro
    encabezado es un atributo**.
 6. **El informe de una importación**: qué filas entraron, cuántas quedaron
    fuera y por qué, con el detalle de las omitidas.
@@ -779,8 +782,8 @@ cada persona recibe un correo con un enlace al formulario.
 
 Cinco reglas, para que no te sorprenda nada:
 
-1. **No hay botón si el identificador no es el correo.** Con cédula, nombre o
-   indicador, el enlace de cada persona está en la columna «Código» y lo repartes
+1. **No hay botón si el identificador no es el correo.** Con cédula, indicador o
+   código, el enlace de cada persona está en la columna «Código» y lo repartes
    tú. Es a propósito: el correo es un dato opcional de la lista, no la identidad
    con la que se entra.
 2. **No hay botón si no hay servidor de correo configurado.** El panel te lo
