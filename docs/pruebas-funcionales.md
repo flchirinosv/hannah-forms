@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1042 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1046 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**442 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**443 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -483,6 +483,7 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S32 | Ficha del formulario, en pantalla ancha | Columna ancha: Detalles, Campos y Acceso, en ese orden. Columna estrecha: Enlace para compartir y Ajustes del formulario | M | |
 | S33 | Ficha con una **larga lista de correos** | La lista se lee con holgura y no estira la columna de los ajustes, que se queda a su ancho | M | |
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
+| S35 | Formulario publicado a **1920 px** y después a **800 px**; luego el preview en vivo del constructor a ≥992 px | A 1920 la tarjeta ocupa **la mitad** centrada (`col-lg-6`); a 800 ocupa todo el ancho y ninguna matriz se sale con scroll horizontal. El preview del constructor se parte **igual** que el publicado: ninguna regla por id le da un ancho distinto | M | |
 
 
 ---

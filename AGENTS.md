@@ -13,7 +13,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 92 archivos, 1042 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 93 archivos, 1046 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -1289,7 +1289,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 442 comprobaciones manuales en 28 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 443 comprobaciones manuales en 28 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica

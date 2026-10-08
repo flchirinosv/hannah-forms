@@ -634,7 +634,22 @@ body {
     background: var(--vf-background);
     padding: 2.5rem 1rem 5rem;
 }
-.fill-container { max-width: 700px; margin: 0 auto; }
+/* Ancho `col-12 col-lg-6`: todo el ancho por debajo de lg (992px) y la mitad
+   desde ahí, centrado. Sustituye al techo fijo de 700px, que en pantallas
+   grandes dejaba las matrices (que necesitan sitio en horizontal) apretadas y
+   en las de 700-991px sobraba.
+   La clase la comparten LAS SIETE vistas del fill (show, thanks, access, draft,
+   full, closed, in_review) y el preview en vivo del constructor
+   (`#livePreviewContent`), que se pinta con el mismo `.fill-container` a
+   propósito: preview y formulario publicado tienen que tener el mismo comportamiento,
+   y una regla que solo mirara al fill habría cambiado una de las dos superficies.
+   La media query mira la VENTANA, no el elemento: dentro del `modal-xl` del
+   preview eso significa que el preview también se parte a lg, que es lo que se
+   pidió. Y el print vuelve a todo el ancho: una tarjeta al 50% del papel es
+   medio formulario. */
+.fill-container { width: 100%; max-width: 100%; margin: 0 auto; }
+@media (min-width: 992px) { .fill-container { width: 50%; max-width: 50%; } }
+@media print { .fill-container { width: 100%; max-width: none; } }
 .app-fill-card { border-radius: var(--vf-radius-lg); overflow: hidden; }
 .app-fill-card .card-body { background: #fff; }
 .app-fill-progress { color: var(--vf-primary); }
