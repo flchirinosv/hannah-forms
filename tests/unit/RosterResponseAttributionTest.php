@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Core\Auth;
 use App\Core\Config;
+use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Response;
 use App\Core\Session;
@@ -325,9 +326,52 @@ class RosterResponseAttributionTest
     }
 
     // =====================================================================
-    // Ayudas
+    // 8. Borrar la respuesta suelta la marca de «ya respondió»
     // =====================================================================
 
+    public function testBorrarLaRespuestaSueltaLaMarcaYDejaVolverAEntrar(): void
+    {
+        $sid = self::responder('V-1', 'Ana Ruiz', 'ana@test.local');
+        $pid = self::idsDeParticipantes()[0];
+
+        assertSame(1, FormParticipant::respondedCountForForm((int) self::$formId), 'antes: la tarjeta la cuenta como respondida');
+        assertFalse(FormParticipant::existeEnFormulario((int) self::$formId, $pid), 'y la puerta ya no la deja pasar');
+
+        self::borrar($sid);
+
+        assertSame(0, FormParticipant::respondedCountForForm((int) self::$formId), 'después: el número de la tarjeta baja');
+        $fila = FormParticipant::find($pid);
+        assertNotNull($fila);
+        assertNull($fila['responded_at'], 'la fila queda sin la marca');
+        assertTrue(
+            FormParticipant::existeEnFormulario((int) self::$formId, $pid),
+            'y la puerta la reconoce otra vez: puede volver a responder'
+        );
+    }
+
+    public function testSiLeQuedaOtraRespuestaNoSeSueltaLaMarca(): void
+    {
+        $primera = self::responder('V-1', 'Ana Ruiz', 'ana@test.local');
+        $pid = self::idsDeParticipantes()[0];
+
+        // `roster` no es «una respuesta por persona»: la misma persona puede
+        // tener dos filas (p. ej. dos envíos antes de que la puerta cerrara). Al
+        // borrar una, sigue siendo cierto que respondió.
+        $segunda = Submission::create((int) self::$formId, '127.0.0.2', 'test', null, $pid);
+        Answer::create($segunda, (int) self::$campoId, 'otra');
+
+        self::borrar($primera);
+
+        assertSame(1, FormParticipant::respondedCountForForm((int) self::$formId), 'sigue contando como respondida');
+        $fila = FormParticipant::find($pid);
+        assertNotNull($fila);
+        assertNotNull($fila['responded_at'], 'y la marca se mantiene mientras le quede una respuesta');
+        unset($segunda);
+    }
+
+    // =====================================================================
+    // Ayudas
+    // =====================================================================
     /**
      * Persona en la lista + una respuesta suya, y el id de la submission.
      *
@@ -421,6 +465,23 @@ class RosterResponseAttributionTest
         return self::render(static function () use ($sid): void {
             (new ResponsesController())->show((int) self::$formId, $sid);
         }, $como);
+    }
+
+    /**
+     * Borra una respuesta por el controlador real, como el POST sin recarga.
+     *
+     * El dueño tiene que estar en sesión (`canAccess` lo comprueba) y el POST
+     * llevar su token CSRF; el halt se registra en vez de cortar porque estamos
+     * en CLI.
+     */
+    private static function borrar(int $sid): void
+    {
+        Auth::assumeLoggedIn((int) self::$ownerId);
+        Auth::forgetCache();
+        $_POST['_token'] = Csrf::token();
+        Response::setRecordHalt(true);
+        (new ResponsesController())->delete((int) self::$formId, $sid);
+        unset($_POST['_token']);
     }
 
     private static function render(callable $accion, ?int $como): string

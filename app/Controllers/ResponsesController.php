@@ -173,7 +173,18 @@ class ResponsesController
         // adjunto fantasma (fila viva apuntando a un binario inexistente) no.
         $orphanPaths = \App\Services\Uploader::pendingForSubmission($sid);
 
+        // El participante atribuido se lee ANTES del delete: `submissions` es
+        // donde vive la unión y la fila se va con el borrado.
+        $participantId = (int) ($data['submission']['participant_id'] ?? 0);
+
         Submission::delete($sid);
+
+        // Borrar la respuesta suelta la marca de «ya respondió» si no le queda
+        // ninguna otra: sin esto la tarjeta de Acceso seguiría contando a esa
+        // persona como respondida y la puerta de `roster` —que cierra a quien ya
+        // respondió— no le dejaría volver a entrar. Va DESPUÉS del delete, que
+        // es cuando el `NOT EXISTS` de la comprobación ya ve el hueco.
+        FormParticipant::desmarcarSiSinRespuestas($participantId);
 
         try {
             \App\Services\Uploader::purgePaths($orphanPaths);

@@ -1089,6 +1089,39 @@ class FormParticipant
         );
     }
 
+    /**
+     * Suelta la marca de «ya respondió» cuando se borra su respuesta.
+     *
+     * Es el reverso de `marcarRespondido()` y existe por una incoherencia real:
+     * borrar una respuesta desde el panel la quitaba de la tabla de respuestas,
+     * pero la tarjeta de Acceso seguía diciendo que esa persona había respondido
+     * y —lo que importa— la puerta de `roster` cierra a quien ya respondió, así
+     * que no podía volver a entrar. Con la respuesta fuera, la marca tiene que
+     * soltarse.
+     *
+     * El `NOT EXISTS` mira si le QUEDA alguna respuesta: `roster` no es «una
+     * respuesta por persona» (ver la nota de `marcarRespondido()`), así que si
+     * tenía dos y se borra una, sigue siendo cierto que respondió. Solo se
+     * desmarca cuando no queda ninguna. El `responded_at IS NOT NULL` es para no
+     * tocar una fila que ya estaba limpia.
+     *
+     * Marcadores distintos (`:id` y `:pid`) a propósito: `Database` va con
+     * `ATTR_EMULATE_PREPARES = false` y repetir uno lanzaría HY093.
+     */
+    public static function desmarcarSiSinRespuestas(int $id): void
+    {
+        if ($id <= 0) {
+            return;
+        }
+
+        self::db()->execute(
+            'UPDATE form_participants SET responded_at = NULL
+             WHERE id = :id AND responded_at IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.participant_id = :pid)',
+            ['id' => $id, 'pid' => $id]
+        );
+    }
+
         /**
      * ¿Existe este participante en ESTE formulario?
      *

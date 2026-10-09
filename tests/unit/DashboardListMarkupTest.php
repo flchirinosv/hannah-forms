@@ -185,4 +185,35 @@ class DashboardListMarkupTest
             'y el copiador de enlace se quedó como estaba'
         );
     }
+
+    /**
+     * El select de orden mide lo mismo que el buscador, a pesar del `-sm`.
+     *
+     * El buscador vive en un `input-group-sm` y su `.input-group-sm > .form-control`
+     * (0,2,0) le gana al `.form-control` global. El select es suelto, así que el
+     * bloque global `.form-control, .form-select` (0,1,0) de app.css —misma
+     * especificidad que `.form-select-sm` y además más abajo— le pisaba el padding
+     * y salía ~11px más alto: en la misma fila convivían un campo de ~31px y un
+     * select de ~42. La clase `-sm` no basta; por eso la regla usa dos clases
+     * (`.form-select.app-dash-sort`, 0,2,0), que le ganan al bloque global sin
+     * depender del orden.
+     */
+    public function testElSelectDeOrdenMideLoMismoQueElBuscador(): void
+    {
+        $vista = self::fuente('views/dashboard/index.php');
+        assertTrue(
+            str_contains($vista, 'form-select-sm app-dash-sort'),
+            'el select de orden lleva `form-select-sm` y su gancho `app-dash-sort`'
+        );
+
+        $css = self::fuente('public/assets/css/app.css');
+        $pos = strpos($css, '.form-select.app-dash-sort {');
+        assertTrue($pos !== false, 'app.css define `.form-select.app-dash-sort` (dos clases: una sola pierde por orden contra el bloque global)');
+        $bloque = substr($css, (int) $pos, (int) strpos($css, '}', (int) $pos) - (int) $pos);
+
+        assertTrue(
+            str_contains($bloque, 'padding-top: .25rem') && str_contains($bloque, 'padding-bottom: .25rem'),
+            'la regla devuelve al select el padding pequeño, o queda más alto que el buscador y los filtros'
+        );
+    }
 }

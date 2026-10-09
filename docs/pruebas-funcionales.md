@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1050 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1053 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**447 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**449 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -601,6 +601,7 @@ Para llegar al panel: ficha del formulario → *Ajustes* → *Quién puede respo
 | V21 | Con el JS desactivado, buscar, añadir y borrar | Todo funciona con POST normal y avisos con flash | A | |
 | V22 | Un formulario que **no** es de lista | La tarjeta de Acceso es la de siempre: ni panel, ni alta de correo | A | |
 | V23 | Buscar con el panel a media pantalla (sin recargar antes) | La página vuelve al panel, no al principio de la ficha: si el resultado queda fuera de pantalla parece que la búsqueda no hizo nada | M | |
+| V24 | Un formulario de lista con alguien que ya respondió: borra su respuesta desde *Respuestas* | Los números de la tarjeta bajan (deja de contar como respondida) y esa persona **puede volver a entrar** con su código o enlace y responder otra vez; si tuviera dos respuestas, la marca solo se suelta al borrar la última | A | |
 
 ## W. Elegir con qué se identifica a cada participante (fase 6, 2026-10-04)
 
@@ -792,6 +793,7 @@ las comprobaciones de búsqueda, uno con títulos reconocibles.
 | AB21 | `/admin/forms?page=999` | Aterriza en la última, sin panel vacío | A | |
 | AB22 | `/admin/forms` sin JavaScript | El paginador es un enlace y funciona | A | |
 | AB23 | Con veinte formularios en la base, mira `/dashboard` con el profiler (o `EXPLAIN`) | La consulta del listado trae `LIMIT` y el conteo de respuestas va sobre los formularios de la página, no sobre todos | A | |
+| AB24 | La fila de filtros, con el buscador y el desplegable de orden juntos | El desplegable mide el mismo alto que el buscador y los botones de estado: antes la regla global `.form-select` le pisaba el `-sm` y salía ~11px más alto, descuadrando la fila | M | |
 
 ## Cuando encuentres un fallo
 

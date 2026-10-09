@@ -171,8 +171,23 @@ body {
 .app-dash-filters { flex-wrap: wrap; }
 .app-dash-filters .btn { font-size: .8rem; }
 .app-dash-filters .btn.active { background: var(--vf-primary); border-color: var(--vf-primary); color: #fff; }
-.app-dash-sort { max-width: 200px; border-color: var(--vf-border); }
-.app-dash-sort:focus { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-color: var(--vf-primary); }
+/* El buscador vive en un `input-group-sm`: su `.input-group-sm > .form-control`
+   (0,2,0) gana por especificidad al `.form-control` global y le deja el padding
+   pequeño. Este `select` es suelto, así que el `.form-select` global —misma
+   especificidad y ADEMÁS más abajo en este mismo fichero— le pisa el padding y
+   salía ~11px más alto que el campo y los botones de la fila. Por eso la regla
+   va con DOS clases (`.form-select.app-dash-sort`, 0,2,0): una sola pierde por
+   orden contra el bloque de `.form-control, .form-select` de más abajo. El
+   `padding-right` no se toca: es el hueco de la flecha. */
+.form-select.app-dash-sort {
+    max-width: 200px;
+    border-color: var(--vf-border);
+    padding-top: .25rem;
+    padding-bottom: .25rem;
+    padding-left: .5rem;
+    border-radius: .25rem;
+}
+.form-select.app-dash-sort:focus { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-color: var(--vf-primary); }
 .app-dash-meta { display: flex; align-items: center; gap: .25rem; font-size: .76rem; }
 
 /* V5 — Sparkline de actividad por tarjeta (SVG inline, sin <script>). */
@@ -861,6 +876,25 @@ body {
    recortarse, que en un título sería perder texto. */
 .app-page-head > :first-child { min-width: 0; }
 .app-page-head h2 { overflow-wrap: anywhere; }
+/* La fila de acciones del top de la ficha mezclaba tres alturas y tres radios
+   en una sola fila: el CTA a 44px/radio 12, los enlaces «Respuestas» y
+   «Analítica» a la altura por defecto (~38px/radio 6) y el botón de menú
+   `app-dd-btn` a 32×32. Como los cuatro son la misma fila de acciones, los
+   cuatro toman el alto y el radio del CTA, y el icono se hace cuadrado con ese
+   mismo lado. Se acota a `app-head-actions` (y no a `.app-page-head`) para no
+   tocar la cabecera de respuestas, que usa `btn-sm` a propósito. */
+.app-head-actions .btn {
+    min-height: var(--vf-btn-cta-h);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.app-head-actions .app-dd-btn {
+    width: var(--vf-btn-cta-h);
+    height: var(--vf-btn-cta-h);
+}
 .app-field-list .list-group-item { border-color: var(--vf-border); }
 .app-share-input { letter-spacing: .02em; }
 
