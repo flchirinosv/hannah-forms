@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1046 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1050 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**443 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**447 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -116,6 +116,7 @@ Para no perderte, prepara esto antes de empezar:
 | B24 | Entrar en `/admin` con un rol que **no** tenga `admin.users` | No aparece la tarjeta de alta, y el POST directo responde 403 | M | |
 | B25 | Crear una cuenta desde `/admin` y luego mirar su ficha | Nace con el rol elegido y activa | M | |
 | B26 | Crear un admin desde `/admin` y entrar con él | Funciona: el alta del panel también puede crear administradores | M | |
+| B27 | Activar el registro desde `/admin` (interruptor) y abrir `/login` en una ventana sin sesión | Aparece el enlace «Regístrate aquí» y `/register` sirve el formulario: el interruptor del panel manda sobre el `.env` | A | |
 
 ---
 
@@ -438,6 +439,8 @@ Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
 | R5 | Ficha de un formulario con revisión | Una acción primaria, las de siempre y un menú «más»; «Guardar» no compite con «Publicar» | M | |
 | R6 | Escala, NPS y estrellas con el teclado | Un tabulador por control y anillo de foco visible (antes no eran alcanzables) | A | |
 | R7 | Constructor → «Guardar» **dos veces seguidas**, sin tocar nada entre las dos | El botón vuelve a su estado normal las dos veces. Antes el segundo clic lo dejaba en «Guardando…» apagado para siempre, sin red y sin error | A | |
+| R8 | Ficha del formulario, cabecera del top (Editar campos, Compartir, Publicar/En revisión/Cerrar, «más») | Los cuatro controles miden lo mismo (44 px de alto) y comparten radio; ninguno queda más bajo ni más cuadrado que el vecino | B | |
+| R9 | Formulario en `roster`, ficha → guardar cualquier ajuste (sin recargar) | La tarjeta de Acceso repintada **sigue con sus dos pestañas**: se ve una sola zona y se puede cambiar a «Importar»; no se apilan las dos | A | |
 
 ---
 
@@ -484,6 +487,7 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S33 | Ficha con una **larga lista de correos** | La lista se lee con holgura y no estira la columna de los ajustes, que se queda a su ancho | M | |
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
 | S35 | Formulario publicado a **1920 px** y después a **800 px**; luego el preview en vivo del constructor a ≥992 px | A 1920 la tarjeta ocupa **la mitad** centrada (`col-lg-6`); a 800 ocupa todo el ancho y ninguna matriz se sale con scroll horizontal. El preview del constructor se parte **igual** que el publicado: ninguna regla por id le da un ancho distinto | M | |
+| S36 | Ficha → Ajustes → Notificaciones y Webhook, en pantalla ancha (≥992 px, con la tarjeta en su columna estrecha) | Los campos no salen en columnas de ~120 px: van a media fila (email/asunto, formato/secreto) o a fila entera (mensaje, URL), y sus textos no se recortan | M | |
 
 
 ---

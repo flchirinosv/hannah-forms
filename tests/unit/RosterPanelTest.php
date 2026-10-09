@@ -529,6 +529,42 @@ class RosterPanelTest
         );
     }
 
+    /**
+     * El repintado de la tarjeta de Acceso vuelve a inicializar las pestañas.
+     *
+     * Las pestañas viven DENTRO de `#vfSlotAccess` (`_roster_panel.php`), y
+     * guardar los ajustes repone ese hueco entero con `innerHTML` (lo manda
+     * `FormPanel::accessSlot()`). El HTML nuevo trae las dos zonas SIN `hidden`
+     * —a propósito, para el navegador sin JS—, así que sin reinicializarlas se
+     * ven las dos a la vez: la regresión que este test ata. `app.js` las
+     * reinicializa después de reponer los huecos y el arranque es idempotente
+     * por `data-vf-tabs-ready`.
+     */
+    public function testElRepintadoDeLaTarjetaReinicializaLasPestabas(): void
+    {
+        $js = (string) file_get_contents(self::JS);
+        $app = (string) file_get_contents(__DIR__ . '/../../public/assets/js/app.js');
+
+        assertTrue(
+            str_contains($js, 'window.vfInitTabs = initTabs'),
+            'el arranque de pestañas se expone para poder reejecutarlo tras un repintado'
+        );
+        assertTrue(
+            str_contains($js, "getAttribute('data-vf-tabs-ready') !== '1'"),
+            'y salta los contenedores ya inicializados: sin eso, cada repintado de'
+                . ' cualquier hueco acumularía un `click` por pestaña'
+        );
+        assertTrue(
+            str_contains($js, "setAttribute('data-vf-tabs-ready', '1')"),
+            'marcando el contenedor que inicializó'
+        );
+        assertTrue(
+            str_contains($app, 'window.vfInitTabs()'),
+            'app.js tiene que reinicializarlas al reponer los huecos: la tarjeta de'
+                . ' Acceso es el hueco `vfSlotAccess` y guardar ajustes la repinta'
+        );
+    }
+
     public function testElPanelEsUnaTablaConEstilo(): void
     {
         $css = self::sinComentariosDeBloque((string) file_get_contents(self::CSS));

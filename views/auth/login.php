@@ -26,8 +26,11 @@ use App\Core\View;
 </form>
 <?php // El enlace solo aparece si el registro está abierto: con la puerta
       // apagada, ofrecerla y llevar a un 403 es una vía muerta. El alta la
-      // hace el admin desde /admin. ?>
-<?php if (\App\Core\Config::get('app.registration_enabled', false)): ?>
+      // hace el admin desde /admin. Se pregunta por `registrationEnabled()` y
+      // NO por `Config`: el interruptor del panel escribe en `app_settings`, y
+      // ese valor gana al `.env`. Leyendo el `.env` directamente, activar el
+      // registro desde `/admin` no enseñaba el enlace. ?>
+<?php if (\App\Controllers\AuthController::registrationEnabled()): ?>
 <p class="text-center text-secondary mt-4 mb-0">
     ¿No tienes cuenta? <a href="/register" class="text-decoration-none fw-semibold">Regístrate aquí</a>
 </p>

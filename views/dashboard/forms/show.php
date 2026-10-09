@@ -17,7 +17,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
               // cabían (`d-flex` sin `flex-wrap`) y nada decía cuál era el
               // importante. `app-dash-dd` + `app-dash-menu` son el mismo patrón
               // que usa la tarjeta del dashboard. ?>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 app-head-actions">
             <a href="/forms/<?= (int) $form['id'] ?>/builder" class="btn btn-primary app-btn-primary"><i class="fa-solid fa-pen me-1"></i>Editar campos</a>
             <a href="/forms/<?= (int) $form['id'] ?>/responses" class="btn btn-outline-primary"><i class="fa-solid fa-inbox me-1"></i>Respuestas</a>
             <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-outline-success"><i class="fa-solid fa-chart-column me-1"></i>Analítica</a>
@@ -356,7 +356,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 <label class="form-check-label small fw-semibold" for="confirm_enabled">Enviar confirmación a quien responde<?= $helpButton('Necesita un campo de tipo email en el formulario (lista de abajo) y que el correo saliente esté configurado en el servidor.') ?></label>
                             </div>
                             <div class="row g-2 mt-2">
-                                <div class="col-md-4">
+                                <div class="col-12 col-sm-6">
                                     <label for="confirm_to_field" class="form-label small fw-semibold">Campo email</label>
                                     <input type="text" class="form-control form-control-sm" id="confirm_to_field" name="confirm_to_field"
                                            list="confirmFieldList" placeholder="Ej: Correo electrónico">
@@ -366,13 +366,13 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                         <?php endforeach; ?>
                                     </datalist>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-sm-6">
                                     <label for="confirm_subject" class="form-label small fw-semibold">Asunto</label>
                                     <input type="text" class="form-control form-control-sm" id="confirm_subject" name="confirm_subject"
                                            value="<?= View::escape($settings['notify']['confirmation']['subject'] ?? '') ?>"
                                            placeholder="Ej: Recibimos tu respuesta">
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-12">
                                     <label for="confirm_message" class="form-label small fw-semibold">Mensaje</label>
                                     <textarea class="form-control form-control-sm" id="confirm_message" name="confirm_message" rows="2" placeholder="Vacío = mensaje por defecto"><?= View::escape($settings['notify']['confirmation']['message'] ?? '') ?></textarea>
                                 </div>
@@ -390,20 +390,20 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                             </legend>
                             <div class="collapse show" id="grp-webhook">
                             <div class="row g-2">
-                                <div class="col-md-6">
+                                <div class="col-12">
                                     <label for="webhook_url" class="form-label small fw-semibold">Webhook (URL)</label>
                                     <input type="url" class="form-control form-control-sm" id="webhook_url" name="webhook_url"
                                            value="<?= View::escape($settings['webhook']['url'] ?? '') ?>" placeholder="https://ejemplo.com/hook">
                                     <?= $helpButton('Si se llena, cada envío se manda por HTTP a esa URL. Debe ser <code>http</code> o <code>https</code> y alcanzable desde el servidor.') ?>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-sm-6">
                                     <label for="webhook_kind" class="form-label small fw-semibold">Formato</label>
                                     <select class="form-select form-select-sm" id="webhook_kind" name="webhook_kind">
                                         <option value="generic"<?= (($settings['webhook']['kind'] ?? 'generic') === 'generic') ? ' selected' : '' ?>>JSON</option>
                                         <option value="slack"<?= (($settings['webhook']['kind'] ?? 'generic') === 'slack') ? ' selected' : '' ?>>Slack</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-sm-6">
                                     <label for="webhook_secret" class="form-label small fw-semibold">Secreto (firma)</label>
                                     <input type="text" class="form-control form-control-sm" id="webhook_secret" name="webhook_secret"
                                            value="<?= View::escape($settings['webhook']['secret'] ?? '') ?>" placeholder="Opcional" autocomplete="off">

@@ -179,6 +179,16 @@
             var slot = document.getElementById(id);
             if (slot) slot.innerHTML = html[id];
         });
+
+        /* Un hueco repuesto puede traer dentro un contenedor de pestañas
+         * (`data-vf-tabs`): la tarjeta de Acceso entera es el hueco `vfSlotAccess`
+         * y guardar los ajustes la repinta. El HTML nuevo no lleva el `hidden`
+         * que puso el arranque de `dashboard.js`, así que sin reinicializarlas se
+         * verían las dos zonas a la vez. La función la expone `dashboard.js`; en
+         * el builder no existe y la guarda lo deja pasar. */
+        if (typeof window.vfInitTabs === 'function') {
+            window.vfInitTabs();
+        }
     }
 
     // El botón de #formUpdate vive FUERA del formulario (usa `form="formUpdate"`),

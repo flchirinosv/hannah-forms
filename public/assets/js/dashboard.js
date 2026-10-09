@@ -604,9 +604,6 @@
 (function () {
     'use strict';
 
-    const contenedores = Array.prototype.slice.call(document.querySelectorAll('[data-vf-tabs]'));
-    if (contenedores.length === 0) { return; }
-
     const leido = (clave) => {
         try {
             return window.localStorage.getItem('vf:tab:' + clave) || '';
@@ -620,68 +617,91 @@
         } catch (e) { /* sin localStorage las pestañas funcionan igual, sin memoria */ }
     };
 
-    contenedores.forEach((caja) => {
-        const clave = caja.getAttribute('data-vf-tabs') || '';
-        const botones = Array.prototype.slice.call(caja.querySelectorAll('[data-vf-tab]'));
-        if (botones.length === 0) { return; }
+    /* El arranque vive en una función CON NOMBRE y expuesta en `window` porque
+     * este contenedor se puede REPINTAR: la tarjeta de Acceso entera es el hueco
+     * `vfSlotAccess`, y guardar los ajustes la repone con `innerHTML`. El HTML
+     * nuevo trae las pestañas otra vez SIN `hidden` (es lo que pinta el servidor
+     * a propósito), así que si nadie vuelve a inicializarlas se ven las dos
+     * zonas a la vez. `app.js` llama a `vfInitTabs()` después de reponer los
+     * huecos (guardar ajustes entre ellos).
+     *
+     * `data-vf-tabs-ready` hace el arranque idempotente: sin él, un contenedor
+     * que NO se repintó acumularía un `click` por cada repintado de otro hueco.
+     * El contenedor repintado es un nodo nuevo y no lo lleva, así que se vuelve
+     * a inicializar una sola vez. */
+    function initTabs() {
+        const contenedores = Array.prototype.slice.call(document.querySelectorAll('[data-vf-tabs]'))
+            .filter((caja) => caja.getAttribute('data-vf-tabs-ready') !== '1');
+        if (contenedores.length === 0) { return; }
 
-        const panelDe = (boton) => document.getElementById(boton.getAttribute('data-vf-tab'));
-        const porId = (id) => botones.filter((b) => b.getAttribute('data-vf-tab') === id)[0];
+        contenedores.forEach((caja) => {
+            const clave = caja.getAttribute('data-vf-tabs') || '';
+            const botones = Array.prototype.slice.call(caja.querySelectorAll('[data-vf-tab]'));
+            if (botones.length === 0) { return; }
 
-        /* Pintar una pestaña = `aria-selected` en el botón y `hidden` en el resto.
-         * Los paneles que no son el elegido se ocultan TODOS, no solo los que el
-         * botón conoce: un panel sin su botón (porque el servidor lo pintó y el
-         * JS no lo vio) se queda visible, que es lo que se ve sin JS. */
-        const pintar = (id, guardar) => {
-            const elegido = panelDe(porId(id) || botones[0]);
-            if (!elegido) { return; }
+            const panelDe = (boton) => document.getElementById(boton.getAttribute('data-vf-tab'));
+            const porId = (id) => botones.filter((b) => b.getAttribute('data-vf-tab') === id)[0];
+
+            /* Pintar una pestaña = `aria-selected` en el botón y `hidden` en el resto.
+             * Los paneles que no son el elegido se ocultan TODOS, no solo los que el
+             * botón conoce: un panel sin su botón (porque el servidor lo pintó y el
+             * JS no lo vio) se queda visible, que es lo que se ve sin JS. */
+            const pintar = (id, guardar) => {
+                const elegido = panelDe(porId(id) || botones[0]);
+                if (!elegido) { return; }
+                botones.forEach((b) => {
+                    const suyo = b.getAttribute('data-vf-tab') === elegido.id;
+                    b.classList.toggle('active', suyo);
+                    b.setAttribute('aria-selected', suyo ? 'true' : 'false');
+                    if (suyo) { b.removeAttribute('tabindex'); } else { b.setAttribute('tabindex', '-1'); }
+                    const panel = panelDe(b);
+                    if (panel) {
+                        if (suyo) { panel.removeAttribute('hidden'); } else { panel.setAttribute('hidden', ''); }
+                    }
+                });
+                if (guardar && clave !== '') { guardado(clave, elegido.id); }
+            };
+
+            /* El arranque NO guarda. La primera visita enseña la pestaña activa del
+             * servidor y no la fija para siempre (ver la nota de `decididos` arriba). */
+            const guardada = clave !== '' ? leido(clave) : '';
+            const inicial = (guardada && porId(guardada)) ? guardada : botones[0].getAttribute('data-vf-tab');
+            pintar(inicial, false);
+
             botones.forEach((b) => {
-                const suyo = b.getAttribute('data-vf-tab') === elegido.id;
-                b.classList.toggle('active', suyo);
-                b.setAttribute('aria-selected', suyo ? 'true' : 'false');
-                if (suyo) { b.removeAttribute('tabindex'); } else { b.setAttribute('tabindex', '-1'); }
-                const panel = panelDe(b);
-                if (panel) {
-                    if (suyo) { panel.removeAttribute('hidden'); } else { panel.setAttribute('hidden', ''); }
-                }
+                b.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    pintar(this.getAttribute('data-vf-tab'), true);
+                });
             });
-            if (guardar && clave !== '') { guardado(clave, elegido.id); }
-        };
 
-        /* El arranque NO guarda. La primera visita enseña la pestaña activa del
-         * servidor y no la fija para siempre (ver la nota de `decididos` arriba). */
-        const guardada = clave !== '' ? leido(clave) : '';
-        const inicial = (guardada && porId(guardada)) ? guardada : botones[0].getAttribute('data-vf-tab');
-        pintar(inicial, false);
+            /* Volver al panel después de buscar.
+             *
+             * El buscador es un GET a esta misma ficha, así que la página se recarga y
+             * el navegador deja arriba del todo, con el resultado fuera de pantalla:
+             * se ha buscado y parece que no ha pasado nada. El ancla está en el
+             * `action` de la vista, pero un envío GET puede llevársela, y por eso se
+             * la pone aquí justo antes de enviar.
+             *
+             * Y es una mejora, no la puerta: si el navegador se sigue llevando el
+             * fragmento por delante, la búsqueda devuelve la página entera con el
+             * resultado, solo que arriba del todo, y sin JavaScript es exactamente eso
+             * lo que hay. Lo único que hace este bloque es añadir un `#`; nunca toca
+             * el `query`, así que no puede cambiar lo que se busca. */
+            const buscador = caja.querySelector('form[role="search"]');
+            if (buscador) {
+                buscador.addEventListener('submit', function () {
+                    const accion = buscador.getAttribute('action') || '';
+                    if (accion.indexOf('#') === -1) {
+                        buscador.setAttribute('action', accion + '#' + caja.id);
+                    }
+                });
+            }
 
-        botones.forEach((b) => {
-            b.addEventListener('click', function (e) {
-                e.preventDefault();
-                pintar(this.getAttribute('data-vf-tab'), true);
-            });
+            caja.setAttribute('data-vf-tabs-ready', '1');
         });
+    }
 
-        /* Volver al panel después de buscar.
-         *
-         * El buscador es un GET a esta misma ficha, así que la página se recarga y
-         * el navegador deja arriba del todo, con el resultado fuera de pantalla:
-         * se ha buscado y parece que no ha pasado nada. El ancla está en el
-         * `action` de la vista, pero un envío GET puede llevársela, y por eso se
-         * la pone aquí justo antes de enviar.
-         *
-         * Y es una mejora, no la puerta: si el navegador se sigue llevando el
-         * fragmento por delante, la búsqueda devuelve la página entera con el
-         * resultado, solo que arriba del todo, y sin JavaScript es exactamente eso
-         * lo que hay. Lo único que hace este bloque es añadir un `#`; nunca toca
-         * el `query`, así que no puede cambiar lo que se busca. */
-        const buscador = caja.querySelector('form[role="search"]');
-        if (buscador) {
-            buscador.addEventListener('submit', function () {
-                const accion = buscador.getAttribute('action') || '';
-                if (accion.indexOf('#') === -1) {
-                    buscador.setAttribute('action', accion + '#' + caja.id);
-                }
-            });
-        }
-    });
+    window.vfInitTabs = initTabs;
+    initTabs();
 })();

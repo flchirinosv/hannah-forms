@@ -179,9 +179,14 @@ class AuthHardeningTest
     {
         $login = (string) file_get_contents($this->path('views/auth/login.php'));
         assertTrue(
-            str_contains($login, 'app.registration_enabled'),
-            'el enlace «Regístrate aquí» tiene que depender del interruptor: con la puerta cerrada '
-                . 'es una vía muerta que lleva a un 403'
+            str_contains($login, 'registrationEnabled()'),
+            'el enlace «Regístrate aquí» tiene que depender del interruptor RESUELTO: '
+                . 'leer `Config::get(\'app.registration_enabled\')` ignora la fila de `app_settings`, '
+                . 'así que activar el registro desde /admin dejaba el login sin enlace'
+        );
+        assertFalse(
+            str_contains($login, "Config::get('app.registration_enabled'"),
+            'y no puede volver a leer el `.env` directo: la fila del panel gana'
         );
     }
 

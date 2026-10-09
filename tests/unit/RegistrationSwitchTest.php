@@ -341,6 +341,40 @@ class RegistrationSwitchTest
      * La vista
      * ------------------------------------------------------------------ */
 
+    /**
+     * El enlace «Regístrate aquí» del login obedece al MISMO interruptor que las
+     * dos puertas del registro.
+     *
+     * Es el lado que se quedó leyendo el `.env` a pelo: activar el registro
+     * desde `/admin` (fila de `app_settings`) no enseñaba el enlace, así que la
+     * única forma de llegar a `/register` era escribir la URL. Se prueba sobre
+     * el HTML renderizado y en los dos sentidos, para atar la preferencia de la
+     * fila sobre el `.env`.
+     */
+    public function testElEnlaceDeRegistroDelLoginObedeceAlInterruptor(): void
+    {
+        Config::setForTesting('app.registration_enabled', false);
+        AppSettings::setBool(self::KEY, true);
+
+        $abierto = self::capturar(static function (): void {
+            (new AuthController())->showLogin();
+        });
+        assertTrue(
+            str_contains($abierto['body'], 'href="/register"'),
+            'con la fila en `1` el login tiene que ofrecer registrarse aunque el `.env` esté cerrado'
+        );
+
+        AppSettings::setBool(self::KEY, false);
+
+        $cerrado = self::capturar(static function (): void {
+            (new AuthController())->showLogin();
+        });
+        assertFalse(
+            str_contains($cerrado['body'], 'href="/register"'),
+            'y con la fila en `0` desaparece aunque el `.env` esté abierto'
+        );
+    }
+
     public function testElInterruptorSePintaSoloConAdminAccessYRespetaElEstado(): void
     {
         $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
