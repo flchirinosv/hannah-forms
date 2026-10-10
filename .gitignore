@@ -22,3 +22,9 @@
 /freddy.zip
 /pub.jar
 /storage/backups/
+
+# Skills de la herramienta (genéricos de terceros) y material de referencia de
+# diseño: no son código de la app y no entran en el repo.
+/.opencode/skills/redesign-skill/
+/.opencode/skills/ui-ux-pro-max/
+/recursos/

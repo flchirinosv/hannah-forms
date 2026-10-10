@@ -430,7 +430,15 @@ body {
     box-shadow: none;
 }
 
-.app-builder-canvas-wrap { border-radius: var(--vf-radius-lg); }
+.app-builder-canvas-wrap {
+    border-radius: var(--vf-radius-lg);
+    /* F1 (rediseño): la columna central se centra y se topa en ~860px como la
+       tarjeta de Google Forms. El lienzo sigue dentro de `col-lg-9`; la caja
+       ya no se estira hasta el borde del panel de configuración. */
+    max-width: 860px;
+    margin-inline: auto;
+    width: 100%;
+}
 .app-title-input {
     border: 0;
     border-bottom: 2px solid transparent;

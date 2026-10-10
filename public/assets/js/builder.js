@@ -227,6 +227,10 @@
         btnRedo: document.getElementById('btnRedo'),
         saveStatus: document.getElementById('saveStatus'),
         paletteItems: document.querySelectorAll('.app-palette-item'),
+        // F1 (rediseño): el «+» de la barra y el del lienzo vacío abren el mismo
+        // modal que los «+» entre tarjetas. La paleta ya no es una columna.
+        btnAddQuestion: document.getElementById('btnAddQuestion'),
+        btnEmptyAdd: document.getElementById('btnEmptyAdd'),
         logicWrap: document.getElementById('logicWrap'),
         logicHowThis: document.getElementById('logicHowThis'),
         logicRulesList: document.getElementById('logicRulesList'),
@@ -2061,6 +2065,14 @@
         el.btnDelete.addEventListener('click', deleteSelected);
         el.btnUndo.addEventListener('click', undo);
         el.btnRedo.addEventListener('click', redo);
+
+        // F1 (rediseño): el «+» de la barra y el del lienzo vacío agregan al
+        // final (sin parentUid) a través de la cuadrícula de tipos.
+        [el.btnAddQuestion, el.btnEmptyAdd].forEach((btn) => {
+            if (btn) {
+                btn.addEventListener('click', () => openAddFieldModal({ parentUid: null }));
+            }
+        });
 
         // «Abrir» el formulario público (CSP: sin onclick inline).
         const previewBtn = document.getElementById('btnPreviewUrl');

@@ -44,6 +44,7 @@ $fieldTypes = [
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-pen-nib me-2 text-primary"></i>Builder — <span id="builderTitleText"><?= View::escape($form['title']) ?></span></h2>
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-primary app-btn-primary" type="button" id="btnAddQuestion" title="Agregar pregunta al final"><i class="fa-solid fa-plus me-1"></i>Pregunta</button>
             <span class="small align-self-center text-muted" id="saveStatus">Guardado ✓</span>
             <div class="btn-group d-none d-sm-inline-flex" role="group" aria-label="Deshacer / rehacer">
                 <button class="btn btn-outline-secondary" type="button" id="btnUndo" title="Deshacer (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
@@ -57,44 +58,8 @@ $fieldTypes = [
     </div>
 
     <div class="row g-4 builder-layout">
-        <!-- Paleta -->
-        <div class="col-lg-3">
-            <div class="card border-0 shadow-sm app-builder-panel h-100">
-                <div class="card-body">
-                    <h3 class="h6 fw-bold text-uppercase small text-muted mb-3"><i class="fa-solid fa-cubes me-1"></i>Agrega elementos</h3>
-                    <div class="app-palette-group">
-                        <div class="app-palette-group-title"><i class="fa-solid fa-layer-group me-1"></i>Estructura</div>
-                        <div class="app-palette-static">
-                            <?php foreach ($fieldTypes as $type => $info): if (!in_array($type, ['section', 'page'], true)) continue; ?>
-                            <div class="app-palette-item <?= $type === 'section' ? 'app-palette-section' : 'app-palette-page' ?>" draggable="true" data-type="<?= View::escape($type) ?>">
-                                <span class="app-palette-icon"><i class="fa-solid <?= View::escape($info['icon']) ?>"></i></span>
-                                <span class="d-flex flex-column">
-                                    <span class="fw-semibold small"><?= View::escape($info['label']) ?></span>
-                                    <span class="text-muted" style="font-size:.72rem"><?= View::escape($info['desc']) ?></span>
-                                </span>
-                                <span class="app-palette-grip ms-auto"><i class="fa-solid fa-grip-vertical"></i></span>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <div class="app-palette-group">
-                        <div class="app-palette-group-title"><i class="fa-solid fa-list-check me-1"></i>Tipos de pregunta</div>
-                        <div class="app-palette-grid">
-                            <?php foreach ($fieldTypes as $type => $info): if (in_array($type, ['section', 'page'], true)) continue; ?>
-                            <div class="app-palette-item" draggable="true" data-type="<?= View::escape($type) ?>">
-                                <span class="app-palette-icon"><i class="fa-solid <?= View::escape($info['icon']) ?>"></i></span>
-                                <span class="fw-semibold small"><?= View::escape($info['label']) ?></span>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <p class="text-muted small mt-3 mb-0"><i class="fa-solid fa-circle-info me-1"></i>Haz clic (o arrastra) cualquier elemento para agregarlo al lienzo.</p>
-                </div>
-            </div>
-        </div>
-
         <!-- Lienzo -->
-        <div class="col-lg-6">
+        <div class="col-lg-9">
             <div class="card border-0 shadow-sm app-builder-canvas-wrap">
                 <div class="card-body p-4">
                     <div class="mb-3">
@@ -107,9 +72,10 @@ $fieldTypes = [
                     <div id="canvasFields" class="app-canvas d-flex flex-column gap-4"></div>
 
                     <div id="emptyCanvas" class="text-center py-5 app-empty-canvas">
-                        <div class="app-empty-icon mb-3"><i class="fa-solid fa-arrow-down"></i></div>
-                        <p class="h6 fw-bold">Arrastra campos aquí</p>
-                        <p class="text-muted small">O haz clic en un tipo de campo de la paleta para agregarlo.</p>
+                        <div class="app-empty-icon mb-3"><i class="fa-solid fa-file-circle-plus"></i></div>
+                        <p class="h6 fw-bold">Aún no hay preguntas</p>
+                        <p class="text-muted small">Agrega tu primera pregunta para empezar a armar la encuesta.</p>
+                        <button type="button" class="btn btn-primary app-btn-primary mt-2" id="btnEmptyAdd"><i class="fa-solid fa-plus me-1"></i>Agregar pregunta</button>
                     </div>
                 </div>
             </div>

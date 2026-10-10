@@ -89,17 +89,17 @@ tests que los atan.
 Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 `storage/backups/` a `.gitignore`.
 
-### F1 · Chrome estilo Google Forms (layout)
+### F1 · Chrome estilo Google Forms (layout) — **hecho**
 `views/builder/index.php` + `public/assets/css/app.css` + `public/assets/js/builder.js`.
 - Columna central única (máx ~860px) para `#canvasFields` y `#emptyCanvas`.
 - Barra de herramientas superior mínima: volver, título, undo/redo, `+` (abre
   `#addFieldModal`), tema, preview, estado de guardado (`#saveStatus`), URL pública,
   guardar.
-- La paleta izquierda deja de renderizarse como columna: el alta de campos va por el
-  `#addFieldModal` ya existente + `.app-add-between-btn` + duplicar.
+- `+` de barra (`#btnAddQuestion`) y botón del lienzo vacío (`#btnEmptyAdd`) abren el
+  `#addFieldModal` al final; la paleta izquierda deja de renderizarse como columna.
 - Se conservan todos los ids/data-*; `ViewStructureTest` y `BuilderPreviewCssTest` en
   verde (los selectores nuevos se declaran en su commit).
-**Checkpoint:** suite verde; revisar en navegador bloques R/S de `pruebas-funcionales.md`.
+**Checkpoint:** suite completa verde (1059 tests) en el commit de esta fase.
 
 ### F2 · Tarjetas ricas + drawer de ajustes
 `public/assets/js/builder.js` + `views/builder/index.php` + `app.css`.
@@ -140,7 +140,7 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 | Fase | Descripción | Estado |
 |---|---|---|
 | F0 | Punto de restauración (tag + dump + plan) | **hecho** |
-| F1 | Chrome estilo Google Forms (layout columna central) | pendiente |
+| F1 | Chrome estilo Google Forms (layout columna central) | **hecho** |
 | F2 | Tarjetas ricas + drawer de ajustes | pendiente |
 | F3 | Tema como palette y preview embebido | pendiente |
 | F4 | Pulido, docs y cierre | pendiente |
