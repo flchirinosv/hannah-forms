@@ -26,12 +26,11 @@ namespace Tests\Unit;
  *     vistas del fill y el preview) lo llevan sin clases de ancho encima: la
  *     regla es una sola y el día que aparezca una novena hay que decidir su
  *     ancho, no heredárselo por accidente.
- *  4. Nada reabre el ancho del preview por su id. El constructor tiene dos
- *     superficies de preview (la embebida en el lienzo y el modal en pantalla
- *     completa) y las dos se pintan con la misma clase, sin regla de ancho por
- *     id: un `#canvasPreviewContent { width: … }` o un
- *     `#livePreviewContent { width: … }` los separaría en silencio (el id gana
- *     por especificidad a la media query).
+ *  4. Nada reabre el ancho del preview por su id. El constructor tiene una
+ *     superficie de preview (el modal en pantalla completa),
+ *     pintada con la misma clase y sin regla de ancho por
+ *     id: un `#livePreviewContent { width: … }` lo separaría en silencio (el id
+ *     gana por especificidad a la media query).
  *
  * Sin BD: solo lee `app.css` y las vistas.
  */
@@ -174,23 +173,21 @@ class FillLayoutTest
 
     public function testNadieReabreElAnchoDelPreviewDelConstructor(): void
     {
-        // F3: el constructor tiene DOS superficies de preview — la embebida en el
-        // lienzo (`canvasPreviewContent`) y el modal en pantalla completa
-        // (`livePreviewContent`) — y las dos se pintan con `.fill-container`:
-        // heredan el ancho del formulario publicado en vez de decidirlo.
-        foreach (['canvasPreviewContent', 'livePreviewContent'] as $id) {
-            $etiqueta = self::etiquetaPorId('views/builder/index.php', $id);
-            assertNotNull($etiqueta, 'la superficie del preview ' . $id . ' lleva .fill-container');
-            assertTrue(
-                preg_match('/\bclass="[^"]*\bfill-container\b[^"]*"/', (string) $etiqueta) === 1,
-                'el preview ' . $id . ' se pinta con la misma clase que el formulario publicado'
-            );
-        }
+        // El constructor tiene una sola superficie de preview — el modal en
+        // pantalla completa (`livePreviewContent`) — y se pinta con
+        // `.fill-container`: hereda el ancho del formulario publicado en vez de
+        // decidirlo. Si aparece una segunda, vuelve a mirarla también aquí.
+        $etiqueta = self::etiquetaPorId('views/builder/index.php', 'livePreviewContent');
+        assertNotNull($etiqueta, 'la superficie del preview livePreviewContent lleva .fill-container');
         assertTrue(
-            preg_match('/#(?:canvasPreviewContent|livePreviewContent)\s*\{[^}]*\bwidth\b/', self::css()) !== 1,
-            'ninguna regla por id les pone ancho propio: los dos previews tienen el mismo'
+            preg_match('/\bclass="[^"]*\bfill-container\b[^"]*"/', (string) $etiqueta) === 1,
+            'el preview livePreviewContent se pinta con la misma clase que el formulario publicado'
+        );
+        assertTrue(
+            preg_match('/#livePreviewContent\s*\{[^}]*\bwidth\b/', self::css()) !== 1,
+            'ninguna regla por id le pone ancho propio: el preview tiene el mismo'
             . ' comportamiento que el fill, y como la media query mira a la ventana,'
-            . ' se parten igual aunque vivan en el lienzo y en un modal-xl'
+            . ' se parte igual aunque viva en un modal-xl'
         );
     }
 }

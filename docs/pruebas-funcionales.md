@@ -488,13 +488,12 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
 | S35 | Formulario publicado a **1920 px** y después a **800 px**; luego el preview en vivo del constructor a ≥992 px | A 1920 la tarjeta ocupa **la mitad** centrada (`col-lg-6`); a 800 ocupa todo el ancho y ninguna matriz se sale con scroll horizontal. El preview del constructor se parte **igual** que el publicado: ninguna regla por id le da un ancho distinto | M | |
 | S36 | Ficha → Ajustes → Notificaciones y Webhook, en pantalla ancha (≥992 px, con la tarjeta en su columna estrecha) | Los campos no salen en columnas de ~120 px: van a media fila (email/asunto, formato/secreto) o a fila entera (mensaje, URL), y sus textos no se recortan | M | |
-| S37 | Constructor recién abierto | Una sola columna central (lienzo), sin paleta izquierda; la barra trae Guardar, Vista previa, Vista previa en vivo y Agregar elemento | M | |
+| S37 | Constructor recién abierto | Una sola columna central (lienzo), sin paleta izquierda; la barra trae Guardar, Vista previa y Agregar elemento (una sola vista previa: no hay botón embebido duplicado) | M | |
 | S38 | «Agregar elemento» y el `+` entre dos tarjetas | Ambos abren el mismo diálogo con los 21 tipos; el `+` entre tarjetas inserta en esa posición (regresión del anidado: ver S27) | A | |
 | S39 | Pie de una tarjeta | Selector de tipo, interruptor de obligatoria y duplicar / configurar / eliminar **visibles sin hover**; cambiar el tipo desde el pie actualiza la miniatura sin abrir ajustes | M | |
 | S40 | Engranaje de una tarjeta | Se abre el cajón a la derecha (drawer) con los ajustes del campo; al cerrarlo (x, `Esc` o tocar fuera) la tarjeta que lo abrió queda seleccionada | M | |
 | S41 | «Configuración» del formulario | Se abre el mismo tipo de cajón, 420 px, con «Guardar configuración» **fijo abajo** (el cuerpo se desplaza por encima); en móvil el cajón ocupa todo el ancho | M | |
-| S42 | «Vista previa» (embebida) | Aparece el formulario tal como quedará publicado, debajo del lienzo y separado por una línea; se repinta en vivo al editar, y su botón de la barra queda marcado mientras está abierta | M | |
-| S43 | Preview embebido y publicado, a ≥992 px y a <992 px | Los dos se parten **igual** al mismo ancho (mitad centrada / todo el ancho): ninguna regla por id les da ancho propio | M | |
+| S42 | «Vista previa» | Se abre el formulario tal como quedará publicado, a pantalla completa (modal), y se repinta con lo último editado | M | |
 
 
 ---

@@ -301,19 +301,17 @@ Contrato de implementación, no negociable:
 
 ### 3.10 Vista previa
 
-Dos superficies de preview en el constructor, **ambas sin ancho propio**:
-
-- **Embebida** (`#canvasPreview` → `#canvasPreviewContent`): debajo del
-  lienzo; la abre `#btnCanvasPreview` (`aria-pressed` + `.app-btn-active`).
-  `renderCanvasPreview()` solo pinta cuando no está `d-none`.
-- **En vivo** (`#livePreviewModal` → `#livePreviewContent`): pantalla
-  completa; el camino clásico.
+Una sola superficie de preview en el constructor: el modal en pantalla completa
+(`#livePreviewModal` → `#livePreviewContent`), que abre el botón **Vista
+previa** de la barra (`#btnLivePreview`). No hay preview embebido en el lienzo:
+un segundo botón que pintaba el formulario debajo del canvas se retiró porque
+quedaba fuera de la vista y parecía no hacer nada.
 
 Regla: `previewBody()` reutiliza el markup del FILL
 (`nps-option`/`scale-btn`, `star-option`/`star-btn`, `vf-matrix-cell`,
 `vf-ranking-*`, `.vf-submit`), y `FillLayoutTest` prohíbe una regla de ancho
-por id para las dos (`canvasPreviewContent`/`livePreviewContent`): publicar y
-prever comparten `width/max-width: 100%` + `col-lg-6`, y una regla por id los
+por id para `livePreviewContent`: publicar y prever comparten
+`width/max-width: 100%` + `col-lg-6`, y una regla por id los
 separaría en silencio.
 
 ---

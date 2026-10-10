@@ -50,8 +50,7 @@ $fieldTypes = [
                 <button class="btn btn-outline-secondary" type="button" id="btnUndo" title="Deshacer (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
                 <button class="btn btn-outline-secondary" type="button" id="btnRedo" title="Rehacer (Ctrl+Shift+Z)"><i class="fa-solid fa-rotate-right"></i></button>
             </div>
-            <button class="btn btn-outline-secondary" type="button" id="btnCanvasPreview" aria-pressed="false" title="Mostrar u ocultar la vista previa dentro del lienzo"><i class="fa-solid fa-eye me-1"></i>Vista previa</button>
-            <button class="btn btn-outline-secondary" type="button" id="btnLivePreview"><i class="fa-solid fa-eye me-1"></i>Vista previa en vivo</button>
+            <button class="btn btn-outline-secondary" type="button" id="btnLivePreview" title="Ver el formulario tal como quedará publicado"><i class="fa-solid fa-eye me-1"></i>Vista previa</button>
             <button class="btn btn-outline-secondary" type="button" id="btnFormSettings"><i class="fa-solid fa-gear me-1"></i>Configuración</button>
             <button class="btn btn-outline-secondary d-none d-md-inline-flex" type="button" id="btnPreviewUrl"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir</button>
             <button class="btn btn-success app-btn-primary" type="button" id="btnSaveStructure"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
@@ -77,18 +76,6 @@ $fieldTypes = [
                         <p class="h6 fw-bold">Aún no hay preguntas</p>
                         <p class="text-muted small">Agrega tu primera pregunta para empezar a armar la encuesta.</p>
                         <button type="button" class="btn btn-primary app-btn-primary mt-2" id="btnEmptyAdd"><i class="fa-solid fa-plus me-1"></i>Agregar pregunta</button>
-                    </div>
-
-                    <?php // F3: la vista previa embebida en el lienzo. Reusa el
-                          // markup del FILL (`buildPreviewHtml`/`previewBody` dentro
-                          // de `.vf-preview-scroll .fill-body .fill-container`), que
-                          // es lo que hace que lo que se ve aquí sea lo que se
-                          // publica; el modal de pantalla completa
-                          // (`#livePreviewModal`) se queda intacto. La lógica de
-                          // mostrarla/ocultarla y de repintarla en vivo vive en
-                          // `builder.js`. ?>
-                    <div id="canvasPreview" class="d-none vf-preview-scroll fill-body">
-                        <div class="fill-container py-4 px-2 px-sm-3" id="canvasPreviewContent"></div>
                     </div>
                 </div>
             </div>
@@ -279,7 +266,7 @@ $fieldTypes = [
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white">
                     <span class="app-logo-sm"><i class="fa-solid fa-eye"></i></span>
-                    <span class="fw-semibold" id="livePreviewTitle">Vista previa en vivo</span>
+                    <span class="fw-semibold" id="livePreviewTitle">Vista previa</span>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>

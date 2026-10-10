@@ -340,10 +340,9 @@ fijas; las pantallas de ajustes salen cuando las pides.
   (con las pestañas **Contenido** / **Lógica**) y, por separado, los de todo el
   formulario. Se abren con el engranaje de una tarjeta o con **Configuración**
   de la barra, y se cierran con su «x», con `Esc` o tocando fuera.
-- **Vista previa (embebida)**: el botón **Vista previa** despliega el formulario
-  tal como quedará publicado, dentro del propio lienzo; se repinta en vivo al
-  editar. **Vista previa en vivo** sigue abriendo la vista previa a pantalla
-  completa.
+- **Vista previa**: el botón **Vista previa** abre el formulario tal como
+  quedará publicado, a pantalla completa; se repinta en vivo al editar. Para
+  verlo en una pestaña aparte, usa **Abrir**.
 
 El botón **Guardar** (barra superior) persiste la estructura: campos, orden,
 opciones y los ajustes del cajón **Configuración** (tema, quiz, orden de las

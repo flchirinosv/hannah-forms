@@ -171,12 +171,6 @@
         titleText: document.getElementById('builderTitleText'),
         saveBtn: document.getElementById('btnSaveStructure'),
         livePreviewBtn: document.getElementById('btnLivePreview'),
-        // F3: vista previa embebida en el lienzo. Misma maqueta que el modal en
-        // pantalla completa (`#livePreviewModal`), que sigue intacto: ambos
-        // pintan `buildPreviewHtml()` dentro de `.fill-body .fill-container`.
-        canvasPreview: document.getElementById('canvasPreview'),
-        canvasPreviewContent: document.getElementById('canvasPreviewContent'),
-        btnCanvasPreview: document.getElementById('btnCanvasPreview'),
         settingsForm: document.getElementById('settingsForm'),
         // F1: modal de alta con la cuadrícula de tipos.
         addFieldModal: document.getElementById('addFieldModal'),
@@ -295,7 +289,6 @@
 
         el.empty.style.display = roots.length ? 'none' : 'block';
         initSortables();
-        renderCanvasPreview();
     }
 
     // F1 (2026-09-27) — destino de inserción de un «+», calculado al hacer clic
@@ -1788,33 +1781,6 @@
         }
     }
 
-    /* ---------- Vista previa embebida (F3) ---------- */
-
-    // Pinta el preview SOLO si el panel está visible: repintar un `d-none` es
-    // trabajo de más, y la maqueta contiene inputs sin estado que no hace falta
-    // construir si nadie los mira.
-    function renderCanvasPreview() {
-        if (!el.canvasPreview || !el.canvasPreviewContent) return;
-        if (el.canvasPreview.classList.contains('d-none')) return;
-        el.canvasPreviewContent.innerHTML = buildPreviewHtml();
-    }
-
-    function setCanvasPreviewOpen(open) {
-        if (!el.canvasPreview || !el.btnCanvasPreview) return;
-        el.canvasPreview.classList.toggle('d-none', !open);
-        el.btnCanvasPreview.setAttribute('aria-pressed', open ? 'true' : 'false');
-        el.btnCanvasPreview.classList.toggle('app-btn-active', open);
-        el.btnCanvasPreview.title = open
-            ? 'Ocultar la vista previa dentro del lienzo'
-            : 'Mostrar la vista previa dentro del lienzo';
-        if (open) renderCanvasPreview();
-    }
-
-    function toggleCanvasPreview() {
-        const hidden = el.canvasPreview ? el.canvasPreview.classList.contains('d-none') : false;
-        setCanvasPreviewOpen(hidden);
-    }
-
     /* ---------- Save ---------- */
     /* ---------- Estado de guardado (autosave) ---------- */
     let dirty = false;
@@ -2167,9 +2133,6 @@
 
         el.saveBtn.addEventListener('click', saveStructure);
         el.livePreviewBtn.addEventListener('click', openLivePreview);
-        if (el.btnCanvasPreview) {
-            el.btnCanvasPreview.addEventListener('click', toggleCanvasPreview);
-        }
         el.btnDelete.addEventListener('click', deleteSelected);
         el.btnUndo.addEventListener('click', undo);
         el.btnRedo.addEventListener('click', redo);

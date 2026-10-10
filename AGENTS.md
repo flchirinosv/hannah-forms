@@ -1212,12 +1212,12 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   cajón devuelve la selección a la tarjeta y, como `openFieldSettings`
   redibuja el lienzo, el opener se localiza por `[data-uid]`. El pie del
   drawer (`modal-footer border-0`) es **hermano** de `modal-body` para
-  quedar anclado abajo. Hay DOS `#btnCanvasPreview`/`#canvasPreview`
-  (vista previa embebida en el lienzo, que repinta con
-  `renderCanvasPreview()` solo si no está `d-none`) y
-  `#livePreviewModal`: ninguna de las dos previews lleva `width` por su id
-  (`FillLayoutTest::testNadieReabreElAnchoDelPreviewDelConstructor` las
-  atan a las dos). Spec de UI: `docs/design.md` (§3.9, §3.10, §4.2).
+  quedar anclado abajo. La única vista previa es `#livePreviewModal` (el botón
+  **Vista previa**, `#btnLivePreview`); el preview embebido que pintaba debajo
+  del lienzo se retiró (quedaba fuera de la vista y parecía roto). Esa
+  superficie no lleva `width` por su id
+  (`FillLayoutTest::testNadieReabreElAnchoDelPreviewDelConstructor` la ata al
+  ancho del publicado). Spec de UI: `docs/design.md` (§3.9, §3.10, §4.2).
 
 **fill.js / i18n**
 

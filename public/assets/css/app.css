@@ -86,19 +86,6 @@ body {
     box-shadow: none;
 }
 
-/* F3: estado "activo" de un botón de la barra (`aria-pressed`). Es el
-   equivalente de un toggle que no es checkbox: `aria-pressed=true` ya lo
-   anuncia, y este tinte lo hace visible. Con `btn-outline-*` solo con el
-   `background` no basta: hace falta el color de texto y el borde, o parece un
-   botón pulsado más que un interruptor encendido. */
-.app-btn-active,
-.app-btn-active:hover,
-.app-btn-active:focus {
-    background-color: var(--vf-primary-light);
-    border-color: var(--vf-primary);
-    color: var(--vf-primary-dark);
-}
-
 .app-btn-create {
     border-radius: 12px;
     font-weight: 600;
@@ -653,15 +640,10 @@ body {
 }
 .app-toast-action:hover { background: rgba(255,255,255,.16); }
 
-/* ---------- Vista previa en vivo ---------- */
+/* ---------- Vista previa ---------- */
 .vf-preview-scroll { max-height: 74vh; overflow-y: auto; }
 .vf-preview-scroll .fill-body { padding: 0 !important; background: #fff; }
 
-/* F3/F4: la vista previa embebida en el lienzo se separa del canvas por una
-   línea, igual que el canvas del título de arriba; cuando está oculta
-   (`d-none`) esto no aplica. Ninguna regla por id le pone ancho: lo lleva
-   `.fill-container`, la misma clase del publicado (FillLayoutTest lo ata). */
-#canvasPreview { border-top: 1px solid var(--vf-border); margin-top: 1.5rem; }
 /* Icono de sección: SIN margen propio. La alineación la lleva la fila, con
    `justify-content: space-between` en `.vf-section-inner`, que es donde
    pertenece: el icono se comía el hueco sobrante con `margin: auto .5rem`, lo

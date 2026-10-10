@@ -162,3 +162,17 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 | F2 | Tarjetas ricas + drawer de ajustes | **hecho** |
 | F3 | Tema como palette y preview embebido | **hecho** |
 | F4 | Pulido, docs y cierre | **hecho** |
+
+## Reversión post-cierre (2026-10-10): se retira el preview embebido
+
+El preview embebido de F3 se **revierte**: queda una sola vista previa, el modal
+a pantalla completa (`#livePreviewModal`, botón **Vista previa**). El motivo es
+de uso real, no de diseño: el botón `#btnCanvasPreview` abría el formulario
+**debajo del lienzo** (~2000 px más abajo, sin `scroll`), así que al pulsarlo
+desde la barra no se veía nada y parecía roto. Con él convivían `#livePreviewModal`
+(que sí se ve al instante) y **Abrir** (`#btnPreviewUrl`, el formulario publicado
+en otra pestaña); el embebido era el tercero y el único que no daba señal. Se
+eliminan `#btnCanvasPreview`/`#canvasPreview`/`#canvasPreviewContent`, el estado
+`setCanvasPreviewOpen`/`toggleCanvasPreview`/`renderCanvasPreview` y la regla
+`#canvasPreview` de `app.css`. `FillLayoutTest` pasa a atar solo
+`livePreviewContent`. El detalle del *por qué* está en `docs/decisiones.md`.
