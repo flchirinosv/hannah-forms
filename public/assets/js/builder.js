@@ -172,18 +172,14 @@
         saveBtn: document.getElementById('btnSaveStructure'),
         livePreviewBtn: document.getElementById('btnLivePreview'),
         settingsForm: document.getElementById('settingsForm'),
-        settingsEmpty: document.getElementById('settingsEmpty'),
         // F1: modal de alta con la cuadrícula de tipos.
         addFieldModal: document.getElementById('addFieldModal'),
         addFieldHint: document.getElementById('addFieldHint'),
-        // F2: modal de configuración por elemento. Recibe la MISMA instancia
-        // de #settingsForm (se reubica, no se duplica).
-        settingsPanel: document.getElementById('settingsPanel'),
+        // F2: drawer re-estilizado sobre el modal de Bootstrap. #settingsForm
+        // vive aquí desde el arranque; no hay panel lateral ni reubicaciones.
         fieldSettingsModal: document.getElementById('fieldSettingsModal'),
         fieldSettingsHost: document.getElementById('fieldSettingsHost'),
         fieldSettingsTitle: document.getElementById('fieldSettingsTitle'),
-        btnFieldSettingsBack: document.getElementById('btnFieldSettingsBack'),
-        btnFieldSettingsOpen: document.getElementById('btnFieldSettingsOpen'),
         fieldId: document.getElementById('fieldId'),
         fieldTypeLabel: document.getElementById('fieldTypeLabel'),
         fieldLabel: document.getElementById('fieldLabel'),
@@ -412,7 +408,7 @@
         // así que su tarjeta se identifica por el nombre del tipo. El resto de
         // campos, igual que hasta ahora.
         const fallback = f.type === 'page' ? 'Página' : 'Sin título';
-        return '<div class="d-flex justify-content-between align-items-start mb-1 app-field-head">' +
+        return '<div class="d-flex justify-content-between align-items-start mb-1">' +
             '<span class="app-field-label fw-semibold small app-label-edit" title="Clic para editar la etiqueta">' + esc(f.label || fallback) + ' ' + required + '</span>' +
             cardHeadRight(f) +
         '</div>';
@@ -573,9 +569,14 @@
         const node = el.canvas.querySelector('[data-uid="' + f._uid + '"]');
         if (!node) return;
         const bodyEl = node.querySelector('.app-field-body');
-        if (!bodyEl) return;
-        bodyEl.innerHTML = cardHeadHtml(f) + cardBodyHtml(f) + cardChipHtml(f) + cardHelpHtml(f);
-        attachLabelEdit(node, f);
+        if (bodyEl) {
+            bodyEl.innerHTML = cardHeadHtml(f) + cardBodyHtml(f) + cardChipHtml(f) + cardHelpHtml(f);
+            attachLabelEdit(node, f);
+        }
+        // F2: el pie se sincroniza (no se reescribe entero para no recablear
+        // listeners). El switch del pie refleja el estado del panel y al revés.
+        const req = node.querySelector('.app-required-toggle input');
+        if (req) req.checked = Boolean(f.is_required);
     }
 
     // Edición de etiqueta "inline" (directo en la tarjeta del lienzo).
@@ -609,24 +610,130 @@
         });
     }
 
-    function buildFieldNode(f) {
-        const node = document.createElement('div');
-        node.className = 'app-canvas-field' + (f._uid === selectedId ? ' selected' : '') + (f.type === 'section' ? ' app-canvas-section' : '') + (f.type === 'page' ? ' app-canvas-page' : '');
-        node.dataset.uid = f._uid;
-
+    // F2: pie de tarjeta — selector de tipo y switch «Obligatoria». El tipo de
+    // los elementos estructurales (sección/página) NO se cambia desde aquí: el
+    // `<select>` viene deshabilitado a propósito (no se convierten).
+    function cardFooterHtml(f) {
+        const info = typeInfo[f.type] || {};
+        const structural = Boolean(info.isSection || info.isPage);
+        const opts = Object.keys(typeInfo)
+            .filter((t) => !(typeInfo[t].isSection || typeInfo[t].isPage))
+            .map((t) => '<option value="' + esc(t) + '"' + (t === f.type ? ' selected' : '') + '>' + esc(typeInfo[t].label) + '</option>')
+            .join('');
+        const typeSel = '<select class="form-select form-select-sm app-type-select"' + (structural ? ' disabled' : '')
+            + ' title="Cambiar el tipo de pregunta" aria-label="Cambiar el tipo de pregunta">' + opts + '</select>';
+        const reqToggle = structural
+            ? ''
+            : '<label class="app-required-toggle" title="¿Obligatoria?"><input type="checkbox" class="form-check-input"' + (f.is_required ? ' checked' : '') + '><span>Obligatoria</span></label>';
         const tools =
             '<div class="app-field-tools">' +
                 '<button type="button" class="btn btn-sm app-tool-btn" data-act="duplicate" title="Duplicar (Ctrl+D)" aria-label="Duplicar"><i class="fa-solid fa-copy"></i></button>' +
                 '<button type="button" class="btn btn-sm app-tool-btn" data-act="settings" title="Configurar" aria-label="Configurar este elemento"><i class="fa-solid fa-gear"></i></button>' +
                 '<button type="button" class="btn btn-sm app-tool-btn text-danger" data-act="delete" title="Eliminar (Supr)" aria-label="Eliminar"><i class="fa-solid fa-trash"></i></button>' +
             '</div>';
+        return '<div class="app-field-footer d-flex align-items-center gap-2">' + typeSel + reqToggle + tools + '</div>';
+    }
+
+    /** F2 — Cambia el tipo de una pregunta conservando lo que tenga sentido. */
+    function changeFieldType(uid, newType) {
+        const idx = fields.findIndex((x) => x._uid === uid);
+        if (idx === -1) return;
+        const f = fields[idx];
+        const cur = typeInfo[f.type] || {};
+        const nxt = typeInfo[newType] || {};
+        if (newType === f.type) return;
+        // Sección/página no se convierten: cambian de rol solo por el «+». Un
+        // <select> activo en su pie prometería algo que el servidor rechaza
+        // (hijas colgando de un tipo nuevo, parent_id huérfano).
+        if (cur.isSection || cur.isPage || nxt.isSection || nxt.isPage) return;
+        pushHistory();
+
+        const oldV = (f.validations && typeof f.validations === 'object' && !Array.isArray(f.validations))
+            ? f.validations
+            : {};
+
+        // Opciones: se conservan entre tipos con opciones; un tipo recién
+        // «con opciones» nace con dos, como addFieldByType; matriz y el resto
+        // no tienen.
+        let options;
+        if (nxt.isMatrix) {
+            options = [];
+        } else if (nxt.hasOptions) {
+            options = (cur.hasOptions ? f.options : []).length
+                ? f.options
+                : [{ value: 'Opción 1' }, { value: 'Opción 2' }];
+        } else {
+            options = [];
+        }
+
+        // Validaciones: la escala/estrellas/NPS tienen TAMAÑO (max), no rango;
+        // NPS además fija 0–10. Del resto se conservan las claves que el tipo
+        // nuevo DECLARA en typeInfo (las que tienen control en el panel) si ya
+        // existían; lo que el tipo nuevo no maneja se descarta.
+        const nuevoV = {};
+        if (nxt.isNps) {
+            nuevoV.min = 0;
+            nuevoV.max = 10;
+        } else if (nxt.isScale) {
+            nuevoV.max = Math.max(2, Math.min(Number(oldV.max) || 5, 10));
+        }
+        if (Array.isArray(nxt.validations)) {
+            nxt.validations.forEach((key) => {
+                if (oldV[key] !== undefined && oldV[key] !== null) nuevoV[key] = oldV[key];
+            });
+        }
+
+        f.type = newType;
+        f.options = options;
+        f.validations = nuevoV;
+        f.placeholder = nxt.hasPlaceholder ? (f.placeholder || '') : '';
+        f.help_text = nxt.hasHelp ? (f.help_text || '') : '';
+
+        renderFieldCanvas();
+        if (selectedId === uid) fillSettings(fields.find((x) => x._uid === uid));
+        markDirty();
+        showToast('Tipo cambiado a ' + ((typeInfo[newType] || {}).label || newType), 'success');
+    }
+
+    /** F2 — El switch «Obligatoria» del pie escribe el flag en memoria. */
+    function setFieldRequired(uid, checked) {
+        const f = fields.find((x) => x._uid === uid);
+        if (!f) return;
+        f.is_required = Boolean(checked);
+        // Si el drawer está abierto sobre este mismo campo, su interruptor se
+        // sincroniza; si está cerrado no se toca: aplicaría el valor del panel
+        // como si fuera el del campo (applySettings() no corre aquí a propósito).
+        if (selectedId === uid && settingsModalOpen && el.fieldRequired) {
+            el.fieldRequired.checked = f.is_required;
+        }
+        refreshCard(f);
+        markDirty();
+    }
+
+    function buildFieldNode(f) {
+        const node = document.createElement('div');
+        node.className = 'app-canvas-field' + (f._uid === selectedId ? ' selected' : '') + (f.type === 'section' ? ' app-canvas-section' : '') + (f.type === 'page' ? ' app-canvas-page' : '');
+        node.dataset.uid = f._uid;
 
         node.innerHTML =
-            '<div class="app-field-drag"><i class="fa-solid fa-grip-vertical"></i></div>' +
-            '<div class="app-field-body">' + cardHeadHtml(f) + cardBodyHtml(f) + cardChipHtml(f) + cardHelpHtml(f) + '</div>' +
-            tools;
+            '<div class="app-field-main">' +
+                '<div class="app-field-drag"><i class="fa-solid fa-grip-vertical"></i></div>' +
+                '<div class="app-field-body">' + cardHeadHtml(f) + cardBodyHtml(f) + cardChipHtml(f) + cardHelpHtml(f) + '</div>' +
+            '</div>' +
+            cardFooterHtml(f);
 
         attachLabelEdit(node, f);
+
+        // F2: el pie de la tarjeta es funcional, así que sus propios controles
+        // se escuchan aquí (el delegado de tools queda para los botones).
+        const typeSel = node.querySelector('.app-type-select');
+        if (typeSel) {
+            typeSel.addEventListener('change', () => changeFieldType(f._uid, typeSel.value));
+        }
+        const req = node.querySelector('.app-required-toggle');
+        if (req) {
+            req.addEventListener('change', () => setFieldRequired(f._uid, req.checked));
+        }
 
         node.addEventListener('click', (e) => {
             if (e.target.closest('.app-field-drag')) return;
@@ -635,6 +742,8 @@
             if (e.target.closest('.app-add-control')) return;
             // F1: el «+» cuelga de la tarjeta, así que su clic bubblea hasta ella.
             if (e.target.closest('.app-canvas-add')) return;
+            // F2: el pie (tipo/obligatoria) no selecciona la tarjeta.
+            if (e.target.closest('.app-field-footer')) return;
             // Un clic que venga del área de preguntas (hijos) lo maneja la propia
             // pregunta; no debe rebotar seleccionando la sección (event bubbling).
             if (node.classList.contains('app-canvas-section') && e.target.closest('.app-section-children')) return;
@@ -736,42 +845,19 @@
         markDirty();
     }
 
-    /* ---------- F2: configuración por elemento (en modal) ----------
-       El engranaje de cada tarjeta abre la MISMA configuración del panel
-       derecho, pero dentro de un modal centrado: el panel es sticky y su
-       contenido largo obliga a desplazarse por la página.
+    /* ---------- F2: configuración por elemento (drawer) ----------
+       El engranaje de cada tarjeta abre el drawer de la derecha
+       (#fieldSettingsModal re-estilizado como panel lateral). Es el modal de
+       Bootstrap: mismo Esc, backdrop, foco y aria-modal.
 
-       Invariante: existe una sola instancia de #settingsForm. Se reubica
-       con appendChild/insertBefore entre el panel y el modal; duplicarla
-       obligaría a scopear las ~45 referencias cacheadas en `el`, a
-       duplicar listeners y a mantener dos fuentes de verdad para el
-       autosave. Además las pestañas de Bootstrap resuelven por selector
-       global (data-bs-target="#tabContent"), así que dos copias harían que
-       el pill del modal manejara el panel. Ver docs/design.md §4.2. */
+       Invariante: #settingsForm es la única fuente y vive SIEMPRE dentro del
+       drawer desde el render del servidor. No hay panel estático al que
+       devolverlo ni reubicaciones: todas las ~45 referencias cacheadas en
+       `el` apuntan a controles que están ahí desde que carga la página.
+       Ver docs/design.md §4.2. */
 
-    let settingsHome = null;      // { parent, next } en el panel, capturado al iniciar
     let settingsModalOpen = false;
-    let settingsOpener = null;    // { kind:'gear'|'panel', uid? , node? } para devolver el foco
-
-    /** Contenedor con scroll más cercano (el .modal-body dentro del modal). */
-    function scrollParentOf(node) {
-        let p = node.parentElement;
-        while (p) {
-            if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) return p;
-            p = p.parentElement;
-        }
-        return null;
-    }
-
-    /** Reubica #settingsForm conservando el scroll del contenedor y de la página. */
-    function moveSettingsTo(parent, before) {
-        const scroller = scrollParentOf(el.settingsForm);
-        const keep = scroller ? scroller.scrollTop : 0;
-        const winY = window.scrollY;
-        parent.insertBefore(el.settingsForm, before || null);
-        if (scroller) scroller.scrollTop = keep;
-        if (window.scrollY !== winY) window.scrollY = winY;
-    }
+    let settingsOpener = null;    // { uid } del engranaje que abrió, para devolver el foco
 
     /**
      * El botón que abrió el modal puede morir en el re-render que hace
@@ -780,24 +866,20 @@
      */
     function settingsOpenerEl() {
         if (!settingsOpener) return null;
-        if (settingsOpener.kind === 'gear') {
-            return el.canvas.querySelector(
-                '.app-canvas-field[data-uid="' + settingsOpener.uid + '"] .app-tool-btn[data-act="settings"]'
-            );
-        }
-        return settingsOpener.node && settingsOpener.node.isConnected ? settingsOpener.node : null;
+        return el.canvas.querySelector(
+            '.app-canvas-field[data-uid="' + settingsOpener.uid + '"] .app-tool-btn[data-act="settings"]'
+        );
     }
 
-    function openFieldSettings(uid, opener) {
+    function openFieldSettings(uid) {
         const f = fields.find((x) => x._uid === uid);
         if (!f || !el.fieldSettingsModal) return;
         selectFieldById(uid);
-        settingsOpener = opener === 'panel' ? { kind: 'panel', node: el.btnFieldSettingsOpen } : { kind: 'gear', uid: uid };
+        settingsOpener = { uid: uid };
         if (el.fieldSettingsTitle) {
             const info = typeInfo[f.type] || {};
             el.fieldSettingsTitle.textContent = f.label || info.label || 'Configuración';
         }
-        moveSettingsTo(el.fieldSettingsHost);
         // bootstrap.bundle se carga en el layout DESPUÉS de builder.js: el
         // acceso a bootstrap.Modal se resuelve de forma perezosa al hacer clic.
         if (!settingsModalOpen && window.bootstrap) {
@@ -814,23 +896,18 @@
 
     function bindFieldSettingsModal() {
         if (!el.fieldSettingsModal) return;
-        el.btnFieldSettingsBack.addEventListener('click', closeFieldSettings);
         el.fieldSettingsModal.addEventListener('shown.bs.modal', () => {
             if (el.fieldLabel) el.fieldLabel.focus();
         });
-        // Repatriar al panel cuando el modal se cierra (botón, Escape o backdrop).
+        // Al cerrar (botón, Escape o backdrop) se devuelve el foco al engranaje
+        // que abrió; el drawer no se rellena ni se vacía: #settingsForm es el
+        // mismo durante toda la sesión y show/hide no lo tocan.
         el.fieldSettingsModal.addEventListener('hidden.bs.modal', () => {
             settingsModalOpen = false;
-            moveSettingsTo(settingsHome.parent, settingsHome.next);
-            const back = settingsOpenerEl();
-            if (back) back.focus();
+            const gear = settingsOpenerEl();
+            if (gear) gear.focus();
             settingsOpener = null;
         });
-        if (el.btnFieldSettingsOpen) {
-            el.btnFieldSettingsOpen.addEventListener('click', () => {
-                if (selectedId) openFieldSettings(selectedId, 'panel');
-            });
-        }
     }
 
     /* ---------- Selection & settings ---------- */
@@ -845,9 +922,8 @@
 
     function fillSettings(f) {
         const info = typeInfo[f.type] || {};
-        el.settingsEmpty.classList.add('d-none');
-        el.settingsForm.classList.remove('d-none');
-        if (el.btnFieldSettingsOpen) el.btnFieldSettingsOpen.disabled = false;
+        // F2: el formulario vive siempre dentro del drawer; no hay estado vacío
+        // que alternar.
 
         el.fieldId.value = f.id ?? '';
         el.fieldTypeLabel.value = info.label || f.type;
@@ -1161,15 +1237,10 @@
     function clearSettings() {
         if (selectedId !== null) pushHistory({ mark: false });
         selectedId = null;
-        // Si el formulario estaba reubicado en el modal, primero vuelve al
-        // panel: si no, el modal se quedaría con una caja vacía.
-        if (settingsHome && el.settingsForm.parentNode !== settingsHome.parent) {
-            moveSettingsTo(settingsHome.parent, settingsHome.next);
-            closeFieldSettings();
-        }
-        el.settingsEmpty.classList.remove('d-none');
-        el.settingsForm.classList.add('d-none');
-        if (el.btnFieldSettingsOpen) el.btnFieldSettingsOpen.disabled = true;
+        // F2: sin panel lateral, cerrar la selección también cierra el drawer
+        // (Esc/backdrop/«Cerrar» lo hacen por su cuenta; esto cubre Atajos y
+        // borrados). El formulario no se toca: es el mismo durante la sesión.
+        closeFieldSettings();
         renderFieldCanvas();
     }
 
@@ -2036,7 +2107,7 @@
             if (btn.dataset.act === 'duplicate') {
                 duplicateField(uid);
             } else if (btn.dataset.act === 'settings') {
-                openFieldSettings(uid, btn);
+                openFieldSettings(uid);
             } else if (btn.dataset.act === 'delete') {
                 deleteField(uid);
             }
@@ -2383,9 +2454,8 @@
                 // El panel de la pregunta se rellena al abrirlo, y la visibilidad
                 // del input de respuesta correcta depende de si el modo quiz está
                 // activo. Si el owner lo acaba de encender en ESTE modal y el
-                // panel de la pregunta sigue abierto detrás (F2 deja el mismo
-                // #settingsForm reubicado), sin esto el input seguiría oculto y
-                // el usuario vería un ajuste que no aparece.
+                // drawer de la pregunta sigue abierto detrás, sin esto el input
+                // seguiría oculto y el usuario vería un ajuste que no aparece.
                 if (settingsModalOpen) {
                     const f = fields.find((x) => x._uid === selectedId);
                     if (f) fillSettings(f);
@@ -2403,9 +2473,8 @@
         }
 
         bindAddFieldModal();
-        // F2: el hogar del formulario de configuración se captura ANTES de
-        // cualquier reubicación, para poder devolverlo al panel intacto.
-        settingsHome = { parent: el.settingsForm.parentNode, next: el.settingsForm.nextSibling };
+        // F2: #settingsForm vive desde el arranque dentro del drawer; no hay
+        // reubicaciones que capturar.
         bindFieldSettingsModal();
         renderFieldCanvas();
         setStatus('Listo', 'text-muted');
@@ -2414,5 +2483,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-10-01c (F0.3+cabecera: el salto de página nace con «Página N», su icono va a la derecha como el de la sección, y el preview decide la cabecera igual que el fill)');
+    console.log('[builder] v2026-10-11a (F2: pie de tarjeta con tipo y obligatoria, panel de configuración como drawer a la derecha, se acabó la columna lateral)');
 })();

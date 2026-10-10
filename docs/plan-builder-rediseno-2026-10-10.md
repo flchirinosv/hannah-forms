@@ -101,7 +101,7 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
   verde (los selectores nuevos se declaran en su commit).
 **Checkpoint:** suite completa verde (1059 tests) en el commit de esta fase.
 
-### F2 · Tarjetas ricas + drawer de ajustes
+### F2 · Tarjetas ricas + drawer de ajustes — **hecho**
 `public/assets/js/builder.js` + `views/builder/index.php` + `app.css`.
 - Markup de tarjeta (`cardHeadHtml`, `cardBodyHtml`, `cardChipHtml`, `cardHelpHtml`):
   pie de tarjeta con selector de tipo, interruptor **Obligatoria**, opciones,
@@ -111,8 +111,13 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
   pantalla completa.
 - Comportamientos intactos: `Página N`, `pageHeaderHint`, PII avisar-no-marcar,
   autosave, repositions.
-**Checkpoint:** suite verde + `BuilderValidationsContractTest`, `BuilderHelpTooltipTest`,
-`BuilderEscapingTest` y `ControllerActionsTest`.
+- El cajón es el propio `#fieldSettingsModal` re-maquetado (`.modal-drawer`): el
+  `#settingsForm` vive **dentro** de la vista (`#fieldSettingsHost`) y el JS lo abre
+  con Bootstrap; `#settingsEmpty`, `#settingsPanel` y los botones de atrás/abrir se
+  borraron. `f.is_required` lo escribe `setFieldRequired()` (NO `applySettings`, que
+  es lo que vigila `BuilderValidationsContractTest`); `changeFieldType()` cambia el
+  tipo en la tarjeta con su contrato de opciones/validaciones.
+**Checkpoint:** suite completa verde (1248 tests) en el commit de esta fase.
 
 ### F3 · Tema como palette y preview embebido
 `views/builder/index.php` + `builder.js` + `app.css`.
@@ -141,6 +146,6 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 |---|---|---|
 | F0 | Punto de restauración (tag + dump + plan) | **hecho** |
 | F1 | Chrome estilo Google Forms (layout columna central) | **hecho** |
-| F2 | Tarjetas ricas + drawer de ajustes | pendiente |
+| F2 | Tarjetas ricas + drawer de ajustes | **hecho** |
 | F3 | Tema como palette y preview embebido | pendiente |
 | F4 | Pulido, docs y cierre | pendiente |

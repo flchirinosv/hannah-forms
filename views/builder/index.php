@@ -59,7 +59,7 @@ $fieldTypes = [
 
     <div class="row g-4 builder-layout">
         <!-- Lienzo -->
-        <div class="col-lg-9">
+        <div class="col-lg-9 mx-auto">
             <div class="card border-0 shadow-sm app-builder-canvas-wrap">
                 <div class="card-body p-4">
                     <div class="mb-3">
@@ -81,198 +81,181 @@ $fieldTypes = [
             </div>
         </div>
 
-        <!-- Panel de configuración -->
-        <div class="col-lg-3">
-            <div class="card border-0 shadow-sm app-builder-panel h-100">
-                <div class="card-body" id="settingsPanel">
-                    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-                        <h3 class="h6 fw-bold text-uppercase small text-muted mb-0"><i class="fa-solid fa-sliders me-1"></i>Configuración</h3>
-                        <button type="button" class="btn btn-sm app-tool-btn" id="btnFieldSettingsOpen" disabled
-                                title="Abrir la configuración en una ventana" aria-label="Abrir la configuración en una ventana">
-                            <i class="fa-solid fa-up-right-from-square"></i>
-                        </button>
-                    </div>
-                    <div class="text-center text-muted py-4" id="settingsEmpty">
-                        <i class="fa-solid fa-hand-pointer fa-2x mb-2 d-block"></i>
-                        <span class="small">Selecciona un campo del lienzo<br>para editar sus propiedades.</span>
-                    </div>
-                    <div id="settingsForm" class="d-none">
-                        <ul class="nav nav-pills nav-sm mb-3" role="tablist" aria-label="Opciones del campo">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabContent" type="button" role="tab" aria-selected="true">Contenido</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabLogic" type="button" role="tab" aria-selected="false">Lógica</button>
-                            </li>
-                        </ul>
-                        <div class="tab-content">
-                        <div class="tab-pane fade show active" id="tabContent" role="tabpanel">
-                        <input type="hidden" id="fieldId">
-                        <div class="mb-3">
-                            <label for="fieldTypeLabel" class="form-label small fw-semibold">Tipo</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="fieldTypeLabel" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label for="fieldLabel" class="form-label small fw-semibold">Pregunta / Etiqueta</label>
-                            <input type="text" class="form-control form-control-sm" id="fieldLabel" placeholder="Pregunta">
-                        </div>
-                        <div class="mb-3 d-none" id="fieldPlaceholderWrap">
-                            <label for="fieldPlaceholder" class="form-label small fw-semibold">Placeholder</label>
-                            <input type="text" class="form-control form-control-sm" id="fieldPlaceholder" placeholder="Texto de ejemplo">
-                        </div>
-                        <div class="mb-3 d-none" id="fieldHelpWrap">
-                            <label for="fieldHelp" class="form-label small fw-semibold">Texto de ayuda</label>
-                            <input type="text" class="form-control form-control-sm" id="fieldHelp" placeholder="Instrucción adicional">
-                        </div>
-                        <div class="mb-3 d-none" id="fieldOptionsWrap">
-                            <label class="form-label small fw-semibold">Opciones</label>
-                            <div id="optionsList" class="d-flex flex-column gap-2"></div>
-                            <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" id="btnAddOption"><i class="fa-solid fa-plus me-1"></i>Agregar opción</button>
-                        </div>
-                        <div class="mb-3 d-none" id="fieldMatrixWrap">
-                            <label for="fieldMatrixRows" class="form-label small fw-semibold">Filas (una por línea)</label>
-                            <textarea class="form-control form-control-sm mb-2" id="fieldMatrixRows" rows="3" placeholder="Enunciado por línea, ej.: Sabor&#10;Presentación"></textarea>
-                            <label for="fieldMatrixCols" class="form-label small fw-semibold">Columnas / escala (una por línea)</label>
-                            <textarea class="form-control form-control-sm" id="fieldMatrixCols" rows="2" placeholder="Ej.: Muy en desacuerdo&#10;En desacuerdo&#10;De acuerdo&#10;Muy de acuerdo"></textarea>
-                        </div>
-                        <div class="mb-3 d-none" id="fieldRankingHintWrap">
-                            <p class="text-muted small mb-0"><i class="fa-solid fa-list-ol me-1"></i>El participante ordenará las opciones de <strong>1 (más importante)</strong> a <strong>N</strong>. Define las opciones en la lista de arriba.</p>
-                        </div>
-                        <div class="mb-3 d-none" id="fieldScaleWrap">
-                            <label for="fieldScaleMax" class="form-label small fw-semibold">Escala máxima</label>
-                            <input type="number" class="form-control form-control-sm" id="fieldScaleMax" min="2" max="10" value="5">
-                        </div>
-                        <div class="mb-3 d-none" id="fieldFileWrap">
-                            <label for="valFileAccept" class="form-label small fw-semibold">Extensiones permitidas</label>
-                            <input type="text" class="form-control form-control-sm mb-2" id="valFileAccept" placeholder="Ej.: pdf, docx, png">
-                            <p class="form-text">Vacío = todos los formatos permitidos por el servidor. No se pueden agregar ejecutables ni HTML/SVG.</p>
-                            <label for="valFileMaxSize" class="form-label small fw-semibold">Tamaño máximo por archivo (MB)</label>
-                            <input type="number" class="form-control form-control-sm mb-2" id="valFileMaxSize" min="1" max="100" placeholder="10">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="valFileMultiple">
-                                <label class="form-check-label small" for="valFileMultiple">Permitir varios archivos</label>
-                            </div>
-                            <p class="form-text mb-0" id="valFileLimitsHint"></p>
-                        </div>
-                        <div class="mb-3 d-none" id="fieldValidationWrap">
-                            <label class="form-label small fw-semibold">Validaciones</label>
-                            <p class="form-text">Lo que el campo acepte. Lo que quede fuera se rechaza al enviar, con el mensaje que ponga quien responde.</p>
-                            <div class="row g-2">
-                                <div class="col-6 d-none" id="valMinWrap">
-                                    <label class="form-label small mb-1" for="valMin">Mínimo</label>
-                                    <input type="number" class="form-control form-control-sm" id="valMin" placeholder="Ej: 1">
-                                </div>
-                                <div class="col-6 d-none" id="valMaxWrap">
-                                    <label class="form-label small mb-1" for="valMax">Máximo</label>
-                                    <input type="number" class="form-control form-control-sm" id="valMax" placeholder="Ej: 5">
-                                </div>
-                                <div class="col-6 d-none" id="valMinLenWrap">
-                                    <label class="form-label small mb-1" for="valMinLen">Caracteres mínimos</label>
-                                    <input type="number" class="form-control form-control-sm" id="valMinLen" placeholder="Ej: 10">
-                                </div>
-                                <div class="col-6 d-none" id="valMaxLenWrap">
-                                    <label class="form-label small mb-1" for="valMaxLen">Caracteres máximos</label>
-                                    <input type="number" class="form-control form-control-sm" id="valMaxLen" placeholder="Ej: 280">
-                                </div>
-                            </div>
-                            <p class="form-text mb-0 d-none" id="valScaleHint"></p>
-                        </div>
-                        <!-- P8: quiz (respuesta correcta) y barajado de opciones -->
-                        <div class="mb-3 d-none" id="fieldQuizWrap">
-                            <label for="quizAnswer" class="form-label small fw-semibold">Respuesta correcta</label>
-                            <input type="text" class="form-control form-control-sm" id="quizAnswer" placeholder="Valor exacto esperado">
-                            <div class="text-muted mt-1" style="font-size:.72rem">Pregunta de quiz: suma un punto si coincide con la respuesta. En opciones múltiples separa las correctas con comas.</div>
-                        </div>
-                        <div class="form-check form-switch mb-3 d-none" id="fieldShuffleWrap">
-                            <input class="form-check-input" type="checkbox" id="fieldShuffleOps">
-                            <label class="form-check-label small" for="fieldShuffleOps">Barajar opciones (cada participante las ve en distinto orden)</label>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="fieldRequired">
-                            <label class="form-check-label small" for="fieldRequired">Campo obligatorio</label>
-                        </div>
-                        <div class="form-check form-switch mb-3 d-none" id="fieldPageHeaderWrap">
-                            <input class="form-check-input" type="checkbox" id="fieldPageHeader">
-                            <label class="form-check-label small" for="fieldPageHeader">Mostrar la cabecera de esta p&aacute;gina</label>
-                            <div class="text-muted mt-1" style="font-size:.72rem">Es el bloque con icono, t&iacute;tulo y descripci&oacute;n que abre el paso. Si lo desactivas, el paso se sigue existiendo y sigue contando en la barra de progreso y en el pie: lo que no se pinta es esa cabecera.</div>
-                            <div class="text-danger mt-1 d-none" id="pageHeaderHint" role="status" style="font-size:.72rem">Este paso todav&iacute;a no tiene t&iacute;tulo ni descripci&oacute;n, as&iacute; que la cabecera no tendr&iacute;a nada que mostrar y saldr&aacute; vac&iacute;a. El interruptor decide <em>si</em> se pinta, no <em>qu&eacute;</em> dice: escribe el t&iacute;tulo de la p&aacute;gina o a&ntilde;ade una descripci&oacute;n arriba para que se vea.</div>
-                        </div>
-                        <div class="form-check form-switch mb-3" id="fieldPiiWrap">
-                            <input class="form-check-input" type="checkbox" id="fieldPii">
-                            <label class="form-check-label small" for="fieldPii">Contiene datos personales</label>
-                            <div class="text-muted mt-1" style="font-size:.72rem">Las respuestas de este campo saldr&aacute;n enmascaradas (IP, navegador y valor) para quien no tenga el permiso <code>responses.pii</code>. M&aacute;rcalo si pide un nombre, un tel&eacute;fono, un correo, un documento o una direcci&oacute;n.</div>
-                            <div class="alert alert-warning py-2 px-2 mt-2 mb-0 d-none" id="piiSuggestWrap" role="status" style="font-size:.72rem">
-                                <div id="piiSuggestText"></div>
-                                <button type="button" class="btn btn-sm btn-outline-warning mt-1" id="btnPiiSuggest"><i class="fa-solid fa-shield-halved me-1"></i>S&iacute;, es dato personal</button>
-                                <button type="button" class="btn btn-sm btn-link text-muted mt-1" id="btnPiiDismiss">No es</button>
-                            </div>
-                        </div>
-                        </div>
-                        <div class="tab-pane fade" id="tabLogic" role="tabpanel">
-                        <div class="app-logic-wrap mb-3" id="logicWrap">
-                            <div class="d-flex align-items-center gap-1 mb-1">
-                                <i class="fa-solid fa-code-branch text-primary"></i>
-                                <label class="form-label small fw-semibold mb-0">Mostrar condicionalmente</label>
-                            </div>
-                            <p class="text-muted mb-2" id="logicHowThis" style="font-size:.72rem">Este campo aparecerá solo si se cumplen las condiciones de abajo (según las respuestas de otra pregunta).</p>
-                            <div class="alert alert-info py-2 px-3 small mb-2 d-none" id="logicInheritedNote" role="status"></div>
-                            <div class="text-muted small mb-2 d-none" id="logicEmptyHint"></div>
-                            <div id="logicRulesList" class="d-flex flex-column gap-1 mb-2"></div>
-                            <div class="d-flex flex-column gap-2">
-                                <select class="form-select form-select-sm" id="logicField" aria-label="Campo consultado"></select>
-                                <div class="d-flex gap-2">
-                                    <select class="form-select form-select-sm flex-shrink-0" id="logicOp" aria-label="Operador" style="max-width:150px"></select>
-                                    <input type="text" class="form-control form-control-sm" id="logicValue" list="logicDatalist" placeholder="Valor (si aplica)">
-                                    <datalist id="logicDatalist"></datalist>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLogic"><i class="fa-solid fa-plus me-1"></i>Agregar condición</button>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mt-2">
-                                <span class="small text-muted">Deben cumplirse</span>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAll" value="all" checked>
-                                    <label class="form-check-label small" for="logicOpAll">Todas (y)</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAny" value="any">
-                                    <label class="form-check-label small" for="logicOpAny">Cualquiera (o)</label>
-                                </div>
-                            </div>
-                            <div class="alert alert-warning py-2 px-3 small mb-0 mt-2 d-none" id="logicForwardWarn" role="alert">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i>La condición hace referencia a una pregunta que aparece más abajo. Puede que aún no esté respondida cuando se evalúe.
-                            </div>
-                        </div>
-                        </div>
-                        </div>
-                        <div class="d-flex flex-column gap-2">
-                            <p class="text-muted small mb-0"><i class="fa-solid fa-circle-info me-1"></i>Los cambios se aplican y guardan automáticamente mientras escribes.</p>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-danger btn-sm flex-grow-1" id="btnDeleteField"><i class="fa-solid fa-trash me-1"></i>Eliminar campo</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
-    </div>
 </div>
 
-<!-- F2: el engranaje de cada tarjeta reubica la MISMA instancia de #settingsForm
-     dentro de este modal (nunca se duplica: ver docs/design.md §4.2). -->
+<!-- F2: el engranaje de cada tarjeta abre este drawer por la derecha.
+     Sigue siendo el modal de Bootstrap (mismo Esc, backdrop, focus y
+     aria-modal), pero re-estilizado como panel lateral; no hay columna de
+     configuración: #settingsForm vive aquí desde el inicio, con sus mismos
+     ids y listeners (ver docs/design.md §4.2). -->
 <div class="modal fade" id="fieldSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="fieldSettingsTitle">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable modal-drawer">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white flex-grow-1 min-w-0">
-                    <button type="button" class="btn btn-link text-white text-decoration-none app-modal-back p-0" id="btnFieldSettingsBack"
-                            title="Volver al panel" aria-label="Volver al panel">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </button>
+                    <span class="app-logo-sm"><i class="fa-solid fa-sliders"></i></span>
                     <span class="fw-semibold text-truncate" id="fieldSettingsTitle">Configuración</span>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body p-4" id="fieldSettingsHost"></div>
+            <div class="modal-body p-4" id="fieldSettingsHost">
+                <div id="settingsForm">
+                    <ul class="nav nav-pills nav-sm mb-3" role="tablist" aria-label="Opciones del campo">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabContent" type="button" role="tab" aria-selected="true">Contenido</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabLogic" type="button" role="tab" aria-selected="false">Lógica</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                    <div class="tab-pane fade show active" id="tabContent" role="tabpanel">
+                    <input type="hidden" id="fieldId">
+                    <div class="mb-3">
+                        <label for="fieldTypeLabel" class="form-label small fw-semibold">Tipo</label>
+                        <input type="text" class="form-control form-control-sm bg-light" id="fieldTypeLabel" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fieldLabel" class="form-label small fw-semibold">Pregunta / Etiqueta</label>
+                        <input type="text" class="form-control form-control-sm" id="fieldLabel" placeholder="Pregunta">
+                    </div>
+                    <div class="mb-3 d-none" id="fieldPlaceholderWrap">
+                        <label for="fieldPlaceholder" class="form-label small fw-semibold">Placeholder</label>
+                        <input type="text" class="form-control form-control-sm" id="fieldPlaceholder" placeholder="Texto de ejemplo">
+                    </div>
+                    <div class="mb-3 d-none" id="fieldHelpWrap">
+                        <label for="fieldHelp" class="form-label small fw-semibold">Texto de ayuda</label>
+                        <input type="text" class="form-control form-control-sm" id="fieldHelp" placeholder="Instrucción adicional">
+                    </div>
+                    <div class="mb-3 d-none" id="fieldOptionsWrap">
+                        <label class="form-label small fw-semibold">Opciones</label>
+                        <div id="optionsList" class="d-flex flex-column gap-2"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" id="btnAddOption"><i class="fa-solid fa-plus me-1"></i>Agregar opción</button>
+                    </div>
+                    <div class="mb-3 d-none" id="fieldMatrixWrap">
+                        <label for="fieldMatrixRows" class="form-label small fw-semibold">Filas (una por línea)</label>
+                        <textarea class="form-control form-control-sm mb-2" id="fieldMatrixRows" rows="3" placeholder="Enunciado por línea, ej.: Sabor&#10;Presentación"></textarea>
+                        <label for="fieldMatrixCols" class="form-label small fw-semibold">Columnas / escala (una por línea)</label>
+                        <textarea class="form-control form-control-sm" id="fieldMatrixCols" rows="2" placeholder="Ej.: Muy en desacuerdo&#10;En desacuerdo&#10;De acuerdo&#10;Muy de acuerdo"></textarea>
+                    </div>
+                    <div class="mb-3 d-none" id="fieldRankingHintWrap">
+                        <p class="text-muted small mb-0"><i class="fa-solid fa-list-ol me-1"></i>El participante ordenará las opciones de <strong>1 (más importante)</strong> a <strong>N</strong>. Define las opciones en la lista de arriba.</p>
+                    </div>
+                    <div class="mb-3 d-none" id="fieldScaleWrap">
+                        <label for="fieldScaleMax" class="form-label small fw-semibold">Escala máxima</label>
+                        <input type="number" class="form-control form-control-sm" id="fieldScaleMax" min="2" max="10" value="5">
+                    </div>
+                    <div class="mb-3 d-none" id="fieldFileWrap">
+                        <label for="valFileAccept" class="form-label small fw-semibold">Extensiones permitidas</label>
+                        <input type="text" class="form-control form-control-sm mb-2" id="valFileAccept" placeholder="Ej.: pdf, docx, png">
+                        <p class="form-text">Vacío = todos los formatos permitidos por el servidor. No se pueden agregar ejecutables ni HTML/SVG.</p>
+                        <label for="valFileMaxSize" class="form-label small fw-semibold">Tamaño máximo por archivo (MB)</label>
+                        <input type="number" class="form-control form-control-sm mb-2" id="valFileMaxSize" min="1" max="100" placeholder="10">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="valFileMultiple">
+                            <label class="form-check-label small" for="valFileMultiple">Permitir varios archivos</label>
+                        </div>
+                        <p class="form-text mb-0" id="valFileLimitsHint"></p>
+                    </div>
+                    <div class="mb-3 d-none" id="fieldValidationWrap">
+                        <label class="form-label small fw-semibold">Validaciones</label>
+                        <p class="form-text">Lo que el campo acepte. Lo que quede fuera se rechaza al enviar, con el mensaje que ponga quien responde.</p>
+                        <div class="row g-2">
+                            <div class="col-6 d-none" id="valMinWrap">
+                                <label class="form-label small mb-1" for="valMin">Mínimo</label>
+                                <input type="number" class="form-control form-control-sm" id="valMin" placeholder="Ej: 1">
+                            </div>
+                            <div class="col-6 d-none" id="valMaxWrap">
+                                <label class="form-label small mb-1" for="valMax">Máximo</label>
+                                <input type="number" class="form-control form-control-sm" id="valMax" placeholder="Ej: 5">
+                            </div>
+                            <div class="col-6 d-none" id="valMinLenWrap">
+                                <label class="form-label small mb-1" for="valMinLen">Caracteres mínimos</label>
+                                <input type="number" class="form-control form-control-sm" id="valMinLen" placeholder="Ej: 10">
+                            </div>
+                            <div class="col-6 d-none" id="valMaxLenWrap">
+                                <label class="form-label small mb-1" for="valMaxLen">Caracteres máximos</label>
+                                <input type="number" class="form-control form-control-sm" id="valMaxLen" placeholder="Ej: 280">
+                            </div>
+                        </div>
+                        <p class="form-text mb-0 d-none" id="valScaleHint"></p>
+                    </div>
+                    <!-- P8: quiz (respuesta correcta) y barajado de opciones -->
+                    <div class="mb-3 d-none" id="fieldQuizWrap">
+                        <label for="quizAnswer" class="form-label small fw-semibold">Respuesta correcta</label>
+                        <input type="text" class="form-control form-control-sm" id="quizAnswer" placeholder="Valor exacto esperado">
+                        <div class="text-muted mt-1" style="font-size:.72rem">Pregunta de quiz: suma un punto si coincide con la respuesta. En opciones múltiples separa las correctas con comas.</div>
+                    </div>
+                    <div class="form-check form-switch mb-3 d-none" id="fieldShuffleWrap">
+                        <input class="form-check-input" type="checkbox" id="fieldShuffleOps">
+                        <label class="form-check-label small" for="fieldShuffleOps">Barajar opciones (cada participante las ve en distinto orden)</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="fieldRequired">
+                        <label class="form-check-label small" for="fieldRequired">Campo obligatorio</label>
+                    </div>
+                    <div class="form-check form-switch mb-3 d-none" id="fieldPageHeaderWrap">
+                        <input class="form-check-input" type="checkbox" id="fieldPageHeader">
+                        <label class="form-check-label small" for="fieldPageHeader">Mostrar la cabecera de esta p&aacute;gina</label>
+                        <div class="text-muted mt-1" style="font-size:.72rem">Es el bloque con icono, t&iacute;tulo y descripci&oacute;n que abre el paso. Si lo desactivas, el paso se sigue existiendo y sigue contando en la barra de progreso y en el pie: lo que no se pinta es esa cabecera.</div>
+                        <div class="text-danger mt-1 d-none" id="pageHeaderHint" role="status" style="font-size:.72rem">Este paso todav&iacute;a no tiene t&iacute;tulo ni descripci&oacute;n, as&iacute; que la cabecera no tendr&iacute;a nada que mostrar y saldr&aacute; vac&iacute;a. El interruptor decide <em>si</em> se pinta, no <em>qu&eacute;</em> dice: escribe el t&iacute;tulo de la p&aacute;gina o a&ntilde;ade una descripci&oacute;n arriba para que se vea.</div>
+                    </div>
+                    <div class="form-check form-switch mb-3" id="fieldPiiWrap">
+                        <input class="form-check-input" type="checkbox" id="fieldPii">
+                        <label class="form-check-label small" for="fieldPii">Contiene datos personales</label>
+                        <div class="text-muted mt-1" style="font-size:.72rem">Las respuestas de este campo saldr&aacute;n enmascaradas (IP, navegador y valor) para quien no tenga el permiso <code>responses.pii</code>. M&aacute;rcalo si pide un nombre, un tel&eacute;fono, un correo, un documento o una direcci&oacute;n.</div>
+                        <div class="alert alert-warning py-2 px-2 mt-2 mb-0 d-none" id="piiSuggestWrap" role="status" style="font-size:.72rem">
+                            <div id="piiSuggestText"></div>
+                            <button type="button" class="btn btn-sm btn-outline-warning mt-1" id="btnPiiSuggest"><i class="fa-solid fa-shield-halved me-1"></i>S&iacute;, es dato personal</button>
+                            <button type="button" class="btn btn-sm btn-link text-muted mt-1" id="btnPiiDismiss">No es</button>
+                        </div>
+                    </div>
+                    </div>
+                    <div class="tab-pane fade" id="tabLogic" role="tabpanel">
+                    <div class="app-logic-wrap mb-3" id="logicWrap">
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                            <i class="fa-solid fa-code-branch text-primary"></i>
+                            <label class="form-label small fw-semibold mb-0">Mostrar condicionalmente</label>
+                        </div>
+                        <p class="text-muted mb-2" id="logicHowThis" style="font-size:.72rem">Este campo aparecerá solo si se cumplen las condiciones de abajo (según las respuestas de otra pregunta).</p>
+                        <div class="alert alert-info py-2 px-3 small mb-2 d-none" id="logicInheritedNote" role="status"></div>
+                        <div class="text-muted small mb-2 d-none" id="logicEmptyHint"></div>
+                        <div id="logicRulesList" class="d-flex flex-column gap-1 mb-2"></div>
+                        <div class="d-flex flex-column gap-2">
+                            <select class="form-select form-select-sm" id="logicField" aria-label="Campo consultado"></select>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm flex-shrink-0" id="logicOp" aria-label="Operador" style="max-width:150px"></select>
+                                <input type="text" class="form-control form-control-sm" id="logicValue" list="logicDatalist" placeholder="Valor (si aplica)">
+                                <datalist id="logicDatalist"></datalist>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLogic"><i class="fa-solid fa-plus me-1"></i>Agregar condición</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <span class="small text-muted">Deben cumplirse</span>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAll" value="all" checked>
+                                <label class="form-check-label small" for="logicOpAll">Todas (y)</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAny" value="any">
+                                <label class="form-check-label small" for="logicOpAny">Cualquiera (o)</label>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning py-2 px-3 small mb-0 mt-2 d-none" id="logicForwardWarn" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>La condición hace referencia a una pregunta que aparece más abajo. Puede que aún no esté respondida cuando se evalúe.
+                        </div>
+                    </div>
+                    </div>
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        <p class="text-muted small mb-0"><i class="fa-solid fa-circle-info me-1"></i>Los cambios se aplican y guardan automáticamente mientras escribes.</p>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm flex-grow-1" id="btnDeleteField"><i class="fa-solid fa-trash me-1"></i>Eliminar campo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

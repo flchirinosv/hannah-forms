@@ -40,10 +40,6 @@
     --vf-focus-ring: 0 0 0 3px rgba(99, 102, 241, .18);
     --vf-tile-min-h: 72px;
     --vf-tile-icon: 30px;
-    /* Ancho reservado en la cabecera de la tarjeta para las herramientas
-       (duplicar + configurar + eliminar). Derivado del token del botón para
-       que no se vuelva a desincronizar al cambiar --vf-icon-btn. */
-    --vf-tools-w: calc(var(--vf-icon-btn) * 3 + .5rem);
     /* Claves de permiso y cualquier valor que se lea como código (matriz de
        roles, webhook, id de submission). */
     --vf-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -376,7 +372,6 @@ body {
 
 /* ---------- Builder ---------- */
 .builder-layout { align-items: stretch; }
-.app-builder-panel { border-radius: var(--vf-radius-lg); position: sticky; top: 86px; }
 .app-palette-item {
     display: flex; align-items: center; gap: .8rem;
     background: #f8fafc;
@@ -448,7 +443,7 @@ body {
 .app-title-input:focus { box-shadow: none; border-bottom-color: var(--vf-primary); }
 
 .app-canvas-field {
-    display: flex; gap: .8rem;
+    display: flex; flex-direction: column; gap: .65rem;
     background: #fff;
     border: 2px solid var(--vf-border);
     border-radius: var(--vf-radius);
@@ -459,20 +454,41 @@ body {
 }
 .app-canvas-field:hover { border-color: #c7c9f5; box-shadow: var(--vf-shadow); }
 .app-canvas-field.selected { border-color: var(--vf-primary); box-shadow: var(--vf-focus-ring); }
+/* F2: cabecera + cuerpo de la tarjeta (y el pie empujado a su propia línea). */
+.app-field-main {
+    display: flex; gap: .8rem; align-items: flex-start;
+    min-width: 0;
+    flex: 1 1 auto;
+}
 .app-field-drag { color: #cbd5e1; cursor: grab; padding-top: .2rem; }
+.app-field-body { flex: 1 1 auto; min-width: 0; }
 .app-field-label { color: #334155; }
 
-.app-field-tools {
-    position: absolute; top: .55rem; right: .6rem;
-    display: flex; gap: .25rem;
-    opacity: 0;
-    transition: opacity .15s ease;
+/* F2 — Pie de tarjeta: tipo, obligatoria y herramientas en línea. El pie es
+   funcional: un clic en cualquiera de sus controles no selecciona la tarjeta
+   (lo filtra builder.js) y sin hover el tipo deja de jugar al escondite. */
+.app-field-footer {
+    display: flex; align-items: center; gap: .6rem;
+    flex-wrap: wrap;
+    padding-top: .6rem;
+    border-top: 1px solid var(--vf-border);
+    margin-top: .15rem;
 }
-.app-canvas-field:hover .app-field-tools,
-.app-canvas-field.selected .app-field-tools { opacity: 1; }
-/* Reserva el hueco de las herramientas: con `pe-5` (3rem) el engranaje de F2
-   se montaba encima de la etiqueta. */
-.app-field-head { padding-right: var(--vf-tools-w); }
+.app-type-select { width: auto; min-width: 9.5rem; max-width: 100%; }
+.app-type-select:disabled { opacity: .75; background-color: #f8fafc; }
+.app-required-toggle {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .72rem; font-weight: 600; color: #475569;
+    margin-bottom: 0; cursor: pointer;
+    user-select: none;
+}
+.app-required-toggle .form-check-input { cursor: pointer; }
+.app-required-toggle input:checked + span { color: var(--vf-primary); }
+.app-field-footer .app-field-tools {
+    margin-left: auto;
+    display: flex; gap: .25rem;
+    opacity: 1;
+}
 .app-tool-btn {
     width: var(--vf-icon-btn);
     height: var(--vf-icon-btn);
@@ -490,18 +506,38 @@ body {
 .app-tool-btn:disabled { opacity: .45; cursor: not-allowed; }
 .app-tool-btn:disabled:hover { border-color: var(--vf-border); color: #475569; background: #fff; }
 
-/* F2 — «Volver al panel» en el modal de configuración */
-.app-modal-back {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: var(--vf-icon-btn); height: var(--vf-icon-btn);
-    flex: 0 0 auto;
-    border-radius: 8px;
-    opacity: .9;
-    font-size: .8rem;
-    line-height: 1;
+/* F2 — Drawer de configuración por elemento. #fieldSettingsModal sigue siendo
+   un `.modal` de Bootstrap (mismo Esc, backdrop, foco y aria-modal); el CSS lo
+   convierte en un panel lateral anclado a la derecha. La cascada importa:
+   `.modal.show .modal-dialog` (0,3,0) gana a `.modal-drawer .modal-dialog`
+   (0,2,0), así que los transform del fade/show se declaran explícitamente
+   para que el `translateX` haga su función en los DOS estados. */
+.modal-drawer .modal-dialog {
+    position: absolute;
+    margin: 0 0 0 auto;
+    top: 0; right: 0;
+    width: 480px;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
 }
-.app-modal-back:hover, .app-modal-back:focus-visible { opacity: 1; background: rgba(255,255,255,.18); color: #fff; }
-.app-modal-back:focus-visible { box-shadow: var(--vf-focus-ring); }
+.modal-drawer .modal-content {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    border-radius: var(--vf-radius-lg) 0 0 var(--vf-radius-lg);
+    display: flex;
+    flex-direction: column;
+}
+.modal-drawer .modal-body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+.modal.fade .modal-drawer .modal-dialog { transform: translateX(100%); transition: transform .22s ease; }
+.modal.show .modal-drawer .modal-dialog { transform: none; }
+@media (max-width: 575.98px) {
+    .modal-drawer .modal-dialog { width: 100vw; max-width: 100vw; }
+}
 
 .app-range-preview .app-range-val,
 .app-range-val {
@@ -913,7 +949,6 @@ body {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 992px) {
-    .app-builder-panel { position: static; }
     .app-navbar .app-btn-create { margin-top: .5rem; }
 }
 
