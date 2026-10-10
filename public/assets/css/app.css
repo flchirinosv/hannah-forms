@@ -2014,3 +2014,208 @@ body {
 }
 .vf-tabs details[open] > summary::before { content: '\f054'; }
 .vf-tabs details > summary:focus-visible { outline: 2px solid var(--vf-primary, #0d6efd); outline-offset: 2px; }
+
+/* --- Tarjeta de Acceso (rediseño 2026-10-08) -----------------------------
+ * Cabecera con tile de icono y chip de modo, callout de explicación, lista de
+ * la allowlist con avatar y filas del listado de participantes. Todo se apoya
+ * en los tokens `--vf-*`: ninguna clase de aquí fija un color suelto salvo los
+ * tintes de estado (que son estados, no marca). El contrato de clases lo fija
+ * `AccessCardDesignTest`: una clase emitida por los partials que no tenga
+ * selector aquí deja la fila sin estilo y no da ningún error. */
+
+.vf-access-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .85rem;
+}
+.vf-access-id { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.vf-access-icon {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 11px;
+    background: var(--vf-primary-light);
+    color: var(--vf-primary);
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+.vf-access-title { margin: 0; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+.vf-access-sub { font-size: .74rem; color: var(--vf-text-muted); }
+
+.vf-mode-chip {
+    display: inline-flex; align-items: center; gap: .4em;
+    padding: .28em .7em;
+    border: 1px solid var(--vf-border);
+    border-radius: 999px;
+    font-size: .72rem; font-weight: 600;
+    white-space: nowrap;
+}
+.vf-mode-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.vf-mode-chip-public    { background: #f1f5f9; color: #475569; }
+.vf-mode-chip-email     { background: var(--vf-primary-light); color: var(--vf-primary-dark); border-color: #c7d2fe; }
+.vf-mode-chip-allowlist { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.vf-mode-chip-roster    { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+
+.vf-callout {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .7rem .85rem;
+    border: 1px solid var(--vf-border);
+    border-radius: 12px;
+    background: var(--vf-bg);
+    color: var(--vf-text-muted);
+    font-size: .82rem;
+    line-height: 1.45;
+}
+.vf-callout > i { color: var(--vf-primary); margin-top: .1rem; flex-shrink: 0; }
+.vf-callout strong { color: var(--vf-text); }
+.vf-callout-accent { background: var(--vf-primary-light); border-color: #c7d2fe; }
+
+.vf-access-list { list-style: none; margin: 0; padding: 0; }
+.vf-access-row {
+    display: flex; align-items: center; gap: .7rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid var(--vf-border);
+}
+.vf-access-row:last-child { border-bottom: 0; }
+.vf-access-avatar,
+.vf-roster-avatar {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--vf-primary-light);
+    color: var(--vf-primary-dark);
+    font-size: .8rem; font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+.vf-access-mail { flex: 1 1 auto; min-width: 0; }
+.vf-access-mail-name { font-size: .85rem; color: var(--vf-text); overflow-wrap: anywhere; }
+.vf-access-row-actions { display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0; }
+.vf-access-empty {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .7rem .85rem;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+.vf-access-empty > i { margin-top: .1rem; }
+.vf-access-linkout {
+    padding: .7rem .85rem;
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    background: var(--vf-primary-light);
+}
+
+/* Pestañas segmentadas del listado de participantes */
+.vf-tabs-nav {
+    display: inline-flex; gap: .25rem;
+    padding: .25rem;
+    margin-bottom: .85rem;
+    border: 1px solid var(--vf-border);
+    border-radius: 12px;
+    background: var(--vf-bg);
+}
+.vf-tab {
+    appearance: none; border: 0; margin: 0;
+    padding: .35rem .8rem;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--vf-text-muted);
+    font-size: .82rem; font-weight: 600; line-height: 1.3;
+    cursor: pointer;
+}
+.vf-tab:hover { color: var(--vf-text); background: rgba(255,255,255,.7); }
+.vf-tab.active { background: var(--vf-surface); color: var(--vf-primary); box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+.vf-tab:focus-visible { outline: 2px solid var(--vf-primary); outline-offset: 2px; }
+
+/* Números del formulario entero */
+.vf-stat-strip { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .85rem; }
+.vf-stat {
+    flex: 1 1 6.5rem;
+    min-width: 6.5rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--vf-border);
+    border-radius: 12px;
+    background: var(--vf-surface);
+}
+.vf-stat-value {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: 1.15rem; font-weight: 700; line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--vf-text);
+}
+.vf-stat-label { margin-top: .15rem; font-size: .72rem; color: var(--vf-text-muted); }
+.vf-stat-success .vf-stat-value { color: #15803d; }
+.vf-stat-warning .vf-stat-value { color: #b45309; }
+.vf-stat-info .vf-stat-value { color: #0369a1; }
+.vf-stat-muted .vf-stat-value { color: #94a3b8; }
+
+/* Filas del listado de participantes */
+.vf-roster-row {
+    display: flex; align-items: flex-start; gap: .7rem;
+    padding: .7rem 0;
+    border-bottom: 1px solid var(--vf-border);
+}
+.vf-roster-row:last-child { border-bottom: 0; }
+.vf-roster-main { flex: 1 1 auto; min-width: 0; }
+.vf-roster-name { font-size: .88rem; font-weight: 600; color: var(--vf-text); overflow-wrap: anywhere; }
+.vf-roster-sub { font-weight: 400; color: var(--vf-text-muted); }
+.vf-roster-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .55rem;
+    margin-top: .15rem;
+    font-size: .76rem; color: var(--vf-text-muted);
+}
+.vf-roster-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.vf-roster-tag {
+    display: inline-flex; align-items: center;
+    padding: .15em .55em;
+    border: 1px solid var(--vf-border);
+    border-radius: 999px;
+    background: var(--vf-bg);
+    color: var(--vf-text-muted);
+    font-size: .72rem;
+}
+.vf-roster-state { flex-shrink: 0; text-align: right; }
+.vf-roster-state-label {
+    display: inline-flex; align-items: center; gap: .3em;
+    padding: .22em .65em;
+    border-radius: 999px;
+    font-size: .72rem; font-weight: 600;
+}
+.vf-roster-state-ok { background: #dcfce7; color: #166534; }
+.vf-roster-state-pending { background: #f1f5f9; color: #64748b; }
+.vf-roster-date { margin-top: .2rem; font-size: .7rem; color: var(--vf-text-muted); }
+.vf-roster-actions { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.vf-roster-toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    margin-bottom: .5rem;
+}
+.vf-details-trigger {
+    padding: .35rem .7rem;
+    border: 1px solid var(--vf-border);
+    border-radius: 10px;
+    background: var(--vf-surface);
+    color: var(--vf-text-muted);
+    font-size: .8rem; font-weight: 600;
+}
+.vf-details-trigger:hover { border-color: var(--vf-primary); color: var(--vf-primary); }
+.vf-roster-empty {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .7rem .85rem;
+    border: 1px solid var(--vf-border);
+    border-radius: 12px;
+    background: var(--vf-bg);
+    color: var(--vf-text-muted);
+    font-size: .82rem;
+    line-height: 1.45;
+}
+.vf-roster-empty > i { color: var(--vf-primary); margin-top: .1rem; }
+
+@media (max-width: 575.98px) {
+    .vf-stat { flex-basis: calc(50% - .2rem); }
+    .vf-access-head { align-items: flex-start; }
+}

@@ -29,6 +29,14 @@ use App\Core\View;
  * correos. Por eso `roster` tiene su propia rama y su propio partial (fase 5),
  * y el `else` sigue siendo exactamente la allowlist de F4.
  *
+ * ## Cabecera, chip y callout (rediseño 2026-10-08)
+ *
+ * El aspecto se decide con clases `vf-access-*` (ver `app.css`), no con la
+ * estructura: el título, el chip del modo y la explicación de cada rama son los
+ * mismos, solo cambian el icono, el color del chip y el texto. El chip lleva el
+ * punto de color por `currentColor`, así que el modo se lee de un vistazo sin
+ * depender solo del texto. El contrato de clases lo fija `AccessCardDesignTest`.
+ *
  * Variables: `$form`, `$accessMode`, `$accessList`, `$accessCount`, y en modo
  * `roster` `$roster` y `$informe`.
  *
@@ -39,34 +47,32 @@ use App\Core\View;
  * @var array<string,mixed>|null $roster
  * @var array<string,mixed>|null $informe
  */
+$accessMode = (string) ($accessMode ?? 'public');
+$modeLabel = match ($accessMode) {
+    'email'     => 'Por correo',
+    'allowlist' => 'Solo la lista',
+    'roster'    => 'Solo el listado',
+    default     => 'Público',
+};
+$modeChip = match ($accessMode) {
+    'email'     => 'vf-mode-chip-email',
+    'allowlist' => 'vf-mode-chip-allowlist',
+    'roster'    => 'vf-mode-chip-roster',
+    default     => 'vf-mode-chip-public',
+};
 ?>
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="h6 fw-bold m-0"><i class="fa-solid fa-user-lock me-2 text-primary"></i>Acceso</h3>
-    <span class="badge text-bg-light text-muted"><?= View::escape(match ($accessMode) {
-        'email' => 'Por correo',
-        'allowlist' => 'Solo la lista',
-        'roster' => 'Solo el listado',
-        default => 'Público',
-    }) ?></span>
+<div class="vf-access-head">
+    <div class="vf-access-id">
+        <span class="vf-access-icon" aria-hidden="true"><i class="fa-solid fa-user-lock"></i></span>
+        <div>
+            <h3 class="vf-access-title">Acceso</h3>
+            <div class="vf-access-sub">Quién puede responder</div>
+        </div>
+    </div>
+    <span class="vf-mode-chip <?= $modeChip ?>"><?= View::escape($modeLabel) ?></span>
 </div>
 
-<?php if ($accessMode === 'public'): ?>
-    <p class="text-muted small mb-0">
-        <i class="fa-solid fa-circle-info me-1"></i>Cualquiera con el enlace puede responder.
-        Cambia el modo en <em>Ajustes del formulario</em>.
-    </p>
-<?php elseif ($accessMode === 'email'): ?>
-    <p class="text-muted small mb-0">
-        <i class="fa-solid fa-circle-info me-1"></i>Cualquiera que escriba un correo recibe un
-        enlace. No hay lista: cualquier correo válido entra. Cambia el modo en
-        <em>Ajustes del formulario</em>.
-    </p>
-<?php elseif ($accessMode === 'roster'): ?>
-    <?php // `$roster` puede llegar `null` con el modo ya en `roster` (por ejemplo desde
-          // `FormPanel::accessSlot()` justo después de cambiar el modo): en ese caso se
-          // calculan los datos aquí, en vez de pintar un hueco vacío, porque un
-          // formulario que acaba de pasar a «Solo el listado» sin lista parece que no
-          // tiene puerta de entrada. ?>
+<?php if ($accessMode === 'roster'): ?>
     <?php // La frase sigue al identificador del formulario, igual que la página pública:
           // decir solo «con el código que le tocó» en un formulario cuyo identificador
           // es la cédula escribe una puerta que no es la que se le pide al visitante. ?>
@@ -76,21 +82,26 @@ use App\Core\View;
         'codigo'    => 'con el código que le tocó',
         default     => 'con la cédula con la que figura en ella o con el código que le tocó',
     }; ?>
-    <p class="text-muted small">
-        Solo puede responder quien esté en esta lista, <?= View::escape($entradaRoster) ?>.
-        Quitar a alguien de la lista <strong>le cierra la puerta</strong>.
-    </p>
+    <div class="vf-callout mb-3">
+        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+        <div>Solo puede responder quien esté en esta lista, <?= View::escape($entradaRoster) ?>.
+        Quitar a alguien de la lista <strong>le cierra la puerta</strong>.</div>
+    </div>
 
+    <?php // `RosterPanel::data()` como red: un formulario recién pasado a «Solo el
+          // listado» desde `FormPanel::accessSlot()` puede no traer `$roster`, y un
+          // hueco vacío en un formulario que acaba de abrir la puerta parece roto. ?>
     <?= \App\Services\RosterPanel::panel(
         $roster ?? \App\Services\RosterPanel::data((int) $form['id']),
         $form,
         $informe
     ) ?>
-<?php else: ?>
-    <p class="text-muted small">
-        Solo los correos de esta lista reciben un enlace. Quitar a alguien de la lista
-        <strong>invalida los enlaces que ya se le hayan enviado</strong>.
-    </p>
+<?php elseif ($accessMode === 'allowlist'): ?>
+    <div class="vf-callout mb-3">
+        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+        <div>Solo los correos de esta lista reciben un enlace. Quitar a alguien de la lista
+        <strong>invalida los enlaces que ya se le hayan enviado</strong>.</div>
+    </div>
 
     <?php // El alta va por fetch con el resto de las acciones
           // (`data-vf-async="slots"`), y vuelve la lista en `html.accessList`,
@@ -119,7 +130,7 @@ use App\Core\View;
           // a la vista a propósito: el token solo existe en claro en el momento
           // de emitirlo, así que si el portapapeles falla no hay forma de
           // recuperarlo y el enlace se habría perdido. ?>
-    <div class="d-none mb-3" id="accessLinkOut">
+    <div class="d-none mb-3 vf-access-linkout" id="accessLinkOut">
         <label class="form-label small mb-1">
             Enlace para <span data-role="access-link-for"></span>
         </label>
@@ -146,5 +157,18 @@ use App\Core\View;
             'accessCount' => $accessCount,
             'formId'      => (int) $form['id'],
         ]) ?>
+    </div>
+<?php else: ?>
+    <div class="vf-callout">
+        <i class="fa-solid fa-globe" aria-hidden="true"></i>
+        <div>
+            <?php if ($accessMode === 'email'): ?>
+                Cualquiera que escriba su correo recibe un enlace. No hay una lista que
+                mantener. Cámbialo en <em>Ajustes del formulario</em>.
+            <?php else: ?>
+                Cualquiera con el enlace puede responder. Cámbialo en
+                <em>Ajustes del formulario</em>.
+            <?php endif; ?>
+        </div>
     </div>
 <?php endif; ?>

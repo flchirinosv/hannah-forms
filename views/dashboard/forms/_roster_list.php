@@ -11,10 +11,9 @@ use App\Core\View;
  * Porque las columnas son las que el dueño defina: una tabla con 8 atributos se
  * sale de cualquier pantalla y con 2 no dice nada. Y porque lo que hay que
  * meter en cada fila —el formulario de editar, con un input por atributo— no cabe
- * en una celda: dentro de un `<td>` los campos salen de 90 px de ancho y en un
- * móvil la tabla entera se convierte en un scroll horizontal. Las tarjetas son
- * además lo que ya hace la allowlist (`_access_list.php`), así que la pantalla
- * del «Acceso» se lee igual en los dos modos que tienen lista.
+ * en una celda. Las filas comparten lenguaje con la allowlist
+ * (`_access_list.php`): avatar, cuerpo y acciones, así que la pantalla del
+ * «Acceso» se lee igual en los dos modos que tienen lista.
  *
  * ## El `<details>` de editar, nativo otra vez
  *
@@ -33,6 +32,9 @@ use App\Core\View;
  * Con tarjetas no hay `<th>` donde poner el enlace de orden, así que van en una
  * línea de enlaces con el activo marcado (`aria-current`). Son GET a la ficha,
  * como la búsqueda: sin JavaScript, compartibles y con el «atrás» del navegador.
+ *
+ * `#rosterList` es el dueño del hueco (el panel ya no lo envuelve): el texto
+ * «Nadie en la lista coincide» y el orden de `.filas` son contrato de test.
  *
  * Variables: `$roster`, `$formId`.
  *
@@ -57,9 +59,7 @@ $rotuloId = match ((string) $roster['identificador']) {
 };
 
 // Con identificador `codigo`, `identifier_value` ES el `code` (es lo que busca la
-// puerta) y la cédula se queda solo en su columna. Si la tarjeta pintara el
-// `identifier_value`, el código saldría dos veces —el identidad y el de
-// `<code>`— y la cédula no saldría en ninguna parte. Con los otros tres, la
+// puerta) y la cédula se queda solo en su columna. Con los otros tres, la
 // columna de la identidad y el `identifier_value` son el mismo valor, así que
 // esto es la misma lectura de siempre, con la columna como red por si una fila
 // antigua estuviera guardando otra cosa.
@@ -89,19 +89,21 @@ $ordenes = [
 ?>
 <div id="rosterList">
     <?php if ($total === 0) { ?>
-        <p class="text-muted small mb-3">
-            <?php if ($q !== '') { ?>
-                Nadie en la lista coincide con «<?= View::escape($q) ?>».
-                <a href="/forms/<?= (int) $formId ?>#participantes">Ver la lista entera</a>.
-            <?php } else { ?>
-                <i class="fa-solid fa-circle-info me-1"></i>La lista está vacía: nadie puede
-                responder todavía. Añade a uno con el formulario de arriba o importa un archivo
-                desde la pestaña <em>Importar</em>.
-            <?php } ?>
-        </p>
+        <div class="vf-roster-empty">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            <div>
+                <?php if ($q !== '') { ?>
+                    Nadie en la lista coincide con «<?= View::escape($q) ?>».
+                    <a href="/forms/<?= (int) $formId ?>#participantes">Ver la lista entera</a>.
+                <?php } else { ?>
+                    La lista está vacía: nadie puede responder todavía. Añade a uno con el
+                    formulario de arriba o importa un archivo desde la pestaña <em>Importar</em>.
+                <?php } ?>
+            </div>
+        </div>
     <?php } ?>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div class="vf-roster-toolbar">
         <div class="small text-muted">
             <?php if ($q !== '' && $total > 0) { ?>
                 <?= $total ?> coincide<?= $total === 1 ? '' : 'n' ?> con «<?= View::escape($q) ?>».
@@ -133,130 +135,130 @@ $ordenes = [
     </div>
 
     <?php if ($roster['filas'] !== []) { ?>
-        <ul class="list-group list-group-flush mb-2">
+        <ul class="vf-access-list mb-2">
             <?php foreach ($roster['filas'] as $fila) {
                 $pid = (int) $fila['id'];
-                $respondio = !empty($fila['responded_at']); ?>
-                <li class="list-group-item px-0">
-                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">
-                                <?= View::escape($identidad($fila)) ?>
-                                <?php if (!empty($fila['nombre'])) { ?>
-                                    <span class="fw-normal text-muted"><?= View::escape((string) $fila['nombre']) ?></span>
+                $respondio = !empty($fila['responded_at']);
+                $inicial = mb_strtoupper(mb_substr($identidad($fila), 0, 1)) ?: '·'; ?>
+                <li class="vf-roster-row">
+                    <span class="vf-roster-avatar" aria-hidden="true"><?= View::escape($inicial) ?></span>
+
+                    <div class="vf-roster-main">
+                        <div class="vf-roster-name">
+                            <?= View::escape($identidad($fila)) ?>
+                            <?php if (!empty($fila['nombre'])) { ?>
+                                <span class="vf-roster-sub"><?= View::escape((string) $fila['nombre']) ?></span>
+                            <?php } ?>
+                        </div>
+
+                        <div class="vf-roster-meta">
+                            <?php if (!$esCorreo && !empty($fila['correo'])) { ?>
+                                <span><i class="fa-solid fa-envelope me-1"></i><?= View::escape((string) $fila['correo']) ?></span>
+                            <?php } ?>
+                            <span><code><?= View::escape((string) $fila['code']) ?></code></span>
+                            <span>Añadido el <?= View::escape(View::date($fila['created_at'] === null ? null : (string) $fila['created_at'])) ?></span>
+                        </div>
+
+                        <?php if ($roster['atributos'] !== []) { ?>
+                            <div class="vf-roster-tags">
+                                <?php foreach ($roster['atributos'] as $campo) {
+                                    $clave = (string) $campo['key_name'];
+                                    $valor = (string) ($fila['data'][$clave] ?? '');
+                                    if ($valor === '') {
+                                        continue;
+                                    } ?>
+                                    <span class="vf-roster-tag">
+                                        <?= View::escape((string) $campo['label']) ?>:
+                                        <?= View::escape($valor) ?>
+                                    </span>
                                 <?php } ?>
                             </div>
-                            <?php if (!$esCorreo && !empty($fila['correo'])) { ?>
-                                <div class="small text-muted">
-                                    <i class="fa-solid fa-envelope me-1"></i><?= View::escape((string) $fila['correo']) ?>
-                                </div>
-                            <?php } ?>
-                            <?php if ($roster['atributos'] !== []) { ?>
-                                <div class="small mt-1">
-                                    <?php foreach ($roster['atributos'] as $campo) {
-                                        $clave = (string) $campo['key_name'];
-                                        $valor = (string) ($fila['data'][$clave] ?? '');
-                                        if ($valor === '') {
-                                            continue;
-                                        } ?>
-                                        <span class="badge text-bg-light text-muted border me-1">
-                                            <?= View::escape((string) $campo['label']) ?>:
-                                            <?= View::escape($valor) ?>
-                                        </span>
-                                    <?php } ?>
-                                </div>
-                            <?php } ?>
-                            <div class="small text-muted mt-1">
-                                <code><?= View::escape((string) $fila['code']) ?></code>
-                                <span class="ms-2">Añadido el <?= View::escape(View::date($fila['created_at'] === null ? null : (string) $fila['created_at'])) ?></span>
-                            </div>
-                        </div>
+                        <?php } ?>
 
-                        <div class="text-end">
-                            <?php if ($respondio) { ?>
-                                <span class="badge text-bg-success">
-                                    <i class="fa-solid fa-circle-check me-1"></i>Respondió
-                                </span>
-                                <span class="small text-muted d-block">
-                                    <?= View::escape(View::datetime($fila['responded_at'] === null ? null : (string) $fila['responded_at'])) ?>
-                                </span>
-                            <?php } else { ?>
-                                <span class="badge text-bg-light text-muted">Sin responder</span>
-                            <?php } ?>
-                        </div>
-                    </div>
+                        <div class="vf-roster-actions">
+                            <details class="d-inline-block">
+                                <summary class="btn btn-outline-secondary btn-sm">Editar</summary>
+                                <form method="post" action="/forms/<?= (int) $formId ?>/participants/update"
+                                      class="mt-2 p-2 border rounded bg-body"
+                                      data-vf-async="slots" data-vf-error="rosterEditError<?= $pid ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                    <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
+                                    <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
+                                    <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
+                                    <div class="row g-2">
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $rotuloId ?></label>
+                                        <input type="<?= $esCorreo ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
+                                               id="rosterEditId<?= $pid ?>" class="form-control form-control-sm" maxlength="190"
+                                               required value="<?= View::escape((string) ($fila[$columnaId] ?? '')) ?>">
+                                        </div>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label small mb-1" for="rosterEditNombre<?= $pid ?>">Nombre (opcional)</label>
+                                            <input type="text" name="nombre" id="rosterEditNombre<?= $pid ?>"
+                                                   class="form-control form-control-sm" maxlength="190"
+                                                   value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>">
+                                        </div>
+                                        <?php if (!$esCorreo) { ?>
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label small mb-1" for="rosterEditCorreo<?= $pid ?>">Correo (opcional)</label>
+                                                <input type="email" name="correo" id="rosterEditCorreo<?= $pid ?>"
+                                                       class="form-control form-control-sm" maxlength="190"
+                                                       value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>">
+                                            </div>
+                                        <?php } ?>
+                                        <?php foreach ($roster['atributos'] as $campo) {
+                                            $clave = (string) $campo['key_name']; ?>
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label small mb-1" for="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>">
+                                                    <?= View::escape((string) $campo['label']) ?>
+                                                </label>
+                                                <input type="text" name="data[<?= View::escape($clave) ?>]"
+                                                       id="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>"
+                                                       class="form-control form-control-sm" maxlength="255"
+                                                       value="<?= View::escape((string) ($fila['data'][$clave] ?? '')) ?>">
+                                            </div>
+                                        <?php } ?>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">
+                                        <i class="fa-solid fa-check me-1"></i>Guardar
+                                    </button>
+                                    <p class="small mb-0 mt-1 d-none text-danger fw-semibold"
+                                       id="rosterEditError<?= $pid ?>" role="alert"></p>
+                                </form>
+                            </details>
 
-                    <div class="mt-2">
-                        <details class="d-inline-block">
-                            <summary class="btn btn-outline-secondary btn-sm">Editar</summary>
-                            <form method="post" action="/forms/<?= (int) $formId ?>/participants/update"
-                                  class="mt-2 p-2 border rounded bg-body"
-                                  data-vf-async="slots" data-vf-error="rosterEditError<?= $pid ?>">
+                            <?php // Quitar a alguien NO borra sus respuestas (ver
+                                  // `FormParticipant::delete()`), y por eso el diálogo
+                                  // lo dice: quien lee el aviso tiene que saber qué va
+                                  // a perder y qué no. ?>
+                            <form method="post" action="/forms/<?= (int) $formId ?>/participants/delete"
+                                  class="d-inline-block" data-vf-async="slots"
+                                  data-confirm="¿Quitar a <?= View::escape($identidad($fila)) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
+                                  data-confirm-ok="Sí, quitar de la lista" data-confirm-tone="danger">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="participant_id" value="<?= $pid ?>">
                                 <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
-                            <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
-                            <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
-                                <div class="row g-2">
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $rotuloId ?></label>
-                                        <input type="<?= $esCorreo ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
-                                               id="rosterEditId<?= $pid ?>" class="form-control form-control-sm"
-                                               maxlength="190" required
-                                               value="<?= View::escape((string) ($fila[$columnaId] ?? '')) ?>">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small mb-1" for="rosterEditNombre<?= $pid ?>">Nombre</label>
-                                        <input type="text" name="nombre" id="rosterEditNombre<?= $pid ?>"
-                                               class="form-control form-control-sm" maxlength="190"
-                                               value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>">
-                                    </div>
-                                    <?php if (!$esCorreo) { ?>
-                                        <div class="col-12 col-md-4">
-                                            <label class="form-label small mb-1" for="rosterEditCorreo<?= $pid ?>">Correo</label>
-                                            <input type="email" name="correo" id="rosterEditCorreo<?= $pid ?>"
-                                                   class="form-control form-control-sm" maxlength="190"
-                                                   value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>">
-                                        </div>
-                                    <?php } ?>
-                                    <?php foreach ($roster['atributos'] as $campo) {
-                                        $clave = (string) $campo['key_name']; ?>
-                                        <div class="col-12 col-md-4">
-                                            <label class="form-label small mb-1" for="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>">
-                                                <?= View::escape((string) $campo['label']) ?>
-                                            </label>
-                                            <input type="text" name="data[<?= View::escape($clave) ?>]"
-                                                   id="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>"
-                                                   class="form-control form-control-sm" maxlength="255"
-                                                   value="<?= View::escape((string) ($fila['data'][$clave] ?? '')) ?>">
-                                        </div>
-                                    <?php } ?>
-                                </div>
-                                <button type="submit" class="btn btn-outline-primary btn-sm mt-2">
-                                    <i class="fa-solid fa-check me-1"></i>Guardar
-                                </button>
-                                <p class="small mb-0 mt-1 d-none text-danger fw-semibold"
-                                   id="rosterEditError<?= $pid ?>" role="alert"></p>
-                            </form>
-                        </details>
-
-                        <?php // Quitar a alguien NO borra sus respuestas (ver
-                              // `FormParticipant::delete()`), y por eso el diálogo
-                              // lo dice: quien lee el aviso tiene que saber qué va
-                              // a perder y qué no. ?>
-                        <form method="post" action="/forms/<?= (int) $formId ?>/participants/delete"
-                              class="d-inline-block" data-vf-async="slots"
-                              data-confirm="¿Quitar a <?= View::escape($identidad($fila)) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
-                              data-confirm-ok="Sí, quitar de la lista" data-confirm-tone="danger">
-                            <?= Csrf::field() ?>
-                            <input type="hidden" name="participant_id" value="<?= $pid ?>">
-                            <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
-                            <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
+                                <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
                                 <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">
-                                <i class="fa-solid fa-trash me-1"></i>Quitar
-                            </button>
-                        </form>
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="fa-solid fa-trash me-1"></i>Quitar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="vf-roster-state">
+                        <?php if ($respondio) { ?>
+                            <span class="vf-roster-state-label vf-roster-state-ok">
+                                <i class="fa-solid fa-circle-check me-1"></i>Respondió
+                            </span>
+                            <div class="vf-roster-date">
+                                <?= View::escape(View::datetime($fila['responded_at'] === null ? null : (string) $fila['responded_at'])) ?>
+                            </div>
+                        <?php } else { ?>
+                            <span class="vf-roster-state-label vf-roster-state-pending">Sin responder</span>
+                        <?php } ?>
                     </div>
                 </li>
             <?php } ?>

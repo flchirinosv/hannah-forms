@@ -11,6 +11,14 @@
  * SU lista ha respondido). Es el mismo motivo por el que el listado de
  * respuestas no enseña el total de la búsqueda como total de respuestas.
  *
+ * ## Tira de métricas (rediseño 2026-10-08)
+ *
+ * Antes eran cuatro `badge rounded-pill` en una fila; ahora son tarjetas
+ * `.vf-stat` con el número grande y el rótulo debajo, para que la cifra se lea
+ * de un vistazo. El color sigue codificando el estado (verde respondidos, ámbar
+ * pendientes, azul invitados) y el color neutro del total lo deja destacar sin
+ * competir. El `id="rosterStats"` no se mueve.
+ *
  * Variables: `$roster`.
  *
  * @var array $roster
@@ -20,23 +28,26 @@ $respondidos = (int) $roster['respondidos'];
 $sinResponder = max(0, $total - $respondidos);
 // Fase 10: el histórico de invitaciones. Va con los números y no en el botón de
 // invitar porque es un hecho que NO cambia al mandar (el botón dice lo que falta,
-// esto dice lo que ya está hecho), y porque al pintar las cifras se ve que el
-// correo salió y no solo que el botón se apagó.
+// esto dice lo que ya está hecho).
 $invitados  = (int) ($roster['invitados'] ?? 0);
 ?>
-<div id="rosterStats" class="d-flex flex-wrap gap-2 small mb-3">
-    <span class="badge rounded-pill text-bg-secondary">
-        <i class="fa-solid fa-users me-1"></i><?= $total ?> en la lista
-    </span>
-    <span class="badge rounded-pill <?= $respondidos > 0 ? 'text-bg-success' : 'text-bg-light text-muted' ?>">
-        <i class="fa-solid fa-circle-check me-1"></i><?= $respondidos ?> respondieron
-    </span>
-    <span class="badge rounded-pill <?= $sinResponder > 0 ? 'text-bg-warning' : 'text-bg-light text-muted' ?>">
-        <i class="fa-solid fa-clock me-1"></i><?= $sinResponder ?> sin responder
-    </span>
+<div id="rosterStats" class="vf-stat-strip">
+    <div class="vf-stat">
+        <div class="vf-stat-value"><i class="fa-solid fa-users" aria-hidden="true"></i><?= $total ?></div>
+        <div class="vf-stat-label">En la lista</div>
+    </div>
+    <div class="vf-stat <?= $respondidos > 0 ? 'vf-stat-success' : 'vf-stat-muted' ?>">
+        <div class="vf-stat-value"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><?= $respondidos ?></div>
+        <div class="vf-stat-label">Respondieron</div>
+    </div>
+    <div class="vf-stat <?= $sinResponder > 0 ? 'vf-stat-warning' : 'vf-stat-muted' ?>">
+        <div class="vf-stat-value"><i class="fa-solid fa-clock" aria-hidden="true"></i><?= $sinResponder ?></div>
+        <div class="vf-stat-label">Sin responder</div>
+    </div>
     <?php if ($invitados > 0) { ?>
-        <span class="badge rounded-pill text-bg-info">
-            <i class="fa-solid fa-envelope me-1"></i><?= $invitados ?> invitada<?= $invitados === 1 ? '' : 's' ?>
-        </span>
+        <div class="vf-stat vf-stat-info">
+            <div class="vf-stat-value"><i class="fa-solid fa-envelope" aria-hidden="true"></i><?= $invitados ?></div>
+            <div class="vf-stat-label">Invitada<?= $invitados === 1 ? '' : 's' ?></div>
+        </div>
     <?php } ?>
 </div>

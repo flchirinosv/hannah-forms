@@ -23,15 +23,22 @@ use App\Core\View;
  * nada en el navegador que no lo tiene, y aquí todo lo que hay debajo es de
  * dueño, con `Access::canEdit()` detrás.
  *
- * Lo que sí se usa de Bootstrap es el aspecto (`nav-tabs`), que es lo único que
- * se ve de las pestañas.
- *
  * ## Los ids de los huecos van en ENVOLTORIOS `<div>`, nunca en el `<form>`
  *
  * Por lo que dice la regla de la casa: el repintado mete markup dentro del
  * elemento, y un `<form>` anidado es un formulario que el parser descarta. El
- * `<details>` del alta y el `<form>` de importación viven dentro de sus huecos,
- * así que al reponerlos se reponen enteros.
+ * `<details>` que despliega el alta vive FUERA del hueco `rosterAddForm`: si
+ * viajara en el HTML que repone la importación, cada importación lo recrearía
+ * cerrado y el formulario nuevo quedaría escondido.
+ *
+ * ## El rediseño (2026-10-08) no cambió el contrato
+ *
+ * `#participantes`, `vfPaneRosterLista`/`vfPaneRosterImportar`, los dos
+ * `data-vf-pane`, los seis huecos y las acciones con `data-confirm` siguen
+ * siendo los mismos: lo único que cambió es el aspecto (pestañas segmentadas,
+ * tira de números, filas). Lo fija `RosterPanelTest`. `#rosterList` lo pone su
+ * propio partial (`_roster_list.php`): antes el panel lo envolvía en OTRO
+ * `<div id="rosterList">` y quedaba un id duplicado y anidado.
  *
  * Variables: `$form`, `$roster`, y opcionalmente `$informe` (el informe de la
  * última importación, que solo existe en el GET de la ficha; ver
@@ -45,10 +52,7 @@ $formId = (int) $form['id'];
 
 /* La frase de la plantilla se arma ANTES del HTML, y no con un cierre de PHP
    dentro de otro cierre de PHP: el que aparece dentro de una cadena CORTA el modo
-   PHP y lo que viene detrás se va como HTML. Y este comentario, que lo explica, es
-   a su vez el ejemplo: la primera versión de estas dos líneas era un `//` con el
-   cierre escrito dentro, y el panel nació con la frase sin definir y un aviso en la
-   línea 145. Por eso va en bloque. */
+   PHP y lo que viene detrás se va como HTML. Por eso va en bloque. */
 $columnaId = match ((string) $roster['identificador']) {
     'indicador' => 'Indicador',
     'correo'    => 'Correo',
@@ -62,20 +66,16 @@ if ($roster['atributos'] !== []) {
 $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
 ?>
 <div id="participantes" class="vf-tabs" data-vf-tabs="roster-<?= (int) $form['id'] ?>">
-    <ul class="nav nav-tabs nav-tabs-sm mb-3" role="tablist" aria-label="Lista de participantes">
-        <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link active" id="vfTabRosterLista" role="tab"
-                    aria-selected="true" aria-controls="vfPaneRosterLista" data-vf-tab="vfPaneRosterLista">
-                <i class="fa-solid fa-users me-1"></i>Lista (<?= (int) $roster['total'] ?>)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link" id="vfTabRosterImportar" role="tab"
-                    aria-selected="false" aria-controls="vfPaneRosterImportar" data-vf-tab="vfPaneRosterImportar">
-                <i class="fa-solid fa-file-arrow-up me-1"></i>Importar
-            </button>
-        </li>
-    </ul>
+    <div class="vf-tabs-nav" role="tablist" aria-label="Participantes">
+        <button type="button" class="vf-tab active" id="vfTabRosterLista" role="tab"
+                aria-selected="true" aria-controls="vfPaneRosterLista" data-vf-tab="vfPaneRosterLista">
+            <i class="fa-solid fa-users me-1"></i>Lista (<?= (int) $roster['total'] ?>)
+        </button>
+        <button type="button" class="vf-tab" id="vfTabRosterImportar" role="tab"
+                aria-selected="false" aria-controls="vfPaneRosterImportar" data-vf-tab="vfPaneRosterImportar">
+            <i class="fa-solid fa-file-arrow-up me-1"></i>Importar
+        </button>
+    </div>
 
     <?php // «Lista»: los números, las invitaciones por correo, el alta de uno, la
           // búsqueda y las filas. ?>
@@ -86,8 +86,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
               // `<details>`. Es un hueco (`rosterInvites`) y no una fila más de la
               // tabla porque lo que lo decide —el identificador del formulario y si
               // hay SMTP— no es estado de la lista, y un alta de una persona no
-              // puede reponer algo que no ha cambiado. Los tres estados se DICEN
-              // (ver el partial): un hueco callado no se distingue de uno roto. ?>
+              // puede reponer algo que no ha cambiado. Los tres estados se DICEN. ?>
         <?= View::partial('dashboard/forms/_roster_invites', [
             'roster' => $roster,
             'formId' => $formId,
@@ -105,8 +104,8 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
               // Y va en un `<details>` —nativo, sin JavaScript— en vez de en un
               // modal de Bootstrap, porque un modal sin JS no se abre: el alta
               // sería imposible justo en el navegador que más lo necesita. ?>
-        <details class="mb-3">
-            <summary class="small fw-semibold text-secondary">
+        <details class="mt-3 mb-3">
+            <summary class="vf-details-trigger">
                 <i class="fa-solid fa-user-plus me-1"></i>Añadir uno a la lista
             </summary>
             <div class="mt-2" id="rosterAddForm">
@@ -124,11 +123,8 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
               // `rosterPage` para reponer la misma vista en la que se estaba.
               //
               // El `sort` sí viaja (oculto) porque el orden también es estado de la
-              // vista: sin él, buscar «V-01» con la lista ordenada por nombre
-              // devolvía la lista ordenada por cédula y parecía que el buscador
-              // ignoraba el orden. La página NO viaja, y a propósito: una búsqueda
-              // nueva empieza por la primera, que es lo que se espera de un
-              // buscador. ?>
+              // vista. La página NO viaja, y a propósito: una búsqueda nueva empieza
+              // por la primera, que es lo que se espera de un buscador. ?>
         <form method="get" action="/forms/<?= $formId ?>" class="row g-2 mb-2" role="search">
             <?php if ((string) $roster['sort'] !== 'cedula') { ?>
                 <input type="hidden" name="sort" value="<?= View::escape((string) $roster['sort']) ?>">
@@ -152,12 +148,11 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
             <?php } ?>
         </form>
 
-        <div id="rosterList">
-            <?= View::partial('dashboard/forms/_roster_list', [
-                'roster' => $roster,
-                'formId' => $formId,
-            ]) ?>
-        </div>
+        <?php // `#rosterList` lo pone el partial: envolverlo aquí lo duplicaba. ?>
+        <?= View::partial('dashboard/forms/_roster_list', [
+            'roster' => $roster,
+            'formId' => $formId,
+        ]) ?>
     </div>
 
     <?php // «Importar»: plantilla, archivo, informe y catálogo. ?>
@@ -184,8 +179,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
 
             <?php // La pregunta del «modo» es la que más caro sale cuando se
                   // contesta mal, así que va ANTES del botón y con las dos
-                  // consecuencias escritas al lado, no escondidas en un tooltip:
-                  // «reemplazar» borra la lista que hay. ?>
+                  // consecuencias escritas al lado, no escondidas en un tooltip. ?>
             <fieldset class="mb-2">
                 <legend class="form-label small mb-1">Si alguien ya está en la lista</legend>
                 <div class="form-check">
@@ -228,11 +222,11 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
             </button>
         </form>
 
-        <div id="rosterCatalog">
-            <?= View::partial('dashboard/forms/_roster_catalog', [
-                'roster' => $roster,
-                'formId' => $formId,
-            ]) ?>
-        </div>
+        <?php // Como `#rosterList`, el id lo pone el propio partial: envolverlo
+              // aquí lo duplicaba y anidaba. ?>
+        <?= View::partial('dashboard/forms/_roster_catalog', [
+            'roster' => $roster,
+            'formId' => $formId,
+        ]) ?>
     </div>
 </div>
