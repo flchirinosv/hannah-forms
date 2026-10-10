@@ -119,15 +119,23 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
   tipo en la tarjeta con su contrato de opciones/validaciones.
 **Checkpoint:** suite completa verde (1248 tests) en el commit de esta fase.
 
-### F3 · Tema como palette y preview embebido
+### F3 · Tema como palette y preview embebido — **hecho**
 `views/builder/index.php` + `builder.js` + `app.css`.
-- `#formSettingsModal` rediseñado como panel deslizante derecha; **ids y funciones
-  intactos**: `populateSettingsModal`, `collectSettingsFromModal` (solo `BUILDER_BLOCKS`),
-  `updateAdvanceHint` (F5), `checkFontLive`, `#stFont`/`#stFontNote`.
-- Toggle de preview embebido en el lienzo reusando `previewBody()` y el markup del fill
-  (`.vf-preview-scroll .fill-body .fill-container`); `#livePreviewModal` intacto.
+- `#formSettingsModal` rediseñado como panel deslizante derecha (mismo
+  `.modal-drawer` del cajón de campo); **ids y funciones intactos**:
+  `populateSettingsModal`, `collectSettingsFromModal` (solo `BUILDER_BLOCKS`),
+  `updateAdvanceHint` (F5), `checkFontLive`, `#stFont`/`#stFontNote`. El pie pasa
+  a ser hermano de `modal-body` (queda fijado al fondo del cajón) y las columnas
+  se reajustan al ancho del cajón (`col-sm-6`).
+- Toggle `btnCanvasPreview` (aria-pressed) que abre una vista previa **embebida
+  en el lienzo** (`#canvasPreview`/`#canvasPreviewContent`), reusando
+  `buildPreviewHtml()`/`previewBody()` y el markup del fill
+  (`.vf-preview-scroll .fill-body .fill-container`); se repinta en vivo al
+  renderizar el lienzo. `#livePreviewModal` y su botón siguen intactos.
+  `FillLayoutTest` ahora cubre las DOS superficies (`canvasPreviewContent` y
+  `livePreviewContent`), ambas con `.fill-container` y sin regla de ancho por id.
 - `ThemeFontCssInjectionTest` y `I18nTest` en verde.
-**Checkpoint:** suite verde.
+**Checkpoint:** suite completa verde (1059 tests) en el commit de esta fase.
 
 ### F4 · Pulido, docs y cierre
 - Tokens más planos (sombras/radio suaves), hover/active/focus, estados vacíos,
@@ -147,5 +155,5 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 | F0 | Punto de restauración (tag + dump + plan) | **hecho** |
 | F1 | Chrome estilo Google Forms (layout columna central) | **hecho** |
 | F2 | Tarjetas ricas + drawer de ajustes | **hecho** |
-| F3 | Tema como palette y preview embebido | pendiente |
+| F3 | Tema como palette y preview embebido | **hecho** |
 | F4 | Pulido, docs y cierre | pendiente |

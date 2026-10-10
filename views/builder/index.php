@@ -50,6 +50,7 @@ $fieldTypes = [
                 <button class="btn btn-outline-secondary" type="button" id="btnUndo" title="Deshacer (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
                 <button class="btn btn-outline-secondary" type="button" id="btnRedo" title="Rehacer (Ctrl+Shift+Z)"><i class="fa-solid fa-rotate-right"></i></button>
             </div>
+            <button class="btn btn-outline-secondary" type="button" id="btnCanvasPreview" aria-pressed="false" title="Mostrar u ocultar la vista previa dentro del lienzo"><i class="fa-solid fa-eye me-1"></i>Vista previa</button>
             <button class="btn btn-outline-secondary" type="button" id="btnLivePreview"><i class="fa-solid fa-eye me-1"></i>Vista previa en vivo</button>
             <button class="btn btn-outline-secondary" type="button" id="btnFormSettings"><i class="fa-solid fa-gear me-1"></i>Configuración</button>
             <button class="btn btn-outline-secondary d-none d-md-inline-flex" type="button" id="btnPreviewUrl"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir</button>
@@ -76,6 +77,18 @@ $fieldTypes = [
                         <p class="h6 fw-bold">Aún no hay preguntas</p>
                         <p class="text-muted small">Agrega tu primera pregunta para empezar a armar la encuesta.</p>
                         <button type="button" class="btn btn-primary app-btn-primary mt-2" id="btnEmptyAdd"><i class="fa-solid fa-plus me-1"></i>Agregar pregunta</button>
+                    </div>
+
+                    <?php // F3: la vista previa embebida en el lienzo. Reusa el
+                          // markup del FILL (`buildPreviewHtml`/`previewBody` dentro
+                          // de `.vf-preview-scroll .fill-body .fill-container`), que
+                          // es lo que hace que lo que se ve aquí sea lo que se
+                          // publica; el modal de pantalla completa
+                          // (`#livePreviewModal`) se queda intacto. La lógica de
+                          // mostrarla/ocultarla y de repintarla en vivo vive en
+                          // `builder.js`. ?>
+                    <div id="canvasPreview" class="d-none vf-preview-scroll fill-body">
+                        <div class="fill-container py-4 px-2 px-sm-3" id="canvasPreviewContent"></div>
                     </div>
                 </div>
             </div>
@@ -299,12 +312,12 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
 ?>
 
 <div class="modal fade" id="formSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="formSettingsTitle">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable modal-drawer">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
-                <div class="d-flex align-items-center gap-2 text-white">
+                <div class="d-flex align-items-center gap-2 text-white flex-grow-1 min-w-0">
                     <span class="app-logo-sm"><i class="fa-solid fa-gear"></i></span>
-                    <span class="fw-semibold" id="formSettingsTitle">Configuración del formulario</span>
+                    <span class="fw-semibold text-truncate" id="formSettingsTitle">Configuración del formulario</span>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -316,15 +329,15 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-palette me-1"></i>Tema</h6>
                 <div class="row g-3 mb-2">
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <label for="stPrimary" class="form-label small fw-semibold">Color principal<?= $helpButton('Botón de enviar, barra de progreso y enlaces.') ?></label>
                         <input type="color" class="form-control form-control-color w-100" id="stPrimary" value="#0d6efd">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <label for="stBackground" class="form-label small fw-semibold">Color de fondo<?= $helpButton('El fondo de la página del formulario.') ?></label>
                         <input type="color" class="form-control form-control-color w-100" id="stBackground" value="#f6f6f6">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-12">
                         <label for="stFont" class="form-label small fw-semibold">Fuente<?= $helpButton('Se sirve desde esta misma instalación, sin llamar a ningún servicio externo: elige una del catálogo y se descargará de aquí. «Predeterminada» usa la tipografía del panel.') ?></label>
                         <select class="form-select form-select-sm" id="stFont">
                             <option value="">Predeterminada</option>
@@ -346,13 +359,13 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-toggle-on me-1"></i>Comportamiento</h6>
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stQuizEnabled">
                             <label class="form-check-label small fw-semibold" for="stQuizEnabled">Modo quiz<?= $helpButton('Muestra la respuesta correcta y lleva la cuenta de aciertos al final.') ?></label>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stRandQuestions">
                             <label class="form-check-label small fw-semibold" for="stRandQuestions">Aleatorizar preguntas<?= $helpButton('Cada persona ve las preguntas en un orden distinto.') ?></label>
@@ -361,26 +374,26 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                     <?php // F5 — mismo criterio que el avance automático: su texto
                           // depende del interruptor, así que es estado y se queda
                           // a la vista. ?>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stAdvanceAuto">
                             <label class="form-check-label small fw-semibold" for="stAdvanceAuto">Avanzar solo al responder</label>
                             <p class="small text-muted mb-0 mt-1" id="stAdvanceHint" role="status"></p>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stEmbedEnabled">
                             <label class="form-check-label small fw-semibold" for="stEmbedEnabled">Permitir embeber (iframe)<?= $helpButton('Habilita el código para insertar el formulario dentro de otra web.') ?></label>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stHoneypotEnabled">
                             <label class="form-check-label small fw-semibold" for="stHoneypotEnabled">Anti-spam (honeypot)<?= $helpButton('Una trampa invisible para los robots. Si la rellenan, el envío se acepta pero <strong>no se guarda</strong>, así que quien la rellenó no ve ningún error.') ?></label>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-sm-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="stAntiBotEnabled">
                             <label class="form-check-label small fw-semibold" for="stAntiBotEnabled">Verificación bot (Turnstile)<?= $helpButton('<strong>Actívalo solo si ya hay claves de Cloudflare en el servidor.</strong> Sin ellas el formulario deja de mostrarse a todo el mundo, no solo a los bots.') ?></label>
@@ -393,13 +406,13 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                       // sus consecuencias (a quién llega el aviso, si la lista está
                       // vacía, si el formulario vuelve a la cola). El constructor se
                       // queda con lo que cambia el RELLENO, que es otra cosa. ?>
-                <div class="modal-footer border-0">
+            </div>
+            <div class="modal-footer border-0">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success app-btn-primary" id="btnSaveSettings"><i class="fa-solid fa-check me-1"></i>Guardar configuración</button>
             </div>
         </div>
     </div>
-</div>
 </div>
 
 <div class="modal fade" id="addFieldModal" tabindex="-1" aria-hidden="true" aria-labelledby="addFieldTitle">
