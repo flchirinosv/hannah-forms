@@ -3,8 +3,9 @@
 Formularios self-hosted: **PHP 8.2+ vanilla, sin framework**, MVC propio, MariaDB,
 Bootstrap 5. Sin Composer, PHPUnit, dotenv ni bundler: el autoload, el cargador de
 `.env`, el router y el runner de tests son implementación propia. **No ejecutes
-`composer install` ni busques `composer lint`: no hay `composer.json`,
-`package.json`, `Makefile` ni CI.** Es el único control de calidad: `scripts/test.php`.
+`composer install` ni busques `composer lint`: en la app no hay `composer.json`,
+`Makefile` ni CI** (el único `package.json` es `.opencode/`, tooling de OpenCode,
+no de la aplicación). Es el único control de calidad: `scripts/test.php`.
 
 Todo el código, los comentarios, los strings de UI y esta documentación están en
 español. `declare(strict_types=1);` va en `app/`, `config/`, `database/`,
@@ -13,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 94 archivos, 1053 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 95 archivos, 1059 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -33,9 +34,10 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 - Mantenimiento: `scripts/clean-rate-limits.php` (`--all` vacía todo y pide
   confirmación, `--yes` la salta) y `scripts/clean-uploads.php` (`--dry-run` solo
   cuenta).
-- **node es opcional**: solo lo usan `tests/unit/FillProgressTest.php` y
-  `tests/unit/AsyncActionsJsTest.php` para correr los arneses `tests/js/fill-progress.js`
-  y `tests/js/async-actions.js`; sin node esos tests avisan y pasan.
+- **node es opcional**: solo lo usan `tests/unit/FillProgressTest.php`,
+  `tests/unit/AsyncActionsJsTest.php` y `tests/unit/FillAdvanceTest.php` para
+  correr los arneses `tests/js/fill-progress.js`, `tests/js/async-actions.js` y
+  `tests/js/fill-advance.js`; sin node esos tests avisan y pasan.
 
 Atajos de OpenCode (`.opencode/`, no es código de la app): el skill `vf-docs`
 indexa `docs/` (con sus trampas de obsolescencia) y el skill `vf-migraciones` da la
@@ -48,8 +50,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   fija **UTC** en PHP, conecta la BD, inicia sesión) → `config/routes.php` →
   controlador. `public/index.php` es el único PHP que ve el web server.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
-  `Core` (el middleware vive en `Core/Middleware/Middleware.php`; `app/Middleware/`
-  es un directorio **vacío**), `Models` (10), `Services` (17), `lang/{es,en}.php`.
+  `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
+  `Services` (17), `lang/{es,en}.php`.
   `views/` = 62 plantillas y partials con `View` (veinte con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
@@ -95,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **55 de los 92 archivos tocan la BD real** (los que llaman
+- **56 de los 95 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -737,7 +739,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `ViewStructureTest` recorre las 62 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
-  anti-vacío —59 vistas, >1800 aperturas vistas y los 6 modales encontrados—
+  anti-vacío —`count($vistas) >= 50` (hay 62), `> 1800` aperturas vistas y
+  `>= 6` modales encontrados—
   porque un test de estructura que no recorre pasa verde por construcción, y así
   pasó al escribirlo (`foreach` sobre el `int` de `preg_match_all`).
 - **Ante un síntoma de «no aparece», mide antes de arreglar**: un
