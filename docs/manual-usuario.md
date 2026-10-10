@@ -323,17 +323,32 @@ títulos que llevan ese porcentaje y solo esos.
 
 ## 6. El constructor
 
-El constructor tiene tres zonas:
+El constructor es **una sola pantalla**: un lienzo central con una tarjeta por
+pregunta, reordenables, y botones para agregar. No hay columnas laterales
+fijas; las pantallas de ajustes salen cuando las pides.
 
-- **Agrega elementos** (izquierda): los tipos de campo, para arrastrarlos al lienzo.
-- **Lienzo** (centro): los campos ya colocados, reordenables.
-- **Configuración** (derecha): los ajustes del campo seleccionado y, con las
-  pestañas **Contenido** / **Lógica**, su comportamiento.
+- **Lienzo** (centro): los campos ya colocados. El título y la descripción del
+  formulario se editan arriba, en línea. Cada tarjeta tiene un pie fijo con
+  **el tipo de campo**, el interruptor de **obligatoria** y los botones de
+  duplicar, configurar y eliminar: cambias de tipo o marcas la obligatoria sin
+  abrir ningún panel.
+- **Agregar elemento** (barra o `+`): abre la lista de los 21 tipos. Hay dos
+  formas de llegar: el botón **Agregar elemento** de la barra y el `+` que
+  aparece entre dos tarjetas (inserta ahí). Dentro de una sección, el botón
+  «Agregar pregunta dentro» hace lo mismo.
+- **Configuración** (cajón a la derecha): los ajustes del campo seleccionado
+  (con las pestañas **Contenido** / **Lógica**) y, por separado, los de todo el
+  formulario. Se abren con el engranaje de una tarjeta o con **Configuración**
+  de la barra, y se cierran con su «x», con `Esc` o tocando fuera.
+- **Vista previa (embebida)**: el botón **Vista previa** despliega el formulario
+  tal como quedará publicado, dentro del propio lienzo; se repinta en vivo al
+  editar. **Vista previa en vivo** sigue abriendo la vista previa a pantalla
+  completa.
 
 El botón **Guardar** (barra superior) persiste la estructura: campos, orden,
-opciones y los ajustes del modal **Configuración** (tema, quiz, orden de las
+opciones y los ajustes del cajón **Configuración** (tema, quiz, orden de las
 preguntas, avance automático, embed y anti-bot). El botón **Guardar
-configuración** (abajo del modal) aplica esos ajustes al formulario en memoria:
+configuración** (abajo del cajón) aplica esos ajustes al formulario en memoria:
 no los persiste por sí solo, los persiste el *Guardar* de la barra superior.
 
 Los ajustes que cambian **quién responde y cuándo** no están aquí: están en la

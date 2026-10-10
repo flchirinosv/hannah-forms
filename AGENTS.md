@@ -1155,6 +1155,13 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `fieldPii` y con el interruptor del salto de página (`show_header`); el par
   flag→control está en `TOP_LEVEL_FLAG_CONTROL` de `BuilderValidationsContractTest`,
   que barre los listeners con el mismo `wiredControls()`.
+- **El tipo y la obligatoria se cambian desde el PIE de la tarjeta, sin abrir
+  ajustes** (Google Forms, F2): `change` en `select.app-type-select` llama a
+  `changeFieldType`, y `setFieldRequired()` escribe `f.required` a pelo —no vía
+  `applySettings()`, que parte de `preservedValidations(f)` y aquí no hay nada
+  que preservar—. El estado del toggle se pone al renderizar cada tarjeta, no
+  al arrancar: un `#requiredToggleN` nuevo (duplicado, cambiar de tipo) tiene
+  que reflejar el valor en memoria y no el del servidor.
 - Ocultar tiles estructurales dentro de una sección es
   `setAttribute('data-vf-structural-hidden','1')` + selector
   `[data-vf-structural-hidden]` **por presencia**: `toggleAttribute()` deja el valor
@@ -1198,9 +1205,19 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   (`testElBotonDeEnviarTieneElTextoEnClaro` lo hizo, y el helper era el que
   decidía el resultado). Para leer el cuerpo de una regla usa `bloqueCss()`, que
   quita los comentarios de bloque y devuelve las declaraciones de verdad.
-- El engranaje de cada tarjeta **reubica la misma** instancia de `#settingsForm`
-  (`moveSettingsTo`), no la duplica; como `openFieldSettings` redibuja el lienzo, el
-  opener se localiza por `[data-uid]` al cerrar. Spec de UI: `docs/design.md`.
+- El engranaje de cada tarjeta abre un **drawer a la derecha**
+  (`.modal-drawer`, el mismo `.modal` de Bootstrap re-estilizado: Esc,
+  backdrop y foco de siempre). `#settingsForm` vive en el drawer desde el
+  arranque, **una sola instancia, sin moverse** entre superficies; cerrar el
+  cajón devuelve la selección a la tarjeta y, como `openFieldSettings`
+  redibuja el lienzo, el opener se localiza por `[data-uid]`. El pie del
+  drawer (`modal-footer border-0`) es **hermano** de `modal-body` para
+  quedar anclado abajo. Hay DOS `#btnCanvasPreview`/`#canvasPreview`
+  (vista previa embebida en el lienzo, que repinta con
+  `renderCanvasPreview()` solo si no está `d-none`) y
+  `#livePreviewModal`: ninguna de las dos previews lleva `width` por su id
+  (`FillLayoutTest::testNadieReabreElAnchoDelPreviewDelConstructor` las
+  atan a las dos). Spec de UI: `docs/design.md` (§3.9, §3.10, §4.2).
 
 **fill.js / i18n**
 

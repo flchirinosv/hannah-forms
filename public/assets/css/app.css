@@ -656,6 +656,12 @@ body {
 /* ---------- Vista previa en vivo ---------- */
 .vf-preview-scroll { max-height: 74vh; overflow-y: auto; }
 .vf-preview-scroll .fill-body { padding: 0 !important; background: #fff; }
+
+/* F3/F4: la vista previa embebida en el lienzo se separa del canvas por una
+   línea, igual que el canvas del título de arriba; cuando está oculta
+   (`d-none`) esto no aplica. Ninguna regla por id le pone ancho: lo lleva
+   `.fill-container`, la misma clase del publicado (FillLayoutTest lo ata). */
+#canvasPreview { border-top: 1px solid var(--vf-border); margin-top: 1.5rem; }
 /* Icono de sección: SIN margen propio. La alineación la lleva la fila, con
    `justify-content: space-between` en `.vf-section-inner`, que es donde
    pertenece: el icono se comía el hueco sobrante con `margin: auto .5rem`, lo
@@ -1593,6 +1599,7 @@ body {
     outline: 0;
 }
 .app-type-tile:focus-visible { box-shadow: var(--vf-focus-ring); }
+.app-type-tile:active { transform: translateY(0); box-shadow: none; }
 .app-type-tile-label {
     font-size: var(--vf-hint-fs);
     font-weight: 600;

@@ -45,9 +45,8 @@ era que tres tamaños de botón de icono convivían en pantalla.
 | `--vf-icon-btn` | `32px` (cuadrado) | `.app-tool-btn` 28px, `.app-add-between-btn` 30×22px, split 2.7rem |
 | `--vf-hint-fs` | `.75rem` | `.68` / `.72` / `.74` / `.78rem` sueltos en tips y captions |
 | `--vf-focus-ring` | `0 0 0 3px rgba(99,102,241,.18)` | Anillo de foco de tarjeta y campo |
-| `--vf-tile-min-h` | `72px` | Altura de tile en paleta y modal de cuadrícula |
+| `--vf-tile-min-h` | `72px` | Altura de tile del modal de cuadrícula |
 | `--vf-tile-icon` | `30px` (cuadrado) | Iconos de 36px (filas) y 30px (rejilla) |
-| `--vf-tools-w` | `calc(--vf-icon-btn * 3 + .5rem)` | `pe-5` (3rem) en la cabecera de la tarjeta |
 | `--vf-mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | Claves de permiso y todo lo que se lee como código (matriz de roles) |
 
 **Regla:** todo botón de icono es `width`/`height` = `--vf-icon-btn`,
@@ -72,7 +71,7 @@ registro de por qué existen los tokens de §1.2.
 | Altura de ítem de paleta |filas ~58px vs. rejilla ~62px | `--vf-tile-min-h` 72px | `.app-palette-item` |
 | Tips y captions | `.68` / `.72` / `.74` / `.78rem` | `--vf-hint-fs` `.75rem` | varios |
 | Botón de sección (`btn-primary`) | `44px` | `44px` (se mantiene: es primario) | `.app-btn-primary` |
-| Hueco para herramientas | `pe-5` 3rem | `--vf-tools-w` 104px | `.app-field-head` (F2) |
+| Hueco para herramientas | `pe-5` 3rem → `--vf-tools-w` 104px | **Se elimina con el pie de la tarjeta (F2)**: las herramientas y el rótulo ya no comparten fila | `.app-field-head` (borrada) |
 
 Nota: `.app-btn-primary` conserva `min-height: 44px` a propósito. Los
 tokens de §1.2 gobiernan los controles *secundarios*; una acción
@@ -86,20 +85,22 @@ con el guardado.
 ### 3.1 Tarjeta de campo (`.app-canvas-field`)
 
 - Rejilla flex: asa de arrastre (`.app-field-drag`) + cuerpo
-  (`.app-field-body`). Borde de 2px; `.selected` pasa a
+  (`.app-field-main`). Borde de 2px; `.selected` pasa a
   `--vf-primary` con `--vf-focus-ring`.
-- Herramientas (`.app-field-tools`) arriba a la derecha, `opacity: 0`,
-  reveladas por `:hover` o `.selected`. Orden fijo:
-  **duplicar → configurar → eliminar**. El de eliminar lleva
-  `text-danger`.
-- Las herramientas se montan sobre la etiqueta, así que la fila de
-  cabecera (`.app-field-head`) reserva `--vf-tools-w`, derivado de
-  `--vf-icon-btn`. Antes era `pe-5` (3rem), que ya se quedaba corto con
-  dos botones y se montaba encima de la etiqueta al añadir el engranaje.
-- El asa de arrastre solo puede iniciar arrastre
-  (`handle: '.app-field-drag'` en SortableJS).
 - Etiqueta editable en línea (`.app-field-label`): clic la convierte en
   input; `Enter` confirma, `Escape` cancela.
+- Miniatura del campo (`.app-field-body`): ver §3.5b.
+- **Pie de la tarjeta (F2):** selector de tipo (`select.app-type-select`), el
+  interruptor de obligatoria y las herramientas
+  (`.app-field-tools`: **duplicar → configurar → eliminar**). Orden fijo; el de
+  eliminar lleva `text-danger`.
+- Las herramientas están **siempre visibles** en el pie: el `opacity: 0` de las
+  cabeceras viejas las hacía indescubribles (no había hover en el móvil y no
+  era un camino de teclado). Por eso dejan de compartir fila con la etiqueta y
+  la cabecera `.app-field-head` y su hueco `--vf-tools-w` **ya no existen**: el
+  cambio de tipo y la obligatoria se hacen desde el pie, sin abrir ajustes.
+- El asa de arrastre solo puede iniciar arrastre
+  (`handle: '.app-field-drag'` en SortableJS).
 
 ### 3.2 «+» de inserción (`.app-canvas-add`)
 
@@ -130,25 +131,23 @@ Contrato de implementación, no negociable:
 
 ### 3.3 Cuadrícula de tipos (`.app-type-grid`)
 
-Rejilla responsive de tiles (icono + etiqueta) usada por la paleta y por
-el modal de alta:
+Rejilla responsive de tiles (icono + etiqueta) generada desde el mismo
+catálogo `$fieldTypes` de la vista que se usa en el modal de alta:
 
-- Mismo componente en ambos sitios. El modal se genera desde el mismo
-  catálogo `$fieldTypes` de la vista, así que no puede desincronizarse de
-  la paleta.
 - Tile: `min-height: var(--vf-tile-min-h)`, icono
   `var(--vf-tile-icon)`, etiqueta `--vf-hint-fs`.
 - `section` y `page` se marcan visualmente (borde punteado, icono
   relleno) para que se distingan de las preguntas.
+- `:active` aplana el tile (`transform: translateY(0)`), porque el hover
+  lo eleva: sin el estado de prensa, el clic parece un salto.
 
-### 3.4 Paleta (`.app-palette-*`)
+### 3.4 De dónde salen los tipos
 
-- Dos grupos: **Estructura** (`section`, `page`) y **Tipos de pregunta**.
-- Ambos grupos usan el mismo tile; cambia la retícula (fila vs. 2
-  columnas), nunca la altura del ítem.
-- Los dos tiles de «Estructura» van apilados (`.app-palette-static` es
-  una columna con `gap`): sin separación parecían una sola pieza de dos
-  líneas.
+La paleta izquierda permanente **ya no existe** (F1): el lienzo es la única
+columna y los tipos viven en el diálogo `#addFieldModal` (`col-sm-6` en
+escritorio, dos columnas estables en móvil). Es la decisión de Jotform del
+plan: una paleta fija compite con el lienzo, y el botón `+` (de la barra y de
+la banda entre tarjetas) abre el mismo diálogo con el destino ya resuelto.
 
 ### 3.5 Estados lógicos (insignias y notices)
 
@@ -269,42 +268,88 @@ Contrato de implementación, no negociable:
   encabezado y línea, y el tinte encima solo lo hacía parecer partido en
   dos. Los dos lados están atados por el mismo test.
 
+### 3.9 Cajón de ajustes (`.modal-drawer`)
+
+Los ajustes del builder (campo y formulario) viven en un drawer a la derecha
+que **sigue siendo un `.modal` de Bootstrap** —mismo `Esc`, backdrop, focus y
+`aria-modal`— re-estilado como panel lateral (F2/F3). Clases en `app.css`:
+
+| Clase / selector | Qué hace |
+|---|---|
+| `.modal-drawer .modal-dialog` | `position: absolute` a la derecha, `width: 480px`, `height: 100dvh`, radio del cajón por el lado izquierdo |
+| `.modal.fade .modal-drawer .modal-dialog` | `translateX(100%)` + transición: entra deslizándose |
+| `.modal.show .modal-drawer .modal-dialog` | `transform: none` |
+| `@media (max-width: 575.98px)` | `width: 100vw`: en móvil el cajón es la pantalla |
+
+Contrato de implementación, no negociable:
+
+- La cascada importa: `.modal.show .modal-dialog` (0,3,0) gana a
+  `.modal-drawer .modal-dialog` (0,2,0), por eso los `transform` del
+  fade/show se declaran **explícitamente** para los dos estados; sin el
+  `translateX` del fade, el cajón aparece cortándose y no deslizándose.
+- El pie del drawer (`modal-footer border-0`) es **hermano** de
+  `modal-body`, no hijo: así `modal-body` se desplaza (`.modal-body` con
+  `overflow-y: auto; flex: 1 1 auto`) y el pie queda anclado abajo.
+  `BuilderHelpTooltipTest::testLosTextosDeAyudaYaNoEstanSueltosEnLosPanelesDeAjustes`
+  exige el string en la vista.
+- Nada de paneles `position: sticky` en el builder: el drawer es la única
+  superficie de configuración, y `#settingsForm` (campo) vive en él desde el
+  arranque en una sola instancia (no hay `insertBefore` entre superficies).
+- Los controles del formulario del drawer apilan en `col-sm-6`/`col-12`
+  (no `col-md-*`): a 480px las columnas deciden por el ancho de ventana y
+  sacarían campos de ~120px.
+
+### 3.10 Vista previa
+
+Dos superficies de preview en el constructor, **ambas sin ancho propio**:
+
+- **Embebida** (`#canvasPreview` → `#canvasPreviewContent`): debajo del
+  lienzo; la abre `#btnCanvasPreview` (`aria-pressed` + `.app-btn-active`).
+  `renderCanvasPreview()` solo pinta cuando no está `d-none`.
+- **En vivo** (`#livePreviewModal` → `#livePreviewContent`): pantalla
+  completa; el camino clásico.
+
+Regla: `previewBody()` reutiliza el markup del FILL
+(`nps-option`/`scale-btn`, `star-option`/`star-btn`, `vf-matrix-cell`,
+`vf-ranking-*`, `.vf-submit`), y `FillLayoutTest` prohíbe una regla de ancho
+por id para las dos (`canvasPreviewContent`/`livePreviewContent`): publicar y
+prever comparten `width/max-width: 100%` + `col-lg-6`, y una regla por id los
+separaría en silencio.
+
 ---
 
 ## 4. Patrones de interacción
 
 ### 4.1 Alta de campos
 
-Un solo diálogo para los tres puntos de entrada: la paleta (clic), los
-`+` del lienzo, y el control «agregar pregunta dentro» de una sección.
-Todos abren el **mismo modal** con la cuadrícula completa. La única
-diferencia entre ellos es el destino, de modo que el conjunto de tipos
-válidos se calcula en un único lugar por contexto.
+Un solo diálogo para los tres puntos de entrada: el botón **Agregar
+elemento** de la barra, los `+` del lienzo, y el control «agregar pregunta
+dentro» de una sección. Todos abren el **mismo modal** con la cuadrícula
+completa. La única diferencia entre ellos es el destino, de modo que el
+conjunto de tipos válidos se calcula en un único lugar por contexto.
 
 ### 4.2 Configuración de un campo
 
-- Clic en la tarjeta → se selecciona y su configuración aparece en el
-  panel derecho.
-- El engranaje de la tarjeta abre esa misma configuración en un modal
-  centrado, para no obligar a desplazarse hasta el panel (que además es
-  `position: sticky`, así que su contenido largo se sale de pantalla).
-- El panel tiene el acceso simétrico: un botón de «expandir» en su
-  cabecera, deshabilitado mientras no haya selección.
-- **Invariante: una sola instancia del formulario de configuración.** Se
-  reubica (`insertBefore`) entre el panel y el modal; nunca se duplica.
-  Motivos técnicos en `docs/builder-ui-plan.md` (F2).
-- Foco: al abrir se enfoca la etiqueta; al cerrar vuelve al botón que
-  abrió el modal. Como `selectFieldById()` redibuja el lienzo, el
-  engranaje se localiza **por `data-uid`** al volver, no por la referencia
-  al nodo original (que ya no existe).
-- Al cerrar el modal (botón, `Escape` o backdrop) el formulario vuelve al
-  panel, conservando el `scrollTop` del contenedor con scroll y de la
-  página: la página no debe saltar al encoger el panel.
+- Clic en la tarjeta → se selecciona, y su configuración aparece en el
+  cajón de la derecha (`.modal-drawer`, ver §3.9).
+- El engranaje de la tarjeta abre ese mismo cajón con el campo en cuestión;
+  el «expandir» del cajón viejo ya no existe: no hay panel que expandir.
+- **Invariante: una sola instancia del formulario de configuración.** Vive en
+  el cajón desde el arranque; los ids y los listeners son los de siempre, y
+  `#settingsForm` no se mueve ni se duplica.
+- Cerrar el cajón (botón, `Esc` o backdrop) deja la tarjeta que lo abrió
+  seleccionada: `selectFieldById()` redibuja el lienzo, así que el engranaje
+  se localiza **por `data-uid`** al devolver la selección.
+- Foco: al abrir se enfoca la etiqueta; al cerrar vuelve al botón que abrió.
 
 ### 4.3 Modales
 
 - `modal-dialog-centered` + `modal-dialog-scrollable`: el desplazamiento
   ocurre **dentro** del modal, nunca en la página.
+- **Excepción: los ajustes del builder.** `#fieldSettingsModal` y
+  `#formSettingsModal` NO usan `centered`: son `.modal-drawer` (ver §3.9),
+  anclados a la derecha y a `100dvh`. El `modal-dialog-scrollable` se queda,
+  porque el desplazamiento vuelve a ocurrir dentro del cajón.
 - Rejilla de tipos agrupada por secciones con títulos, no una lista
   larga: el menú vertical obligaba a hacer scroll para encontrar un tipo.
 - Foco, `Escape` y backdrop los trae Bootstrap; no se reimplementan.
@@ -361,3 +406,9 @@ Regla del proyecto, y la razón de que exista el botón `.app-help`:
    confirmar en consola qué versión está sirviendo el navegador.
 9. Los strings de UI van en español, y los del fill público también en
    `app/lang/{es,en}.php` (verificar paridad con `I18nTest`).
+10. Un ajuste del builder es un `.modal-drawer` o nada: nada de paneles
+    `position: sticky` ni de mover la misma instancia de un formulario
+    entre superficies.
+11. Un preview del constructor reutiliza `previewBody()` y el markup del
+    fill, y **no** lleva ancho por su id; si añades una superficie nueva,
+    `FillLayoutTest` cuenta la octava y el test de los ids.

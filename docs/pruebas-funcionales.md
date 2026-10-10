@@ -138,9 +138,9 @@ Para no perderte, prepara esto antes de empezar:
 
 | # | Qué probar | Esperado | P. | Estado |
 |---|---|---|---|---|
-| D1 | Abrir el constructor de un formulario vacío | Lienzo vacío, panel «Agrega elementos» y «Configuración» | A | |
-| D2 | Arrastrar un campo al lienzo | Aparece una tarjeta con su etiqueta | A | |
-| D3 | Pulsar el engranaje de una tarjeta | Se abre su configuración; el engranaje de otra tarjeta lleva la suya allí (no se duplica el panel) | A | |
+| D1 | Abrir el constructor de un formulario vacío | Lienzo central, vacío, con título y descripción editables sobre él; sin columnas laterales; estado vacío con botón «Agregar pregunta» | A | |
+| D2 | Agregar un campo al lienzo | Aparece una tarjeta con su etiqueta y su pie (tipo + obligatoria + herramientas) | A | |
+| D3 | Pulsar el engranaje de una tarjeta | Se abre el cajón de ajustes a la derecha con la configuración de ese campo; el engranaje de otra tarjeta lleva la suya allí (una sola instancia) | A | |
 | D4 | Editar etiqueta y opciones, luego **Guardar** y reabrir | Todo persiste | A | |
 | D5 | Cambiar el orden de dos campos, **Guardar**, reabrir | El orden persiste | A | |
 | D6 | Añadir 21 tipos de campo distintos | Todos aparecen en la lista y ninguno revienta el lienzo | A | |
@@ -160,7 +160,7 @@ Para no perderte, prepara esto antes de empezar:
 | D20 | Con el aviso descartado, **reescribir** la etiqueta con otras palabras | El aviso vuelve a aparecer, porque es otra pregunta | M | |
 | D21 | Poner una etiqueta con «Nombre de la empresa» | Aparece el aviso (no decide), y al pulsar «No es» el campo **sigue sin marcarse** y sin consecuencias | M |
 | D22 | Abrir el engranaje de una sección o una página | **No** sale el aviso de PII, porque no guardan respuestas | M |
-| D23 | Abrir **Configuración** del formulario y cambiar el color principal | La maqueta de abajo cambia al instante, sin cerrar la pantalla | A | |
+| D23 | Abrir **Configuración** del formulario y cambiar el color principal | El preview (embebido o en vivo) cambia al instante, sin cerrar el cajón | A | |
 | D24 | Abrir **Configuración**, elegir una tipografía del catálogo | `#stFontNote` dice que se sirve desde esta instalación, en verde | A | |
 | D25 | Abrir **Configuración**, dejar la tipografía en **Predeterminada** | `#stFontNote` dice que usará la del panel; el formulario publicado no emite `@font-face` | A | |
 | D26 | En la configuración, activar la confirmación y mirar **Campo email** | La lista desplegable ofrece las etiquetas de los campos de tipo email que ya existen | M |
@@ -488,6 +488,13 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
 | S35 | Formulario publicado a **1920 px** y después a **800 px**; luego el preview en vivo del constructor a ≥992 px | A 1920 la tarjeta ocupa **la mitad** centrada (`col-lg-6`); a 800 ocupa todo el ancho y ninguna matriz se sale con scroll horizontal. El preview del constructor se parte **igual** que el publicado: ninguna regla por id le da un ancho distinto | M | |
 | S36 | Ficha → Ajustes → Notificaciones y Webhook, en pantalla ancha (≥992 px, con la tarjeta en su columna estrecha) | Los campos no salen en columnas de ~120 px: van a media fila (email/asunto, formato/secreto) o a fila entera (mensaje, URL), y sus textos no se recortan | M | |
+| S37 | Constructor recién abierto | Una sola columna central (lienzo), sin paleta izquierda; la barra trae Guardar, Vista previa, Vista previa en vivo y Agregar elemento | M | |
+| S38 | «Agregar elemento» y el `+` entre dos tarjetas | Ambos abren el mismo diálogo con los 21 tipos; el `+` entre tarjetas inserta en esa posición (regresión del anidado: ver S27) | A | |
+| S39 | Pie de una tarjeta | Selector de tipo, interruptor de obligatoria y duplicar / configurar / eliminar **visibles sin hover**; cambiar el tipo desde el pie actualiza la miniatura sin abrir ajustes | M | |
+| S40 | Engranaje de una tarjeta | Se abre el cajón a la derecha (drawer) con los ajustes del campo; al cerrarlo (x, `Esc` o tocar fuera) la tarjeta que lo abrió queda seleccionada | M | |
+| S41 | «Configuración» del formulario | Se abre el mismo tipo de cajón, 420 px, con «Guardar configuración» **fijo abajo** (el cuerpo se desplaza por encima); en móvil el cajón ocupa todo el ancho | M | |
+| S42 | «Vista previa» (embebida) | Aparece el formulario tal como quedará publicado, debajo del lienzo y separado por una línea; se repinta en vivo al editar, y su botón de la barra queda marcado mientras está abierta | M | |
+| S43 | Preview embebido y publicado, a ≥992 px y a <992 px | Los dos se parten **igual** al mismo ancho (mitad centrada / todo el ancho): ninguna regla por id les da ancho propio | M | |
 
 
 ---

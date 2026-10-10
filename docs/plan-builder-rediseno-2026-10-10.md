@@ -1,7 +1,8 @@
 # Plan — Rediseño del builder a estilo Google Forms
 
 **Fecha:** 2026-10-10
-**Estado:** en curso — este documento es el punto de restauración y la hoja de ruta.
+**Estado:** **cerrado** — fases F0–F4 hechas (`6cdc3f7` F2, `3dd342d` F3 y el commit
+de cierre de F4). Este documento es el punto de restauración y la hoja de ruta.
 Cada fase se cierra en su propio commit con la suite completa en verde
 (`php scripts/test.php` → 1059 tests) antes de pasar a la siguiente.
 
@@ -137,15 +138,19 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 - `ThemeFontCssInjectionTest` y `I18nTest` en verde.
 **Checkpoint:** suite completa verde (1059 tests) en el commit de esta fase.
 
-### F4 · Pulido, docs y cierre
+### F4 · Pulido, docs y cierre — **hecho**
 - Tokens más planos (sombras/radio suaves), hover/active/focus, estados vacíos,
-  responsive móvil (`dvh`), contraste `app-btn-primary`.
+  responsive móvil (`dvh`), contraste `app-btn-primary`. Ya estaban en los tokens
+  de F0 (sombras suaves, `:focus-visible` global, `dvh` de los drawers, estados
+  vacíos); el resto del pulido de esta etapa: `:active` en el tile del modal y
+  la línea que separa la vista previa embebida del lienzo.
 - `docs/decisiones.md` (entrada), `docs/manual-usuario.md` (sección builder),
-  `docs/pruebas-funcionales.md` (R/S/T/U/AA), y **recuentos de AGENTS.md** si la
-  estructura de `views/` cambia (nuevos partials `views/builder/_*.php` → el 62 sube en
-  el mismo commit).
-- Tabla de estado de este documento → **cerrado**; `docs/design.md` actualizado con las
-  nuevas reglas de UI.
+  `docs/pruebas-funcionales.md` (D1/D3/D23 + filas S37–S43) y **recuentos de
+  AGENTS.md**: la estructura de `views/` NO cambió (un solo `index.php`), así que
+  el 62 no sube. Invariantes del builder actualizadas (`#settingsForm` en el
+  drawer, pie de tarjeta, dos previews sin ancho por id).
+- Tabla de estado de este documento → **cerrado**; `docs/design.md` actualizado
+  con las nuevas reglas de UI (§3.9 drawer, §3.10 vista previa, §4.2/§4.3).
 **Checkpoint:** suite completa verde + revisión manual R/S/T/U/AA.
 
 ## Tabla de estado
@@ -156,4 +161,4 @@ Commit: «Punto de restauracion pre-rediseno-builder (tag + dump)». Añadió
 | F1 | Chrome estilo Google Forms (layout columna central) | **hecho** |
 | F2 | Tarjetas ricas + drawer de ajustes | **hecho** |
 | F3 | Tema como palette y preview embebido | **hecho** |
-| F4 | Pulido, docs y cierre | pendiente |
+| F4 | Pulido, docs y cierre | **hecho** |
