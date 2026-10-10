@@ -90,7 +90,7 @@ class FormSettingsMergeTest
     public function testElParchePisaSoloLoQueTraeYDejaLoDemasIntacto(): void
     {
         $antes = [
-            'theme'    => ['primary' => '#ff0000', 'background' => '#eeeeee', 'font' => 'Georgia, serif'],
+            'theme'    => ['primary' => '#ff0000', 'background' => '#eeeeee', 'font' => 'Lora'],
             'quota'    => ['enabled' => true, 'max' => 50],
             'schedule' => ['open_at' => '2026-12-01 08:00', 'close_at' => null],
         ];
@@ -101,7 +101,7 @@ class FormSettingsMergeTest
         // El resto de `quota` sobrevive: el parche no reconstruye el bloque.
         assertSame(true, $despues['quota']['enabled']);
         assertSame('#ff0000', $despues['theme']['primary']);
-        assertSame('Georgia, serif', $despues['theme']['font']);
+        assertSame('Lora', $despues['theme']['font']);
         assertSame('2026-12-01 08:00', $despues['schedule']['open_at']);
     }
 

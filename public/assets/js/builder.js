@@ -2259,13 +2259,14 @@
             st('stAntiBotEnabled').checked = !!(s.anti_bot && s.anti_bot.enabled);
             updateAdvanceHint();
             paintThemePreview();
+            checkFontLive();
         }
 
         // P1 — Vista previa del tema dentro de la propia modal. Los dos colores
         // se ven al instante sin salir del formulario, que es la razón por la
-        // que la gente duda tanto de ellos. NO aplica la fuente: `--vf-font`
-        // solo la respeta el equipo que tenga esa fuente instalada, así que
-        // mostrar aquí una maqueta con ella daría una impresión falsa.
+        // que la gente duda tanto de ellos. NO aplica la fuente a propósito: la
+        // maqueta es solo de color; la tipografía elegida (una familia del
+        // catálogo) se ve en el formulario publicado.
         function paintThemePreview() {
             const primary = st('stPrimary');
             const background = st('stBackground');
@@ -2284,30 +2285,22 @@
             if (bar) bar.style.backgroundColor = p;
         }
 
-        // El mismo patrón de `FormSettings::isValidFontFamily()`, replicado aquí
-        // para avisar EN VIVO. Sin esto la fuente se descarta al guardar sin
-        // decir nada (el servidor la filtra en normalize() y en themeCss()), y
-        // el síntoma es «escribí la fuente y no pasó nada».
-        const FONT_FAMILY_RE = /^[A-Za-z0-9][A-Za-z0-9 _.,-]{0,119}$/;
-
+        // La fuente ya no es texto libre: el <select> solo ofrece las familias
+        // del catálogo (`FormSettings::fonts()`), que esta instalación sirve
+        // desde /assets/fonts/. El aviso sigue existiendo porque es ESTADO (lo
+        // comprueba BuilderHelpTooltipTest) y porque dice de dónde sale lo
+        // elegido; un valor libre ya no puede llegar a la pantalla.
         function checkFontLive() {
             const input = st('stFont');
             const note = st('stFontNote');
             if (!input || !note) return;
-            const v = input.value.trim();
-            if (v === '') {
-                note.textContent = 'Vacío = la tipografía por defecto.';
+            if (!input.value) {
+                note.textContent = 'Predeterminada: la tipografía del panel.';
                 note.className = 'form-text mb-0 text-muted';
                 return;
             }
-            if (FONT_FAMILY_RE.test(v)) {
-                note.textContent = 'Correcta. Se usará si el equipo de quien responde la tiene instalada.';
-                note.className = 'form-text mb-0 text-success';
-                return;
-            }
-            note.textContent = 'Esta no se guarda: solo se admiten letras, números, espacios y - _ . , '
-                + '(sin comillas ni paréntesis). Ej: Georgia, serif';
-            note.className = 'form-text mb-0 text-danger fw-semibold';
+            note.textContent = '«' + input.value + '» se sirve desde esta instalación.';
+            note.className = 'form-text mb-0 text-success';
         }
 
         /* Solo los bloques de DISEÑO. Los operativos (acceso, agenda, cupo,
@@ -2363,7 +2356,7 @@
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', paintThemePreview);
         });
-        if (st('stFont')) st('stFont').addEventListener('input', checkFontLive);
+        if (st('stFont')) st('stFont').addEventListener('change', checkFontLive);
 
         if (st('btnFormSettings') && settingsModalHolder) {
             st('btnFormSettings').addEventListener('click', () => {

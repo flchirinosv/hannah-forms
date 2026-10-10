@@ -516,7 +516,7 @@ Cinco cosas que la pantalla avisa por ti porque fallan en silencio:
 
 | Aviso | Qué pasa si no lo lees |
 |---|---|
-| **Tipografía**: solo letras, números, espacios y `- _ . ,`, y **sin comillas** | Escribes `Georgia, serif` y se guarda; escribes `'Georgia', serif` y se descarta sin decir nada |
+| **Tipografía**: elige una familia del catálogo (se sirve desde tu instalación, en `assets/fonts/`) | Escribir una familia a mano (p. ej. `Georgia`) se descarta: solo están las que el servidor puede servir, así que lo que eliges se ve igual en cualquier equipo |
 | **Campo email** de la confirmación: es la etiqueta exacta de la pregunta | Si no coincide con ninguna, el correo no se envía y no hay error en pantalla |
 | **Turnstile**: actívalo solo si el servidor ya tiene claves | El formulario deja de mostrarse a **todo el mundo**, no solo a los bots |
 | **Abre/Cierra**: se leen en la zona horaria del servidor, y abrir después de cerrar se rechaza | Una ventana que no existe nunca |

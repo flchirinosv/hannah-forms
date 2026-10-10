@@ -54,14 +54,14 @@ class FormSettingsTest
     public function testNormalizeAplanaYDescartaClavesExtras(): void
     {
         $raw = [
-            'theme' => ['primary' => '#ff0000', 'background' => '  #fff  ', 'font' => 'Georgia, serif', 'extra' => 1],
+            'theme' => ['primary' => '#ff0000', 'background' => '  #fff  ', 'font' => 'Lora', 'extra' => 1],
             'quota' => ['enabled' => true, 'max' => '25'],
             'claveDesconocida' => 'x',
         ];
         $n = FormSettings::normalize($raw);
         assertSame('#ff0000', $n['theme']['primary']);
         assertSame('#fff', $n['theme']['background']);
-        assertSame('Georgia, serif', $n['theme']['font']);
+        assertSame('Lora', $n['theme']['font']);
         assertTrue($n['quota']['enabled']);
         assertSame(25, $n['quota']['max']);
         self::assertArrayNotHasKeyCompat('claveDesconocida', $n);
@@ -138,7 +138,7 @@ class FormSettingsTest
     public function testThemeCssGeneraVariables(): void
     {
         $settings = FormSettings::normalize([
-            'theme' => ['primary' => '#7a3ff2', 'background' => '', 'font' => 'Georgia'],
+            'theme' => ['primary' => '#7a3ff2', 'background' => '', 'font' => 'Lora'],
         ]);
         $css = FormSettings::themeCss($settings);
         self::assertStringContains('#7a3ff2', $css);

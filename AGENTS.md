@@ -1250,10 +1250,15 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   (`APP_PUBLIC_URL` → petición actual → `app.url`), nunca de `app.url` directo.
 - `thanks.redirect_url` pasa `RedirectGuard` (allowlist `APP_REDIRECT_ALLOWLIST`);
   **vacía = bloqueado**, no "todo pasa".
-- `settings.theme.font` es lista blanca (`FormSettings::isValidFontFamily()`) y se
-  valida en **las dos puertas**, `normalize()` (lo que entra) y `themeCss()` (lo
-  que sale), porque puede haber filas ya guardadas con valores inválidos;
-  `validate()` mira el valor **crudo**, no el normalizado.
+- `settings.theme.font` es una **lista cerrada** (`FormSettings::fonts()`, cuatro
+  familias auto-hospedadas en `public/assets/fonts/`) y se valida en **las dos
+  puertas**, `normalize()` (lo que entra) y `themeCss()` (lo que sale), porque
+  puede haber filas ya guardadas con valores de cuando era texto libre y
+  filtrar solo al guardar no las limpia; `validate()` mira el valor **crudo**,
+  no el normalizado. Como familia y archivo salen del mapa, la inyección de CSS
+  de la fase 2 ya no tiene punto de entrada, y `ThemeFontCssInjectionTest`
+  comprueba el catálogo en las dos direcciones (familia sin archivo y `.woff2`
+  fuera del catálogo).
 - **Toda variable que emite `themeCss()` tiene que tener un consumidor en
   `app.css`** (`ThemeFontCssInjectionTest` lo recorre y falla si alguna no
   aparece). `--vf-background` va a `.fill-body` **y solo a él** (la tarjeta se

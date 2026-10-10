@@ -130,13 +130,14 @@ final class FormSettings
                     $out['theme'][$k] = is_string($v) ? self::short(trim($v), 40) : null;
                 }
             }
-            // Una familia tipográfica no es texto libre: va directa a un
-            // `font-family` de un <style> que el visitante carga en el fill
-            // público. Sin patrón, `;`/`}`/`url(` permiten inyectar
-            // declaraciones CSS nuevas (y con ellas, beacons y fugas por CSS).
-            // Se descarta aquí, al normalizar: es la puerta por la que pasa
-            // todo lo que llega del builder o de un POST de settings.
-            if ($out['theme']['font'] !== null && !self::isValidFontFamily((string) $out['theme']['font'])) {
+            // La tipografía es una lista CERRADA (`fonts()`), no texto libre:
+            // va directa a un `font-family` de un <style> del fill público, y
+            // con el catálogo el valor que sale es siempre uno de esos nombres
+            // y el archivo que este mismo mapa sirve. Un valor que no esté en
+            // el catálogo (o una fila vieja de cuando era texto libre) se
+            // descarta aquí, al normalizar: es la puerta por la que pasa todo
+            // lo que llega del builder o de un POST de settings.
+            if ($out['theme']['font'] !== null && !array_key_exists((string) $out['theme']['font'], self::fonts())) {
                 $out['theme']['font'] = null;
             }
         }
@@ -551,50 +552,54 @@ final class FormSettings
         }
 
         // Se mira el valor CRUDO y no el normalizado: `normalize()` ya lo dejó en
-        // null cuando no cumple el patrón, así que comprobar `$n` nunca
-        // detectaría nada y quien escribe la tipografía se quedaría sin aviso de
-        // que su valor se descartó en silencio. Se aplica el mismo recorte de 40
+        // null cuando no está en el catálogo, así que comprobar `$n` nunca
+        // detectaría nada y quien elige la tipografía se quedaría sin aviso de
+        // que su valor se descartó en silencio. Se aplica el mismo `trim()`
         // para que lo que se valida sea exactamente lo que se guarda.
         $rawFont = $raw['theme']['font'] ?? null;
-        if (is_string($rawFont)) {
-            $font = self::short(trim($rawFont), 40);
-            if ($font !== '' && !self::isValidFontFamily($font)) {
-                return 'La tipografía solo admite letras, números, espacios y los signos - _ . , (una o varias familias separadas por comas).';
-            }
+        if (is_string($rawFont) && trim($rawFont) !== '' && !array_key_exists(trim($rawFont), self::fonts())) {
+            return 'Elige una tipografía del catálogo.';
         }
 
         return null;
     }
 
     /**
-     * ¿Es una lista de familias tipográficas legítima?
+     * Catálogo cerrado de tipografías auto-hospedadas, `familia => archivo`.
      *
-     * Lista blanca, no solo de blacklist: lo que se acepta es lo que se puede
-     * escribir como `font-family` sin cambiar de contexto. Se permiten coma
-     * (familias alternativas), espacio, punto, guion y guion bajo, que es lo que
-     * cubre desde `Inter` hasta `Source Sans 3, sans-serif`. Quedan fuera
-     * comillas, paréntesis, punto y coma, llaves, barra, barra invertida,
-     * dos puntos, coma... y por tanto `url(`, `@import` y el cierre de la
-     * declaración con `;`.
+     * Cuatro familias variables (una sola fuente cubre 400–700) con subconjunto
+     * latin, bajo SIL OFL 1.1, en `public/assets/fonts/` (ver `FUENTES.md`).
+     * Se sirven desde esta instalación, así que lo que elige el editor se ve
+     * igual en cualquier equipo y no depende de las fuentes del visitante.
      *
-     * OJO: el mismo filtro se aplica en `themeCss()` al emitir, porque puede
-     * haber filas ya guardadas en `forms.settings` de antes de este arreglo:
-     * filtrar solo al guardar no las limpia.
+     * Es la UNICA puerta de `theme.font`: un valor que no sea una clave de este
+     * mapa no se guarda y no emite su `@font-face`, en `normalize()` (lo que
+     * entra) y en `themeCss()` (lo que sale, para las filas ya guardadas de
+     * cuando era texto libre). Añadir una familia es subir el archivo y añadir
+     * aquí su fila.
+     *
+     * @return array<string, string>
      */
-    public static function isValidFontFamily(string $font): bool
+    public static function fonts(): array
     {
-        // 120 = 40 del recorte de normalize() × 3 familias.
-        return preg_match("/^[A-Za-z0-9][A-Za-z0-9 _.,-]{0,119}$/", $font) === 1;
+        return [
+            'Inter'          => 'inter-latin-var.woff2',
+            'Source Sans 3'  => 'source-sans-3-latin-var.woff2',
+            'Source Serif 4' => 'source-serif-4-latin-var.woff2',
+            'Lora'           => 'lora-latin-var.woff2',
+        ];
     }
 
     /**
      * Aplica un tema CSS por formulario (variables) si está definido.
      *
-     * El filtro de `font` se repite aquí a propósito, y no por redundancia:
-     * esta función lee de `forms.settings`, así que puede recibir una fila
-     * guardada antes de que existiera el patrón, y un `<style>` que escapa
-     * solo a posteriori sigue siendo una inyección de CSS. Lo que sale de aquí
-     * está en el fill público de cualquiera, sin sesión.
+     * La tipografía solo se emite si la familia está en `fonts()`: es la puerta
+     * de salida, y no por redundancia — esta función lee de `forms.settings`,
+     * así que puede recibir una fila guardada antes de que existiera el
+     * catálogo. Como el nombre de familia y el archivo salen del mapa (no del
+     * texto de la fila), la inyección de CSS que motivaba el filtro ya no tiene
+     * un punto de entrada. Lo que sale de aquí está en el fill público de
+     * cualquiera, sin sesión.
      *
      * @param array<string, mixed> $settings settings normalizados
      * @return string CSS a incluir en <style> de la página pública
@@ -609,17 +614,22 @@ final class FormSettings
         if (isset($theme['background']) && $theme['background'] !== '') {
             $vars[] = '--vf-background:' . $theme['background'];
         }
-        if (isset($theme['font']) && $theme['font'] !== '' && self::isValidFontFamily((string) $theme['font'])) {
-            // Sin comillas: el patrón no las admite, así que no hacen falta y
-            // además su htmlspecialchars previo las convertía en &quot; (que
-            // dentro de un <style> no se decodifica, era un nombre de fuente
-            // roto). Una familia con espacios es CSS válido sin comillas.
-            $vars[] = '--vf-font:' . $theme['font'];
+        // @font-face + variable. Sin comillas: una familia con espacios es CSS
+        // válido (`font-family:Source Serif 4`) y el htmlspecialchars de abajo
+        // no las convertiría en &quot; dentro del <style>.
+        $fonts = '';
+        $font = isset($theme['font']) ? (string) $theme['font'] : '';
+        if ($font !== '' && array_key_exists($font, self::fonts())) {
+            $file = self::fonts()[$font];
+            $fonts = '@font-face{font-family:' . $font . ';'
+                . 'src:url(/assets/fonts/' . $file . ') format("woff2");'
+                . 'font-weight:400 700;font-display:swap;}';
+            $vars[] = '--vf-font:' . $font;
         }
         if ($vars === []) {
             return '';
         }
-        return ':root{' . implode(';', array_map('htmlspecialchars', $vars)) . ';}';
+        return $fonts . ':root{' . implode(';', array_map('htmlspecialchars', $vars)) . ';}';
     }
 
     private static function short(string $s, int $max): string

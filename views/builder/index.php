@@ -376,21 +376,18 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         <input type="color" class="form-control form-control-color w-100" id="stBackground" value="#f6f6f6">
                     </div>
                     <div class="col-md-4">
-                        <label for="stFont" class="form-label small fw-semibold">Fuente<?= $helpButton('Solo letras, números, espacios y <code>- _ . ,</code>. Se admiten alternativas separadas por coma. <strong>Sin comillas:</strong> escribe <code>Times New Roman, serif</code>, no <code>\'Times New Roman\', serif</code>. Y ten en cuenta que esto no descarga la fuente: si el visitante no la tiene instalada, se verá la que tenga.') ?></label>
-                        <input type="text" class="form-control form-control-sm" id="stFont" list="stFontList" placeholder="Ej: Georgia, serif">
-                        <datalist id="stFontList">
-                            <option value="system-ui, sans-serif"></option>
-                            <option value="Georgia, serif"></option>
-                            <option value="Inter, sans-serif"></option>
-                            <option value="Source Sans 3, sans-serif"></option>
-                            <option value="Verdana, sans-serif"></option>
-                            <option value="monospace"></option>
-                        </datalist>
+                        <label for="stFont" class="form-label small fw-semibold">Fuente<?= $helpButton('Se sirve desde esta misma instalación, sin llamar a ningún servicio externo: elige una del catálogo y se descargará de aquí. «Predeterminada» usa la tipografía del panel.') ?></label>
+                        <select class="form-select form-select-sm" id="stFont">
+                            <option value="">Predeterminada</option>
+                            <?php foreach (FormSettings::fonts() as $familia => $archivo): ?>
+                            <option value="<?= View::escape($familia) ?>"><?= View::escape($familia) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                         <p class="form-text mb-0" id="stFontNote" role="status"></p>
                     </div>
                 </div>
                 <div class="border rounded p-3 mb-4 bg-light">
-                    <p class="small fw-semibold mb-2"><i class="fa-solid fa-eye me-1"></i>Así se verá <span class="text-muted fw-normal">(solo los colores; la fuente depende del equipo de quien responde)</span></p>
+                    <p class="small fw-semibold mb-2"><i class="fa-solid fa-eye me-1"></i>Así se verá <span class="text-muted fw-normal">(solo los colores; la tipografía se aplica al formulario publicado)</span></p>
                     <div class="d-flex flex-wrap align-items-center gap-3" id="stThemePreview">
                         <button type="button" class="btn btn-sm" id="stThemePreviewBtn" disabled>Enviar</button>
                         <span class="small fw-semibold" id="stThemePreviewTitle">Título del formulario</span>

@@ -161,8 +161,8 @@ Para no perderte, prepara esto antes de empezar:
 | D21 | Poner una etiqueta con «Nombre de la empresa» | Aparece el aviso (no decide), y al pulsar «No es» el campo **sigue sin marcarse** y sin consecuencias | M |
 | D22 | Abrir el engranaje de una sección o una página | **No** sale el aviso de PII, porque no guardan respuestas | M |
 | D23 | Abrir **Configuración** del formulario y cambiar el color principal | La maqueta de abajo cambia al instante, sin cerrar la pantalla | A | |
-| D24 | Escribir una tipografía con comillas (`'Georgia', serif`) | Aviso en rojo dizendo que no se guarda, **antes** de guardar | A | |
-| D25 | Escribir una tipografía válida (`Georgia, serif`) | Aviso en verde, y se aplica | A | |
+| D24 | Abrir **Configuración**, elegir una tipografía del catálogo | `#stFontNote` dice que se sirve desde esta instalación, en verde | A | |
+| D25 | Abrir **Configuración**, dejar la tipografía en **Predeterminada** | `#stFontNote` dice que usará la del panel; el formulario publicado no emite `@font-face` | A | |
 | D26 | En la configuración, activar la confirmación y mirar **Campo email** | La lista desplegable ofrece las etiquetas de los campos de tipo email que ya existen | M |
 | D27 | Buscar en la pantalla de configuración un ajuste sin explicación | Los que necesitan contexto lo tienen en gris debajo; ningún número suelto sin decir qué es | M | |
 
@@ -400,7 +400,7 @@ Para no perderte, prepara esto antes de empezar:
 | P3 | En una pantalla de móvil (o con el ratón lejos), **tocar** el `?` | Aparece la ayuda: el `click` está en el trigger porque no hay hover | M | |
 | P4 | Con el teclado: tabular hasta un `?` y pulsar Intro | Se abre la ayuda y el anillo de foco se ve | A | |
 | P5 | Con un interruptor, tabular hasta su `?` y **pulsarlo** | Se abre la ayuda y **el interruptor no cambia**: el clic anula el reenvío del `<label>` | A | |
-| P6 | Escribir una tipografía inválida | `#stFontNote` aparece **visible**, sin pasar el ratón: es estado, no explicación | A | |
+| P6 | Cambiar la fuente en el modal y mirar `#stFontNote` | El aviso aparece **visible** al cambiar la opción, sin pasar el ratón: es estado, no explicación | A | |
 | P7 | Guardar y recargar: ¿sigue el `?` con el mismo texto? | Sí, y el ajuste guardado no se ha movido de sitio | A | |
 | P8 | El `?` mide 14 px: intentar pulsarlo con el dedo | Se pulsa igual: el área táctil está ampliada con `::after` | M | |
 
