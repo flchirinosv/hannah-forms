@@ -253,6 +253,10 @@ $roles = $roles ?? [];
                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle app-rbac-groups-btn" type="button"
                                                 data-bs-toggle="dropdown" aria-expanded="false"
                                                 id="groups-btn-<?= $uid ?>">
+                                            <?php // El icono hace que en móvil la regla de «solo icono»
+                                                  // enganche al botón; las insignias se reponen a su
+                                                  // tamaño por CSS para no perder la pertenencia. ?>
+                                            <i class="fa-solid fa-users me-1"></i>
                                             <?php // El hueco (`vfUserGroups<uid>`) envuelve a las
                                                   // insignias y es un partial, porque el guardado
                                                   // de grupos va por fetch: sin él el botón se

@@ -38,7 +38,7 @@ class ContentButtonsMobileTest
         assertSame(
             1,
             preg_match(
-                '#@media\s*\(max-width:\s*991\.98px\)\s*\{\s*\.app-content \.btn:has\(i\[class\*="fa-"\]\):not\(\.w-100\)\s*\{[^}]*font-size:\s*0#s',
+                '#@media\s*\(max-width:\s*991\.98px\)\s*\{\s*@supports selector\(:has\(\*\)\)\s*\{\s*\.app-content \.btn:has\(i\[class\*="fa-"\]\):not\(\.w-100\)[^{]*\{[^}]*font-size:\s*0#s',
                 self::css()
             ),
             'en móvil, los botones del contenido con icono colapsan su texto'
@@ -47,7 +47,7 @@ class ContentButtonsMobileTest
         assertSame(
             1,
             preg_match(
-                '#\.app-content \.btn:has\(i\[class\*="fa-"\]\):not\(\.w-100\) i\[class\*="fa-"\]\s*\{[^}]*font-size:\s*1rem#s',
+                '#\.app-content \.btn:has\(i\[class\*="fa-"\]\):not\(\.w-100\) i\[class\*="fa-"\][^{]*\{[^}]*font-size:\s*1rem#s',
                 self::css()
             ),
             'el icono recupera su tamaño (si no, `font-size: 0` lo encogía también)'
@@ -104,6 +104,60 @@ class ContentButtonsMobileTest
         assertTrue(
             str_contains($nav, 'app-admin-nav') && str_contains($nav, 'fa-solid'),
             'las píldoras de /admin traen icono dentro de app-admin-nav'
+        );
+    }
+
+    public function testElColapsoVaBajoSupportsYNoPierdeNiInsigniasNiLoQueDebe(): void
+    {
+        $css = self::css();
+
+        // El bloque entero va bajo `@supports selector(:has(*))`: sin `:has()`
+        // no hay forma de decir «botón que contiene un icono», y la
+        // degradación es que el texto se quede (nunca un botón vacío).
+        assertSame(
+            1,
+            preg_match('#@supports selector\(:has\(\*\)\)#', $css),
+            'el colapso va guardado bajo @supports selector(:has(*))'
+        );
+
+        // Las insignias de grupos se reponen a su tamaño: no son texto del
+        // botón, y `font-size: 0` las dejaría invisibles y con ellas la
+        // pertenencia de la fila.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-content \.btn:has\(i\[class\*="fa-"\]\) \.badge\s*\{[^}]*font-size:\s*0\.7rem#s',
+                $css
+            ),
+            'las insignias dentro de un botón colapsado siguen legibles'
+        );
+
+        // Los botones de crear de /admin son `w-100`, así que quedan fuera de
+        // la regla general; se colapsan por estar marcados con
+        // `app-btn-mobile-icon`.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-content \.btn\.app-btn-mobile-icon:has\(i\[class\*="fa-"\]\)\s*\{[^}]*font-size:\s*0#s',
+                $css
+            ),
+            'los botones marcados con app-btn-mobile-icon también colapsan'
+        );
+
+        foreach (['groups' => true, 'roles' => true] as $vista => $_) {
+            $contenido = (string) file_get_contents(dirname(__DIR__, 2) . "/views/admin/{$vista}.php");
+            assertTrue(
+                str_contains($contenido, 'app-btn-mobile-icon'),
+                "el botón de crear de /admin/{$vista} lleva app-btn-mobile-icon"
+            );
+        }
+
+        // El botón de grupos de la fila trae icono (si no, la regla no lo
+        // alcanza) y conserva su gancho de fetch.
+        $users = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
+        assertTrue(
+            str_contains($users, 'app-rbac-groups-btn') && str_contains($users, 'fa-users'),
+            'el botón de grupos de la fila de /admin trae icono'
         );
     }
 }

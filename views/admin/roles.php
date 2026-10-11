@@ -76,7 +76,7 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                             <input type="text" class="form-control form-control-sm" id="roleDesc" name="description"
                                    maxlength="255" placeholder="Para qué existe este rol">
                         </div>
-                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                        <button type="submit" class="btn btn-sm btn-primary w-100 app-btn-mobile-icon">
                             <i class="fa-solid fa-plus me-1"></i>Crear rol
                         </button>
                     </form>

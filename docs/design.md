@@ -361,9 +361,16 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   tamaño. Quedan fuera los botones **sin icono** (quedarían vacíos) y los
   `w-100`: un botón a ancho completo con un solo icono centrado no se distingue
   de uno roto, y ahí el texto es lo que dice qué hace («Eliminar», «Guardar
-  ajustes»). La regla es de `.app-content`, así que la sidebar nunca entra. Lo
-  ajustes»). La regla es de `.app-content`, así que la sidebar nunca entra. Lo
-  ata `ContentButtonsMobileTest`.
+  ajustes»). Los `w-100` que sí deben colapsar —los botones de crear de
+  `/admin`— se marcan con `app-btn-mobile-icon`. Las **insignias** dentro de un
+  botón colapsado (los grupos de una fila de `/admin`) se reponen a su tamaño,
+  porque `font-size: 0` las dejaría invisibles y con ellas la pertenencia. La
+  regla es de `.app-content`, así que la sidebar nunca entra.
+- **El colapso entero va bajo `@supports selector(:has(*))`.** `:has()` es la
+  única forma de seleccionar «botón que contiene un icono»; en un navegador que
+  no lo soporte (Chrome < 105, Firefox < 121, Safari < 15.4) el bloque se ignora
+  y los botones conservan su texto, que es la degradación buena. Lo ata
+  `ContentButtonsMobileTest`.
 - **La sub-navegación de `/admin` también.** Sus píldoras (Usuarios, Grupos de
   roles, Roles y permisos, Log de seguridad, Formularios) son `.nav-link`, no
   `.btn`, así que la regla anterior no las alcanza; llevan icono y en un móvil

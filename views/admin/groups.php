@@ -57,7 +57,7 @@ $groupPermKeys = static function (array $keys): array {
                             <input type="text" class="form-control form-control-sm" id="groupDesc" name="description" maxlength="255"
                                    placeholder="Quiénes son y por qué existen">
                         </div>
-                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                        <button type="submit" class="btn btn-sm btn-primary w-100 app-btn-mobile-icon">
                             <i class="fa-solid fa-plus me-1"></i>Crear grupo vacío
                         </button>
                     </form>

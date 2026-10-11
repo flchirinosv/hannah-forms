@@ -970,19 +970,34 @@ body {
    lector de pantalla lo lee) y el icono recupera su tamaño. No entran los
    botones sin icono, que quedarían vacíos, ni los `w-100`: un botón a ancho
    completo con un solo icono en el centro no se distingue de uno roto (ahí el
-   texto es lo que dice qué hace, p. ej. «Eliminar»). La sidebar queda fuera
-   porque no vive dentro de `.app-content`. */
+   texto es lo que dice qué hace, p. ej. «Eliminar»). Los `w-100` que sí deben
+   colapsar (los botones de crear de `/admin`) se marcan con
+   `app-btn-mobile-icon`. La sidebar nunca entra porque la regla es de
+   `.app-content`.
+   Todo el bloque va bajo `@supports selector(:has(*))`: es la única forma de
+   seleccionar «botón que CONTIENE un icono», y en un navegador que no soporte
+   `:has()` (Chrome < 105, Firefox < 121, Safari < 15.4) se ignora entero y los
+   botones conservan su texto, que es la degradación buena. Lo ata
+   `ContentButtonsMobileTest`. */
 @media (max-width: 991.98px) {
-    .app-content .btn:has(i[class*="fa-"]):not(.w-100) { font-size: 0; }
-    .app-content .btn:has(i[class*="fa-"]):not(.w-100) i[class*="fa-"] { font-size: 1rem; }
-    /* La sub-navegación de /admin es una fila de píldoras con icono + texto
-       (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad,
-       Formularios) que en un móvil se parte en dos o tres líneas. No son
-       `.btn` —son `.nav-link`—, así que la regla de arriba no las alcanzaba y
-       se quedaban con el texto; en modo móvil se quedan con el icono, igual
-       que el resto de botones del contenido. */
-    .app-admin-nav .nav-link:has(i[class*="fa-"]) { font-size: 0; }
-    .app-admin-nav .nav-link:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
+    @supports selector(:has(*)) {
+        .app-content .btn:has(i[class*="fa-"]):not(.w-100),
+        .app-content .btn.app-btn-mobile-icon:has(i[class*="fa-"]) { font-size: 0; }
+        .app-content .btn:has(i[class*="fa-"]):not(.w-100) i[class*="fa-"],
+        .app-content .btn.app-btn-mobile-icon:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
+        /* Las insignias de grupos del botón de pertenencia no son texto del
+           botón: sin reponerlas, `font-size: 0` las deja invisibles y con ellas
+           la pertenencia de la fila. */
+        .app-content .btn:has(i[class*="fa-"]) .badge { font-size: 0.7rem; }
+        /* La sub-navegación de /admin es una fila de píldoras con icono + texto
+           (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad,
+           Formularios) que en un móvil se parte en dos o tres líneas. No son
+           `.btn` —son `.nav-link`—, así que la regla de arriba no las alcanzaba
+           y se quedaban con el texto; en modo móvil se quedan con el icono,
+           igual que el resto de botones del contenido. */
+        .app-admin-nav .nav-link:has(i[class*="fa-"]) { font-size: 0; }
+        .app-admin-nav .nav-link:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
+    }
 }
 
 /* --- Responsive mobile --- */
