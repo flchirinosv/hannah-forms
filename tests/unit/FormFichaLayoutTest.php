@@ -25,13 +25,28 @@ namespace Tests\Unit;
  *     de la fila vacío. Por eso el par es `col-sm-6` y la URL del webhook va a
  *     `col-12`.
  *
- * Sin BD: solo lee `app.css` y la vista de la ficha.
+ *  2. **Notificaciones y Webhook se reparten por el ancho de la TARJETA, no de la
+ *     ventana.** Viven en una `col-lg-4` de ~400px: un `col-md-*` mira la ventana
+ *     (≥768px) y ahí dentro metía tres o cuatro columnas enanas y dejaba un tercio
+ *     de la fila vacío. Por eso el par es `col-sm-6` y la URL del webhook va a
+ *     `col-12`.
+ *  3. **Dashboard, ficha y builder usan la MISMA fila de acciones.** La regla
+ *     `.app-head-actions` solo engancha a quien lleva la clase: si el dashboard o
+ *     el builder no la traen, sus botones se quedan en la altura de Bootstrap
+ *     (~38px) al lado de los 44px de la ficha.
+ *
+ * Sin BD: solo lee `app.css` y las tres vistas.
  */
 class FormFichaLayoutTest
 {
     private static function vista(): string
     {
         return (string) file_get_contents(dirname(__DIR__, 2) . '/views/dashboard/forms/show.php');
+    }
+
+    private static function plantilla(string $rel): string
+    {
+        return (string) file_get_contents(dirname(__DIR__, 2) . '/views/' . $rel);
     }
 
     private static function css(): string
@@ -113,6 +128,38 @@ class FormFichaLayoutTest
             assertTrue(
                 str_contains($acciones, $clase),
                 'la fila de acciones de la ficha tiene que traer ' . $clase
+            );
+        }
+    }
+
+    public function testElDashboardYElBuilderUsanLaMismaFilaDeAcciones(): void
+    {
+        // El dashboard: el botón «Nuevo formulario» dentro de `app-head-actions`.
+        // Sin la clase, `app-btn-create` solo aporta radio y peso y el botón se
+        // queda en la altura por defecto de Bootstrap.
+        $dash = self::plantilla('dashboard/index.php');
+        $desde = strpos($dash, 'app-head-actions');
+        assertTrue($desde !== false, 'el dashboard marca su acción de cabecera con app-head-actions');
+        $bloque = substr($dash, (int) $desde);
+        $bloque = substr($bloque, 0, (int) strpos($bloque, '</div>', (int) strpos($bloque, '</button>')));
+        assertTrue(
+            str_contains($bloque, 'app-btn-create'),
+            'el botón «Nuevo formulario» va DENTRO de la fila de acciones (si no, la regla no lo engancha)'
+        );
+
+        // El builder: la fila entera de la cabecera (CTA, deshacer/rehacer, vista
+        // previa, configuración, abrir y guardar) es una sola fila de acciones.
+        $builder = self::plantilla('builder/index.php');
+        $desde = strpos($builder, 'app-head-actions');
+        assertTrue($desde !== false, 'el builder marca su fila de cabecera con app-head-actions');
+        $bloque = substr($builder, (int) $desde);
+        $hasta = strpos($bloque, 'builder-layout');
+        assertTrue($hasta !== false, 'la fila de acciones del builder va antes del lienzo');
+        $bloque = substr($bloque, 0, (int) $hasta);
+        foreach (['btnSaveStructure', 'btnUndo', 'btnRedo', 'btnLivePreview', 'btnFormSettings'] as $id) {
+            assertTrue(
+                str_contains($bloque, $id),
+                'la fila de acciones del builder tiene que traer ' . $id
             );
         }
     }

@@ -18,9 +18,11 @@ $relativeTs = static function (string $timestamp): string {
             <h2 class="h4 fw-bold mb-0">Hola, <?= View::escape($user['name']) ?> 👋</h2>
             <p class="text-muted mb-0 small">Gestiona tus formularios y analiza las respuestas.</p>
         </div>
-        <button type="button" class="btn btn-primary app-btn-create" data-bs-toggle="modal" data-bs-target="#newFormModal">
-            <i class="fa-solid fa-plus me-1"></i>Nuevo formulario
-        </button>
+        <div class="app-head-actions">
+            <button type="button" class="btn btn-primary app-btn-create" data-bs-toggle="modal" data-bs-target="#newFormModal">
+                <i class="fa-solid fa-plus me-1"></i>Nuevo formulario
+            </button>
+        </div>
     </div>
 
     <?php

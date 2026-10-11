@@ -43,7 +43,7 @@ $fieldTypes = [
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-pen-nib me-2 text-primary"></i>Builder — <span id="builderTitleText"><?= View::escape($form['title']) ?></span></h2>
         </div>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center app-head-actions">
             <button class="btn btn-primary app-btn-primary" type="button" id="btnAddQuestion" title="Agregar pregunta al final"><i class="fa-solid fa-plus me-1"></i>Pregunta</button>
             <span class="small align-self-center text-muted" id="saveStatus">Guardado ✓</span>
             <div class="btn-group d-none d-sm-inline-flex" role="group" aria-label="Deshacer / rehacer">

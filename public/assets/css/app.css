@@ -1006,13 +1006,18 @@ body {
    recortarse, que en un título sería perder texto. */
 .app-page-head > :first-child { min-width: 0; }
 .app-page-head h2 { overflow-wrap: anywhere; }
-/* La fila de acciones del top de la ficha mezclaba tres alturas y tres radios
-   en una sola fila: el CTA a 44px/radio 12, los enlaces «Respuestas» y
-   «Analítica» a la altura por defecto (~38px/radio 6) y el botón de menú
-   `app-dd-btn` a 32×32. Como los cuatro son la misma fila de acciones, los
-   cuatro toman el alto y el radio del CTA, y el icono se hace cuadrado con ese
-   mismo lado. Se acota a `app-head-actions` (y no a `.app-page-head`) para no
-   tocar la cabecera de respuestas, que usa `btn-sm` a propósito. */
+/* `app-head-actions` es la fila de acciones de una cabecera, y la comparten el
+   dashboard («Nuevo formulario»), la ficha y el builder. Sin ella cada pantalla
+   mezclaba sus alturas: en la ficha convivían 44/38/32 en la misma fila (CTA a
+   44px/radio 12, enlaces a ~38px/radio 6 y el botón de menú a 32×32), el botón
+   del dashboard se quedaba en los ~38px que le deja Bootstrap —`app-btn-create`
+   solo pone radio y peso— y en el builder el CTA salía a 44 y los secundarios a
+   38. Aquí toman todos el alto y el radio del CTA y el contenido se centra. El
+   `min-height` NO pisa el alto de las variantes: `.btn-sm` no lleva la clase, y
+   el `btn-group` del builder conserva los radios interiores porque el selector
+   de Bootstrap para `:not(:first-child) + .btn` tiene más especificidad. Se
+   acota a `app-head-actions` (y no a `.app-page-head`) para no tocar la
+   cabecera de respuestas, que usa `btn-sm` a propósito. */
 .app-head-actions .btn {
     min-height: var(--vf-btn-cta-h);
     display: inline-flex;
