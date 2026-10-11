@@ -613,8 +613,29 @@ body {
 .app-toast-action:hover { background: rgba(255,255,255,.16); }
 
 /* ---------- Vista previa ---------- */
-.vf-preview-scroll { max-height: 74vh; overflow-y: auto; }
-.vf-preview-scroll .fill-body { padding: 0 !important; background: #fff; }
+/* El cuerpo del modal de vista previa se pinta con `.fill-body` para mostrar el
+   mismo fondo que el formulario publicado, pero `.fill-body` trae
+   `min-height: 100vh`: dentro del modal eso obliga al diálogo a medir al menos
+   una pantalla entera, así que se saltaba el `max-height` que tenía y desbordaba
+   el viewport — el scroll pasaba al backdrop (el `.modal`) y la cabecera
+   centrada se cortaba por arriba. Se anula con la doble clase en el MISMO
+   elemento (`.vf-preview-scroll.fill-body`, más específica que `.fill-body`
+   sola) y el alto lo gestiona `modal-dialog-scrollable`, igual que el modal de
+   nuevo formulario: el diálogo cabe y scrollea su `.modal-body`. */
+.vf-preview-scroll.fill-body {
+    min-height: 0;
+    padding: 0 !important;
+}
+/* En móvil, igual que `#newFormModal`: ancla el diálogo arriba y topa el alto en
+   el viewport REAL (`dvh`), para que el desborde caiga por abajo —donde el
+   `.modal-body` sí scrollea— y no por arriba, que no scrollea nadie. */
+@media (max-width: 575.98px) {
+    #livePreviewModal .modal-dialog { align-items: flex-start; }
+    #livePreviewModal .modal-content {
+        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+}
 
 /* Icono de sección: SIN margen propio. La alineación la lleva la fila, con
    `justify-content: space-between` en `.vf-section-inner`, que es donde
@@ -1316,6 +1337,15 @@ body {
 }
 @keyframes vf-spin { to { transform: rotate(360deg); } }
 
+/* En el PREVIEW del constructor el botón queda pegado al último campo mientras
+   que en el formulario publicado la última tarjeta lleva `margin-bottom:
+   1.25rem` (`.vf-field-card`). El preview no usa esa tarjeta (`.app-fill-card`
+   en un flex con `gap`), así que sin este margen el «Enviar» toca lo de arriba:
+   el gap medido era 0 contra los 1.25 rem del publicado. Es preview-only a
+   propósito: en el publicado la tarjeta ya aporta su margen, y sumar otro
+   dejaría un hueco de 2.5 rem. */
+#livePreviewContent .vf-submit-row { margin-top: 1.25rem; }
+
 /* ---- Avance de autosave ---- */
 .vf-autosave {
     position: fixed; bottom: 1.4rem; left: 50%; transform: translate(-50%, 12px);
@@ -1779,7 +1809,23 @@ body {
    parece una rejilla suelta. */
 .vf-matrix-preview .vf-matrix-table th:first-child { color: #475569; font-weight: 600; }
 .vf-matrix-preview .vf-matrix-table input[type="radio"] { pointer-events: none; }
-.vf-matrix-empty { width: 1%; }
+/* La primera columna es la de las preguntas y se lleva el sobrante; las de
+   opciones ocupan solo lo que su texto necesite (width:1% + nowrap). Sin esta
+   regla, el ancho se reparte por el contenido y la pregunta puede salir MÁS
+   estrecha que las opciones (78px contra 110-160, medido en el preview). El
+   truco del width:100% / width:1% funciona en table-layout:auto: el navegador
+   deja la celda «flexible» a su contenido y reparte el excedente en la otra. */
+.vf-matrix-table th:first-child,
+.vf-matrix-table td:first-child,
+.vf-matrix-empty {
+    width: 100%;
+    min-width: 9rem;
+}
+.vf-matrix-table th:not(:first-child),
+.vf-matrix-table td:not(:first-child) {
+    width: 1%;
+    white-space: nowrap;
+}
 .vf-matrix-table { --bs-table-bg: transparent; }
 .vf-matrix-table td { padding: .3rem; vertical-align: middle; }
 .vf-matrix-table th { padding: .55rem .5rem; }

@@ -260,7 +260,7 @@ $fieldTypes = [
 </div>
 
 <div class="modal fade" id="livePreviewModal" tabindex="-1" aria-hidden="true" aria-labelledby="livePreviewTitle">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 overflow-hidden">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white">
