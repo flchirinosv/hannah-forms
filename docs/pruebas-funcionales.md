@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1053 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1067 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**449 pruebas** en 28 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**477 pruebas** en 29 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -131,6 +131,11 @@ Para no perderte, prepara esto antes de empezar:
 | C5 | Navegar por todas las entradas del menú | Ninguna devuelve 403 ni 404 inesperado con una cuenta `admin` | A | |
 | C6 | Entrar al panel con una cuenta sin `admin.access` | `/admin` da 403 con su propia página | A | |
 | C7 | Crear un formulario nuevo y volver al listado | Aparece con estado **borrador** y su ficha abre | M | |
+| C8 | Abrir el panel en escritorio (ventana ≥ 992 px) | La navegación es una **columna lateral** fija a la izquierda con menú, botón de crear y usuario; **no** hay barra superior | M | |
+| C9 | Bajar con la rueda en escritorio | La sidebar se queda fija (no se va con el scroll) y la página no gana scroll horizontal | B | |
+| C10 | Abrir el panel en móvil (ventana ≤ 991 px) y pulsar la hamburguesa | Entra un **cajón** desde la izquierda con la navegación; se cierra al elegir una entrada; sin JS, un enlace navega y recarga | A | |
+| C11 | En móvil, abrir el cajón y mirar el menú y el bloque de usuario | El menú, «Nuevo formulario» y el usuario **conservan su texto** (no se quedan solo con el icono) | B | |
+| C12 | En móvil, mirar los botones del contenido (p. ej. «Nuevo formulario» del panel) | Los botones con icono muestran **solo el icono**; los de **ancho completo** (Guardar ajustes, Eliminar…) conservan su texto | B | |
 
 ---
 

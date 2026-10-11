@@ -135,6 +135,93 @@ body {
     padding: .25em .75em;
 }
 
+/* ---------- Shell con sidebar ---------- */
+/* La navegación dejó de ser una barra horizontal: es una sidebar que en `lg+`
+   es columna fija y por debajo se pliega como cajón (`offcanvas-lg`) que abre
+   desde la barra fina de móvil. El fondo va en `.app-sidebar-inner` y no en
+   `.app-sidebar`, porque Bootstrap fuerza `background-color: transparent
+   !important` al `.offcanvas-lg` en `lg+`.
+
+   Es OSCURA (el mismo degradado de la marca) con texto blanco. Sobre fondo
+   blanco los grises del menú no se leían; el degradado y la franja de marca
+   comparten dirección y ancho, así que la cabecera queda sin costura. */
+.app-shell { display: flex; min-height: 100vh; }
+.app-sidebar { --bs-offcanvas-width: 280px; }
+.app-sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(90deg, var(--vf-primary) 0%, #8b5cf6 100%);
+    border-right: 1px solid rgba(255, 255, 255, .12);
+    overflow-y: auto;
+    color: #fff;
+}
+.app-sidebar-close { padding: .75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, .14); }
+.app-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .85rem 1rem;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: none;
+}
+.app-sidebar-nav { padding: .75rem; gap: .25rem; }
+.app-sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .55rem .75rem;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, .85);
+    font-weight: 500;
+}
+.app-sidebar-nav .nav-link i { width: 1.25rem; text-align: center; }
+.app-sidebar-nav .nav-link:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+.app-sidebar-nav .nav-link.active { background: #fff; color: var(--vf-primary-dark); }
+.app-sidebar-cta { padding: 0 .75rem .75rem; }
+.app-sidebar-cta .app-btn-create { background: #fff; border-color: #fff; color: var(--vf-primary-dark); font-weight: 600; }
+.app-sidebar-cta .app-btn-create:hover { background: var(--vf-primary-light); border-color: var(--vf-primary-light); color: var(--vf-primary-dark); }
+.app-sidebar-user { padding: .75rem; border-top: 1px solid rgba(255, 255, 255, .14); }
+.app-sidebar-user-btn {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    color: #fff;
+    text-decoration: none;
+}
+.app-sidebar-user-btn:hover { color: #fff; }
+.app-sidebar-user-btn::after { margin-left: auto; }
+.app-sidebar-user-name { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.app-sidebar-user-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: .85rem; }
+.app-content { flex: 1 1 auto; min-width: 0; }
+
+/* En escritorio la sidebar es una columna fija a la izquierda. El `position`
+   va solo aquí: en móvil lo pone Bootstrap (`.offcanvas-lg` → `fixed`) y una
+   regla sin media query lo pisaría por orden de fuente. */
+@media (min-width: 992px) {
+    .app-sidebar { position: sticky; top: 0; flex: 0 0 260px; width: 260px; height: 100vh; }
+}
+
+/* Barra fina que solo existe en móvil: la hamburguesa abre el cajón. */
+.app-topbar {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem 1rem;
+    box-shadow: 0 2px 12px rgba(99, 102, 241, .35);
+}
+.app-topbar-toggle {
+    width: 38px; height: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    border: 0;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+.app-topbar-brand { display: flex; align-items: center; gap: .5rem; color: #fff; text-decoration: none; }
+
 /* ---------- Cards ---------- */
 .card {
     border-radius: var(--vf-radius);
@@ -878,6 +965,18 @@ body {
     .app-detail-table .app-answer-cell { max-width: none; }
 }
 
+/* En el contenido, en móvil, los botones con icono muestran SOLO el icono: el
+   texto se colapsa con `font-size: 0` (sigue en el nombre accesible, así que un
+   lector de pantalla lo lee) y el icono recupera su tamaño. No entran los
+   botones sin icono, que quedarían vacíos, ni los `w-100`: un botón a ancho
+   completo con un solo icono en el centro no se distingue de uno roto (ahí el
+   texto es lo que dice qué hace, p. ej. «Eliminar»). La sidebar queda fuera
+   porque no vive dentro de `.app-content`. */
+@media (max-width: 991.98px) {
+    .app-content .btn:has(i[class*="fa-"]):not(.w-100) { font-size: 0; }
+    .app-content .btn:has(i[class*="fa-"]):not(.w-100) i[class*="fa-"] { font-size: 1rem; }
+}
+
 /* --- Responsive mobile --- */
 @media (max-width: 575.98px) {
     .app-detail-table td {
@@ -931,13 +1030,11 @@ body {
 
 .app-alert { border-radius: var(--vf-radius); box-shadow: var(--vf-shadow); }
 
-.main-container { min-height: calc(100vh - 130px); }
+/* La altura ya no la calcula este contenedor: `.app-content` es `min-vh-100`
+   (flex column) y `main` crece con `flex-grow-1`, así que el pie queda abajo
+   sin reservar el alto de una barra superior que ya no existe. */
+.main-container { min-height: 0; }
 .app-footer { border-top: 1px solid var(--vf-border); }
-
-/* ---------- Responsive ---------- */
-@media (max-width: 992px) {
-    .app-navbar .app-btn-create { margin-top: .5rem; }
-}
 
 /* Scrollbar sutil */
 ::-webkit-scrollbar { width: 8px; height: 8px; }

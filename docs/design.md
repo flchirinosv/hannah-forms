@@ -320,6 +320,58 @@ separaría en silencio.
 
 ---
 
+### 3.11 Shell y navegación (sidebar)
+
+El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
+`<aside class="app-sidebar offcanvas-lg offcanvas-start" id="appSidebar">` y el
+`.app-content` (barra superior móvil + `main` + pie).
+
+- **Una sola superficie de navegación.** En `lg+` el `<aside>` es una columna
+  fija (`position: sticky; top: 0; height: 100vh`, 260px) y por debajo se
+  comporta como cajón que entra desde la izquierda. El salto lo trae Bootstrap
+  (`offcanvas-lg`): sin JS propio, sin `localStorage` y sin scroll-lock casero.
+- **El `position` va dentro de su media query.** Bootstrap posiciona el cajón
+  con `position: fixed` **dentro de un `@media (max-width: 991.98px)`**; una
+  regla `.app-sidebar { position: sticky }` sin media query ganaría por orden de
+  fuente (app.css va después de Bootstrap) y **el cajón no abriría**, sin ningún
+  error. Por eso el `sticky` vive en `@media (min-width: 992px)` y la regla base
+  solo lleva `--bs-offcanvas-width`. Lo ata
+  `SidebarLayoutTest::testElPlegadoDeEscritorioViveEnSuMediaQuery`.
+- **Superficie oscura con texto claro.** La sidebar es el mismo degradado de la
+  marca (`linear-gradient(90deg, var(--vf-primary) 0%, #8b5cf6 100%)`) con texto
+  blanco. No es un gusto: sobre el blanco de la superficie los grises del menú se
+  leían mal (el reporte del dueño fue justo ese), así que el menú va en blanco al
+  85% y el estado activo es una **píldora blanca con texto índigo**, el mayor
+  contraste de la pantalla. La franja de marca (`.app-sidebar-brand`, que
+  reutiliza `.app-navbar`) comparte degradado, dirección y ancho, así que la
+  cabecera queda **sin costura**. El botón «Nuevo formulario` es blanco con texto
+  índigo, y la insignia de rol usa el badge claro por defecto. Lo ata
+  `SidebarLayoutTest::testLaSidebarEsOscuraConTextoClaro`.
+- **La sidebar conserva su texto en móvil.** Las etiquetas del menú, el botón
+  «Nuevo formulario» y el bloque de usuario **no** se ocultan al abrir el cajón:
+  un cajón con solo iconos parece roto y no dice a qué lleva cada entrada. (Lo
+  que se pidió ocultar era el texto de los botones del **contenido**, abajo.) El
+  botón de cerrar del cajón es `btn-close-white`: sobre el degradado, el
+  `btn-close` oscuro de Bootstrap desaparecía. Lo ata
+  `SidebarLayoutTest::testEnMovilLaSidebarConservaSusEtiquetas`.
+- **En móvil, los botones del CONTENIDO con icono muestran solo el icono**
+  (`@media (max-width: 991.98px)`): para los `.btn` de `.app-content` que llevan
+  un `<i class="fa-…">`, el texto se colapsa con `font-size: 0` (sigue en el
+  nombre accesible, así que un lector de pantalla lo lee) y el icono recupera su
+  tamaño. Quedan fuera los botones **sin icono** (quedarían vacíos) y los
+  `w-100`: un botón a ancho completo con un solo icono centrado no se distingue
+  de uno roto, y ahí el texto es lo que dice qué hace («Eliminar», «Guardar
+  ajustes»). La regla es de `.app-content`, así que la sidebar nunca entra. Lo
+  ata `ContentButtonsMobileTest`.
+- `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
+  cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
+  cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,
+  `.app-sidebar-inner`, …).
+- `#vfConfirm` sigue siendo hijo directo de `<body>` (lo exige
+  `AsyncActionsJsTest`).
+
+---
+
 ## 4. Patrones de interacción
 
 ### 4.1 Alta de campos

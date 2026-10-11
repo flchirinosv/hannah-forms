@@ -134,7 +134,11 @@ class FillLayoutTest
 
     public function testALgElContenedorOcupaLaMitadDeLaPantalla(): void
     {
-        $lg = self::bloque('@media (min-width: 992px)');
+        // El prefijo incluye el selector, no solo la media query: el layout ya
+        // tiene más de un `@media (min-width: 992px)` (el de la sidebar va
+        // antes) y `bloque()` devuelve el PRIMERO que casa. Sin el selector,
+        // este test leería el bloque de la sidebar y daría rojo.
+        $lg = self::bloque('@media (min-width: 992px) { .fill-container');
         assertNotNull($lg, 'app.css declara la media query de lg (992px)');
         assertTrue(
             (bool) preg_match('/\.fill-container\s*\{[^}]*width:\s*50%/', $lg),

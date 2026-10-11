@@ -29,69 +29,83 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
       // trozo y pareciera un fallo de CSRF que no existe. Las páginas públicas
       // del fill no pasan por este layout (`View::render(..., null)`). ?>
 <body data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>">
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top app-navbar">
-    <div class="container-fluid px-4">
-        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="/">
-            <span class="app-logo"><i class="fa-solid fa-list-check"></i></span>
-            <?= View::escape($config['app']['name']) ?>
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNav">
-            <ul class="navbar-nav me-auto">
+<div class="app-shell">
+    <?php // La navegación es una sidebar. En `lg+` es una columna fija; por
+          // debajo se comporta como cajón (`offcanvas-lg`) que abre desde la
+          // barra fina de móvil. El plegado lo hace Bootstrap, no hay JS propio:
+          // al pulsar un enlace la página navega y el cajón se recarga cerrado. ?>
+    <aside class="app-sidebar offcanvas-lg offcanvas-start" id="appSidebar" tabindex="-1" aria-label="Navegación principal">
+        <div class="app-sidebar-inner d-flex flex-column">
+            <div class="offcanvas-header app-sidebar-close">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Cerrar la navegación"></button>
+            </div>
+            <a class="app-sidebar-brand app-navbar" href="/">
+                <span class="app-logo"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
+                <span class="app-sidebar-label fw-bold"><?= View::escape($config['app']['name']) ?></span>
+            </a>
+            <ul class="nav flex-column app-sidebar-nav">
                 <?php // Cada enlace se enseña solo si su destino le va a dejar pasar.
                       // El caso que motivó el gate: `approver` tiene `dashboard.view`
                       // y `forms.review`, pero NO `forms.create`, así que un botón
                       // «Nuevo formulario» para él es un 403
                       // con toda la pinta de un botón que funciona. ?>
                 <?php if ($currentUser && \App\Core\Auth::can('dashboard.view')): ?>
-                <li class="nav-item"><a class="nav-link <?= $currentPath === '/dashboard' || $currentPath === '/' ? 'active' : '' ?>" href="/dashboard"><i class="fa-solid fa-gauge me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link <?= $currentPath === '/dashboard' || $currentPath === '/' ? 'active' : '' ?>" href="/dashboard"><i class="fa-solid fa-gauge" aria-hidden="true"></i><span class="app-sidebar-label">Dashboard</span></a></li>
                 <?php endif; ?>
                 <?php // F3 — La bandeja solo aparece a quien puede aprobar. Sin este
                       // gate en la vista, el enlace y un 403: la navegación
                       // prometería una pantalla que el usuario no puede abrir. ?>
                 <?php if ($currentUser && \App\Core\Auth::can('forms.review')): ?>
-                <li class="nav-item"><a class="nav-link <?= $currentPath === '/review' ? 'active' : '' ?>" href="/review"><i class="fa-solid fa-clipboard-check me-1"></i>Revisión</a></li>
+                <li class="nav-item"><a class="nav-link <?= $currentPath === '/review' ? 'active' : '' ?>" href="/review"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i><span class="app-sidebar-label">Revisión</span></a></li>
                 <?php endif; ?>
                 <?php if ($currentUser && \App\Core\Auth::can('admin.access')): ?>
-                <li class="nav-item"><a class="nav-link <?= str_starts_with($currentPath, '/admin') ? 'active' : '' ?>" href="/admin"><i class="fa-solid fa-user-gear me-1"></i>Administración</a></li>
+                <li class="nav-item"><a class="nav-link <?= str_starts_with($currentPath, '/admin') ? 'active' : '' ?>" href="/admin"><i class="fa-solid fa-user-gear" aria-hidden="true"></i><span class="app-sidebar-label">Administración</span></a></li>
                 <?php endif; ?>
             </ul>
-            <ul class="navbar-nav ms-auto align-items-lg-center">
-                <?php if ($currentUser && \App\Core\Auth::can('forms.create')): ?>
-                <li class="nav-item me-lg-2 mb-2 mb-lg-0">
-                    <a href="/dashboard" class="btn btn-light btn-sm app-btn-create w-100">
-                        <i class="fa-solid fa-plus me-1"></i>Nuevo formulario
-                    </a>
-                </li>
-                <?php endif; ?>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="app-avatar"><?= View::escape(strtoupper(substr($currentUser['name'] ?? 'U', 0, 1))) ?></span>
-                        <span class="d-none d-md-inline"><?= View::escape($currentUser['name'] ?? '') ?></span>
+            <?php if ($currentUser && \App\Core\Auth::can('forms.create')): ?>
+            <div class="app-sidebar-cta">
+                <a href="/dashboard" class="btn btn-light app-btn-create w-100">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i><span class="app-sidebar-label">Nuevo formulario</span>
+                </a>
+            </div>
+            <?php endif; ?>
+            <div class="app-sidebar-user mt-auto dropdown dropup">
+                <a class="app-sidebar-user-btn dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="app-avatar"><?= View::escape(strtoupper(substr($currentUser['name'] ?? 'U', 0, 1))) ?></span>
+                    <span class="app-sidebar-label app-sidebar-user-name">
+                        <span class="app-sidebar-user-text"><?= View::escape($currentUser['name'] ?? '') ?></span>
                         <span class="badge text-bg-light app-role-badge"><?= View::escape($currentUser['role_name'] ?? '') ?></span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li><span class="dropdown-item-text small text-muted"><?= View::escape($currentUser['email'] ?? '') ?></span></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="/account/password"><i class="fa-solid fa-user-shield me-1"></i>Seguridad de la cuenta</a>
-                        </li>
-                        <li>
-                            <form method="post" action="/logout">
-                                <?= \App\Core\Csrf::field() ?>
-                                <button type="submit" class="dropdown-item text-danger"><i class="fa-solid fa-right-from-bracket me-1"></i>Cerrar sesión</button>
-                            </form>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+                    </span>
+                </a>
+                <ul class="dropdown-menu shadow">
+                    <li><span class="dropdown-item-text small text-muted"><?= View::escape($currentUser['email'] ?? '') ?></span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="/account/password"><i class="fa-solid fa-user-shield me-1" aria-hidden="true"></i>Seguridad de mi cuenta</a>
+                    </li>
+                    <li>
+                        <form method="post" action="/logout">
+                            <?= \App\Core\Csrf::field() ?>
+                            <button type="submit" class="dropdown-item text-danger"><i class="fa-solid fa-right-from-bracket me-1" aria-hidden="true"></i>Cerrar sesión</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
-</nav>
+    </aside>
 
-<main class="container-fluid py-4 main-container">
+    <div class="app-content d-flex flex-column min-vh-100">
+        <header class="app-topbar app-navbar d-lg-none sticky-top">
+            <button class="app-topbar-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Abrir la navegación">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+            <a class="app-topbar-brand" href="/">
+                <span class="app-logo"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
+                <span class="fw-bold"><?= View::escape($config['app']['name']) ?></span>
+            </a>
+        </header>
+
+<main class="container-fluid py-4 main-container flex-grow-1">
     <?php if (\App\Core\Session::hasFlash('success')): ?>
         <div class="alert alert-success alert-dismissible fade show app-alert" role="alert">
             <i class="fa-solid fa-circle-check me-1"></i><?= View::escape(\App\Core\Session::getFlash('success')) ?>
@@ -113,6 +127,8 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <span class="mx-2">·</span>
     <span>Vanilla PHP + MySQL + nginx</span>
 </footer>
+    </div>
+</div>
 
 <?php // F0.4-tres — el diálogo de confirmación del panel. UNO, aquí, y no uno en
       // cada vista: `confirm()` del navegador no se puede estilar ni traducir y
