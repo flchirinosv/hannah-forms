@@ -143,17 +143,11 @@
     if (inputs.length === 0) {
         return;
     }
-    const title = document.getElementById('title');
 
+    // El título es opcional (vacío = nombre de la plantilla o «Formulario sin
+    // título»), así que aquí solo queda realzar la tarjeta marcada: es el
+    // respaldo del `:has(input:checked)` del CSS para navegadores viejos.
     function apply() {
-        const elegida = inputs.find((r) => r.checked);
-        const enBlanco = !elegida || elegida.value === '';
-        // Con plantilla el título puede quedar vacío (el servidor usa el de la
-        // plantilla); en blanco sigue siendo obligatorio.
-        if (title) {
-            title.required = enBlanco;
-        }
-        // Fallback del `:has(input:checked)` del CSS para navegadores viejos.
         cards.forEach((card) => {
             const r = card.querySelector('input[name="template"]');
             card.classList.toggle('app-tpl-checked', !!(r && r.checked));

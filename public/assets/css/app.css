@@ -1895,17 +1895,18 @@ body {
 #newFormModal .app-tpl-body { display: flex; flex-direction: column; gap: .3rem; padding: .7rem .8rem .8rem; }
 #newFormModal .app-tpl-name { font-weight: 600; color: var(--vf-text, #1e293b); }
 #newFormModal .app-tpl-desc { font-size: .8rem; color: var(--vf-text-muted, #64748b); }
-#newFormModal .app-tpl-chips { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .1rem; }
-#newFormModal .app-tpl-chip {
-    font-size: .68rem;
-    line-height: 1;
-    padding: .3rem .45rem;
-    border-radius: 999px;
-    background: var(--vf-primary-light, #eef2ff);
-    color: var(--vf-primary-dark, #4f46e5);
-    text-transform: lowercase;
-}
 #newFormModal .app-tpl-q { font-size: .78rem; color: var(--vf-text-muted, #64748b); }
+
+/* En móvil, igual que el modal de agregar elemento: ancla arriba y topa el
+   alto en el viewport REAL (`dvh`), para que el desborde caiga abajo —donde el
+   `.modal-body` sí scrollea— y no por arriba, que no scrollea nadie. */
+@media (max-width: 575.98px) {
+    #newFormModal .modal-dialog { align-items: flex-start; }
+    #newFormModal .modal-content {
+        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+}
 
 /* ============================================================
    Roles y grupos (RBAC)

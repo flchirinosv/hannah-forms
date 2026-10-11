@@ -806,10 +806,12 @@ las comprobaciones de búsqueda, uno con títulos reconocibles.
 La elección de arranque dejó de ser dos radios («En blanco» / «Desde una
 plantilla») y una galería oculta, y pasó a ser una **única rejilla de tarjetas**
 como la portada de Google Forms: primero «Formulario en blanco» y luego una por
-plantilla, cada una con portada de color, nombre, chips de tipos y número de
-preguntas. Se mira lo que la suite no ve: que la rejilla se sienta como una
-galería, que la portada se pinte como tal (un `<span>` con altura necesita
-`display`) y que el título obligatorio siga comportándose.
+plantilla, cada una con portada de color, nombre y número de preguntas. **No hay
+campos de título ni descripción**: el formulario nace con lo que dice la tarjeta
+elegida y se renombra en el constructor. Se mira lo que la suite no ve: que la
+rejilla se sienta como una galería, que la portada se pinte como tal (un `<span>`
+con altura necesita `display`) y que el cuerpo del diálogo **scrollee** cuando la
+ventana es baja —el `<form>` tiene que ser el `.modal-content`, no envolverlo—.
 
 Hace falta una instancia con plantillas en `database/templates` y una cuenta con
 `forms.create`.
@@ -817,16 +819,17 @@ Hace falta una instancia con plantillas en `database/templates` y una cuenta con
 | # | Qué probar | Esperado | P. | Estado |
 |---|---|---|---|---|
 | AC1 | Abrir «Nuevo formulario» | Diálogo **centrado** y ancho (modal-lg), con cabecera de color como la del modal de «Agregar elemento» | M | |
-| AC2 | Mirar la rejilla | La primera tarjeta es «Formulario en blanco» y a continuación una por plantilla, con su portada de color, nombre, chips de tipos y «N preguntas» | M | |
-| AC3 | Al abrir | «Formulario en blanco» viene marcada (borde y realce) y el campo Título es obligatorio | A | |
-| AC4 | Pulsar una tarjeta de plantilla | Se marca esa (y se desmarca la de blanco); el Título **deja** de ser obligatorio | M | |
-| AC5 | Volver a pulsar «Formulario en blanco» | Se desmarca la plantilla y el Título vuelve a ser obligatorio | M | |
-| AC6 | En blanco, sin título, pulsar «Crear» | El navegador no deja enviar (el título es obligatorio) | M | |
-| AC7 | Con una plantilla y sin título, crear | Se crea y abre el builder con el **nombre de la plantilla** y sus preguntas | A | |
-| AC8 | Crear en blanco | Se crea y abre el builder vacío (sin campos) | A | |
-| AC9 | Con teclado: `Tab` por las tarjetas y `Espacio` | El foco recorre las tarjetas con anillo visible y `Espacio` selecciona | M | |
-| AC10 | Todo esto **sin JavaScript** (marcar una plantilla con el ratón) | Enviar crea desde esa plantilla; en blanco crea vacío (escribiendo un título) | A | |
-| AC11 | En móvil estrecho (360px) | La rejilla baja a una columna y el diálogo no se sale de la pantalla | M | |
+| AC2 | Mirar la rejilla | La primera tarjeta es «Formulario en blanco» y a continuación una por plantilla, con su portada de color, nombre y «N preguntas» (sin chips de tipos) | M | |
+| AC3 | Al abrir | «Formulario en blanco» viene marcada (borde y realce) | A | |
+| AC4 | Buscar campos | **No hay** campos de Título ni Descripción: solo la rejilla de tarjetas y el pie | A | |
+| AC5 | Pulsar una tarjeta de plantilla | Se marca esa (y se desmarca la de blanco) | M | |
+| AC6 | Volver a pulsar «Formulario en blanco» | Se desmarca la plantilla y vuelve a quedar marcada la de blanco | M | |
+| AC7 | Pulsar «Crear» sin tocar nada | Se crea y abre el builder vacío; se llama «Formulario en blanco» y lleva la **descripción de esa tarjeta** | A | |
+| AC8 | Con una plantilla, crear | Se crea con el **nombre y la descripción de la plantilla** y sus preguntas | A | |
+| AC9 | Con la ventana baja, abrir el modal | El cuerpo del diálogo **scrollea** hasta el botón «Crear»; nada queda cortado (el `<form>` es el `.modal-content`) | M | |
+| AC10 | Con teclado: `Tab` por las tarjetas y `Espacio` | El foco recorre las tarjetas con anillo visible y `Espacio` selecciona | M | |
+| AC11 | Todo esto **sin JavaScript** (marcar una plantilla con el ratón) | Da igual: los radios funcionan y el servidor deriva el nombre de la tarjeta | A | |
+| AC12 | En móvil estrecho (360px) | La rejilla baja a una columna y el diálogo no se sale de la pantalla | M | |
 
 ## Cuando encuentres un fallo
 

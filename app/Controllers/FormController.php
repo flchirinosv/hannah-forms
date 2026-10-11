@@ -57,19 +57,32 @@ class FormController
                 Response::redirect('/dashboard');
                 return;
             }
-            // Título/descripción: lo que mande el usuario; si no, los de la plantilla.
+            // Título/descripción: los de la plantilla salvo que un POST los traiga.
             if ($title === '') {
                 $title = trim((string) ($template['name'] ?? ''));
             }
             if ($description === '') {
                 $description = trim((string) ($template['description'] ?? ''));
             }
+        } else {
+            // La galería ya NO tiene campos de título ni descripción: lo que se
+            // lee en la tarjeta «en blanco» es lo que queda guardado, y sale de
+            // `TemplateService::blank()` para que la vista y el servidor no
+            // puedan divergir. Un POST con `title`/`description` todavía manda
+            // (lo usa el smoke), pero la UI ya no los envía.
+            $blank = TemplateService::blank();
+            if ($title === '') {
+                $title = trim((string) $blank['name']);
+            }
+            if ($description === '') {
+                $description = trim((string) $blank['description']);
+            }
         }
 
+        // Red de seguridad: un título vacío (p. ej. una plantilla sin `name`)
+        // nacería como cadena vacía, y el dueño lo renombra en el builder.
         if ($title === '') {
-            Session::flash('error', 'El título del formulario es obligatorio.');
-            Response::redirect('/dashboard');
-            return;
+            $title = 'Formulario sin título';
         }
 
         if (mb_strlen($title) > 190) {

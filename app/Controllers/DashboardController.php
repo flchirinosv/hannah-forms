@@ -79,6 +79,9 @@ class DashboardController
             )),
             // P9 — Plantillas de arranque (database/templates) para el modal.
             'templates' => \App\Services\TemplateService::list(),
+            // La tarjeta «en blanco» es una entrada más: la vista la pinta con
+            // el mismo nombre/descripción que el servidor usa al crear.
+            'blank' => \App\Services\TemplateService::blank(),
         ]);
     }
 

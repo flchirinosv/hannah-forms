@@ -314,9 +314,13 @@ $relativeTs = static function (string $timestamp): string {
 <!-- Modal Nuevo Formulario -->
 <div class="modal fade" id="newFormModal" tabindex="-1" aria-labelledby="newFormModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0">
-            <form method="post" action="/forms">
-                <?= \App\Core\Csrf::field() ?>
+        <?php // El <form> ES el .modal-content: Bootstrap lo necesita como hijo
+              // directo de .modal-dialog para que su flex (header/body/footer)
+              // funcione y el .modal-body pueda scrollear. Envolverlo en un
+              // <form> rompía la cadena flex: el .modal-content recortaba con
+              // overflow:hidden y el cuerpo no bajaba (no había scroll). ?>
+        <form method="post" action="/forms" class="modal-content border-0">
+            <?= \App\Core\Csrf::field() ?>
                 <div class="modal-header app-navbar text-white border-0 py-2">
                     <div class="d-flex align-items-center gap-2 text-white">
                         <span class="app-logo-sm"><i class="fa-solid fa-plus"></i></span>
@@ -336,24 +340,14 @@ $relativeTs = static function (string $timestamp): string {
                             <input class="d-none" type="radio" name="template" value="" checked>
                             <span class="app-tpl-cover app-tpl-cover-blank"><i class="fa-solid fa-plus"></i></span>
                             <span class="app-tpl-body">
-                                <span class="app-tpl-name">Formulario en blanco</span>
-                                <span class="app-tpl-desc">Empieza desde cero y añade tus propias preguntas.</span>
+                                <span class="app-tpl-name"><?= View::escape((string) ($blank['name'] ?? 'Formulario en blanco')) ?></span>
+                                <span class="app-tpl-desc"><?= View::escape((string) ($blank['description'] ?? '')) ?></span>
                             </span>
                         </label>
                         <?php if (!empty($templates)): ?>
                             <?php
-                            // V6 — Mini-preview declarativa desde el JSON de la
-                            // plantilla (TemplateService::list → `types`).
-                            $vfTypeLabel = [
-                                'text' => 'Texto', 'textarea' => 'Texto largo', 'email' => 'Email',
-                                'number' => 'Número', 'date' => 'Fecha', 'time' => 'Hora',
-                                'datetime-local' => 'Fecha y hora', 'select' => 'Desplegable',
-                                'radio' => 'Opción única', 'checkbox' => 'Multiopción',
-                                'url' => 'URL', 'tel' => 'Teléfono', 'scale' => 'Escala',
-                                'range' => 'Rango', 'nps' => 'NPS', 'star' => 'Estrellas',
-                                'matrix' => 'Matriz', 'ranking' => 'Ranking', 'file' => 'Archivo',
-                            ];
-                            // Icono de la portada de la tarjeta: el del primer tipo.
+                            // Icono de la portada de la tarjeta: el del primer tipo
+                            // de la plantilla (`TemplateService::list()` → `types`).
                             $vfTypeIcon = [
                                 'text' => 'fa-i-cursor', 'textarea' => 'fa-align-left', 'email' => 'fa-envelope',
                                 'number' => 'fa-hashtag', 'date' => 'fa-calendar', 'time' => 'fa-clock',
@@ -375,13 +369,6 @@ $relativeTs = static function (string $timestamp): string {
                                         <?php if (!empty($tpl['description'])): ?>
                                             <span class="app-tpl-desc"><?= View::escape((string) $tpl['description']) ?></span>
                                         <?php endif; ?>
-                                        <?php if ($tipos !== []): ?>
-                                            <span class="app-tpl-chips">
-                                                <?php foreach ($tipos as $tfType): ?>
-                                                    <span class="app-tpl-chip" title="<?= View::escape((string) $tfType) ?>"><?= View::escape($vfTypeLabel[(string) $tfType] ?? (string) $tfType) ?></span>
-                                                <?php endforeach; ?>
-                                            </span>
-                                        <?php endif; ?>
                                         <span class="app-tpl-q"><?= (int) $tpl['questions'] ?> pregunta<?= (int) $tpl['questions'] === 1 ? '' : 's' ?><?php if ((int) $tpl['sections'] > 0): ?> · <?= (int) $tpl['sections'] ?> sección<?= (int) $tpl['sections'] === 1 ? '' : 'es' ?><?php endif; ?></span>
                                     </span>
                                 </label>
@@ -391,22 +378,13 @@ $relativeTs = static function (string $timestamp): string {
                     <?php if (empty($templates)): ?>
                         <div class="form-text mb-4">No hay plantillas instaladas en <code>database/templates</code>.</div>
                     <?php endif; ?>
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Título <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="title" name="title" placeholder="Ej: Encuesta de satisfacción" required autofocus>
-                        <div class="form-text">Si eliges una plantilla y dejas el título vacío, se usa el de la plantilla.</div>
-                    </div>
-                    <div class="mb-1">
-                        <label for="description" class="form-label">Descripción</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Describe el propósito del formulario (opcional)"></textarea>
-                    </div>
+                    <div class="form-text">El formulario toma como título y descripción lo que dice la tarjeta elegida; los cambias en el constructor.</div>
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary app-btn-primary"><i class="fa-solid fa-check me-1"></i>Crear</button>
                 </div>
-            </form>
-        </div>
+        </form>
     </div>
 </div>
 

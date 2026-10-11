@@ -105,6 +105,31 @@ final class TemplateService
     }
 
     /**
+     * La tarjeta «en blanco» de la galería de arranque, con la misma forma que
+     * una plantilla real pero sin campos.
+     *
+     * Existe para que el título y la descripción del formulario recién creado
+     * salgan del MISMO sitio que los de una plantilla (la tarjeta que se ve) y
+     * no de un default escondido en el controlador que la vista no puede
+     * mostrar: la galería ya no tiene campos de título/descripción, así que lo
+     * que se lee en el recuadro es lo que queda guardado. Sin plantilla,
+     * `FormController::store()` usa esto.
+     *
+     * @return array<string, mixed>
+     */
+    public static function blank(): array
+    {
+        return [
+            'key'         => '',
+            'name'        => 'Formulario en blanco',
+            'description' => 'Empieza desde cero y añade tus propias preguntas.',
+            'questions'   => 0,
+            'sections'    => 0,
+            'types'       => [],
+        ];
+    }
+
+    /**
      * Carga una plantilla por key (nombre de archivo sin .json).
      * Devuelve null si no existe o el JSON es inválido.
      *
