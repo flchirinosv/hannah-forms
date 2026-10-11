@@ -121,51 +121,46 @@
 
     attach();
 })();
-/* P9 — Modal de nuevo formulario: elegir arranque en blanco o plantilla.
+/* P9/V6 — Modal de nuevo formulario: elegir arranque en blanco o plantilla.
+ *
+ * La elección es un ÚNICO grupo de radios `template` (value="" = en blanco),
+ * como la galería de la portada de Google Forms: pulsar una tarjeta ya decide
+ * el modo, así que no hay radios `mode` que sincronizar. El servidor tampoco
+ * los lee: `FormController::store()` solo mira `template` (vacío = en blanco).
+ *
  * Va fuera del bloque del grid porque el modal existe también en el estado
  * vacío (donde no hay #dashGrid).
  */
 (function () {
     'use strict';
 
-    const picker = document.getElementById('templatePicker');
-    // V6 — Las plantillas son tarjetas de radio, ya no un <select>.
-    const templateInputs = picker
-        ? Array.prototype.slice.call(picker.querySelectorAll('input[name="template"]'))
-        : [];
-    if (!picker || templateInputs.length === 0) {
+    const modal = document.getElementById('newFormModal');
+    if (!modal) {
         return;
     }
-
-    const radios = Array.prototype.slice.call(document.querySelectorAll('input[name="mode"]'));
-    const modeTemplate = radios.find((r) => r.value === 'template');
+    const cards = Array.prototype.slice.call(modal.querySelectorAll('.app-tpl-card'));
+    const inputs = Array.prototype.slice.call(modal.querySelectorAll('input[name="template"]'));
+    if (inputs.length === 0) {
+        return;
+    }
     const title = document.getElementById('title');
 
     function apply() {
-        const useTemplate = radios.some((r) => r.checked && r.value === 'template');
-        picker.hidden = !useTemplate;
-        // En modo «en blanco» no debe viajar una plantilla antigua: las
-        // tarjetas deshabilitadas no se serializan en el submit.
-        templateInputs.forEach((r) => {
-            r.disabled = !useTemplate;
-        });
-        picker.classList.toggle('app-tpl-off', !useTemplate);
+        const elegida = inputs.find((r) => r.checked);
+        const enBlanco = !elegida || elegida.value === '';
         // Con plantilla el título puede quedar vacío (el servidor usa el de la
         // plantilla); en blanco sigue siendo obligatorio.
         if (title) {
-            title.required = !useTemplate;
+            title.required = enBlanco;
         }
+        // Fallback del `:has(input:checked)` del CSS para navegadores viejos.
+        cards.forEach((card) => {
+            const r = card.querySelector('input[name="template"]');
+            card.classList.toggle('app-tpl-checked', !!(r && r.checked));
+        });
     }
 
-    // Elegir una tarjeta activa el modo «Desde una plantilla».
-    templateInputs.forEach((r) => r.addEventListener('change', () => {
-        if (r.checked && modeTemplate && !modeTemplate.disabled) {
-            modeTemplate.checked = true;
-            apply();
-        }
-    }));
-
-    radios.forEach((r) => r.addEventListener('change', apply));
+    inputs.forEach((r) => r.addEventListener('change', apply));
     apply();
 })();
 

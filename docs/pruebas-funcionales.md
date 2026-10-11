@@ -801,6 +801,33 @@ las comprobaciones de búsqueda, uno con títulos reconocibles.
 | AB23 | Con veinte formularios en la base, mira `/dashboard` con el profiler (o `EXPLAIN`) | La consulta del listado trae `LIMIT` y el conteo de respuestas va sobre los formularios de la página, no sobre todos | A | |
 | AB24 | La fila de filtros, con el buscador y el desplegable de orden juntos | El desplegable mide el mismo alto que el buscador y los botones de estado: antes la regla global `.form-select` le pisaba el `-sm` y salía ~11px más alto, descuadrando la fila | M | |
 
+## AC. El modal de nuevo formulario como galería (2026-10-11)
+
+La elección de arranque dejó de ser dos radios («En blanco» / «Desde una
+plantilla») y una galería oculta, y pasó a ser una **única rejilla de tarjetas**
+como la portada de Google Forms: primero «Formulario en blanco» y luego una por
+plantilla, cada una con portada de color, nombre, chips de tipos y número de
+preguntas. Se mira lo que la suite no ve: que la rejilla se sienta como una
+galería, que la portada se pinte como tal (un `<span>` con altura necesita
+`display`) y que el título obligatorio siga comportándose.
+
+Hace falta una instancia con plantillas en `database/templates` y una cuenta con
+`forms.create`.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AC1 | Abrir «Nuevo formulario» | Diálogo **centrado** y ancho (modal-lg), con cabecera de color como la del modal de «Agregar elemento» | M | |
+| AC2 | Mirar la rejilla | La primera tarjeta es «Formulario en blanco» y a continuación una por plantilla, con su portada de color, nombre, chips de tipos y «N preguntas» | M | |
+| AC3 | Al abrir | «Formulario en blanco» viene marcada (borde y realce) y el campo Título es obligatorio | A | |
+| AC4 | Pulsar una tarjeta de plantilla | Se marca esa (y se desmarca la de blanco); el Título **deja** de ser obligatorio | M | |
+| AC5 | Volver a pulsar «Formulario en blanco» | Se desmarca la plantilla y el Título vuelve a ser obligatorio | M | |
+| AC6 | En blanco, sin título, pulsar «Crear» | El navegador no deja enviar (el título es obligatorio) | M | |
+| AC7 | Con una plantilla y sin título, crear | Se crea y abre el builder con el **nombre de la plantilla** y sus preguntas | A | |
+| AC8 | Crear en blanco | Se crea y abre el builder vacío (sin campos) | A | |
+| AC9 | Con teclado: `Tab` por las tarjetas y `Espacio` | El foco recorre las tarjetas con anillo visible y `Espacio` selecciona | M | |
+| AC10 | Todo esto **sin JavaScript** (marcar una plantilla con el ratón) | Enviar crea desde esa plantilla; en blanco crea vacío (escribiendo un título) | A | |
+| AC11 | En móvil estrecho (360px) | La rejilla baja a una columna y el diálogo no se sale de la pantalla | M | |
+
 ## Cuando encuentres un fallo
 
 

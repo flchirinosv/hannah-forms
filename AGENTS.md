@@ -1320,12 +1320,13 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 449 comprobaciones manuales en 28 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 466 comprobaciones manuales en 29 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
-  el correo de invitación AA y el listado paginado del panel AB), para detectar
+  el correo de invitación AA, el listado paginado del panel AB y la galería del
+  modal de nuevo formulario AC), para detectar
   problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
   panel, R, S, T, U y AA son la

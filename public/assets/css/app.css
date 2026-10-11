@@ -1844,31 +1844,59 @@ body {
 .app-quiz-badge { width: 48px; height: 48px; font-size: 1.1rem; box-shadow: 0 .25rem .6rem rgba(0,0,0,.15); }
 .app-quiz-bar { border-radius: 4px; background: #e9ecef; }
 
-/* V6 — Galería de plantillas en el modal de nuevo formulario (select → cards) */
-#templatePicker .app-tpl-card {
+/* P9/V6 — Galería de arranque del modal de nuevo formulario, al estilo de la
+   portada de Google Forms: una tarjeta «en blanco» y una por plantilla, cada
+   una con su portada de color, nombre y mini-preview de tipos. La elección es
+   un único grupo de radios `template` (value="" = en blanco). */
+#newFormModal .app-tpl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: .75rem;
+}
+#newFormModal .app-tpl-card {
     position: relative;
-    display: block;
+    display: flex;
+    flex-direction: column;
     height: 100%;
-    padding: .875rem .875rem .75rem .875rem;
+    overflow: hidden;
     border: 1px solid var(--vf-border, #e2e8f0);
     border-radius: var(--vf-radius, 14px);
     background: var(--vf-surface, #fff);
     cursor: pointer;
-    transition: border-color .12s ease, box-shadow .12s ease;
+    transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
 }
-#templatePicker .app-tpl-card:hover { border-color: var(--vf-primary, #6366f1); }
-#templatePicker .app-tpl-card.app-tpl-checked,
-#templatePicker .app-tpl-card:has(input:checked) {
+#newFormModal .app-tpl-card:hover {
+    border-color: var(--vf-primary, #6366f1);
+    transform: translateY(-2px);
+    box-shadow: var(--vf-shadow, 0 .5rem 1rem rgba(2, 6, 23, .08));
+}
+#newFormModal .app-tpl-card.app-tpl-checked,
+#newFormModal .app-tpl-card:has(input:checked) {
     border-color: var(--vf-primary, #6366f1);
     box-shadow: var(--vf-focus-ring, 0 0 0 3px rgba(99, 102, 241, .18));
 }
-#templatePicker .app-tpl-card:has(input:focus-visible) { outline: 2px solid var(--vf-primary, #6366f1); outline-offset: 2px; }
-#templatePicker .app-tpl-off .app-tpl-card { opacity: .55; pointer-events: none; }
-#templatePicker .app-tpl-body { display: flex; flex-direction: column; gap: .35rem; }
-#templatePicker .app-tpl-name { font-weight: 600; color: var(--vf-text, #1e293b); }
-#templatePicker .app-tpl-desc { font-size: .8rem; color: var(--vf-text-muted, #64748b); }
-#templatePicker .app-tpl-chips { display: flex; flex-wrap: wrap; gap: .25rem; }
-#templatePicker .app-tpl-chip {
+#newFormModal .app-tpl-card:has(input:focus-visible) { outline: 2px solid var(--vf-primary, #6366f1); outline-offset: 2px; }
+/* La portada del tile necesita display propio: un <span> con height no tiene
+   caja (misma razón por la que .scale-btn lo declara). */
+#newFormModal .app-tpl-cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 74px;
+    font-size: 1.6rem;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+#newFormModal .app-tpl-cover-blank {
+    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: var(--vf-primary, #6366f1);
+    border-bottom: 1px dashed #cbd5e1;
+}
+#newFormModal .app-tpl-body { display: flex; flex-direction: column; gap: .3rem; padding: .7rem .8rem .8rem; }
+#newFormModal .app-tpl-name { font-weight: 600; color: var(--vf-text, #1e293b); }
+#newFormModal .app-tpl-desc { font-size: .8rem; color: var(--vf-text-muted, #64748b); }
+#newFormModal .app-tpl-chips { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .1rem; }
+#newFormModal .app-tpl-chip {
     font-size: .68rem;
     line-height: 1;
     padding: .3rem .45rem;
@@ -1877,7 +1905,7 @@ body {
     color: var(--vf-primary-dark, #4f46e5);
     text-transform: lowercase;
 }
-#templatePicker .app-tpl-q { font-size: .78rem; color: var(--vf-text-muted, #64748b); }
+#newFormModal .app-tpl-q { font-size: .78rem; color: var(--vf-text-muted, #64748b); }
 
 /* ============================================================
    Roles y grupos (RBAC)

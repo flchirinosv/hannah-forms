@@ -313,34 +313,34 @@ $relativeTs = static function (string $timestamp): string {
 
 <!-- Modal Nuevo Formulario -->
 <div class="modal fade" id="newFormModal" tabindex="-1" aria-labelledby="newFormModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0">
             <form method="post" action="/forms">
                 <?= \App\Core\Csrf::field() ?>
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold" id="newFormModalLabel"><i class="fa-solid fa-plus-circle me-2 text-primary"></i>Nuevo formulario</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?php // P9 — Arranque en blanco o desde plantilla (database/templates). ?>
-                    <div class="mb-3">
-                        <span class="form-label d-block">¿Cómo quieres empezar?</span>
-                        <div class="d-flex flex-wrap gap-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="mode" id="modeBlank" value="blank" checked>
-                                <label class="form-check-label" for="modeBlank">En blanco</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="mode" id="modeTemplate" value="template">
-                                <label class="form-check-label" for="modeTemplate">Desde una plantilla</label>
-                            </div>
-                        </div>
+                <div class="modal-header app-navbar text-white border-0 py-2">
+                    <div class="d-flex align-items-center gap-2 text-white">
+                        <span class="app-logo-sm"><i class="fa-solid fa-plus"></i></span>
+                        <span class="fw-semibold" id="newFormModalLabel">Nuevo formulario</span>
                     </div>
-                    <div class="mb-3" id="templatePicker" hidden>
-                        <span class="form-label d-block">Elige una plantilla</span>
-                        <?php if (empty($templates)): ?>
-                            <div class="form-text">No hay plantillas instaladas en database/templates.</div>
-                        <?php else: ?>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <?php // P9/V6 — Galería de arranque: una tarjeta «en blanco» y una
+                          // por plantilla, al estilo de la portada de Google Forms. El
+                          // servidor NO lee `mode`: solo `template` (vacío = en blanco),
+                          // así que la elección es un único grupo de radios `template` y
+                          // elegir una tarjeta ya decide el modo. ?>
+                    <h6 class="app-type-grid-title"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>¿Cómo quieres empezar?</h6>
+                    <div class="app-tpl-grid mb-4">
+                        <label class="app-tpl-card app-tpl-checked">
+                            <input class="d-none" type="radio" name="template" value="" checked>
+                            <span class="app-tpl-cover app-tpl-cover-blank"><i class="fa-solid fa-plus"></i></span>
+                            <span class="app-tpl-body">
+                                <span class="app-tpl-name">Formulario en blanco</span>
+                                <span class="app-tpl-desc">Empieza desde cero y añade tus propias preguntas.</span>
+                            </span>
+                        </label>
+                        <?php if (!empty($templates)): ?>
                             <?php
                             // V6 — Mini-preview declarativa desde el JSON de la
                             // plantilla (TemplateService::list → `types`).
@@ -353,33 +353,44 @@ $relativeTs = static function (string $timestamp): string {
                                 'range' => 'Rango', 'nps' => 'NPS', 'star' => 'Estrellas',
                                 'matrix' => 'Matriz', 'ranking' => 'Ranking', 'file' => 'Archivo',
                             ];
+                            // Icono de la portada de la tarjeta: el del primer tipo.
+                            $vfTypeIcon = [
+                                'text' => 'fa-i-cursor', 'textarea' => 'fa-align-left', 'email' => 'fa-envelope',
+                                'number' => 'fa-hashtag', 'date' => 'fa-calendar', 'time' => 'fa-clock',
+                                'datetime-local' => 'fa-calendar-check', 'select' => 'fa-caret-down',
+                                'radio' => 'fa-circle-dot', 'checkbox' => 'fa-square-check',
+                                'url' => 'fa-link', 'tel' => 'fa-phone', 'scale' => 'fa-star',
+                                'range' => 'fa-sliders', 'nps' => 'fa-chart-column',
+                                'star' => 'fa-star-half-stroke', 'matrix' => 'fa-table',
+                                'ranking' => 'fa-list-ol', 'file' => 'fa-paperclip',
+                            ];
                             ?>
-                            <div class="row g-2">
-                                <?php foreach ($templates as $tplIdx => $tpl): ?>
-                                <div class="col-sm-6">
-                                    <label class="app-tpl-card<?= $tplIdx === 0 ? ' app-tpl-checked' : '' ?>">
-                                        <input class="form-check-input d-none" type="radio" name="template"
-                                               value="<?= View::escape((string) $tpl['key']) ?>"<?= $tplIdx === 0 ? ' checked' : '' ?>>
-                                        <span class="app-tpl-body">
-                                            <span class="app-tpl-name"><?= View::escape((string) $tpl['name']) ?></span>
-                                            <?php if (!empty($tpl['description'])): ?>
-                                                <span class="app-tpl-desc"><?= View::escape((string) $tpl['description']) ?></span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($tpl['types'])): ?>
-                                                <span class="app-tpl-chips">
-                                                    <?php foreach ($tpl['types'] as $tfType): ?>
-                                                        <span class="app-tpl-chip" title="<?= View::escape((string) $tfType) ?>"><?= View::escape($vfTypeLabel[(string) $tfType] ?? (string) $tfType) ?></span>
-                                                    <?php endforeach; ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            <span class="app-tpl-q small text-muted"><?= (int) $tpl['questions'] ?> preguntas<?= (int) $tpl['sections'] > 0 ? ' · ' . (int) $tpl['sections'] . ' secciones' : '' ?></span>
-                                        </span>
-                                    </label>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
+                            <?php foreach ($templates as $tpl): ?>
+                                <?php $tipos = is_array($tpl['types'] ?? null) ? $tpl['types'] : []; ?>
+                                <label class="app-tpl-card">
+                                    <input class="d-none" type="radio" name="template" value="<?= View::escape((string) $tpl['key']) ?>">
+                                    <span class="app-tpl-cover"><i class="fa-solid <?= View::escape($vfTypeIcon[(string) ($tipos[0] ?? '')] ?? 'fa-clipboard-list') ?>"></i></span>
+                                    <span class="app-tpl-body">
+                                        <span class="app-tpl-name"><?= View::escape((string) $tpl['name']) ?></span>
+                                        <?php if (!empty($tpl['description'])): ?>
+                                            <span class="app-tpl-desc"><?= View::escape((string) $tpl['description']) ?></span>
+                                        <?php endif; ?>
+                                        <?php if ($tipos !== []): ?>
+                                            <span class="app-tpl-chips">
+                                                <?php foreach ($tipos as $tfType): ?>
+                                                    <span class="app-tpl-chip" title="<?= View::escape((string) $tfType) ?>"><?= View::escape($vfTypeLabel[(string) $tfType] ?? (string) $tfType) ?></span>
+                                                <?php endforeach; ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <span class="app-tpl-q"><?= (int) $tpl['questions'] ?> pregunta<?= (int) $tpl['questions'] === 1 ? '' : 's' ?><?php if ((int) $tpl['sections'] > 0): ?> · <?= (int) $tpl['sections'] ?> sección<?= (int) $tpl['sections'] === 1 ? '' : 'es' ?><?php endif; ?></span>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
+                    <?php if (empty($templates)): ?>
+                        <div class="form-text mb-4">No hay plantillas instaladas en <code>database/templates</code>.</div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <label for="title" class="form-label">Título <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="title" name="title" placeholder="Ej: Encuesta de satisfacción" required autofocus>
