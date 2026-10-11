@@ -26,7 +26,8 @@ namespace Tests\Unit;
  *     sus cabeceras se quedaban en los ~32px del `btn-sm` al lado de los 44px del
  *     resto. La barra de filtros de analítica entra en la misma fila, así que sus
  *     controles toman el mismo alto y su `flex-wrap` / `width:auto` evitan que los
- *     44px desborden la pantalla en tablet.
+ *     44px desborden la pantalla: en tablet y en la franja 992–1023, donde el
+ *     `nowrap` que se probó antes se salía de la vista.
  *  4. **Notificaciones y Webhook se reparten por el ancho de la TARJETA, no de
  *     la ventana.** Viven en una `col-lg-4` de ~400px: un `col-md-*` mira la ventana
  *     (≥768px) y ahí dentro metía tres o cuatro columnas enanas y dejaba un tercio
@@ -210,12 +211,29 @@ class FormFichaLayoutTest
             );
         }
 
-        // La barra de filtros de analítica no fuerza `nowrap` por debajo de `lg`: con
-        // los controles a 44px no cabe en una fila y empujaba la página en tablet.
+        // La barra de filtros de analítica no fuerza `nowrap` en ninguna franja:
+        // con los controles a 44px no cabe en una fila, y el `nowrap` empujaba la
+        // página. `flex-sm-nowrap` desbordaba en tablet; `flex-lg-nowrap` desbordaba
+        // en la franja 992–1023 (el sidebar deja ~700px de contenido y la barra mide
+        // 722). Con `flex-wrap` se parte antes de desbordar y sigue en una sola
+        // línea cuando hay sitio.
         $analitica = self::plantilla('analytics/show.php');
+        assertFalse(
+            str_contains($analitica, 'flex-sm-nowrap') || str_contains($analitica, 'flex-lg-nowrap'),
+            'analitica: la barra de filtros no fuerza nowrap en ninguna franja'
+        );
         assertTrue(
-            str_contains($analitica, 'flex-lg-nowrap') && !str_contains($analitica, 'flex-sm-nowrap'),
-            'analitica: la barra de filtros envuelve por debajo de lg'
+            str_contains($analitica, 'analytics-filters d-flex flex-wrap'),
+            'analitica: la barra de filtros envuelve con flex-wrap'
+        );
+
+        // El botón de exportar no lleva `w-100`: en escritorio estiraba la fila
+        // entera porque el `w-sm-auto` con el que se pretendía deshacerlo NO existe
+        // (Bootstrap no trae utilidades de ancho por breakpoint), así que el `w-100`
+        // aplicaba a todos los tamaños.
+        assertFalse(
+            str_contains($analitica, 'w-sm-auto') || str_contains($analitica, 'btn-success w-100'),
+            'analitica: el botón de exportar no se fuerza a ancho completo'
         );
 
         $css = self::css();

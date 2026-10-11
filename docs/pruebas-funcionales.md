@@ -139,7 +139,7 @@ Para no perderte, prepara esto antes de empezar:
 | C13 | Comparar, en escritorio, la cabecera de la ficha, el botón «Nuevo formulario» del panel y la cabecera del builder | Los tres grupos de botones miden lo mismo (alto del CTA y mismo radio); no conviven 44 y 38px en la misma fila | M | |
 | C14 | En móvil, entrar en Administración y mirar la sub-navegación (Usuarios, Grupos de roles, Roles y permisos…) | Los botones se quedan **solo con su icono** y caben en una línea | B | |
 | C15 | En móvil, mirar los botones de crear de Admin (grupo/rol) y el desplegable de grupos de una fila | Los de crear se quedan con el icono; el de grupos conserva sus insignias **legibles** | M | |
-| C16 | Comparar en escritorio las cabeceras de respuestas, analítica y administración (usuarios, formularios, log) y la **sub-navegación de Administración** (Usuarios, Grupos de roles, Roles y permisos…) con la de la ficha | Las acciones, los controles y las pestañas de Administración miden lo mismo (44px, radio 12, texto 16px); no queda ningún `btn-sm` de 32px ni pestaña de 40px al lado | M | |
+| C16 | Comparar en escritorio las cabeceras de respuestas, analítica y administración (usuarios, formularios, log) y la **sub-navegación de Administración** (Usuarios, Grupos de roles, Roles y permisos…) con la de la ficha | Las acciones, los controles y las pestañas de Administración miden lo mismo (44px, radio 12, texto 16px); no queda ningún `btn-sm` de 32px ni pestaña de 40px al lado, y «Exportar CSV» no ocupa la fila entera (sin `w-100`) | M | |
 
 ---
 

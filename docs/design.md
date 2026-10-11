@@ -392,11 +392,16 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   ~32px de `btn-sm`. Con la clase, sus `.btn` y también los controles de filtro
   (`.form-control`/`.form-select`) toman el alto del CTA (`--vf-btn-cta-h`, 44px),
   radio 12 y peso 600, y el contenido se centra; la fila puede **envolver**
-  (`flex-wrap`) antes que desbordar. En la barra de filtros de analítica los
-  campos se miden por su contenido (`width:auto`) y el `nowrap` entra solo desde
-  `lg`: con los controles a 44px, en tablet no cabían en una fila junto a
-  «Exportar CSV» y empujaban la página. Lo ata
-  `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
+   (`flex-wrap`) antes que desbordar. En la barra de filtros de analítica los
+   campos se miden por su contenido (`width:auto`) y la barra **no fuerza
+   `nowrap`** en ninguna franja: con los controles a 44px, `flex-sm-nowrap`
+   empujaba la página en tablet y `flex-lg-nowrap` lo hacía en la franja 992–1023
+   (el sidebar deja ~700px de contenido y la barra mide 722), así que se parte en
+   una fila más cuando no cabe y sigue en una sola cuando hay sitio. Y el botón
+   «Exportar CSV» **no lleva `w-100`**: en escritorio estiraba la fila porque el
+   `w-sm-auto` con el que se pretendía deshacerlo no existe (Bootstrap no trae
+   utilidades de ancho por breakpoint). Lo ata
+   `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
 - `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
   cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
   cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,

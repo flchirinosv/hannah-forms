@@ -39,7 +39,7 @@ $qsAnalytics = http_build_query(array_filter([
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Analítica — <?= View::escape($form['title']) ?></h2>
         </div>
         <div class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center app-head-actions">
-            <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap flex-lg-nowrap gap-2 align-items-center">
+            <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group" role="group" aria-label="Presets de rango">
                     <button type="button" class="btn btn-outline-secondary" data-preset="7" title="Últimos 7 días">7d</button>
                     <button type="button" class="btn btn-outline-secondary" data-preset="30" title="Últimos 30 días">30d</button>
@@ -105,7 +105,7 @@ $qsAnalytics = http_build_query(array_filter([
                   // botón y el `data-*` del fetcher tienen que llevar EXACTAMENTE lo
                   // mismo: si el botón se olvidara del filtro, el archivo traería
                   // respuestas que la pantalla está ocultando. ?>
-            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-success w-100 w-sm-auto"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
+            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-success"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
         </div>
     </div>
 
