@@ -362,7 +362,14 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   `w-100`: un botón a ancho completo con un solo icono centrado no se distingue
   de uno roto, y ahí el texto es lo que dice qué hace («Eliminar», «Guardar
   ajustes»). La regla es de `.app-content`, así que la sidebar nunca entra. Lo
+  ajustes»). La regla es de `.app-content`, así que la sidebar nunca entra. Lo
   ata `ContentButtonsMobileTest`.
+- **La sub-navegación de `/admin` también.** Sus píldoras (Usuarios, Grupos de
+  roles, Roles y permisos, Log de seguridad, Formularios) son `.nav-link`, no
+  `.btn`, así que la regla anterior no las alcanza; llevan icono y en un móvil
+  parten la fila en dos o tres líneas. Una regla propia (`.app-admin-nav
+  .nav-link:has(i[class*="fa-"])`, dentro de la misma media query) las deja en el
+  icono, y pasan a una sola fila. Lo mismo ata `ContentButtonsMobileTest`.
 - `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
   cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
   cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,

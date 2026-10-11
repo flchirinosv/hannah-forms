@@ -75,4 +75,35 @@ class ContentButtonsMobileTest
             'ninguna regla colapsa el texto de la sidebar'
         );
     }
+
+    public function testLaSubNavegacionDeAdminTambienSeQuedaSoloConElIcono(): void
+    {
+        // La sub-navegación de `/admin` son `nav-link` (no `.btn`), así que la
+        // regla de los botones del contenido no la alcanza: sin una regla propia
+        // se queda con el texto y parte la fila en varias líneas en móvil.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav \.nav-link:has\(i\[class\*="fa-"\]\)\s*\{[^}]*font-size:\s*0#s',
+                self::css()
+            ),
+            'la sub-navegación de /admin colapsa su texto en móvil'
+        );
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav \.nav-link:has\(i\[class\*="fa-"\]\) i\[class\*="fa-"\]\s*\{[^}]*font-size:\s*1rem#s',
+                self::css()
+            ),
+            'y el icono recupera su tamaño'
+        );
+
+        // Sin icono en las píldoras, la regla no engancharía a ninguna y el test
+        // de CSS pasaría midiendo una regla muerta.
+        $nav = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/_nav.php');
+        assertTrue(
+            str_contains($nav, 'app-admin-nav') && str_contains($nav, 'fa-solid'),
+            'las píldoras de /admin traen icono dentro de app-admin-nav'
+        );
+    }
 }

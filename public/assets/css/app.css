@@ -975,6 +975,14 @@ body {
 @media (max-width: 991.98px) {
     .app-content .btn:has(i[class*="fa-"]):not(.w-100) { font-size: 0; }
     .app-content .btn:has(i[class*="fa-"]):not(.w-100) i[class*="fa-"] { font-size: 1rem; }
+    /* La sub-navegación de /admin es una fila de píldoras con icono + texto
+       (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad,
+       Formularios) que en un móvil se parte en dos o tres líneas. No son
+       `.btn` —son `.nav-link`—, así que la regla de arriba no las alcanzaba y
+       se quedaban con el texto; en modo móvil se quedan con el icono, igual
+       que el resto de botones del contenido. */
+    .app-admin-nav .nav-link:has(i[class*="fa-"]) { font-size: 0; }
+    .app-admin-nav .nav-link:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
 }
 
 /* --- Responsive mobile --- */
