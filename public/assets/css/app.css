@@ -913,6 +913,14 @@ body {
 .analytics-filters input[type="date"] {
     min-width: 160px;
 }
+/* Con los controles a 44px, la barra no cabe en una fila en tablet: los campos
+   se miden por su contenido y bajan de línea en vez de empujar la página. */
+.analytics-filters .form-control,
+.analytics-filters .form-select {
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+}
 .analytics-filters .btn {
     min-height: 38px;
     text-wrap: nowrap;
@@ -965,6 +973,40 @@ body {
     .app-detail-table .app-answer-cell { max-width: none; }
 }
 
+/* La sub-navegación de /admin es la fila de ACCIONES de su cabecera (Usuarios,
+   Grupos de roles, Roles y permisos, Log de seguridad, Formularios), pero son
+   `nav-link` de un `nav-pills`, no `.btn`, así que no las alcanza la regla de
+   `.app-head-actions`: convivían a 40px/radio 6/peso 400 mientras la cabecera
+   mide 44px/radio 12/peso 600. Se visten con las MISMAS métricas y con el par
+   de Bootstrap: la inactiva como `btn-outline-secondary` (contorno gris) y la
+   activa como `btn-primary` (relleno), que es lo que ya insinuaba el `nav-pills`. */
+.app-admin-nav {
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+.app-admin-nav .nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--vf-btn-cta-h);
+    padding: .375rem .75rem;
+    border: 1px solid var(--bs-secondary);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+}
+.app-admin-nav .nav-link:hover,
+.app-admin-nav .nav-link:focus {
+    border-color: var(--vf-text);
+    color: var(--vf-text);
+}
+.app-admin-nav .nav-link.active {
+    background-color: var(--vf-primary);
+    border-color: var(--vf-primary);
+    color: #fff;
+}
+
 /* En el contenido, en móvil, los botones con icono muestran SOLO el icono: el
    texto se colapsa con `font-size: 0` (sigue en el nombre accesible, así que un
    lector de pantalla lo lee) y el icono recupera su tamaño. No entran los
@@ -989,12 +1031,13 @@ body {
            botón: sin reponerlas, `font-size: 0` las deja invisibles y con ellas
            la pertenencia de la fila. */
         .app-content .btn:has(i[class*="fa-"]) .badge { font-size: 0.7rem; }
-        /* La sub-navegación de /admin es una fila de píldoras con icono + texto
+        /* La sub-navegación de /admin es la fila de botones con icono + texto
            (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad,
-           Formularios) que en un móvil se parte en dos o tres líneas. No son
-           `.btn` —son `.nav-link`—, así que la regla de arriba no las alcanzaba
-           y se quedaban con el texto; en modo móvil se quedan con el icono,
-           igual que el resto de botones del contenido. */
+           Formularios) que en un móvil se parte en dos o tres líneas. Siguen
+           siendo `.nav-link` —visten como botón, pero no son `.btn`—, así que
+           la regla de arriba no las alcanzaba y se quedaban con el texto; en
+           modo móvil se quedan con el icono, igual que el resto de botones del
+           contenido. */
         .app-admin-nav .nav-link:has(i[class*="fa-"]) { font-size: 0; }
         .app-admin-nav .nav-link:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
     }
@@ -1030,23 +1073,31 @@ body {
 .app-page-head > :first-child { min-width: 0; }
 .app-page-head h2 { overflow-wrap: anywhere; }
 /* `app-head-actions` es la fila de acciones de una cabecera, y la comparten el
-   dashboard («Nuevo formulario»), la ficha y el builder. Sin ella cada pantalla
+   dashboard («Nuevo formulario»), la ficha, el builder, la lista de respuestas,
+   la analítica y las pantallas de administración. Sin ella cada pantalla
    mezclaba sus alturas: en la ficha convivían 44/38/32 en la misma fila (CTA a
-   44px/radio 12, enlaces a ~38px/radio 6 y el botón de menú a 32×32), el botón
-   del dashboard se quedaba en los ~38px que le deja Bootstrap —`app-btn-create`
-   solo pone radio y peso— y en el builder el CTA salía a 44 y los secundarios a
-   38. Aquí toman todos el alto y el radio del CTA y el contenido se centra. El
-   `min-height` NO pisa el alto de las variantes: `.btn-sm` no lleva la clase, y
-   el `btn-group` del builder conserva los radios interiores porque el selector
-   de Bootstrap para `:not(:first-child) + .btn` tiene más especificidad. Se
-   acota a `app-head-actions` (y no a `.app-page-head`) para no tocar la
-   cabecera de respuestas, que usa `btn-sm` a propósito. */
-.app-head-actions .btn {
+   44px/radio 12, enlaces a ~38px/radio 6 y el botón de menú a 32×32), y las
+   cabeceras de respuestas y administración se quedaban en los ~32px de `btn-sm`.
+   Aquí toman todos el alto, el radio y el peso del CTA, y el contenido se
+   centra. Como las de analítica y el log de seguridad llevan controles de
+   filtro en la misma fila, esos también toman el alto y el radio: si no, la
+   cabecera mezclaría botones de 44 con selects de 31. El `min-height` NO pisa
+   el alto de las variantes: `.btn-sm` no lleva la clase, y el `btn-group` del
+   builder conserva los radios interiores porque el selector de Bootstrap para
+   `:not(:first-child) + .btn` tiene más especificidad. Y la fila puede partirse:
+   con controles de 44px, una cabecera estrecha (tablet) prefiere dos líneas a
+   salirse de la pantalla. */
+.app-head-actions { flex-wrap: wrap; }
+.app-head-actions .btn,
+.app-head-actions .form-control,
+.app-head-actions .form-select {
     min-height: var(--vf-btn-cta-h);
+    border-radius: 12px;
+}
+.app-head-actions .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
     font-weight: 600;
 }
 .app-head-actions .app-dd-btn {

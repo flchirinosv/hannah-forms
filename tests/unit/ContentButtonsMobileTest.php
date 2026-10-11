@@ -107,6 +107,35 @@ class ContentButtonsMobileTest
         );
     }
 
+    public function testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera(): void
+    {
+        // El dueño pidió que la fila de pestañas de /admin (Usuarios, Grupos de
+        // roles, Roles y permisos, Log de seguridad, Formularios) no conviva con
+        // el resto de cabeceras a otro tamaño: son `.nav-link`, no `.btn`, así
+        // que ni `.app-head-actions` ni la regla de colapso las visten. Deben
+        // tomar las MISMAS métricas del botón de cabecera; si esta regla cae,
+        // vuelven a 40px/radio 6/peso 400 sin que nada más lo note.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav \.nav-link\s*\{[^}]*min-height:\s*var\(--vf-btn-cta-h\)[^}]*border-radius:\s*12px[^}]*font-size:\s*1rem[^}]*font-weight:\s*600#s',
+                self::css()
+            ),
+            'la sub-navegación de /admin toma el alto, el radio y el peso del botón de cabecera'
+        );
+
+        // La pestaña activa se rellena como el CTA y la inactiva lleva contorno
+        // `secondary`: el mismo par que un `btn-outline-secondary`/`btn-primary`.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav \.nav-link\.active\s*\{[^}]*background-color:\s*var\(--vf-primary\)#s',
+                self::css()
+            ),
+            'la pestaña activa de /admin se rellena como el CTA'
+        );
+    }
+
     public function testElColapsoVaBajoSupportsYNoPierdeNiInsigniasNiLoQueDebe(): void
     {
         $css = self::css();

@@ -371,12 +371,32 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   no lo soporte (Chrome < 105, Firefox < 121, Safari < 15.4) el bloque se ignora
   y los botones conservan su texto, que es la degradación buena. Lo ata
   `ContentButtonsMobileTest`.
-- **La sub-navegación de `/admin` también.** Sus píldoras (Usuarios, Grupos de
-  roles, Roles y permisos, Log de seguridad, Formularios) son `.nav-link`, no
-  `.btn`, así que la regla anterior no las alcanza; llevan icono y en un móvil
-  parten la fila en dos o tres líneas. Una regla propia (`.app-admin-nav
-  .nav-link:has(i[class*="fa-"])`, dentro de la misma media query) las deja en el
-  icono, y pasan a una sola fila. Lo mismo ata `ContentButtonsMobileTest`.
+- **La sub-navegación de `/admin` es la fila de acciones de su cabecera.**
+  Usuarios, Grupos de roles, Roles y permisos, Log de seguridad y Formularios son
+  `.nav-link` de un `nav-pills`, no `.btn`, así que no las alcanzaba ni la regla
+  de `.app-head-actions` (convivían a 40px/radio 6/peso 400 frente a los
+  44px/radio 12/peso 600 de la cabecera). `.app-admin-nav .nav-link` las viste con
+  las mismas métricas del botón de cabecera (alto `--vf-btn-cta-h`, radio 12,
+  peso 600, 16px) y con el par de Bootstrap: la inactiva como
+  `btn-outline-secondary` (contorno `secondary`) y la activa rellena de
+  `--vf-primary`, como el CTA. En móvil llevan icono y parten la fila en dos o
+  tres líneas; una regla propia (`.app-admin-nav .nav-link:has(i[class*="fa-"])`,
+  dentro de la misma media query) las deja en el icono y pasan a una sola fila.
+  Lo atan `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
+  y `testLaSubNavegacionDeAdminTambienSeQuedaSoloConElIcono`.
+- **La fila de acciones de la cabecera es una sola** (`.app-head-actions`) y la
+  comparten el dashboard, la ficha, el builder, el listado de respuestas, la
+  analítica y las pantallas de administración (usuarios, formularios, log de
+  seguridad). Sin ella cada cabecera mezclaba alturas —en la ficha convivían
+  44/38/32— y las de respuestas, analítica y administración se quedaban en los
+  ~32px de `btn-sm`. Con la clase, sus `.btn` y también los controles de filtro
+  (`.form-control`/`.form-select`) toman el alto del CTA (`--vf-btn-cta-h`, 44px),
+  radio 12 y peso 600, y el contenido se centra; la fila puede **envolver**
+  (`flex-wrap`) antes que desbordar. En la barra de filtros de analítica los
+  campos se miden por su contenido (`width:auto`) y el `nowrap` entra solo desde
+  `lg`: con los controles a 44px, en tablet no cabían en una fila junto a
+  «Exportar CSV» y empujaban la página. Lo ata
+  `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
 - `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
   cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
   cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,

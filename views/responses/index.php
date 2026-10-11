@@ -36,9 +36,9 @@ if ($window !== []) {
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-inbox me-2 text-primary"></i>Respuestas — <?= View::escape($form['title']) ?></h2>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/forms/<?= (int) $form['id'] ?>/export.csv" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-csv me-1"></i>CSV</a>
-            <a href="/forms/<?= (int) $form['id'] ?>/export.json" class="btn btn-sm btn-success app-btn-primary"><i class="fa-solid fa-file-code me-1"></i>Exportar JSON</a>
+        <div class="d-flex flex-wrap gap-2 app-head-actions">
+            <a href="/forms/<?= (int) $form['id'] ?>/export.csv" class="btn btn-outline-success"><i class="fa-solid fa-file-csv me-1"></i>CSV</a>
+            <a href="/forms/<?= (int) $form['id'] ?>/export.json" class="btn btn-success app-btn-primary"><i class="fa-solid fa-file-code me-1"></i>Exportar JSON</a>
         </div>
     </div>
 

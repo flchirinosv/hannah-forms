@@ -4,12 +4,14 @@ use App\Core\View;
 <div class="container-fluid px-lg-4">
     <?= View::partial('admin/_nav', ['active' => 'forms']) ?>
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <div>
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Todos los formularios</h2>
             <p class="text-muted small mb-0">Vista global de formularios de todos los usuarios.</p>
         </div>
-        <a href="/admin" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left me-1"></i>Volver a usuarios</a>
+        <div class="app-head-actions">
+            <a href="/admin" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left me-1"></i>Volver a usuarios</a>
+        </div>
     </div>
 
     <div class="row g-3">

@@ -9,14 +9,14 @@ use App\Core\View;
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Log de seguridad</h2>
             <p class="text-muted small mb-0">Eventos de autenticación, CSRF, rate limits, webhooks bloqueados, subidas denegadas y cambios administrativos.</p>
         </div>
-        <form method="get" action="/admin/security-log" class="d-flex gap-2 align-items-center">
-            <select name="event" class="form-select form-select-sm" style="width:auto">
+        <form method="get" action="/admin/security-log" class="d-flex gap-2 align-items-center app-head-actions">
+            <select name="event" class="form-select" style="width:auto">
                 <option value="">Todos los eventos</option>
                 <?php foreach ($events as $e): ?>
                     <option value="<?= View::escape($e) ?>" <?= $event === $e ? 'selected' : '' ?>><?= View::escape($e) ?></option>
                 <?php endforeach; ?>
             </select>
-            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-filter"></i></button>
+            <button type="submit" class="btn btn-outline-secondary"><i class="fa-solid fa-filter"></i></button>
         </form>
     </div>
 

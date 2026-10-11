@@ -17,25 +17,23 @@ namespace Tests\Unit;
  *
  *  1. **Los cuatro controles del top de la ficha miden lo mismo.** La regla
  *     `.app-head-actions` sube los secundarios y el botón de menú al alto y al
- *     radio del CTA, y se acota para no tocar la cabecera de respuestas, que usa
- *     `btn-sm` a propósito.
- *  2. **Notificaciones y Webhook se reparten por el ancho de la TARJETA, no de la
- *     ventana.** Viven en una `col-lg-4` de ~400px: un `col-md-*` mira la ventana
- *     (≥768px) y ahí dentro metía tres o cuatro columnas enanas y dejaba un tercio
- *     de la fila vacío. Por eso el par es `col-sm-6` y la URL del webhook va a
- *     `col-12`.
- *
- *  2. **Notificaciones y Webhook se reparten por el ancho de la TARJETA, no de la
- *     ventana.** Viven en una `col-lg-4` de ~400px: un `col-md-*` mira la ventana
- *     (≥768px) y ahí dentro metía tres o cuatro columnas enanas y dejaba un tercio
- *     de la fila vacío. Por eso el par es `col-sm-6` y la URL del webhook va a
- *     `col-12`.
- *  3. **Dashboard, ficha y builder usan la MISMA fila de acciones.** La regla
+ *     radio del CTA.
+ *  2. **Dashboard, ficha y builder usan la MISMA fila de acciones.** La regla
  *     `.app-head-actions` solo engancha a quien lleva la clase: si el dashboard o
  *     el builder no la traen, sus botones se quedan en la altura de Bootstrap
  *     (~38px) al lado de los 44px de la ficha.
+ *  3. **Respuestas, analítica y administración también la usan, sin `btn-sm`.** Antes
+ *     sus cabeceras se quedaban en los ~32px del `btn-sm` al lado de los 44px del
+ *     resto. La barra de filtros de analítica entra en la misma fila, así que sus
+ *     controles toman el mismo alto y su `flex-wrap` / `width:auto` evitan que los
+ *     44px desborden la pantalla en tablet.
+ *  4. **Notificaciones y Webhook se reparten por el ancho de la TARJETA, no de
+ *     la ventana.** Viven en una `col-lg-4` de ~400px: un `col-md-*` mira la ventana
+ *     (≥768px) y ahí dentro metía tres o cuatro columnas enanas y dejaba un tercio
+ *     de la fila vacío. Por eso el par es `col-sm-6` y la URL del webhook va a
+ *     `col-12`.
  *
- * Sin BD: solo lee `app.css` y las tres vistas.
+ * Sin BD: solo lee `app.css` y las vistas.
  */
 class FormFichaLayoutTest
 {
@@ -186,5 +184,50 @@ class FormFichaLayoutTest
                     . ' metía tres o cuatro columnas enanas y dejaba la fila a medias'
             );
         }
+    }
+
+    public function testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila(): void
+    {
+        // Respuestas se quedaba en `btn-sm` (32px) al lado de los 44px del resto.
+        $respuestas = self::plantilla('responses/index.php');
+        $desde = strpos($respuestas, 'app-head-actions');
+        assertTrue($desde !== false, 'respuestas: la cabecera marca su fila con app-head-actions');
+        $fila = substr($respuestas, (int) $desde);
+        // La fila de acciones solo contiene los dos enlaces, así que su primer
+        // `</div>` la cierra (si no, el resto de la página trae `btn-sm` de sobra).
+        $fin = strpos($fila, '</div>');
+        assertTrue($fin !== false, 'respuestas: la fila de acciones cierra su contenedor');
+        $fila = substr($fila, 0, (int) $fin);
+        assertFalse(
+            str_contains($fila, 'btn-sm'),
+            'respuestas: los botones de cabecera no llevan btn-sm (32px junto a los 44 del resto)'
+        );
+
+        foreach (['analytics/show.php', 'admin/users.php', 'admin/forms.php', 'admin/security_log.php'] as $rel) {
+            assertTrue(
+                str_contains(self::plantilla($rel), 'app-head-actions'),
+                $rel . ': su cabecera marca la fila de acciones con app-head-actions'
+            );
+        }
+
+        // La barra de filtros de analítica no fuerza `nowrap` por debajo de `lg`: con
+        // los controles a 44px no cabe en una fila y empujaba la página en tablet.
+        $analitica = self::plantilla('analytics/show.php');
+        assertTrue(
+            str_contains($analitica, 'flex-lg-nowrap') && !str_contains($analitica, 'flex-sm-nowrap'),
+            'analitica: la barra de filtros envuelve por debajo de lg'
+        );
+
+        $css = self::css();
+        assertSame(
+            1,
+            preg_match('/\.app-head-actions\s*\{\s*flex-wrap:\s*wrap/', $css),
+            'app.css deja que la fila de acciones se parta antes que desbordar'
+        );
+        assertSame(
+            1,
+            preg_match('/\.analytics-filters\s+\.form-control,\s*\.analytics-filters\s+\.form-select\s*\{[^}]*width:\s*auto/', $css),
+            'los campos de la barra de filtros se miden por su contenido para poder envolver'
+        );
     }
 }

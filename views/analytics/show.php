@@ -38,17 +38,17 @@ $qsAnalytics = http_build_query(array_filter([
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Analítica — <?= View::escape($form['title']) ?></h2>
         </div>
-        <div class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center">
-            <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap flex-sm-nowrap gap-2 align-items-center">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Presets de rango">
+        <div class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center app-head-actions">
+            <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap flex-lg-nowrap gap-2 align-items-center">
+                <div class="btn-group" role="group" aria-label="Presets de rango">
                     <button type="button" class="btn btn-outline-secondary" data-preset="7" title="Últimos 7 días">7d</button>
                     <button type="button" class="btn btn-outline-secondary" data-preset="30" title="Últimos 30 días">30d</button>
                     <button type="button" class="btn btn-outline-secondary" data-preset="90" title="Últimos 90 días">90d</button>
                     <button type="button" class="btn btn-outline-secondary" data-preset="month" title="Este mes">Mes</button>
                 </div>
-                <input type="date" class="form-control form-control-sm" name="from" value="<?= View::escape($from) ?>">
+                <input type="date" class="form-control" name="from" value="<?= View::escape($from) ?>">
                 <span class="text-muted small d-none d-sm-inline">a</span>
-                <input type="date" class="form-control form-control-sm" name="to" value="<?= View::escape($to) ?>">
+                <input type="date" class="form-control" name="to" value="<?= View::escape($to) ?>">
                 <?php // Fase 7 — El filtro por atributo va DENTRO del mismo formulario
                       // GET de las fechas y no en otro: son la misma pregunta («qué
                       // respuestas estoy mirando») y el botón dice «Filtrar» una
@@ -62,7 +62,7 @@ $qsAnalytics = http_build_query(array_filter([
                       // «— Attributes —» que no filtra nada parece un filtro roto. ?>
                 <?php if (!empty($catalogo)): ?>
                     <?php $atrActual = (string) ($atrClave['key_name'] ?? ''); ?>
-                    <select class="form-select form-select-sm" name="atr_key" aria-label="Atributo del listado">
+                    <select class="form-select" name="atr_key" aria-label="Atributo del listado">
                         <?php if ($atrActual === ''): ?>
                             <option value="">Todo el listado</option>
                         <?php endif; ?>
@@ -78,7 +78,7 @@ $qsAnalytics = http_build_query(array_filter([
                           // vuelve en la URL, que es la primera opción del
                           // desplegable. ?>
                     <?php if ($atrClave !== null): ?>
-                        <select class="form-select form-select-sm" name="atr_value" aria-label="Valor del atributo">
+                        <select class="form-select" name="atr_value" aria-label="Valor del atributo">
                             <?php $valorActual = (string) ($atr['value'] ?? ''); ?>
                             <option value="">Todos los valores</option>
                             <?php foreach ($atrValues as $valor): ?>
@@ -95,9 +95,9 @@ $qsAnalytics = http_build_query(array_filter([
                         </select>
                     <?php endif; ?>
                 <?php endif; ?>
-                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>Filtrar</button>
+                <button type="submit" class="btn btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>Filtrar</button>
                 <?php if ($from !== '' || $to !== '' || $atrClave !== null): ?>
-                    <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-sm btn-link text-danger"><i class="fa-solid fa-xmark me-1"></i>Limpiar</a>
+                    <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-link text-danger"><i class="fa-solid fa-xmark me-1"></i>Limpiar</a>
                 <?php endif; ?>
             </form>
             <?php // El CSV sale con lo que hay en pantalla. Los dos query strings se
@@ -105,7 +105,7 @@ $qsAnalytics = http_build_query(array_filter([
                   // botón y el `data-*` del fetcher tienen que llevar EXACTAMENTE lo
                   // mismo: si el botón se olvidara del filtro, el archivo traería
                   // respuestas que la pantalla está ocultando. ?>
-            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-sm btn-success w-100 w-sm-auto"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
+            <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-success w-100 w-sm-auto"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
         </div>
     </div>
 

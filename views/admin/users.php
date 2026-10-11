@@ -34,7 +34,9 @@ $roles = $roles ?? [];
                 permisos de los roles del grupo. Todo se suma, nada se resta.
             </p>
         </div>
-        <a href="/admin/forms" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>
+        <div class="app-head-actions">
+            <a href="/admin/forms" class="btn btn-outline-secondary"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>
+        </div>
     </div>
 
     <?php // El alta va aquí, y no solo porque sea «lo primero»: con
