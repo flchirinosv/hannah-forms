@@ -268,36 +268,33 @@ Contrato de implementación, no negociable:
   encabezado y línea, y el tinte encima solo lo hacía parecer partido en
   dos. Los dos lados están atados por el mismo test.
 
-### 3.9 Cajón de ajustes (`.modal-drawer`)
+### 3.9 Modales de ajustes (centrados)
 
-Los ajustes del builder (campo y formulario) viven en un drawer a la derecha
-que **sigue siendo un `.modal` de Bootstrap** —mismo `Esc`, backdrop, focus y
-`aria-modal`— re-estilado como panel lateral (F2/F3). Clases en `app.css`:
-
-| Clase / selector | Qué hace |
-|---|---|
-| `.modal-drawer .modal-dialog` | `position: absolute` a la derecha, `width: 480px`, `height: 100dvh`, radio del cajón por el lado izquierdo |
-| `.modal.fade .modal-drawer .modal-dialog` | `translateX(100%)` + transición: entra deslizándose |
-| `.modal.show .modal-drawer .modal-dialog` | `transform: none` |
-| `@media (max-width: 575.98px)` | `width: 100vw`: en móvil el cajón es la pantalla |
+Los ajustes del builder (campo y formulario) viven en un **modal centrado**,
+igual que el de agregar elemento: `modal-dialog-centered` + `modal-lg` +
+`modal-dialog-scrollable` sobre un `.modal` de Bootstrap (mismo `Esc`,
+backdrop, focus y `aria-modal`). Antes se habían diseñado como cajón lateral
+(F2/F3, `.modal-drawer`), pero un error de marcado —la clase iba en el mismo
+elemento que `.modal-dialog`, cuando el selector la esperaba como ancestro— los
+dejaba como un modal Bootstrap por defecto: 500px, centrado y con una sola
+esquina redondeada. Se unificaron con el patrón de §4.3.
 
 Contrato de implementación, no negociable:
 
-- La cascada importa: `.modal.show .modal-dialog` (0,3,0) gana a
-  `.modal-drawer .modal-dialog` (0,2,0), por eso los `transform` del
-  fade/show se declaran **explícitamente** para los dos estados; sin el
-  `translateX` del fade, el cajón aparece cortándose y no deslizándose.
-- El pie del drawer (`modal-footer border-0`) es **hermano** de
+- Las tres superficies (`#addFieldModal`, `#fieldSettingsModal`,
+  `#formSettingsModal`) usan **las mismas clases de diálogo**. No hay
+  `position: absolute` ni `100dvh` por id.
+- El pie del panel de formulario (`modal-footer border-0`) es **hermano** de
   `modal-body`, no hijo: así `modal-body` se desplaza (`.modal-body` con
   `overflow-y: auto; flex: 1 1 auto`) y el pie queda anclado abajo.
   `BuilderHelpTooltipTest::testLosTextosDeAyudaYaNoEstanSueltosEnLosPanelesDeAjustes`
   exige el string en la vista.
-- Nada de paneles `position: sticky` en el builder: el drawer es la única
+- Nada de paneles `position: sticky` en el builder: el modal es la única
   superficie de configuración, y `#settingsForm` (campo) vive en él desde el
   arranque en una sola instancia (no hay `insertBefore` entre superficies).
-- Los controles del formulario del drawer apilan en `col-sm-6`/`col-12`
-  (no `col-md-*`): a 480px las columnas deciden por el ancho de ventana y
-  sacarían campos de ~120px.
+- El título del panel de campo es **fijo** («Configuración del elemento»): la
+  etiqueta de la pregunta es contenido y se edita en su propio campo, no en la
+  cabecera del panel.
 
 ### 3.10 Vista previa
 
@@ -329,13 +326,13 @@ conjunto de tipos válidos se calcula en un único lugar por contexto.
 ### 4.2 Configuración de un campo
 
 - Clic en la tarjeta → se selecciona, y su configuración aparece en el
-  cajón de la derecha (`.modal-drawer`, ver §3.9).
-- El engranaje de la tarjeta abre ese mismo cajón con el campo en cuestión;
+  modal de ajustes de campo (ver §3.9).
+- El engranaje de la tarjeta abre ese mismo modal con el campo en cuestión;
   el «expandir» del cajón viejo ya no existe: no hay panel que expandir.
 - **Invariante: una sola instancia del formulario de configuración.** Vive en
-  el cajón desde el arranque; los ids y los listeners son los de siempre, y
+  el modal desde el arranque; los ids y los listeners son los de siempre, y
   `#settingsForm` no se mueve ni se duplica.
-- Cerrar el cajón (botón, `Esc` o backdrop) deja la tarjeta que lo abrió
+- Cerrar el modal (botón, `Esc` o backdrop) deja la tarjeta que lo abrió
   seleccionada: `selectFieldById()` redibuja el lienzo, así que el engranaje
   se localiza **por `data-uid`** al devolver la selección.
 - Foco: al abrir se enfoca la etiqueta; al cerrar vuelve al botón que abrió.
@@ -344,10 +341,9 @@ conjunto de tipos válidos se calcula en un único lugar por contexto.
 
 - `modal-dialog-centered` + `modal-dialog-scrollable`: el desplazamiento
   ocurre **dentro** del modal, nunca en la página.
-- **Excepción: los ajustes del builder.** `#fieldSettingsModal` y
-  `#formSettingsModal` NO usan `centered`: son `.modal-drawer` (ver §3.9),
-  anclados a la derecha y a `100dvh`. El `modal-dialog-scrollable` se queda,
-  porque el desplazamiento vuelve a ocurrir dentro del cajón.
+- Las tres superficies del builder (`#addFieldModal`, `#fieldSettingsModal` y
+  `#formSettingsModal`) comparten esas clases; no hay excepciones de cajón
+  (ver §3.9).
 - Rejilla de tipos agrupada por secciones con títulos, no una lista
   larga: el menú vertical obligaba a hacer scroll para encontrar un tipo.
 - Foco, `Escape` y backdrop los trae Bootstrap; no se reimplementan.
@@ -404,7 +400,7 @@ Regla del proyecto, y la razón de que exista el botón `.app-help`:
    confirmar en consola qué versión está sirviendo el navegador.
 9. Los strings de UI van en español, y los del fill público también en
    `app/lang/{es,en}.php` (verificar paridad con `I18nTest`).
-10. Un ajuste del builder es un `.modal-drawer` o nada: nada de paneles
+10. Un ajuste del builder es un modal centrado (§3.9) o nada: nada de paneles
     `position: sticky` ni de mover la misma instancia de un formulario
     entre superficies.
 11. Un preview del constructor reutiliza `previewBody()` y el markup del

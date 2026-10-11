@@ -84,18 +84,17 @@ $fieldTypes = [
         </div>
 </div>
 
-<!-- F2: el engranaje de cada tarjeta abre este drawer por la derecha.
-     Sigue siendo el modal de Bootstrap (mismo Esc, backdrop, focus y
-     aria-modal), pero re-estilizado como panel lateral; no hay columna de
-     configuración: #settingsForm vive aquí desde el inicio, con sus mismos
-     ids y listeners (ver docs/design.md §4.2). -->
+<!-- F2: el engranaje de cada tarjeta abre este modal centrado, igual que el de
+     agregar elemento (mismo dialog de Bootstrap: Esc, backdrop, focus y
+     aria-modal). No hay columna de configuración: #settingsForm vive aquí
+     desde el inicio, con sus mismos ids y listeners (ver docs/design.md §4.2). -->
 <div class="modal fade" id="fieldSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="fieldSettingsTitle">
-    <div class="modal-dialog modal-dialog-scrollable modal-drawer">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white flex-grow-1 min-w-0">
                     <span class="app-logo-sm"><i class="fa-solid fa-sliders"></i></span>
-                    <span class="fw-semibold text-truncate" id="fieldSettingsTitle">Configuración</span>
+                    <span class="fw-semibold text-truncate" id="fieldSettingsTitle">Configuración del elemento</span>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -299,7 +298,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
 ?>
 
 <div class="modal fade" id="formSettingsModal" tabindex="-1" aria-hidden="true" aria-labelledby="formSettingsTitle">
-    <div class="modal-dialog modal-dialog-scrollable modal-drawer">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white flex-grow-1 min-w-0">

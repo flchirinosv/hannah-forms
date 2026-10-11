@@ -482,7 +482,12 @@ body {
     margin-bottom: 0; cursor: pointer;
     user-select: none;
 }
-.app-required-toggle .form-check-input { cursor: pointer; }
+.app-required-toggle .form-check-input {
+    /* Sin tamaño propio hereda el `1em` de Bootstrap, que aquí son los .72rem
+       del rótulo (~11px): se veía como un punto y costaba acertarle. Se fija a
+       1rem para que el control tenga el tamaño de un checkbox de verdad. */
+    width: 1rem; height: 1rem; margin-top: 0; cursor: pointer; flex-shrink: 0;
+}
 .app-required-toggle input:checked + span { color: var(--vf-primary); }
 .app-field-footer .app-field-tools {
     margin-left: auto;
@@ -505,39 +510,6 @@ body {
 .app-tool-btn.text-danger:hover { border-color: #f43f5e; color: #e11d48; background: #fff1f2; }
 .app-tool-btn:disabled { opacity: .45; cursor: not-allowed; }
 .app-tool-btn:disabled:hover { border-color: var(--vf-border); color: #475569; background: #fff; }
-
-/* F2 — Drawer de configuración por elemento. #fieldSettingsModal sigue siendo
-   un `.modal` de Bootstrap (mismo Esc, backdrop, foco y aria-modal); el CSS lo
-   convierte en un panel lateral anclado a la derecha. La cascada importa:
-   `.modal.show .modal-dialog` (0,3,0) gana a `.modal-drawer .modal-dialog`
-   (0,2,0), así que los transform del fade/show se declaran explícitamente
-   para que el `translateX` haga su función en los DOS estados. */
-.modal-drawer .modal-dialog {
-    position: absolute;
-    margin: 0 0 0 auto;
-    top: 0; right: 0;
-    width: 480px;
-    max-width: 100vw;
-    height: 100dvh;
-    max-height: 100dvh;
-}
-.modal-drawer .modal-content {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-    border-radius: var(--vf-radius-lg) 0 0 var(--vf-radius-lg);
-    display: flex;
-    flex-direction: column;
-}
-.modal-drawer .modal-body {
-    overflow-y: auto;
-    flex: 1 1 auto;
-}
-.modal.fade .modal-drawer .modal-dialog { transform: translateX(100%); transition: transform .22s ease; }
-.modal.show .modal-drawer .modal-dialog { transform: none; }
-@media (max-width: 575.98px) {
-    .modal-drawer .modal-dialog { width: 100vw; max-width: 100vw; }
-}
 
 .app-range-preview .app-range-val,
 .app-range-val {

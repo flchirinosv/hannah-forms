@@ -176,3 +176,18 @@ eliminan `#btnCanvasPreview`/`#canvasPreview`/`#canvasPreviewContent`, el estado
 `setCanvasPreviewOpen`/`toggleCanvasPreview`/`renderCanvasPreview` y la regla
 `#canvasPreview` de `app.css`. `FillLayoutTest` pasa a atar solo
 `livePreviewContent`. El detalle del *por qué* está en `docs/decisiones.md`.
+
+## Reversión post-cierre (2026-10-11): los ajustes dejan de ser cajón
+
+El cajón lateral de F2/F3 (`.modal-drawer`) se **revierte**: `#fieldSettingsModal`
+y `#formSettingsModal` pasan a ser **modales centrados**, con las mismas clases
+que `#addFieldModal` (`modal-dialog-centered modal-lg modal-dialog-scrollable`).
+El motivo es doble. Uno, de uso: el cajón nunca se aplicó — la clase
+`.modal-drawer` iba en el mismo elemento que `.modal-dialog`, y el selector la
+esperaba como ancestro (`.modal-drawer .modal-dialog`), así que se veía como un
+modal Bootstrap por defecto de 500px con una sola esquina redondeada y parecía
+mal hecho. Dos, de decisión de producto: se prefiere una sola forma de diálogo en
+el builder, la del de agregar elemento. Se elimina el bloque `.modal-drawer` de
+`app.css` y el título del panel de campo pasa a ser fijo
+(«Configuración del elemento»). El detalle del *por qué* está en
+`docs/decisiones.md`.

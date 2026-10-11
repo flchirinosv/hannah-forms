@@ -490,9 +490,9 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S36 | Ficha → Ajustes → Notificaciones y Webhook, en pantalla ancha (≥992 px, con la tarjeta en su columna estrecha) | Los campos no salen en columnas de ~120 px: van a media fila (email/asunto, formato/secreto) o a fila entera (mensaje, URL), y sus textos no se recortan | M | |
 | S37 | Constructor recién abierto | Una sola columna central (lienzo), sin paleta izquierda; la barra trae Guardar, Vista previa y Agregar elemento (una sola vista previa: no hay botón embebido duplicado) | M | |
 | S38 | «Agregar elemento» y el `+` entre dos tarjetas | Ambos abren el mismo diálogo con los 21 tipos; el `+` entre tarjetas inserta en esa posición (regresión del anidado: ver S27) | A | |
-| S39 | Pie de una tarjeta | Selector de tipo, interruptor de obligatoria y duplicar / configurar / eliminar **visibles sin hover**; cambiar el tipo desde el pie actualiza la miniatura sin abrir ajustes | M | |
-| S40 | Engranaje de una tarjeta | Se abre el cajón a la derecha (drawer) con los ajustes del campo; al cerrarlo (x, `Esc` o tocar fuera) la tarjeta que lo abrió queda seleccionada | M | |
-| S41 | «Configuración» del formulario | Se abre el mismo tipo de cajón, 420 px, con «Guardar configuración» **fijo abajo** (el cuerpo se desplaza por encima); en móvil el cajón ocupa todo el ancho | M | |
+| S39 | Pie de una tarjeta | Selector de tipo, interruptor de obligatoria y duplicar / configurar / eliminar **visibles sin hover**; marcar «Obligatoria» marca de verdad (persiste al recargar y el campo pasa a `required` en el publicado); el checkbox tiene tamaño de control, no de punto; cambiar el tipo desde el pie actualiza la miniatura sin abrir ajustes | M | |
+| S40 | Engranaje de una tarjeta | Se abre el **modal centrado** (igual que «Agregar elemento», ~800 px) con los ajustes del campo y el título fijo «Configuración del elemento» (no la etiqueta de la pregunta); al cerrarlo (x, `Esc` o tocar fuera) la tarjeta que lo abrió queda seleccionada | M | |
+| S41 | «Configuración» del formulario | Se abre el mismo tipo de modal centrado (~800 px), con «Guardar configuración» **fijo abajo** (el cuerpo se desplaza por encima) | M | |
 | S42 | «Vista previa» | Se abre el formulario tal como quedará publicado, a pantalla completa (modal), y se repinta con lo último editado | M | |
 
 

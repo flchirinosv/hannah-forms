@@ -175,11 +175,11 @@
         // F1: modal de alta con la cuadrícula de tipos.
         addFieldModal: document.getElementById('addFieldModal'),
         addFieldHint: document.getElementById('addFieldHint'),
-        // F2: drawer re-estilizado sobre el modal de Bootstrap. #settingsForm
-        // vive aquí desde el arranque; no hay panel lateral ni reubicaciones.
+        // F2: modal centrado (mismo dialog que el de agregar elemento) sobre el
+        // de Bootstrap. #settingsForm vive aquí desde el arranque; no hay panel
+        // lateral ni reubicaciones.
         fieldSettingsModal: document.getElementById('fieldSettingsModal'),
         fieldSettingsHost: document.getElementById('fieldSettingsHost'),
-        fieldSettingsTitle: document.getElementById('fieldSettingsTitle'),
         fieldId: document.getElementById('fieldId'),
         fieldTypeLabel: document.getElementById('fieldTypeLabel'),
         fieldLabel: document.getElementById('fieldLabel'),
@@ -730,7 +730,7 @@
         if (typeSel) {
             typeSel.addEventListener('change', () => changeFieldType(f._uid, typeSel.value));
         }
-        const req = node.querySelector('.app-required-toggle');
+        const req = node.querySelector('.app-required-toggle input');
         if (req) {
             req.addEventListener('change', () => setFieldRequired(f._uid, req.checked));
         }
@@ -876,10 +876,9 @@
         if (!f || !el.fieldSettingsModal) return;
         selectFieldById(uid);
         settingsOpener = { uid: uid };
-        if (el.fieldSettingsTitle) {
-            const info = typeInfo[f.type] || {};
-            el.fieldSettingsTitle.textContent = f.label || info.label || 'Configuración';
-        }
+        // El título del modal es fijo («Configuración del elemento»): la
+        // etiqueta de la pregunta es contenido y se edita en su propio campo,
+        // no en la cabecera del panel.
         // bootstrap.bundle se carga en el layout DESPUÉS de builder.js: el
         // acceso a bootstrap.Modal se resuelve de forma perezosa al hacer clic.
         if (!settingsModalOpen && window.bootstrap) {
@@ -1258,10 +1257,6 @@
         const isStructural = Boolean(info.isSection) || Boolean(info.isPage);
 
         f.label = el.fieldLabel.value.trim();
-        // F2: el título del modal refleja la etiqueta mientras se teclea.
-        if (settingsModalOpen && el.fieldSettingsTitle && info.label) {
-            el.fieldSettingsTitle.textContent = f.label || info.label;
-        }
         if (info.hasPlaceholder) f.placeholder = el.fieldPlaceholder.value.trim();
         if (info.hasHelp) f.help_text = el.fieldHelp.value.trim();
         f.is_required = isStructural ? false : el.fieldRequired.checked;
@@ -2483,5 +2478,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-10-11b (F3: ajustes como drawer a la derecha, vista previa embebida en el lienzo)');
+    console.log('[builder] v2026-10-11c (ajustes como modal centrado, título fijo del panel, toggle Obligatoria corregido)');
 })();

@@ -1205,14 +1205,20 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   (`testElBotonDeEnviarTieneElTextoEnClaro` lo hizo, y el helper era el que
   decidía el resultado). Para leer el cuerpo de una regla usa `bloqueCss()`, que
   quita los comentarios de bloque y devuelve las declaraciones de verdad.
-- El engranaje de cada tarjeta abre un **drawer a la derecha**
-  (`.modal-drawer`, el mismo `.modal` de Bootstrap re-estilizado: Esc,
-  backdrop y foco de siempre). `#settingsForm` vive en el drawer desde el
+- El engranaje de cada tarjeta abre el **modal de ajustes de campo**, centrado y
+  con las mismas clases de diálogo que el de agregar elemento
+  (`modal-dialog-centered modal-lg modal-dialog-scrollable` sobre el `.modal` de
+  Bootstrap: Esc, backdrop y foco de siempre). `#settingsForm` vive ahí desde el
   arranque, **una sola instancia, sin moverse** entre superficies; cerrar el
-  cajón devuelve la selección a la tarjeta y, como `openFieldSettings`
-  redibuja el lienzo, el opener se localiza por `[data-uid]`. El pie del
-  drawer (`modal-footer border-0`) es **hermano** de `modal-body` para
-  quedar anclado abajo. La única vista previa es `#livePreviewModal` (el botón
+  modal devuelve la selección a la tarjeta y, como `openFieldSettings` redibuja
+  el lienzo, el opener se localiza por `[data-uid]`. El pie del panel de
+  formulario (`modal-footer border-0`) es **hermano** de `modal-body` para
+  quedar anclado abajo. **No hay cajón lateral**: la clase `.modal-drawer` que
+  hubo en F2/F3 se retiró (iba en el mismo elemento que `.modal-dialog`, cuando
+  el selector la esperaba como ancestro, así que nunca se aplicó: se veía como
+  un modal por defecto de 500px con una sola esquina redondeada). El título del
+  panel de campo es fijo (`Configuración del elemento`), no la etiqueta de la
+  pregunta. La única vista previa es `#livePreviewModal` (el botón
   **Vista previa**, `#btnLivePreview`); el preview embebido que pintaba debajo
   del lienzo se retiró (quedaba fuera de la vista y parecía roto). Esa
   superficie no lleva `width` por su id
