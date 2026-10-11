@@ -187,16 +187,15 @@ class DashboardListMarkupTest
     }
 
     /**
-     * El select de orden mide lo mismo que el buscador, a pesar del `-sm`.
+     * El select de orden mide lo mismo que el buscador, sin trucos de especificidad.
      *
-     * El buscador vive en un `input-group-sm` y su `.input-group-sm > .form-control`
-     * (0,2,0) le gana al `.form-control` global. El select es suelto, así que el
-     * bloque global `.form-control, .form-select` (0,1,0) de app.css —misma
-     * especificidad que `.form-select-sm` y además más abajo— le pisaba el padding
-     * y salía ~11px más alto: en la misma fila convivían un campo de ~31px y un
-     * select de ~42. La clase `-sm` no basta; por eso la regla usa dos clases
-     * (`.form-select.app-dash-sort`, 0,2,0), que le ganan al bloque global sin
-     * depender del orden.
+     * El buscador vive en un `input-group-sm`; el select es suelto con
+     * `form-select-sm`. Que midan lo mismo depende de que app.css **no** vuelva a
+     * declarar el bloque global `.form-control, .form-select` que hubo: iba
+     * después de Bootstrap y con la misma especificidad que los `-sm`, así que
+     * los dejaba sin efecto y el select de orden salía ~11px más alto que el
+     * buscador. El parche `.app-dash-sort` solo existía para ganarle por
+     * especificidad; retirado el bloque, el `-sm` llega intacto y sobraba.
      */
     public function testElSelectDeOrdenMideLoMismoQueElBuscador(): void
     {
@@ -206,14 +205,26 @@ class DashboardListMarkupTest
             'el select de orden lleva `form-select-sm` y su gancho `app-dash-sort`'
         );
 
-        $css = self::fuente('public/assets/css/app.css');
-        $pos = strpos($css, '.form-select.app-dash-sort {');
-        assertTrue($pos !== false, 'app.css define `.form-select.app-dash-sort` (dos clases: una sola pierde por orden contra el bloque global)');
-        $bloque = substr($css, (int) $pos, (int) strpos($css, '}', (int) $pos) - (int) $pos);
+        // Sin los comentarios de bloque: la prosa que explica el cambio nombra el
+        // selector, y buscarlo en crudo lo daría por presente.
+        $css = preg_replace('#/\*.*?\*/#s', '', self::fuente('public/assets/css/app.css'));
+        $css = is_string($css) ? $css : '';
 
-        assertTrue(
-            str_contains($bloque, 'padding-top: .25rem') && str_contains($bloque, 'padding-bottom: .25rem'),
-            'la regla devuelve al select el padding pequeño, o queda más alto que el buscador y los filtros'
+        assertFalse(
+            str_contains($css, '.form-control, .form-select'),
+            'app.css no debe volver a declarar el bloque global `.form-control, .form-select`: anularía los `-sm` y el select de orden saldría más alto que el buscador'
+        );
+        assertFalse(
+            str_contains($css, '.form-select, .form-control'),
+            'ni en el orden inverso'
+        );
+
+        $pos = strpos($css, '.form-select.app-dash-sort {');
+        assertTrue($pos !== false, 'app.css conserva el gancho del select de orden');
+        $bloque = substr($css, (int) $pos, (int) strpos($css, '}', (int) $pos) - (int) $pos);
+        assertFalse(
+            str_contains($bloque, 'padding'),
+            'el gancho del select ya no reescribe el padding: el `-sm` de Bootstrap basta'
         );
     }
 }

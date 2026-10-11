@@ -29,7 +29,7 @@ framework: son custom properties nativas sobre Bootstrap 5.
 | `--vf-text` | `#1e293b` | Texto principal |
 | `--vf-text-muted` | `#64748b` | Texto secundario, labels |
 | `--vf-border` | `#e2e8f0` | Bordes de tarjetas y separadores |
-| `--vf-radius` | `14px` | Radio de tarjeta y campo |
+| `--vf-radius` | `14px` | Radio de superficies propias (tarjetas). Los controles nativos usan el de Bootstrap |
 | `--vf-radius-lg` | `20px` | Radio de panel y wrapper del lienzo |
 | `--vf-shadow` | `0 1px 3px …, 0 8px 24px …` | Elevación en hover |
 | `--vf-shadow-lg` | `0 12px 40px …` | Modales y estados elevados |
@@ -44,7 +44,7 @@ era que tres tamaños de botón de icono convivían en pantalla.
 | `--vf-ctrl-h` | `32px` | Alturas escritas a mano en botones y controles |
 | `--vf-icon-btn` | `32px` (cuadrado) | `.app-tool-btn` 28px, `.app-add-between-btn` 30×22px, split 2.7rem |
 | `--vf-hint-fs` | `.75rem` | `.68` / `.72` / `.74` / `.78rem` sueltos en tips y captions |
-| `--vf-focus-ring` | `0 0 0 3px rgba(99,102,241,.18)` | Anillo de foco de tarjeta y campo |
+| `--vf-focus-ring` | `0 0 0 3px rgba(99,102,241,.18)` | Anillo de foco de tarjeta y controles propios (los nativos usan su `:focus` con `--vf-primary`) |
 | `--vf-tile-min-h` | `72px` | Altura de tile del modal de cuadrícula |
 | `--vf-tile-icon` | `30px` (cuadrado) | Iconos de 36px (filas) y 30px (rejilla) |
 | `--vf-mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | Claves de permiso y todo lo que se lee como código (matriz de roles) |
@@ -52,6 +52,13 @@ era que tres tamaños de botón de icono convivían en pantalla.
 **Regla:** todo botón de icono es `width`/`height` = `--vf-icon-btn`,
 con `padding: 0` y `display: inline-flex` centrado. Si necesitas otro
 tamaño, es un componente distinto, no una excepción.
+
+**Regla (controles nativos):** `.form-control`, `.form-select` y
+`.input-group-text` van con las métricas de **Bootstrap** (radio, borde y
+padding). No se sobreescriben: un bloque global con la misma especificidad que
+los `-sm` —y cargado después de Bootstrap— deja a todos los `-sm` sin efecto
+(ver §4, regla 4). Lo único propio es el **color** del anillo de foco, que sale
+de `--vf-primary`.
 
 ---
 
@@ -384,8 +391,11 @@ Regla del proyecto, y la razón de que exista el botón `.app-help`:
 2. Botón de icono = `--vf-icon-btn`. Sin excepciones.
 3. El color de marca se referencia por `--vf-primary*`, nunca literal
    (`#6366f1` etc. solo en `:root`).
-4. Radios: `--vf-radius` en campos y tarjetas, `--vf-radius-lg` en
-   paneles y wrappers.
+4. Radios: `--vf-radius` en superficies propias (tarjetas), `--vf-radius-lg`
+   en paneles y wrappers. Los controles nativos (`.form-control`,
+   `.form-select`, `.input-group-text`) conservan el radio, el borde y el
+   padding de Bootstrap; no se sobreescriben, solo el **color** del foco
+   (`--vf-primary`).
 5. Todo estado interactivo necesita su hover y su `:focus-visible`.
 6. El estado en memoria de `builder.js` es camelCase (`parentId`) y el
    contrato JSON del servidor es snake_case (`parent_id`). Toda la

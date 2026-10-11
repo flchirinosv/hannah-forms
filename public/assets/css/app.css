@@ -157,32 +157,26 @@ body {
 
 /* ---------- Dashboard ---------- */
 .app-dash-card { height: 100%; }
+/* El buscador es un `input-group-sm`: el icono y el campo miden lo que manda
+   Bootstrap. El icono solo cambia de color y fondo; el borde de unión (1px) lo
+   pinta Bootstrap, como en cualquier `input-group`. */
 .app-dash-search { max-width: 300px; }
-.app-dash-search-icon { background: #fff; border-right: 0; color: #94a3b8; }
-.app-dash-search .form-control { border-left: 0; }
-.app-dash-search .form-control:focus { box-shadow: none; border-color: var(--vf-border); box-shadow: inset 0 0 0 0; }
+.app-dash-search-icon { background: #fff; color: #94a3b8; }
+/* El campo no lleva el anillo global: el foco se dibuja en el wrapper
+   (`.app-dash-search:focus-within`), así que el control no añade el suyo. */
+.app-dash-search .form-control:focus { box-shadow: none; border-color: var(--vf-border); }
 .app-dash-search:focus-within { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-radius: .25rem; }
 /* `.btn-group` es `inline-flex` y no envuelve nunca: con los cinco filtros de
    estado en línea se salían de la pantalla en móvil. */
 .app-dash-filters { flex-wrap: wrap; }
 .app-dash-filters .btn { font-size: .8rem; }
 .app-dash-filters .btn.active { background: var(--vf-primary); border-color: var(--vf-primary); color: #fff; }
-/* El buscador vive en un `input-group-sm`: su `.input-group-sm > .form-control`
-   (0,2,0) gana por especificidad al `.form-control` global y le deja el padding
-   pequeño. Este `select` es suelto, así que el `.form-select` global —misma
-   especificidad y ADEMÁS más abajo en este mismo fichero— le pisa el padding y
-   salía ~11px más alto que el campo y los botones de la fila. Por eso la regla
-   va con DOS clases (`.form-select.app-dash-sort`, 0,2,0): una sola pierde por
-   orden contra el bloque de `.form-control, .form-select` de más abajo. El
-   `padding-right` no se toca: es el hueco de la flecha. */
-.form-select.app-dash-sort {
-    max-width: 200px;
-    border-color: var(--vf-border);
-    padding-top: .25rem;
-    padding-bottom: .25rem;
-    padding-left: .5rem;
-    border-radius: .25rem;
-}
+/* El select de orden va suelto con `form-select-sm`, igual que el campo del
+   buscador: los dos miden lo mismo sin ninguna regla de rescate. El parche que
+   había aquí existía solo para ganarle por especificidad al bloque global
+   `.form-control, .form-select` de más abajo, ya retirado; ahora el `-sm`
+   llega intacto y lo único propio que queda es el ancho. */
+.form-select.app-dash-sort { max-width: 200px; }
 .form-select.app-dash-sort:focus { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-color: var(--vf-primary); }
 .app-dash-meta { display: flex; align-items: center; gap: .25rem; font-size: .76rem; }
 
@@ -257,14 +251,13 @@ body {
 .app-input-icon {
     background: #f8fafc;
     color: var(--vf-primary);
-    border-right: 0;
 }
-.input-group .form-control { border-left: 0; }
-.form-control, .form-select, .input-group-text {
-    border-radius: 10px;
-    border-color: var(--vf-border);
-    padding: .6rem .9rem;
-}
+/* Los controles nativos (`.form-control`, `.form-select`, `.input-group-text`)
+   van con las métricas de Bootstrap: radio, borde y padding son suyos. No se
+   sobreescriben porque el bloque global que había aquí —misma especificidad que
+   los `-sm` y DESPUÉS de Bootstrap en el orden de carga— dejaba a todos los
+   `-sm` sin efecto, y los campos salían más altos de lo que dice la clase. Lo
+   único propio es el color del foco, que es de marca. */
 .form-control:focus, .form-select:focus {
     border-color: var(--vf-primary);
     box-shadow: 0 0 0 .2rem rgba(99,102,241,.15);
