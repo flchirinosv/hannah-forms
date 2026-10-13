@@ -107,6 +107,18 @@ class RbacAccessTest
         assertTrue(Auth::can('forms.delete_own'), 'vuelve el user: con delete_own');
     }
 
+    public function testUnPermisoDirectoSeSumaSinTocarRolNiGrupo(): void
+    {
+        assertFalse(Auth::can('forms.manage_all'), 'el rol user no lo trae por defecto');
+
+        User::setPermissions((int) self::$userId, ['forms.manage_all']);
+        self::authAs((int) self::$userId); // refresca la caché de permisos del request
+
+        assertTrue(Auth::can('forms.manage_all'), 'el permiso directo se suma');
+        assertTrue(Auth::can('forms.create'), 'y los del rol propio siguen');
+        assertFalse(Auth::can('admin.access'), 'sin arrastrar nada más');
+    }
+
     /* ---------- Helpers ---------- */
 
     private static function authAs(int $userId): void

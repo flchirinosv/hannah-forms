@@ -2,11 +2,13 @@
 /**
  * Usuarios del panel: rol propio, grupos heredados y estado de la cuenta.
  *
- * El rol y los grupos son las dos mitades del RBAC y por eso van en columnas
- * contiguas: el rol es lo que la persona tiene, los grupos son lo que además
- * le dan sus equipos. La columna de grupos es editable fila a fila porque
- * «sacar a Ana del grupo de Soporte» es la operación del día a día, y antes
- * obligaba a entrar en Grupos de roles y a buscarla en una lista de casillas.
+ * Las tres fuentes del RBAC van en columnas contiguas: el rol es lo que la
+ * persona tiene, los grupos son lo que además le dan sus equipos, y los
+ * permisos extra son la concesión individual (un permiso suelto sin cambiarle el
+ * rol ni meterla en un grupo). Los grupos y los permisos son editables fila a
+ * fila porque «sacar a Ana del grupo de Soporte» y «dejar que Ana publique sin
+ * revisión» son operaciones del día a día, y antes obligaban a entrar en Grupos
+ * de roles o en la matriz.
  */
 use App\Core\Auth;
 use App\Core\Csrf;
@@ -20,7 +22,11 @@ $min = AuthController::PASSWORD_MIN;
 
 $grupos = $groups ?? [];
 $userGroups = $userGroups ?? [];
+$userPermissions = $userPermissions ?? [];
+$userEffective = $userEffective ?? [];
+$permissionCatalog = $permissionCatalog ?? [];
 $canEditGroups = $canEditGroups ?? false;
+$canEditPermissions = $canEditPermissions ?? false;
 $roles = $roles ?? [];
 ?>
 <div class="container-fluid px-lg-4">
@@ -30,8 +36,8 @@ $roles = $roles ?? [];
         <div>
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-user-gear me-2 text-primary"></i>Usuarios</h2>
             <p class="text-muted small mb-0">
-                El <strong>rol</strong> es lo que tiene la persona; los <strong>grupos</strong> le suman los
-                permisos de los roles del grupo. Todo se suma, nada se resta.
+                El <strong>rol</strong> es lo que tiene la persona; los <strong>grupos</strong> y los
+                <strong>permisos extra</strong> le suman más. Todo se suma, nada se resta.
             </p>
         </div>
         <div class="app-head-actions">
@@ -128,37 +134,83 @@ $roles = $roles ?? [];
             </div>
         </div>
 
-        <?php // El interruptor de registro es de la INSTALACIÓN, así que va fuera de
-              // la tabla de usuarios y con su propio permiso (`admin.access`): quien
-              // gestiona la instalación lo abre, pero no necesita poder tocar la
-              // cuenta de nadie. Solo se pinta con ese permiso, y no por ser admin,
-              // porque el panel entero ya lo exige.
+        <?php // Los ajustes de la INSTALACIÓN (registro y revisión) son de la
+              // instalación, así que van fuera de la tabla de usuarios y con su
+              // propio permiso (`admin.access`): quien la gestiona los cambia,
+              // pero no necesita poder tocar la cuenta de nadie. Se pintan solo
+              // con ese permiso, y no por ser admin, porque el panel entero ya
+              // lo exige.
 
-              // La columna no se emite vacía si no hay tarjeta, para que el alta se
-              // quede en `col-lg-8` de todos modos y la retícula no dé un salto al
-              // desaparecer. ?>
+              // Los dos van apilados en la MISMA `col-lg-4`, no en dos columnas:
+              // el reparto es 8 (alta) + 4 (instalación) y una tercera columna
+              // rompería la retícula. La columna no se emite vacía si no hay
+              // tarjeta, para que el alta se quede en `col-lg-8` de todos modos y
+              // la retícula no dé un salto al desaparecer. ?>
         <?php if ($canManageInstance ?? false): ?>
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100" id="instance"
-                 data-csrf="<?= View::escape(Csrf::token()) ?>"
-                 data-registration-endpoint="/admin/settings/registration">
-                <div class="card-body">
-                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
-                    <p class="text-muted small mb-3">
-                        El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
-                        se crean solo desde esta pantalla.
-                    </p>
-                    <div class="form-check form-switch d-flex align-items-center gap-2">
-                        <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
-                               <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
-                               aria-describedby="registrationHint">
-                        <label class="form-check-label fw-semibold" for="registrationToggle">
-                            <span data-role="registration-state">
-                                <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
-                            </span>
-                        </label>
+            <div class="d-flex flex-column gap-3 h-100">
+                <div class="card border-0 shadow-sm" id="instance"
+                     data-csrf="<?= View::escape(Csrf::token()) ?>"
+                     data-registration-endpoint="/admin/settings/registration">
+                    <div class="card-body">
+                        <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
+                        <p class="text-muted small mb-3">
+                            El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
+                            se crean solo desde esta pantalla.
+                        </p>
+                        <div class="form-check form-switch d-flex align-items-center gap-2">
+                            <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
+                                   <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
+                                   aria-describedby="registrationHint">
+                            <label class="form-check-label fw-semibold" for="registrationToggle">
+                                <span data-role="registration-state">
+                                    <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
+                                </span>
+                            </label>
+                        </div>
+                        <p class="form-text mb-0" id="registrationHint" role="status"></p>
                     </div>
-                    <p class="form-text mb-0" id="registrationHint" role="status"></p>
+                </div>
+
+                <?php // F3 (revisada) — La política de revisión es de la INSTANCIA y
+                      // no del formulario. Un POST NATIVO (no fetch): la pantalla
+                      // no repinta huecos, así que el PRG de siempre es el camino
+                      // único, con o sin JavaScript. ?>
+                <div class="card border-0 shadow-sm">
+                    <form method="post" action="/admin/settings/review">
+                        <?= Csrf::field() ?>
+                        <div class="card-body">
+                            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-check me-2 text-primary"></i>Revisión de formularios</h3>
+                            <p class="text-muted small mb-3">
+                                Con la revisión activa, un formulario pasa por la bandeja de revisión antes de publicarse.
+                            </p>
+                            <div class="form-check form-switch mb-1">
+                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
+                                      // casilla no enviaría nada. El handler trata el ausente como
+                                      // apagado, pero el oculto deja el apagado explícito. ?>
+                                <input type="hidden" name="review_required" value="0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="reviewRequiredToggle"
+                                       name="review_required" value="1"<?= ($reviewRequired ?? false) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="reviewRequiredToggle">Exigir revisión a todos</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input type="hidden" name="review_notify_email" value="0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="reviewNotifyToggle"
+                                       name="review_notify_email" value="1"<?= ($reviewNotifyEmail ?? false) ? ' checked' : '' ?>>
+                                <label class="form-check-label small fw-semibold" for="reviewNotifyToggle">Avisar por correo a los revisores</label>
+                            </div>
+                            <p class="form-text mb-0">
+                                Quien tenga el permiso <code>forms.publish_without_review</code> queda exento; se concede
+                                en <a href="/admin/roles">Roles y permisos</a> (a un rol) o como
+                                <strong>permiso extra</strong> de una persona, en la tabla de abajo.
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white border-0 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -183,6 +235,7 @@ $roles = $roles ?? [];
                             <th class="small text-muted">Email</th>
                             <th class="small text-muted">Rol</th>
                             <th class="small text-muted">Grupos</th>
+                            <th class="small text-muted">Permisos</th>
                             <th class="small text-muted">Estado</th>
                             <th class="small text-muted">Registro</th>
                             <th class="text-end small text-muted">Acciones</th>
@@ -192,6 +245,7 @@ $roles = $roles ?? [];
                         <?php foreach ($users as $user): ?>
                         <?php $uid = (int) $user['id']; ?>
                         <?php $myGroups = $userGroups[$uid] ?? []; ?>
+                        <?php $myPerms = $userPermissions[$uid] ?? []; ?>
                         <tr>
                             <td class="fw-semibold">
                                 <?= View::escape($user['name']) ?>
@@ -304,6 +358,96 @@ $roles = $roles ?? [];
                                                           // desplegable que se está editando, y no
                                                           // flotando arriba donde no se ve. ?>
                                                     <p class="small mb-0 d-none text-danger fw-semibold" id="groupsError<?= $uid ?>" role="alert"></p>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php // Permisos DIRECTOS: la cuarta fuente del RBAC. Se
+                                      // SUMAN a rol y grupos, nunca se restan, así que el
+                                      // desplegable solo ofrece «extra» (lo que no viene
+                                      // ya del rol o de un grupo). ?>
+                                <?php if ($permissionCatalog === []): ?>
+                                    <span class="text-muted small">—</span>
+                                <?php elseif (!$canEditPermissions): ?>
+                                    <?= View::partial('admin/_user_perms', ['myPerms' => $myPerms]) ?>
+                                <?php else: ?>
+                                    <?php $eff = $userEffective[$uid] ?? ['rol' => [], 'grupos' => [], 'extra' => []]; ?>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle app-rbac-perms-btn" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false"
+                                                id="perms-btn-<?= $uid ?>">
+                                            <i class="fa-solid fa-key me-1"></i>
+                                            <?php // El hueco (`vfUserPerms<uid>`) envuelve a las
+                                                  // insignias: el guardado va por fetch y sin
+                                                  // repintarlas el botón mentiría. ?>
+                                            <span id="vfUserPerms<?= $uid ?>">
+                                                <?= View::partial('admin/_user_perms', ['myPerms' => $myPerms]) ?>
+                                            </span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-end p-2 app-perms-menu" aria-labelledby="perms-btn-<?= $uid ?>">
+                                            <?php // AUDITORÍA: de dónde le viene cada permiso a
+                                                  // esta persona. El desglose es lo que hace
+                                                  // visible una concesión directa; sin él, un
+                                                  // permiso suelto sería indistinguible de uno
+                                                  // heredado. Se refresca al reabrir. ?>
+                                            <div class="app-rbac-effect mb-2">
+                                                <div class="app-rbac-effect-title">
+                                                    <i class="fa-solid fa-bolt me-1"></i>Permisos efectivos
+                                                </div>
+                                                <?php foreach (['rol' => 'Rol', 'grupos' => 'Grupos', 'extra' => 'Extra'] as $origen => $etiqueta): ?>
+                                                    <div class="app-rbac-effect-row">
+                                                        <span class="app-rbac-effect-prefix"><?= $etiqueta ?></span>
+                                                        <span class="app-rbac-effect-keys">
+                                                            <?php if (($eff[$origen] ?? []) === []): ?>
+                                                                <span class="text-muted">—</span>
+                                                            <?php else: ?>
+                                                                <?php foreach ($eff[$origen] as $k): ?>
+                                                                    <code><?= View::escape((string) $k) ?></code>
+                                                                <?php endforeach; ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <form method="post" action="/admin/users/permissions" data-vf-async="slots"
+                                                  data-vf-error="permsError<?= $uid ?>">
+                                                <?= \App\Core\Csrf::field() ?>
+                                                <input type="hidden" name="user_id" value="<?= $uid ?>">
+                                                <div class="px-1">
+                                                    <div class="app-rbac-item-meta text-uppercase fw-bold mb-1">Permisos extra de <?= View::escape($user['name']) ?></div>
+                                                    <?php
+                                                    // Agrupados por prefijo («forms.», «admin.»…) para
+                                                    // que el menú sea legible con el catálogo entero.
+                                                    $porPrefijo = [];
+                                                    foreach ($permissionCatalog as $key => $desc) {
+                                                        $porPrefijo[explode('.', (string) $key, 2)[0]][(string) $key] = (string) $desc;
+                                                    }
+                                                    ksort($porPrefijo);
+                                                    ?>
+                                                    <div class="app-rbac-list">
+                                                        <?php foreach ($porPrefijo as $prefijo => $claves): ?>
+                                                            <div class="app-rbac-item-meta text-uppercase fw-bold px-2 pt-2"><?= View::escape((string) $prefijo) ?></div>
+                                                            <?php foreach ($claves as $key => $desc): ?>
+                                                                <label class="app-rbac-item" title="<?= View::escape($desc) ?>">
+                                                                    <input class="form-check-input mt-1" type="checkbox" name="permissions[]" value="<?= View::escape($key) ?>"
+                                                                           <?= in_array($key, $myPerms, true) ? 'checked' : '' ?>>
+                                                                    <span>
+                                                                        <span class="app-rbac-item-name"><?= View::escape($key) ?></span>
+                                                                        <span class="app-rbac-item-meta"><?= View::escape($desc) ?></span>
+                                                                    </span>
+                                                                </label>
+                                                            <?php endforeach; ?>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                                <div class="d-grid gap-2 mt-2 px-1">
+                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                        <i class="fa-solid fa-floppy-disk me-1"></i>Guardar permisos
+                                                    </button>
+                                                    <p class="small mb-0 d-none text-danger fw-semibold" id="permsError<?= $uid ?>" role="alert"></p>
                                                 </div>
                                             </form>
                                         </div>

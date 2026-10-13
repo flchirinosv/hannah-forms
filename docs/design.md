@@ -223,6 +223,9 @@ Fuera del builder, pero con el mismo lenguaje visual.
 | `.app-rbac-count` | Contador `n/total` de la columna de un rol |
 | `.app-rbac-select` | Select de rol de la tabla de usuarios (auto-envía al cambiar) |
 | `.app-rbac-groups-btn` | Botón que abre los grupos de un usuario |
+| `.app-rbac-perms-btn` | Botón que abre los permisos extra de un usuario (viste como el de grupos) |
+| `.app-perm-chip` | Insignia de un permiso extra concedido |
+| `.app-perms-menu` | El desplegable de permisos extra; más ancho (`min-width: 20rem`) para que quepa el desglose |
 
 Dos reglas que nacen de no haber sido designed antes:
 
@@ -232,20 +235,22 @@ Dos reglas que nacen de no haber sido designed antes:
 - **Se enseña el efecto, no el cableado**: una columna «Grupos» con badges
   solo responde «en qué grupos está», y la pregunta del día a día es qué
   permisos le da a esa persona estar en ese grupo. Por eso el grupo pinta su
-  unión de permisos.
+  unión de permisos, y el desplegable de permisos extra añade el desglose de
+  **de dónde sale cada permiso** (rol / grupos / extra): la pregunta «¿por qué
+  puede esto?» no se contesta mirando la casilla.
 
 ### 3.8 Grupos plegables de la ficha (`app-settings-group`)
 
-Los siete bloques de «Ajustes del formulario» (acceso, programación y cupo,
-notificaciones, webhook, mensaje final, revisión e idioma) se pliegan: con los
-siete abiertos la tarjeta ocupaba más de tres pantallas y el ajuste que se
+Los seis bloques de «Ajustes del formulario» (acceso, programación y cupo,
+notificaciones, webhook, mensaje final e idioma) se pliegan: con los
+seis abiertos la tarjeta ocupaba más de tres pantallas y el ajuste que se
 busca casi nunca está en el primero.
 
 | Clase | Qué es |
 |---|---|
 | `.app-settings-group` | El `<fieldset>` del grupo. Bootstrap ya pone `min-width: 0` |
 | `.app-settings-group-title` | El `<legend>`: mismo tamaño y peso que el título de la tarjeta
-  (`h6 fw-bold`), así que los títulos de los siete grupos no se leen como
+  (`h6 fw-bold`), así que los títulos de los seis grupos no se leen como
   subtítulos de la sección, sino como el mismo nivel que «Ajustes del
   formulario». Sin esto el botón del grupo heredaba el tamaño del cuerpo
   (`var(--bs-body-font-size)`) y el grupo se leía como un encabezado de

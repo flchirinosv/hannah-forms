@@ -259,7 +259,7 @@ return [
     'mail.reset_cta'          => 'Cambiar mi contraseña',
     'mail.reset_fallback'     => 'Si el botón no funciona, copia esta dirección en tu navegador:',
     'mail.reset_ignore'       => 'Si no solicitaste este cambio, ignora este mensaje y tu contraseña seguirá siendo la misma.',
-    // F3 — Aviso de revisión (opcional: `settings.review.notify_email`)
+    // F3 — Aviso de revisión (opt-in de la instancia: `review_notify_email`)
     'mail.review_subject'    => 'Hay un formulario esperando revisión',
     'mail.review_title'      => 'Formulario en revisión',
     'mail.review_body'       => '{owner} ha enviado un formulario a revisión. Puedes aprobarlo (se publica) o devolverlo al dueño como borrador.',

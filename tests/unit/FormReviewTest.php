@@ -8,6 +8,7 @@ use App\Controllers\BuilderController;
 use App\Controllers\FillController;
 use App\Controllers\FormController;
 use App\Controllers\ReviewController;
+use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
@@ -21,7 +22,7 @@ use App\Models\Form;
 use App\Models\Role;
 use App\Models\RoleGroup;
 use App\Models\User;
-use App\Services\FormSettings;
+use App\Services\ReviewPolicy;
 
 /**
  * F3 — Revisión y aprobación de formularios.
@@ -39,11 +40,19 @@ use App\Services\FormSettings;
  *    publica después no lo miró nadie.
  *  - Que el aviso por correo sea opt-in y que apunte al panel, no al enlace
  *    público (desde `/f/{slug}` el revisor no podría hacer nada).
+ *  - Que la política sea de la INSTANCIA y la exención del DUEÑO: con la
+ *    política encendida, el permiso `forms.publish_without_review` del dueño
+ *    (por su rol o por un grupo) es lo único que le deja publicar directo, y no
+ *    el permiso de quien pulsa el botón.
  *
  * Sobre los destinatarios: `User::reviewers()` devuelve usuarios REALES de la
  * base (el admin del seed tiene el permiso), así que las aserciones de correo
  * se filtran por `@test.local`. Afirmar «un solo correo» sin ese filtro haría
  * que el test dependiera de cuántos administradores hay instalados.
+ *
+ * Sobre la política: los tests la fijan con el seam `AppSettings::setForTesting()`
+ * (que en `setUp` se deja VACÍO = todo apagado, para no depender de la fila real
+ * que la migración 0016 haya podido escribir en la BD de test).
  */
 class FormReviewTest
 {
@@ -74,6 +83,12 @@ class FormReviewTest
         self::ensureCleanupHook();
         self::cleanupResiduals();
         $this->sent = [];
+
+        // Política de la instancia APAGADA y aislada de la BD: el seam deja
+        // `app_settings` fuera de juego, así que las filas reales (la de la
+        // migración 0016 incluida) no deciden el resultado de este test. Cada
+        // test que la necesite encendida llama a `activarRevision()`.
+        AppSettings::setForTesting([]);
 
         Mailer::setTransport(function (array $envelope, array $config): void {
             $this->sent[] = $envelope;
@@ -109,6 +124,7 @@ class FormReviewTest
         Mailer::setTransport(null);
         Mailer::setConfigOverride(null);
         PublicUrl::setBaseForTesting(null);
+        AppSettings::forgetForTesting();
         Response::setRecordHalt(false);
         unset($_SERVER['HTTP_X_CSRF_TOKEN']);
         Auth::forgetCache();
@@ -116,21 +132,46 @@ class FormReviewTest
         self::cleanupResiduals();
     }
 
-    // ---- Settings ----
+    // ---- Política de la instancia ----
 
-    public function testRevisionDesactivadaPorDefectoParaNoRomperLoExistente(): void
+    public function testLaRevisionDeLaInstanciaEstaApagadaPorDefecto(): void
     {
-        // F3 es opt-in a propósito: si la revisión fuese el default, TODO
-        // formulario ya creado dejaría de poder publicarse sin un revisor, y en
-        // una instalación de un solo usuario no habría salida.
-        $d = FormSettings::defaults();
-        assertSame(false, $d['review']['enabled'], 'la revisión no se activa sola');
-        assertSame(false, $d['review']['notify_email'], 'el aviso por correo tampoco');
+        // La política es de la INSTANCIA y nace apagada: si fuese el default,
+        // TODO formulario ya creado dejaría de poder publicarse sin un revisor,
+        // y en una instalación de un solo usuario no habría salida.
+        AppSettings::setForTesting([]);
+        assertFalse(ReviewPolicy::policyOn(), 'la revisión no se activa sola');
+        assertFalse(ReviewPolicy::notifyEmail(), 'el aviso por correo tampoco');
 
-        $n = FormSettings::normalize(['review' => ['enabled' => '1', 'notify_email' => true, 'basura' => 'x']]);
-        assertSame(true, $n['review']['enabled'], 'coerciona a bool');
-        assertSame(true, $n['review']['notify_email']);
-        assertFalse(array_key_exists('basura', $n['review']), 'descarta claves desconocidas');
+        $form = Form::find((int) self::$formId, false);
+        assertFalse(ReviewPolicy::requiredFor($form), 'sin política, ningún formulario exige revisión');
+    }
+
+    public function testConLaPoliticaEncendidaElDuenoSinPermisoQuedaSujetoARevision(): void
+    {
+        $this->activarRevision(false);
+        $form = Form::find((int) self::$formId, false);
+        assertTrue(ReviewPolicy::policyOn(), 'la política está encendida');
+        assertTrue(
+            ReviewPolicy::requiredFor($form),
+            'un dueño sin forms.publish_without_review queda sujeto a revisión'
+        );
+    }
+
+    public function testElDuenoConElPermisoDeExencionNoQuedaSujetoARevision(): void
+    {
+        $this->activarRevision(false);
+        // El dueño pasa a un rol que SÍ trae el permiso de exención.
+        Role::setPermissions((int) self::$reviewRoleId, [
+            'dashboard.view', 'forms.edit_own', 'forms.publish_without_review',
+        ]);
+        Database::getInstance(Config::db())->execute(
+            'UPDATE users SET role_id = :r WHERE id = :u',
+            ['r' => (int) self::$reviewRoleId, 'u' => (int) self::$ownerId]
+        );
+
+        $form = Form::find((int) self::$formId, false);
+        assertFalse(ReviewPolicy::requiredFor($form), 'el dueño exento no pasa por revisión');
     }
 
     // ---- Transiciones de estado ----
@@ -266,6 +307,38 @@ class FormReviewTest
         $this->authAs((int) self::$ownerId);
         $this->call('publish', new FormController(), (int) self::$formId);
         assertSame('published', $this->row()['status'], 'el comportamiento por defecto no cambia');
+    }
+
+    public function testElDuenoConPermisoPublicaDirectamente(): void
+    {
+        // La exención se prueba por donde entra de verdad: el dueño con el
+        // permiso pulsa Publicar y se publica, sin pasar por la cola.
+        $this->activarRevision(false);
+        Role::setPermissions((int) self::$reviewRoleId, [
+            'dashboard.view', 'forms.edit_own', 'forms.publish_without_review',
+        ]);
+        Database::getInstance(Config::db())->execute(
+            'UPDATE users SET role_id = :r WHERE id = :u',
+            ['r' => (int) self::$reviewRoleId, 'u' => (int) self::$ownerId]
+        );
+
+        $this->authAs((int) self::$ownerId);
+        $this->call('publish', new FormController(), (int) self::$formId);
+        assertSame('published', $this->row()['status'], 'con el permiso, publica sin revisión');
+    }
+
+    public function testLaExencionEsDelDuenoYNoDeQuienPublica(): void
+    {
+        // El revisor tiene `forms.manage_all` (puede operar el formulario de
+        // otro) pero NO la exención, y el dueño tampoco está exento: la regla es
+        // «el dueño está exento», no «quien pulsa está exento».
+        $this->activarRevision(false);
+        $this->authAsReviewer();
+
+        $r = $this->call('publish', new FormController(), (int) self::$formId);
+
+        assertSame('draft', $this->row()['status'], 'publicar el de otro no exime si el dueño no lo está');
+        assertTrue($r['error'] !== '', 'y se lo dice con un mensaje');
     }
 
     public function testElBuilderTampocoEsUnaPuertaDePublicacion(): void
@@ -493,10 +566,16 @@ class FormReviewTest
 
     // ---------- Helpers ----------
 
+    /**
+     * Enciende la política de revisión de la INSTANCIA (seam de `AppSettings`;
+     * no escribe ninguna fila). El dueño sigue sin el permiso de exención, así
+     * que sus formularios quedan sujetos a revisión.
+     */
     private function activarRevision(bool $notify): void
     {
-        Form::saveSettings((int) self::$formId, [
-            'review' => ['enabled' => true, 'notify_email' => $notify],
+        AppSettings::setForTesting([
+            AppSettings::REVIEW_REQUIRED    => true,
+            AppSettings::REVIEW_NOTIFY_EMAIL => $notify,
         ]);
     }
 

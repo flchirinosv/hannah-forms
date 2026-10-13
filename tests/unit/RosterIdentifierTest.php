@@ -435,7 +435,7 @@ class RosterIdentifierTest
         assertTrue(str_contains($js, "sel.removeAttribute('disabled');"), 'al enseñarlo se habilita');
         assertTrue(str_contains($js, "sel.setAttribute('disabled', '');"), 'y al esconderlo se deshabilita');
         assertTrue(
-            str_contains($js, "updateAccessHint();\n            updateIdentifierBox();"),
+            str_contains($js, "updateAccessHint();\n        updateIdentifierBox();"),
             'las dos van en el MISMO `change`: separarlas es la forma de que una se quede atrás'
         );
     }
@@ -488,7 +488,6 @@ class RosterIdentifierTest
         return [
             'quota_enabled' => '0',
             'notify_enabled' => '0',
-            'review_enabled' => '0',
         ];
     }
 

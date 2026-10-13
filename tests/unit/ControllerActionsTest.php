@@ -43,17 +43,20 @@ class ControllerActionsTest
     private static string $slug = '';
 
     /**
-     * Fila `registration_enabled` tal y como estaba ANTES del smoke.
+     * Filas de `app_settings` tal y como estaban ANTES del smoke.
      *
-     * El smoke recorre `POST /admin/settings/registration`, y esa acción escribe
-     * en `app_settings` de verdad: es una tabla de la instalación, no un fixture.
-     * Sin guardar el valor previo y devolverlo en `cleanupResiduals()`, una
-     * corrida de tests dejaría el registro de esta instancia abierto (o
-     * cerrado, si el `.env` lo tuviera abierto) y el cambio no se vería hasta
-     * que alguien mirara.
+     * El smoke recorre `POST /admin/settings/registration` y también
+     * `POST /admin/settings/review`, y esas acciones escriben en `app_settings`
+     * de verdad: es una tabla de la INSTALACIÓN, no un fixture. Sin guardar el
+     * valor previo y devolverlo en `cleanupResiduals()`, una corrida de tests
+     * dejaría el registro o la revisión de esta instancia al revés.
+     *
+     * @var array<string, array{exists: bool, value: ?string}>
      */
-    private static ?string $savedRegistration = null;
-    private static bool $savedRegistrationExists = false;
+    private static array $savedSettings = [];
+
+    /** Claves de `app_settings` que el smoke escribe y hay que devolver. */
+    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email'];
 
     public function setUp(): void
     {
@@ -78,7 +81,7 @@ class ControllerActionsTest
         // «el panel ha tocado este ajuste»), así que para que el smoke vea el
         // estado que dice el `.env` hay que neutralizarla mientras corre.
         AppSettings::setForTesting([]);
-        self::snapshotRegistration($db);
+        self::snapshotSettings($db);
 
         self::$adminEmail = 'smoke-' . bin2hex(random_bytes(3)) . '@test.local';
         self::$adminId = User::create('Smoke Admin', self::$adminEmail, 'clave-smoke-123', 1);
@@ -420,11 +423,23 @@ class ControllerActionsTest
             // "sácalo de todos los grupos": con un body vacío el smoke
             // comprobaría el POST vacío y no el camino que de verdad usa la UI.
             $post['user_id'] = (string) (int) self::$otherId;
+        } elseif (str_contains($path, '/admin/users/permissions')) {
+            // Una clave real del catálogo: sin `permissions[]` el smoke probaría
+            // el camino «quitar todos», que también es válido pero no el que
+            // usa la UI al conceder.
+            $post['user_id'] = (string) (int) self::$otherId;
+            $post['permissions'] = ['logs.view'];
         } elseif ($path === '/admin/settings/registration') {
             // Sin `enabled` el POST sería el camino de «cerrar», que también
             // escribe; se manda explícito para que el smoke ejercite el
             // `INSERT ... ON DUPLICATE KEY` (la fila no existe todavía).
             $post['enabled'] = '1';
+        } elseif ($path === '/admin/settings/review') {
+            // Los dos interruptores explícitos: sin ellos el smoke probaría el
+            // camino de apagar, y las filas de la revisión se devuelven en
+            // `cleanupResiduals()`.
+            $post['review_required'] = '1';
+            $post['review_notify_email'] = '0';
         } elseif (str_contains($path, '/admin/roles/create')) {
             // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
             // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol
@@ -487,24 +502,26 @@ class ControllerActionsTest
         }
     }
 
-    /** Lee la fila del interruptor ANTES de que el smoke la pise. */
-    private static function snapshotRegistration(Database $db): void
+    /** Lee las filas de `app_settings` ANTES de que el smoke las pise. */
+    private static function snapshotSettings(Database $db): void
     {
-        self::$savedRegistrationExists = false;
-        self::$savedRegistration = null;
+        self::$savedSettings = [];
 
-        try {
-            $row = $db->fetch(
-                "SELECT value FROM app_settings WHERE key_name = 'registration_enabled' LIMIT 1"
-            );
-        } catch (\Throwable $e) {
-            // Sin la migración 0010 no hay nada que guardar.
-            return;
-        }
+        foreach (self::APP_SETTINGS_KEYS as $key) {
+            try {
+                $row = $db->fetch(
+                    'SELECT value FROM app_settings WHERE key_name = :k LIMIT 1',
+                    ['k' => $key]
+                );
+            } catch (\Throwable $e) {
+                // Sin la migración 0010 no hay nada que guardar.
+                return;
+            }
 
-        if ($row !== null) {
-            self::$savedRegistrationExists = true;
-            self::$savedRegistration = $row['value'] === null ? null : (string) $row['value'];
+            self::$savedSettings[$key] = [
+                'exists' => $row !== null,
+                'value'  => ($row === null || $row['value'] === null) ? null : (string) $row['value'],
+            ];
         }
     }
 
@@ -522,15 +539,18 @@ class ControllerActionsTest
 
         // `app_settings` es de la INSTALACIÓN: el smoke la escribe de verdad, así
         // que se devuelve el estado previo en vez de borrarlo a lo bruto.
-        $db->execute("DELETE FROM app_settings WHERE key_name = 'registration_enabled'");
-        if (self::$savedRegistrationExists) {
-            $db->execute(
-                "INSERT INTO app_settings (key_name, value) VALUES ('registration_enabled', :v)",
-                ['v' => (string) self::$savedRegistration]
-            );
+        foreach (self::APP_SETTINGS_KEYS as $key) {
+            $db->execute('DELETE FROM app_settings WHERE key_name = :k', ['k' => $key]);
         }
-        self::$savedRegistrationExists = false;
-        self::$savedRegistration = null;
+        foreach (self::$savedSettings as $key => $saved) {
+            if ($saved['exists']) {
+                $db->execute(
+                    'INSERT INTO app_settings (key_name, value) VALUES (:k, :v)',
+                    ['k' => $key, 'v' => (string) $saved['value']]
+                );
+            }
+        }
+        self::$savedSettings = [];
         self::$adminId = null;
         self::$otherId = null;
         self::$formId = 0;

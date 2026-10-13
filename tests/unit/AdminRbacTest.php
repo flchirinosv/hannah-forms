@@ -269,6 +269,113 @@ class AdminRbacTest
     }
 
     /* ---------------------------------------------------------------
+     * 3b. Permisos extra de un usuario, editados desde su fila
+     * --------------------------------------------------------------- */
+
+    public function testGuardarPermisosExtraReemplazaLaListaCompleta(): void
+    {
+        $this->authAsAdmin();
+
+        $out = $this->call('updateUserPermissions', [
+            'user_id'     => (string) self::$targetId,
+            'permissions' => ['forms.manage_all', 'logs.view'],
+        ]);
+        assertTrue($out['exito'] !== '', 'el guardado debe funcionar: ' . $out['error']);
+        assertSame(
+            ['forms.manage_all', 'logs.view'],
+            self::sorted(User::permissionKeys(self::$targetId)),
+            'las dos claves quedan guardadas'
+        );
+
+        // Solo una: la otra se quita (el POST es la lista completa).
+        $out = $this->call('updateUserPermissions', [
+            'user_id'     => (string) self::$targetId,
+            'permissions' => ['logs.view'],
+        ]);
+        assertTrue($out['exito'] !== '', $out['error']);
+        assertSame(['logs.view'], User::permissionKeys(self::$targetId), 'una clave ausente se quita');
+
+        // Sin casillas: se queda sin permisos extra (POST vacío = lista vacía).
+        $out = $this->call('updateUserPermissions', ['user_id' => (string) self::$targetId]);
+        assertTrue($out['exito'] !== '', 'quitar el último permiso también es un guardado: ' . $out['error']);
+        assertSame([], User::permissionKeys(self::$targetId));
+    }
+
+    public function testGuardarPermisosExtraDescartaClavesFueraDelCatalogo(): void
+    {
+        $this->authAsAdmin();
+
+        // Una clave inventada se ignora sin romper el guardado: el catálogo no
+        // se borra, así que no hay un «ya no existe» que rechazar (a diferencia
+        // de un grupo).
+        $out = $this->call('updateUserPermissions', [
+            'user_id'     => (string) self::$targetId,
+            'permissions' => ['logs.view', 'permiso.inventado'],
+        ]);
+
+        assertTrue($out['exito'] !== '', $out['error']);
+        assertSame(['logs.view'], User::permissionKeys(self::$targetId), 'solo entra lo que existe en el catálogo');
+    }
+
+    public function testGuardarPermisosExtraExigeElPermisoDeUsuarios(): void
+    {
+        // Un rol con forms.create pero sin admin.users: no concede permisos.
+        $this->authAs((int) $this->roleWithPermission('rbac-sin-users', 'forms.create'));
+
+        $out = $this->call('updateUserPermissions', [
+            'user_id'     => (string) self::$targetId,
+            'permissions' => ['logs.view'],
+        ]);
+
+        assertSame(403, $out['halt']['code'] ?? 0, 'sin `admin.users` la respuesta es 403');
+        assertSame([], User::permissionKeys(self::$targetId), 'y no se concede nada');
+    }
+
+    public function testGuardarPermisosExtraLoAnotaEnElLog(): void
+    {
+        $this->authAsAdmin();
+
+        $this->call('updateUserPermissions', [
+            'user_id'     => (string) self::$targetId,
+            'permissions' => ['logs.view'],
+        ]);
+
+        $eventos = array_column(SecurityLog::recent('admin.user_permissions', 1, 200)['items'], 'detail');
+        assertTrue(
+            (bool) array_filter(
+                $eventos,
+                static fn(string $d): bool => str_contains($d, 'usuario #' . self::$targetId)
+            ),
+            'la concesión directa queda anotada en el log de seguridad'
+        );
+    }
+
+    public function testSePintaLaColumnaDePermisosExtraConSuHueco(): void
+    {
+        User::setPermissions(self::$targetId, ['logs.view']);
+        $this->authAsAdmin();
+
+        $html = $this->renderUsers();
+
+        assertTrue(
+            str_contains($html, 'action="/admin/users/permissions"'),
+            'el formulario de permisos extra tiene que estar en la fila'
+        );
+        assertTrue(
+            str_contains($html, 'vfUserPerms' . self::$targetId),
+            'con su hueco para el repintado por fetch'
+        );
+        assertTrue(
+            str_contains($html, 'permsError' . self::$targetId),
+            'y su nodo de error dentro del desplegable'
+        );
+        assertTrue(
+            str_contains($html, 'logs.view'),
+            'la insignia del permiso concedido se pinta'
+        );
+    }
+
+    /* ---------------------------------------------------------------
      * 4. Baja de roles (bloque 5): lo propio y vacío, nunca lo del sistema
      * --------------------------------------------------------------- */
 
@@ -504,6 +611,29 @@ class AdminRbacTest
             );
         }
         return $id;
+    }
+
+    /** GET del panel de usuarios: devuelve el HTML pintado. */
+    private function renderUsers(): string
+    {
+        $_POST = [];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/admin';
+        ob_start();
+        try {
+            (new AdminController())->index();
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        return $html;
+    }
+
+    /** Ordena una lista de claves para comparar sin depender del orden. */
+    private static function sorted(array $keys): array
+    {
+        $keys = array_values($keys);
+        sort($keys);
+        return $keys;
     }
 
     /** GET de la matriz de roles: devuelve el HTML pintado. */

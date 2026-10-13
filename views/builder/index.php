@@ -285,8 +285,8 @@ $fieldTypes = [
       // `data-bs-html="true"`, así que `<code>` y `<strong>` siguen siendo
       // negritas y monoespaciada.
       //
-      // Lo que NO se esconde aquí es el ESTADO: `stFontNote`, `stAdvanceHint`,
-      // `stAccessHint` y `stReviewHint` los escribe la aplicación al vuelo y
+      // Lo que NO se esconde aquí es el ESTADO: `stFontNote`, `stAdvanceHint`
+      // y `stAccessHint` los escribe la aplicación al vuelo y
       // depends de ellos para saber si el ajuste sirve. Regla: la explicación se
       // esconde, el estado no.
       //
@@ -310,7 +310,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
             <div class="modal-body p-4">
                 <div class="alert alert-light border small mb-4" role="note">
                     <p class="mb-0"><strong>Todo es opcional.</strong> Los ajustes vienen apagados y se guardan con la estructura. Si algo tiene un <span class="app-help-inline"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> <strong>?</strong></span>, su explicación está ahí: pásale por encima, o tócalo si estás en el móvil.</p>
-                    <p class="mb-0 mt-1">Aquí van los que cambian el <strong>relleno</strong>: tema, quiz, orden de las preguntas, avance automático, embed y anti-spam. Los que cambian <em>quién responde y cuándo</em> (acceso, fechas, cupo, avisos, webhook, mensaje final, revisión e idioma) están en la ficha del formulario.</p>
+                    <p class="mb-0 mt-1">Aquí van los que cambian el <strong>relleno</strong>: tema, quiz, orden de las preguntas, avance automático, embed y anti-spam. Los que cambian <em>quién responde y cuándo</em> (acceso, fechas, cupo, avisos, webhook, mensaje final e idioma) están en la ficha del formulario.</p>
                 </div>
 
                 <h6 class="fw-bold text-uppercase small text-muted app-settings-group-title"><i class="fa-solid fa-palette me-1"></i>Tema</h6>
@@ -387,7 +387,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                     </div>
                 </div>
                 <?php // Lo que falta aquí a propósito: acceso, agenda, cupo, avisos,
-                      // webhook, mensaje final, revisión e idioma. Se editan en la
+                      // webhook, mensaje final e idioma. Se editan en la
                       // ficha del formulario (`/forms/{id}`), que es donde se ven
                       // sus consecuencias (a quién llega el aviso, si la lista está
                       // vacía, si el formulario vuelve a la cola). El constructor se

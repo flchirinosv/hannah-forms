@@ -258,7 +258,7 @@ return [
     'mail.reset_cta'          => 'Change my password',
     'mail.reset_fallback'     => 'If the button does not work, copy this address into your browser:',
     'mail.reset_ignore'       => 'If you did not request this change, ignore this message and your password will stay the same.',
-    // F3 — review request notice (optional: `settings.review.notify_email`)
+    // F3 — review request notice (instance opt-in: `review_notify_email`)
     'mail.review_subject'    => 'A form is waiting for review',
     'mail.review_title'      => 'Form under review',
     'mail.review_body'       => '{owner} sent a form for review. You can approve it (it gets published) or send it back to the owner as a draft.',

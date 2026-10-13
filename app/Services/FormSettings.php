@@ -91,13 +91,6 @@ final class FormSettings
             'embed'      => ['enabled' => false],
             'honeypot'   => ['enabled' => true],
             'anti_bot'   => ['enabled' => false],
-            // F3 — revisión/aprobación. `enabled` es OPT-IN por formulario a
-            // propósito: si la revisión fuese el comportamiento por defecto,
-            // todos los formularios existentes dejarían de poder publicarse sin
-            // un revisor, y en una instancia de un solo usuario (el caso normal
-            // de un self-hosted) la revisión sería teatro que bloquea al
-            // propietario de su propia herramienta.
-            'review'     => ['enabled' => false, 'notify_email' => false],
             // F4 — acceso al formulario. `public` es el default porque es el
             // comportamiento histórico: poner esto en `email` o `allowlist` por
             // defecto cerraría de golpe todos los formularios ya publicados, y
@@ -221,16 +214,6 @@ final class FormSettings
             $out['randomize']['questions'] = (bool) ($raw['randomize']['questions'] ?? false);
         }
 
-        // F3 — el bloque `review` NO entra en el foreach de arriba porque tiene
-        // dos claves, no una: `enabled` (este formulario exige aprobación) y
-        // `notify_email` (avisar por correo a los revisores). El aviso es
-        // independiente del toggle a propósito: se puede querer el correo sin
-        // revisión, yviceversa no tiene sentido (no hay a quién avisar).
-        if (isset($raw['review']) && is_array($raw['review'])) {
-            $out['review']['enabled'] = (bool) ($raw['review']['enabled'] ?? false);
-            $out['review']['notify_email'] = (bool) ($raw['review']['notify_email'] ?? false);
-        }
-
         // F5 — el avance automático es una clave y no un `enabled` del foreach de
         // arriba, porque su nombre de bloque (`auto`) describe lo que hace y no
         // si el bloque está activo: se lee `[advance][auto]`, no
@@ -318,7 +301,7 @@ final class FormSettings
 
     /** Bloques que escribe la ficha del formulario (`/forms/{id}`). */
     public const DASHBOARD_BLOCKS = [
-        'access', 'schedule', 'quota', 'notify', 'webhook', 'thanks', 'review', 'locale',
+        'access', 'schedule', 'quota', 'notify', 'webhook', 'thanks', 'locale',
     ];
 
     /**
@@ -457,18 +440,6 @@ final class FormSettings
         }
         if ($thanks !== []) {
             $patch['thanks'] = $thanks;
-        }
-
-        // --- revisión ---
-        $review = [];
-        if ($enviado('review_enabled')) {
-            $review['enabled'] = (string) ($post['review_enabled'] ?? '') === '1';
-        }
-        if ($enviado('review_notify_email')) {
-            $review['notify_email'] = (string) ($post['review_notify_email'] ?? '') === '1';
-        }
-        if ($review !== []) {
-            $patch['review'] = $review;
         }
 
         // --- idioma ---

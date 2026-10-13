@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 97 archivos, 1072 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 99 archivos, 1099 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -51,8 +51,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   controlador. `public/index.php` es el único PHP que ve el web server.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
-  `Services` (17), `lang/{es,en}.php`.
-  `views/` = 62 plantillas y partials con `View` (veinte con prefijo `_`, sin ruta
+  `Services` (18), `lang/{es,en}.php`.
+  `views/` = 63 plantillas y partials con `View` (veintiuna con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **56 de los 97 archivos tocan la BD real** (los que llaman
+- **58 de los 99 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -181,7 +181,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   es un descuido.** `dashboard.js` recorre **todos** los contenedores
   (`[data-vf-group-key]`, con `data-vf-form-id` como alternativa) y
   `data-vf-group-default="closed"` es lo que dice «plégalo al cargar»; su
-  **ausencia** significa «abierto», y por eso los siete grupos de la ficha **no**
+  **ausencia** significa «abierto», y por eso los seis grupos de la ficha **no**
   llevan el atributo. Hoy hay dos: la ficha (`data-vf-form-id`, clave = id del
   formulario, que no se renombra porque sería perder el estado guardado de todos) y
   el alta de `/admin` (`data-vf-group-key="admin-usuarios"`, cerrada). Que el panel
@@ -225,10 +225,22 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `closed`. `in_review` **no** se sirve: el GET pinta `views/fill/in_review.php`
   (página informativa, no 404, a propósito) y el POST corta con 403 como en un
   `draft`.
-- La revisión es **opt-in por formulario** (`settings.review.enabled`, default
-  `false`) y aprobar exige el **permiso `forms.review`**, nunca `canEdit`: por eso
-  `ReviewController` es un controlador aparte de `FormController` (un `canEdit()`
-  leído como autorización para aprobar es exactamente el error a evitar).
+- **La exigencia de revisión es de la INSTANCIA, no opt-in por formulario**
+  (migración **0016**; antes `settings.review.enabled`). La decide un administrador
+  con `app_settings.review_required` (y `review_notify_email`) desde `/admin`, y
+  exime a los dueños que tengan el permiso `forms.publish_without_review`.
+  `App\Services\ReviewPolicy` es la única puerta (`policyOn()`, `notifyEmail()`,
+  `requiredFor($form)`), y la exención se evalúa sobre el **dueño** (`forms.user_id`),
+  no sobre quien actúa: un `admin` con `forms.manage_all` que publica el formulario
+  de otra persona no puede saltarse la revisión por su propio permiso. Aprobar exige
+  el **permiso `forms.review`**, nunca `canEdit`: por eso `ReviewController` es un
+  controlador aparte de `FormController` (un `canEdit()` leído como autorización para
+  aprobar es exactamente el error a evitar).
+- La **0016 conserva el estado de las instalaciones que ya usaban la revisión por
+  formulario**: lee el `settings` JSON de cada formulario y, si alguno la tenía
+  encendida, enciende `review_required`. Sin eso, actualizar APAGARÍA en silencio la
+  revisión de quien la tenía puesta. No toca `forms.status`. `forms.publish_without_review`
+  se siembra a `admin` con la re-siembra del catálogo de esa misma migración.
 - El **estado solo lo mueven las tres acciones** de `ReviewController`
   (`sendReview`, `approve`, `returnDraft`) y cada una comprueba su estado de
   origen. El campo `status` del payload del builder **no publica**: con revisión
@@ -239,11 +251,12 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Aprobar un formulario propio está permitido y el log lo marca con `propio`: en
   una instalación de un solo usuario no hay a quién pedirle aprobación, y
   prohibirlo dejaría esa instalación sin poder publicar nunca.
-- `User::reviewers()` (rol propio **+** roles de los grupos, en una sola consulta
-  con dos `EXISTS`, filtrando `is_active = 1`) alimenta el aviso; el aviso en el
-  panel es siempre y el correo es opt-in (`settings.review.notify_email`) y apunta
-  al panel, nunca al enlace público. En tests, sus destinatarios se filtran por
-  `@test.local` porque también salen los usuarios reales de la instancia.
+- `User::reviewers()` (rol propio **+** roles de los grupos **+** permisos directos,
+  en una sola consulta con tres `EXISTS`, filtrando `is_active = 1`) alimenta el
+  aviso; el aviso en el panel es siempre y el correo es opt-in
+  (`app_settings.review_notify_email`) y apunta al panel, nunca al enlace público.
+  En tests, sus destinatarios se filtran por `@test.local` porque también salen los
+  usuarios reales de la instancia.
 - **`Form::pendingReviews()` es global**: la bandeja no es «la de este test», es
   la de la instalación, y en una instancia en uso hay formularios de verdad
   esperando. Un test que afirme que la cola **está vacía**, o que sus dos
@@ -985,7 +998,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   tiene que llamar a `forgetForTesting()`: un override vivo se lo traga el
   siguiente test que lea `Config`, y el fallo sale en otro sitio.
 - `Auth::can()` es la **única** puerta de negocio: nunca gates con `role_name`. Los
-  permisos efectivos = rol propio + roles de los grupos.
+  permisos efectivos = rol propio + roles de los grupos + **permisos directos**
+  (`user_permissions`).
 - El catálogo de permisos está **duplicado**: `config/permissions.php` (fuente; la
   lee la migración 0005 en runtime) y el bloque estático de `database/seed.sql`
   (instalaciones limpias). Si cambias una clave o un rol por defecto, toca **los
@@ -994,9 +1008,22 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   (un cuerpo vacío no significa "desmarcar todo") y el rol `admin` siempre conserva
   `admin.access`.
 - Un rol nuevo se crea con `Role::create()` y **nace sin permisos**: la matriz es lo
-  que decide qué puede hacer. El re-seed de las migraciones (0005, 0006, 0011) solo
-  otorga a los roles con nombre del catálogo, así que un rol inventado no se lo lleva
-  nadie por el camino.
+  que decide qué puede hacer. El re-seed de las migraciones (0005, 0006, 0011, 0016)
+  solo otorga a los roles con nombre del catálogo, así que un rol inventado no se lo
+  lleva nadie por el camino.
+- **La cuarta fuente son los permisos DIRECTOS** (`user_permissions`, migración
+  **0017**): dar UN permiso a UNA persona sin cambiarle el rol (que mueve todo su
+  conjunto) ni meterla en un grupo (que se lo da al equipo). Se editan desde la
+  columna «Permisos» de su fila en `/admin` (gate `admin.users`, el mismo del rol:
+  mueve la autorización de esa persona; sin él se ven las insignias en solo lectura,
+  no los checkboxes) y caen en cascada al borrar el usuario. `User::setPermissions()`
+  **reemplaza la lista completa**: un POST sin casillas quita todos los directos, y
+  las claves fuera del catálogo se descartan en silencio (el catálogo no se borra).
+  `Auth::permissions()` es la unión de las tres fuentes; `User::hasPermission()` y
+  `User::reviewers()` la reproducen en SQL con tres `EXISTS`, y **tienen que ir con
+  ella** o la revisión de la instancia ignoraría una exención concedida a mano.
+  `User::effectivePermissionsMap()` da el desglose por origen (rol/grupos/extra) que
+  el desplegable pinta como auditoría.
 - **Cada enlace de la navegación se enseña solo si su destino deja pasar**
   (`views/layouts/main.php`: `dashboard.view`, `forms.review`, `admin.access`,
   `forms.create`). El caso que lo fijó: un `approver` veía «Nuevo formulario» y
@@ -1320,7 +1347,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 481 comprobaciones manuales en 29 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 485 comprobaciones manuales en 29 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
@@ -1334,7 +1361,7 @@ probando la rama equivocada).
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
-- `docs/technical-document.md`: arquitectura y modelo de datos (22 tablas, con
+- `docs/technical-document.md`: arquitectura y modelo de datos (23 tablas, con
   F2/F3/F4, RBAC y el listado de participantes con su `invited_at`).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
   P1–P10 con su diagnóstico, **todas cerradas**.

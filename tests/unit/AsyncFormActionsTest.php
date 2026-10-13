@@ -9,6 +9,7 @@ use App\Controllers\AdminController;
 use App\Controllers\FormController;
 use App\Controllers\ResponsesController;
 use App\Controllers\ReviewController;
+use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
@@ -60,6 +61,10 @@ class AsyncFormActionsTest
 
         unset($_SERVER['HTTP_X_REQUESTED_WITH']);
 
+        // Política de la instancia apagada y aislada de la BD: los tests que la
+        // necesiten encendida la activan con el seam.
+        AppSettings::setForTesting([]);
+
         self::$ownerEmail = 'async-' . bin2hex(random_bytes(4)) . '@test.local';
         self::$ownerId = User::create('Async Owner', self::$ownerEmail, 'clave-larga-123', 2);
         self::$formId = Form::create((int) self::$ownerId, 'Formulario de las acciones');
@@ -73,6 +78,7 @@ class AsyncFormActionsTest
     {
         Response::setRecordHalt(false);
         unset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        AppSettings::forgetForTesting();
         Auth::forgetCache();
         Session::destroy();
         self::cleanupResiduals();
@@ -241,8 +247,10 @@ class AsyncFormActionsTest
     public function testGuardarAjustesTraeLaInsigniaDelEstadoQueQueda(): void
     {
         $this->post('publish', new FormController(), (int) self::$formId);
-        Form::saveSettings((int) self::$formId, [
-            'review' => ['enabled' => true, 'notify_email' => false],
+        // La revisión es de la instancia y el dueño (rol `user`) no está exento.
+        AppSettings::setForTesting([
+            AppSettings::REVIEW_REQUIRED     => true,
+            AppSettings::REVIEW_NOTIFY_EMAIL => false,
         ]);
 
         // La agenda es de las cosas que «importan» al publicar (`publishedChanges-
@@ -300,8 +308,9 @@ class AsyncFormActionsTest
         // revisión: `sendReview()` rechaza un formulario publicado («ciérralo
         // antes»), así que publicar primero haría que «aprobar» no tuviera nada
         // que aprobar y el test probaría la rama del rechazo.
-        Form::saveSettings((int) self::$formId, [
-            'review' => ['enabled' => true, 'notify_email' => false],
+        AppSettings::setForTesting([
+            AppSettings::REVIEW_REQUIRED     => true,
+            AppSettings::REVIEW_NOTIFY_EMAIL => false,
         ]);
         Auth::assumeLoggedIn((int) self::$ownerId);
         Auth::forgetCache();

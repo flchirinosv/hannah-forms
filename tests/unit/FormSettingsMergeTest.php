@@ -194,7 +194,6 @@ class FormSettingsMergeTest
 
         assertArrayHasKey('locale', $parche);
         assertFalse(array_key_exists('notify', $parche));
-        assertFalse(array_key_exists('review', $parche));
         assertFalse(array_key_exists('quota', $parche));
     }
 
@@ -210,9 +209,9 @@ class FormSettingsMergeTest
     }
 
     /**
-     * Las seis casillas de la ficha tienen su `hidden` delante. Es lo que
-     * sostiene el test de arriba en el HTML real y no solo en el array: sin él,
-     * el formulario seguiría funcionando pero no podría apagar nada.
+     * Las casillas de la ficha tienen su `hidden` delante. Es lo que sostiene el
+     * test de arriba en el HTML real y no solo en el array: sin él, el
+     * formulario seguiría funcionando pero no podría apagar nada.
      */
     public function testLasCasillasDeLaFichaTraenHidden(): void
     {
@@ -221,7 +220,7 @@ class FormSettingsMergeTest
 
         foreach ([
             'quota_enabled', 'notify_enabled', 'confirm_enabled',
-            'webhook_allow_private', 'review_enabled', 'review_notify_email',
+            'webhook_allow_private',
         ] as $campo) {
             assertTrue(
                 str_contains($html, '<input type="hidden" name="' . $campo . '" value="0">'),
@@ -231,9 +230,9 @@ class FormSettingsMergeTest
     }
 
     /**
-     * Los siete grupos de «Ajustes del formulario» se pliegan, pero el plegado
-     * no puede comerles el nombre accesible: el `<fieldset>` conserva su
-     * `<legend>` y dentro va un `<button type="button">` con `data-bs-toggle`,
+     * Los grupos de «Ajustes del formulario» se pliegan, pero el plegado no puede
+     * comerles el nombre accesible: el `<fieldset>` conserva su `<legend>` y
+     * dentro va un `<button type="button">` con `data-bs-toggle`,
      * `aria-expanded` y `aria-controls` apuntando al `id` real del panel.
      *
      * Se ata el TRIPLE por grupo porque los tres se necesitan juntos y fallan
@@ -244,7 +243,8 @@ class FormSettingsMergeTest
      * sin error visible (Bootstrap no lanza, simplemente no encuentra destino).
      *
      * Y todos abiertos por defecto (`collapse show`): plegarlos en el servidor
-     * dejaría fuera de pantalla ajustes que el servidor sigue guardando.
+     * dejaría fuera de pantalla ajustes que el servidor sigue guardando. La
+     * revisión salió de la ficha y pasa a ser política de la instancia.
      */
     public function testLosSieteGruposDeAjustesSonColapsablesYAccesibles(): void
     {
@@ -257,7 +257,6 @@ class FormSettingsMergeTest
             'avisos'   => 'Notificaciones',
             'webhook'  => 'Webhook',
             'gracias'  => 'Mensaje final',
-            'revision' => 'Revisión',
             'idioma'   => 'Idioma',
         ];
 
@@ -287,17 +286,17 @@ class FormSettingsMergeTest
         }
 
         // Ni un grupo de más ni de menos: el CSS y el JS de persistencia trabajan
-        // con lo que hay, así que un octavo grupo sin panel (o un panel sin botón)
-        // se rompería en silencio.
+        // con lo que hay, así que un grupo de más o de menos (un panel sin botón)
+        // se rompería en silencio. La revisión dejó de estar en la ficha.
         assertSame(
-            7,
+            count($esperados),
             preg_match_all('/class="app-group-toggle"/', (string) $html),
-            'hay exactamente siete botones de grupo en la ficha'
+            'hay exactamente ' . count($esperados) . ' botones de grupo en la ficha'
         );
         assertSame(
-            7,
+            count($esperados),
             preg_match_all('/class="collapse show" id="grp-/', (string) $html),
-            'y exactamente siete paneles'
+            'y exactamente ' . count($esperados) . ' paneles'
         );
 
         // La persistencia es POR FORMULARIO: la clave sale del id de la tarjeta,

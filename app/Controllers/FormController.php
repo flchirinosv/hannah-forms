@@ -20,6 +20,7 @@ use App\Models\FormAccess;
 use App\Models\FormParticipant;
 use App\Services\FormPanel;
 use App\Services\FormSettings;
+use App\Services\ReviewPolicy;
 use App\Services\RosterPanel;
 use App\Services\TemplateService;
 
@@ -170,8 +171,8 @@ class FormController
             // y el QR solo abrirán desde esta red. Ver App\Core\PublicUrl.
             'publicUrlIsLocal' => \App\Core\PublicUrl::isLocalBase(),
             // F3 — la vista decide qué botón pintar según esto: con revisión
-            // activa, «Publicar» dejaría de existir para el dueño.
-            'reviewRequired' => !empty($settings['review']['enabled']),
+            // activa, «Publicar» dejaría de existir para un dueño no exento.
+            'reviewRequired' => ReviewPolicy::requiredFor($form),
             'canReview'      => Auth::can('forms.review'),
             'reviewTrail'    => $form['status'] === 'in_review' || $form['reviewed_at'] !== null
                 ? Form::reviewTrail($id)
@@ -303,7 +304,7 @@ class FormController
         // está publicado, cambiar su contenido (aquí, título y descripción) lo
         // devuelve a la cola. Cerrar la puerta en el builder y no en esta deja un
         // «cambia el título por aquí y publícalo sin que nadie lo mire».
-        $requeued = self::reviewRequired($form) && $form['status'] === 'published';
+        $requeued = ReviewPolicy::requiredFor($form) && $form['status'] === 'published';
 
         Form::update(
             $id,
@@ -490,7 +491,7 @@ class FormController
         // devuelve a la cola si exige revisión. Si no lo exigiera, publicar
         // «cerrado hasta el lunes» sin que nadie lo mire sería exactamente el
         // agujero que la revisión existe para cerrar.
-        $requeued = self::reviewRequired($form)
+        $requeued = ReviewPolicy::requiredFor($form)
             && $form['status'] === 'published'
             && self::publishedChangesMatter($actuales, $fusionado);
 
@@ -638,7 +639,7 @@ class FormController
         // entera: el botón «Publicar» que el dueño tiene delante equivaldría a
         // aprobarse a uno mismo. Se rechaza con un mensaje que dice qué hacer en
         // su lugar, en vez de un 403 mudo (que el dueño no sabría interpretar).
-        if (self::reviewRequired($form)) {
+        if (ReviewPolicy::requiredFor($form)) {
             $error = 'Este formulario exige revisión: envíalo a revisión para que lo apruebe alguien con el permiso.';
             if (Response::wantsJson()) {
                 Response::json(['ok' => false, 'error' => $error], 422);
@@ -867,19 +868,5 @@ class FormController
     private function canDelete(array $form, int $userId): bool
     {
         return Access::canDelete((int) $form['user_id']);
-    }
-
-    /**
-     * F3 — ¿Este formulario exige aprobación antes de publicarse?
-     *
-     * Se lee del setting normalizado y NO del JSON crudo, porque quien decide
-     * es lo que se guardó: un `settings.review.enabled` a `"1"` de un POST
-     * antiguo tiene que contar igual que un `true`. `Form::settings()` ya
-     * normaliza, así que aquí solo se comprueba la bandera.
-     */
-    public static function reviewRequired(array $form): bool
-    {
-        $settings = Form::settings((int) $form['id']);
-        return !empty($settings['review']['enabled']);
     }
 }

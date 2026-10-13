@@ -95,6 +95,7 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
   │                           │
   │ (N)                       │ (N)
   role_permissions ↔ permissions │ submissions (1)──(N) answers
+  user_permissions ↔ permissions │
   │                           │
   role_group_roles (N)──(M) role_groups ──(N) role_group_users (M)──(1) users
 ```
@@ -271,7 +272,7 @@ migración 0005/0006 (BD existente), las dos leyendo `config/permissions.php`.
 | role_id | INT UNSIGNED FK→roles | CASCADE |
 
 PK (group_id, role_id). Un usuario hereda los permisos de su rol propio **+** los
-de los roles de sus grupos.
+de los roles de sus grupos **+** sus permisos directos.
 
 #### role_group_users
 | Campo | Tipo | Notas |
@@ -280,6 +281,18 @@ de los roles de sus grupos.
 | user_id | INT UNSIGNED FK→users | CASCADE |
 
 PK (group_id, user_id).
+
+#### user_permissions
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| user_id | INT UNSIGNED FK→users | CASCADE |
+| permission_id | INT UNSIGNED FK→permissions | CASCADE |
+
+PK (user_id, permission_id). RBAC (migración 0017): la cuarta fuente. Da **un**
+permiso a **una** persona sin cambiarle el rol (que mueve todo su conjunto) ni
+meterla en un grupo (que se lo da a todo el equipo). `User::setPermissions()`
+reemplaza la lista completa; las claves fuera de `config/permissions.php` se
+descartan en silencio. Se editan en la columna «Permisos» de `/admin`.
 
 #### rate_limits
 | Campo | Tipo | Notas |
@@ -435,7 +448,7 @@ php scripts/test.php --path tests/unit
 - ✅ Escape sistemático de salida (View::escape)
 - ✅ Redirects internos solo relativos (anti open-redirect); `thanks.redirect_url` externa pasa por la allowlist de servidor `APP_REDIRECT_ALLOWLIST` (vacía = bloqueada por defecto, F5.1)
 - ✅ Rate limit del dashboard por usuario (crear/exportar, F5.3): `DASH_CREATE_PER_HOUR`/`DASH_EXPORT_PER_HOUR`, 429 con `views/errors/429.php`
-- ✅ RBAC (2026-09-28, fase 6): catálogo de permisos en `config/permissions.php` + matriz en `role_permissions`; `Auth::can()` como única puerta de negocio y permisos efectivos = rol propio + roles de sus grupos (`role_groups*`); `App\Core\Access` para el alcance del dueño (`*_own` && dueño || `forms.manage_all`); middleware `admin` = `Auth::can('admin.access')`
+- ✅ RBAC (2026-09-28, fase 6; permisos directos 2026-10-13): catálogo de permisos en `config/permissions.php` + matriz en `role_permissions`; `Auth::can()` como única puerta de negocio y permisos efectivos = rol propio + roles de sus grupos (`role_groups*`) + permisos directos por usuario (`user_permissions`, migración 0017, editables desde la columna «Permisos» de `/admin`); `App\Core\Access` para el alcance del dueño (`*_own` && dueño || `forms.manage_all`); middleware `admin` = `Auth::can('admin.access')`
 - ✅ Log de eventos de seguridad (2026-09-28, fase 6): tabla `security_log` + `/admin/security-log` (`SecurityLog::record` nunca rompe el request, valida el formato del evento, `user_id` NULL si la sesión apunta a un usuario inexistente, purga por `purgeOlderThan()`)
 - ✅ Límite de tamaño de cuerpo JSON y 405 para métodos no permitidos
 - ✅ CSP y X-Frame-Options configurables por `.env` (CSP activa por defecto desde 2026-09-25; datos de servidor vía `data-*`, handlers JS externalizados)
@@ -454,7 +467,7 @@ php scripts/test.php --path tests/unit
 - Listado de formularios paginado EN EL SERVIDOR (2026-10-05, M2): `Form::page()` (12 por página; 20 en `/admin/forms`) con búsqueda, filtro de estado y orden en la URL (`/dashboard?q=…&estado=…&orden=…&page=…`); el conteo de respuestas va sobre los ids de la página y las tarjetas de arriba son el alcance entero sin filtros (`Form::counts()`, cacheado). El paginador de cliente de `app.js` se fue con la caché: ya no hay nada que ocultar
 - Caché del dashboard (2026-09-28, fase 6; ajustada el 2026-10-05): solo las CUENTAS, `Cache::remember('dash:stats:…', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
 - Tabla de analítica paginada EN EL SERVIDOR (2026-09-28): `Submission::byFormFilteredPaginated` + `GET /forms/{id}/analytics/rows` (15/página, lazy-load por fetch); los agregados siguen globales
-- Revisión/aprobación (2026-09-29, F3): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` (solo `admin` por defecto) y controlador aparte `ReviewController` con las tres transiciones. Opt-in por formulario (`settings.review.enabled`); el estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
+- Revisión/aprobación (2026-09-29, F3; política de instancia 2026-10-13): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` y controlador aparte `ReviewController` con las tres transiciones. La exigencia ya no es opt-in por formulario (`settings.review.enabled`): la decide un administrador con `app_settings.review_required`/`review_notify_email` (interruptores en `/admin`, migración 0016, con `App\Services\ReviewPolicy` como única puerta) y exime a los dueños con `forms.publish_without_review`. El estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
 - `defer` en scripts no críticos (dashboard.js, sortable+builder, chart+analytics), preservando el orden de dependencias
 
 **Despliegue (uploads):**

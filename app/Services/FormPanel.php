@@ -59,7 +59,7 @@ final class FormPanel
         }
 
         $settings = Form::settings($formId);
-        $reviewRequired = !empty($settings['review']['enabled']);
+        $reviewRequired = ReviewPolicy::requiredFor($form);
 
         return [
             'vfSlotStatusBadge' => View::partial('dashboard/forms/_status_badge', ['form' => $form]),

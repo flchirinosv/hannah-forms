@@ -180,11 +180,11 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
             </div>
 
             <?php // Ajustes operativos: acceso, agenda, cupo, avisos, webhook,
-                  // gracias, revisión e idioma. Se editan aquí y NO en el builder.
+                  // gracias e idioma. Se editan aquí y NO en el builder.
                   // Cada puerta escribe solo sus bloques con
                   // `FormSettings::merge()`: si el constructor guardara el array
                   // entero, cada pulsación de «Guardar» en el builder dejaría
-                  // estos ocho ajustes en sus valores de fábrica. ?>
+                  // estos ajustes en sus valores de fábrica. ?>
             <?php $emailFieldLabels = $emailFieldLabels ?? []; ?>
             <div class="card border-0 shadow-sm" id="settings">
                 <div class="card-body">
@@ -446,37 +446,6 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                        value="<?= View::escape($settings['thanks']['redirect_url'] ?? '') ?>" placeholder="https://… (opcional)">
                                 <?= $helpButton('A dónde se le lleva al terminar, <em>después</em> de ver el mensaje. Solo se sigue si el dominio está permitido por el servidor (<code>APP_REDIRECT_ALLOWLIST</code>).') ?>
                             </div>
-                            </div>
-                        </fieldset>
-
-                        <fieldset class="app-settings-group mb-3">
-                            <legend class="app-settings-group-title">
-                                <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-revision"
-                                        aria-expanded="true" aria-controls="grp-revision">
-                                    <span><i class="fa-solid fa-user-check me-1"></i>Revisión</span>
-                                    <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
-                                </button>
-                            </legend>
-                            <div class="collapse show" id="grp-revision">
-                            <div class="form-check form-switch mb-1">
-                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
-                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
-                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
-                                          // vacío justamente para esto. ?>
-                                <input type="hidden" name="review_enabled" value="0">
-                                <input class="form-check-input" type="checkbox" id="review_enabled" name="review_enabled" value="1"<?= !empty($settings['review']['enabled']) ? ' checked' : '' ?>>
-                                <label class="form-check-label small fw-semibold" for="review_enabled">Exigir revisión antes de publicar<?= $helpButton('Si está activa, el botón «Publicar» desaparece y el formulario espera en la bandeja de revisión.') ?></label>
-                            </div>
-                            <div class="form-check form-switch">
-                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
-                                          // casilla no enviaría nada y el ajuste se quedaría como estaba en
-                                          // vez de apagarse. `fromDashboardPost()` distingue el ausente del
-                                          // vacío justamente para esto. ?>
-                                <input type="hidden" name="review_notify_email" value="0">
-                                <input class="form-check-input" type="checkbox" id="review_notify_email" name="review_notify_email" value="1"<?= !empty($settings['review']['notify_email']) ? ' checked' : '' ?>>
-                                <label class="form-check-label small fw-semibold" for="review_notify_email">Avisar por correo a los revisores<?= $helpButton('El aviso lleva al panel de revisión, nunca al enlace público.') ?></label>
-                            </div>
-                            <p class="small text-muted mb-0 mt-2" id="stReviewHint" role="status"></p>
                             </div>
                         </fieldset>
 

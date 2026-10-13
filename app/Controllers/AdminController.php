@@ -18,6 +18,7 @@ use App\Models\Role;
 use App\Models\RoleGroup;
 use App\Models\User;
 use App\Models\Form;
+use App\Services\ReviewPolicy;
 
 /**
  * Panel de administración.
@@ -41,17 +42,29 @@ class AdminController
         }
 
         View::render('admin/users', [
-            'users'         => User::all(),
-            'roles'         => Role::all(),
-            'groups'        => RoleGroup::all(),
-            'userGroups'    => User::groupsMap(),
-            'canEditGroups' => Auth::can('admin.groups'),
-            'csrf'          => Csrf::token(),
+            'users'             => User::all(),
+            'roles'             => Role::all(),
+            'groups'            => RoleGroup::all(),
+            'userGroups'        => User::groupsMap(),
+            'userPermissions'   => User::permissionsMap(),
+            // Desglose efectivo por usuario (rol / grupos / extra): lo pinta el
+            // desplegable de la columna «Permisos», que es lo que hace
+            // auditable una concesión directa.
+            'userEffective'     => User::effectivePermissionsMap(),
+            'permissionCatalog' => self::catalog(),
+            'canEditGroups'     => Auth::can('admin.groups'),
+            'canEditPermissions' => Auth::can('admin.users'),
+            'csrf'              => Csrf::token(),
             // El interruptor de registro es de la INSTALACIÓN, no de esta
             // lista de usuarios: se pinta solo con `admin.access` (que es el
             // permiso del panel), y con el valor ya resuelto para que el
             // interruptor no tenga que preguntar nada por su cuenta.
             'registrationEnabled' => AuthController::registrationEnabled(),
+            // La política de revisión también es de la INSTALACIÓN: se pinta
+            // con `admin.access` y con el valor YA resuelto (`app_settings`
+            // sobre `.env`) para que la vista no tenga que preguntar nada.
+            'reviewRequired'      => ReviewPolicy::policyOn(),
+            'reviewNotifyEmail'   => ReviewPolicy::notifyEmail(),
             'canManageInstance'    => Auth::can('admin.access'),
         ]);
     }
@@ -114,6 +127,67 @@ class AdminController
                 ? 'Registro público abierto: cualquiera con la dirección puede crear su cuenta.'
                 : 'Registro público cerrado. Las cuentas se crean desde aquí.',
         ]);
+    }
+
+    /**
+     * POST /admin/settings/review — política de revisión de la instancia.
+     *
+     * Dos interruptores de una vez: `review_required` (toda encuesta pasa por
+     * la bandeja antes de publicarse, salvo dueños con el permiso
+     * `forms.publish_without_review`) y `review_notify_email` (avisar por
+     * correo a los revisores al enviar).
+     *
+     * A diferencia del registro público, este POST es NATIVO (no fetch): la
+     * pantalla no repinta ningún hueco, así que se responde con el PRG de
+     * siempre (`flash` + redirect a `/admin`) y el camino sin JavaScript es
+     * exactamente el mismo. Un fetch aquí solo añadiría una ruta paralela.
+     *
+     * El permiso es `admin.access` (el mismo del middleware `admin` y el que la
+     * vista exige para pintar la tarjeta), no `admin.users`: quien entra al
+     * panel administra la instalación.
+     */
+    public function updateReviewPolicy(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        // Ausente = desmarcado (una casilla sin marcar no llega). El
+        // `<input type="hidden">` que la vista pone delante con el MISMO nombre
+        // asegura que el apagado explícito también viaje.
+        $required = (string) Request::post('review_required', '0') === '1';
+        $notify   = (string) Request::post('review_notify_email', '0') === '1';
+
+        $ok = AppSettings::setBool(AppSettings::REVIEW_REQUIRED, $required);
+        $ok = AppSettings::setBool(AppSettings::REVIEW_NOTIFY_EMAIL, $notify) && $ok;
+
+        if (!$ok) {
+            Session::flash('error', 'No se pudo guardar el ajuste. ¿Falta ejecutar las migraciones?');
+            Response::redirect('/admin');
+            return;
+        }
+
+        // Mismo prefijo `instance.` que el registro: es de la instalación
+        // entera, no de una cuenta ni de un formulario. El usuario lo pone
+        // `SecurityLog::record()` solo.
+        SecurityLog::record(
+            $required ? 'instance.review_on' : 'instance.review_off',
+            'revisión de formularios ' . ($required ? 'activada' : 'desactivada')
+            . ($notify ? ' (aviso por correo activado)' : ' (aviso por correo desactivado)')
+            . ' desde el panel'
+        );
+
+        Session::flash('success', $required
+            ? 'Revisión activada: los formularios pasan por la bandeja antes de publicarse.'
+            : 'Revisión desactivada: cada quien publica su formulario sin revisión.');
+
+        Response::redirect('/admin');
     }
 
     /**
@@ -310,6 +384,100 @@ class AdminController
                 'html'    => [
                     'vfUserGroups' . $userId => View::partial('admin/_user_groups', [
                         'myGroups' => $myGroups,
+                    ]),
+                ],
+            ]);
+            return;
+        }
+
+        Session::flash('success', $message);
+        Response::redirect('/admin');
+        return;
+    }
+
+    /**
+     * Permisos DIRECTOS de un usuario, editados desde su fila de `/admin`.
+     *
+     * Es la cuarta fuente del RBAC: dar UN permiso a UNA persona sin cambiarle el
+     * rol (que cambia todo su conjunto) ni meterla en un grupo (que se lo da a
+     * todos). Se SUMAN a los del rol y a los de los grupos; no hay forma de
+     * quitar por aquí un permiso que venga de otro sitio.
+     *
+     * El POST es la lista COMPLETA (N:M), como `groups[]`: una clave que no venga
+     * es que se quita. Se filtra contra el catálogo (`postedKeys()`), así que una
+     * clave inventada se ignora sin romper el guardado.
+     *
+     * El permiso es `admin.users`: conceder una capacidad suelta es de la misma
+     * familia que cambiar el rol, y por eso NO se exige `admin.roles` (que es de
+     * la matriz de roles, no de una cuenta concreta).
+     */
+    public function updateUserPermissions(): void
+    {
+        $json = Response::wantsJson();
+
+        if (!Auth::can('admin.users')) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para conceder permisos.'], 403);
+            } else {
+                Response::forbidden();
+            }
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
+            Session::flash('error', 'Token inválido.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        $userId = (int) Request::post('user_id', 0);
+        $target = User::find($userId);
+        if ($target === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Usuario no encontrado.'], 404);
+                return;
+            }
+            Session::flash('error', 'Usuario no encontrado.');
+            Response::redirect('/admin');
+            return;
+        }
+
+        // Solo claves del catálogo, y la lista entera como verdad: una clave
+        // desconocida se descarta (no hay nada que validar que falle, como el id
+        // de un grupo que ya no existe: las claves del catálogo no se borran).
+        $keys = self::postedKeys('permissions', array_keys(self::catalog()));
+
+        User::setPermissions($userId, $keys);
+        SecurityLog::record(
+            'admin.user_permissions',
+            'usuario #' . $userId . ' -> permisos directos [' . implode(',', $keys) . ']'
+        );
+
+        $message = $keys === []
+            ? '«' . $target['name'] . '» ya no tiene permisos adicionales.'
+            : 'Permisos adicionales de «' . $target['name'] . '» actualizados.';
+
+        if ($json) {
+            /* Solo las insignias del botón (`vfUserPerms<uid>`), por la misma
+             * razón que en los grupos: la lista de casillas que envió el POST ya
+             * es la verdad, y repintarlas cerraría el desplegable que se está
+             * editando. Se recorren las claves del CATÁLOGO para que salgan en el
+             * mismo orden que las casillas del menú. */
+            $myPerms = [];
+            foreach (array_keys(self::catalog()) as $key) {
+                if (in_array($key, $keys, true)) {
+                    $myPerms[] = (string) $key;
+                }
+            }
+            Response::json([
+                'ok'      => true,
+                'message' => $message,
+                'html'    => [
+                    'vfUserPerms' . $userId => View::partial('admin/_user_perms', [
+                        'myPerms' => $myPerms,
                     ]),
                 ],
             ]);
@@ -888,6 +1056,24 @@ class AdminController
             return [];
         }
         return array_values(array_map('intval', $posted));
+    }
+
+    /**
+     * Claves de permiso marcadas por checkbox: 'permissions[]' => list<string>,
+     * filtradas contra el catálogo. Un `permissions[]` ausente (o no-array) es
+     * una lista vacía, no un error: para esta N:M la lista completa es la
+     * verdad y «ninguna clave» significa «sin permisos directos».
+     */
+    private static function postedKeys(string $key, array $allowed): array
+    {
+        $posted = Request::post($key, []);
+        if (!is_array($posted)) {
+            return [];
+        }
+        return array_values(array_filter(
+            array_map('strval', $posted),
+            static fn($k) => in_array($k, $allowed, true)
+        ));
     }
 
     /** Por grupo, los ids de usuarios que lo componen. */

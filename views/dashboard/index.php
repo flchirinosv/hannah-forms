@@ -195,12 +195,12 @@ $relativeTs = static function (string $timestamp): string {
                                         <li><a class="dropdown-item" href="#" data-role="copy" data-url="<?= View::escape($publicUrl) ?>"><i class="fa-solid fa-link me-2 text-muted"></i>Copiar enlace</a></li>
                                         <li><a class="dropdown-item" href="<?= $publicUrl ?>" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square me-2 text-muted"></i>Abrir público</a></li>
                                         <li><hr class="dropdown-divider"></li>
-                                        <?php // F3 — La bandera se lee del JSON de `settings` que YA
-                                              // viene en la fila (`f.*`): llamar aquí a
-                                              // `Form::settings()` por formulario serían N consultas
-                                              // en cada carga del dashboard, y el listado está
-                                              // cacheado precisamente para no pagarlas. ?>
-                                        <?php $needsReview = !empty(\App\Models\Form::settingsFrom($form)['review']['enabled']); ?>
+                                        <?php // F3 — La exención se decide por la política de la
+                                              // instancia y el permiso del DUEÑO. Con la política
+                                              // apagada (default) `requiredFor()` no toca la BD:
+                                              // solo cuando está encendida paga una consulta por
+                                              // tarjeta, que es el precio de no inventar la regla. ?>
+                                        <?php $needsReview = \App\Services\ReviewPolicy::requiredFor($form); ?>
                                         <?php if ($form['status'] === 'draft' || $form['status'] === 'closed'): ?>
                                             <?php // Un formulario con revisión no ofrece «Publicar»: el botón
                                                   // solo produciría un error de vuelta. ?>

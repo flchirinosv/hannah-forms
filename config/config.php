@@ -32,6 +32,21 @@ return [
             App\Core\Env::get('REGISTRATION_ENABLED', false),
             FILTER_VALIDATE_BOOL
         ),
+        // Política de revisión de la INSTANCIA. `false` = cada quien publica su
+        // formulario sin revisión, que es el comportamiento histórico. Se
+        // enciende desde `/admin` (fila `review_required` de `app_settings`),
+        // que GANA sobre este `.env` en los dos sentidos: si no, el interruptor
+        // no podría exigir revisión en una instalación que trae el `.env` abajo.
+        'review_required' => filter_var(
+            App\Core\Env::get('REVIEW_REQUIRED', false),
+            FILTER_VALIDATE_BOOL
+        ),
+        // Aviso por correo a los revisores al enviar a revisión. El ajuste
+        // `review_notify_email` de `app_settings` GANA sobre este `.env`.
+        'review_notify_email' => filter_var(
+            App\Core\Env::get('REVIEW_NOTIFY_EMAIL', false),
+            FILTER_VALIDATE_BOOL
+        ),
         // Solo true si la app está detrás de un proxy de confianza que
         // sobrescribe X-Forwarded-For / X-Real-IP (nginx/haproxy).
         'trust_proxy' => (bool) App\Core\Env::get('TRUST_PROXY', false),

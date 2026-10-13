@@ -260,18 +260,16 @@
  * operativos se editan aquí, no en el modal del builder, así que sus textos
  * de estado los pinta este archivo.
  *
- * Son ESTADO, no explicación: el texto depende del interruptor y de si el
- * formulario está en revisión, y quien acaba de cambiarlo lo necesita ver sin
- * tener que volver a pasar el ratón por encima. Por eso NO son tooltips y por
- * eso el constructor (`builder.js`) ya no los escribe. */
+ * Son ESTADO, no explicación: el texto depende del interruptor y quien acaba
+ * de cambiarlo lo necesita ver sin tener que volver a pasar el ratón por
+ * encima. Por eso NO son tooltips y por eso el constructor (`builder.js`) ya
+ * no los escribe. */
 (function () {
     'use strict';
 
     const accessSel = document.getElementById('access_mode');
-    const reviewBox = document.getElementById('review_enabled');
-    const reviewMail = document.getElementById('review_notify_email');
 
-    if (!accessSel && !reviewBox) {
+    if (!accessSel) {
         return;
     }
 
@@ -333,44 +331,15 @@
         }
     }
 
-    /* F3 — Explica el efecto sin pedir que lean las notas. El aviso por correo
-     * va aparte porque es el que más sorprende: activar la revisión y no
-     * enterarse de que no hay correo es como se queda un formulario esperando a
-     * un revisor que nunca se entera. */
-    function updateReviewHint() {
-        const hint = document.getElementById('stReviewHint');
-        if (!hint || !reviewBox) {
-            return;
-        }
-        if (!reviewBox.checked) {
-            hint.textContent = 'Desactivado: publicas directamente, como hasta ahora.';
-            return;
-        }
-        const mail = reviewMail && reviewMail.checked
-            ? 'Se avisará por correo a quien tenga el permiso de revisión.'
-            : 'Solo aparecerá en la bandeja de revisión del panel, sin correo.';
-        hint.textContent = 'El botón Publicar desaparece y el formulario espera en la bandeja. '
-            + 'Editarlo de nuevo lo devuelve a la cola. ' + mail;
-    }
-
-    if (accessSel) {
-        // Las dos van en el mismo `change` y no en dos `addEventListener`: el modo
-        // manda sobre la frase y sobre si el identificador está a la vista, y
-        // separarlas es la forma de que una se quede atrás.
-        accessSel.addEventListener('change', function () {
-            updateAccessHint();
-            updateIdentifierBox();
-        });
+    // Las dos van en el mismo `change` y no en dos `addEventListener`: el modo
+    // manda sobre la frase y sobre si el identificador está a la vista, y
+    // separarlas es la forma de que una se quede atrás.
+    accessSel.addEventListener('change', function () {
         updateAccessHint();
         updateIdentifierBox();
-    }
-    if (reviewBox) {
-        reviewBox.addEventListener('change', updateReviewHint);
-        updateReviewHint();
-    }
-    if (reviewMail) {
-        reviewMail.addEventListener('change', updateReviewHint);
-    }
+    });
+    updateAccessHint();
+    updateIdentifierBox();
 })();
 
 /* El ALTA de un correo a la allowlist (`#accessAddForm`) ya no tiene un
@@ -460,7 +429,7 @@
 })();
 
 /* ---- Grupos colapsables (views/dashboard/forms/show.php y views/admin/users.php)
- * En la ficha del formulario son siete grupos porque, con los siete abiertos,
+ * En la ficha del formulario son seis grupos porque, con los seis abiertos,
  * «Ajustes del formulario» ocupaba más de tres pantallas y el ajuste que se busca
  * casi nunca está en el primero; en «Usuarios» el alta viene cerrada de entrada,
  * porque con el registro público cerrado es la única forma de crear una cuenta y
@@ -490,7 +459,7 @@
 
     /* Un error de guardado sale en el aviso de arriba, no dentro del grupo que lo
      * provocó: si el grupo estaba plegado, el aviso no señala dónde está el problema
-     * y quien guarda tiene que abrir los siete a ciegas. Con error, se ignoran los
+     * y quien guarda tiene que abrir los seis a ciegas. Con error, se ignoran los
      * estados guardados y se abren todos. En «Usuarios» el aviso de un alta
      * rechazada hace lo mismo que aquí: abrir el formulario para poder corregirlo. */
     const hayError = !!document.querySelector('.alert-danger.app-alert');

@@ -21,10 +21,10 @@ namespace Tests\Unit;
  *     con `hover focus click` (el `click` es lo que la hace alcanzable en un
  *     móvil, donde no hay hover).
  *  2. El ESTADO NO se esconde: `stFontNote` y `stAdvanceHint` (en el modal) y
- *     `stAccessHint` / `stReviewHint` (en la ficha, que se pintan desde
- *     `dashboard.js`) los escribe la aplicación al vuelo para decir si el ajuste
- *     sirve. Si un refactor los metiera en un tooltip, quien no pasara el ratón
- *     por encima creería que un ajuste guardado funciona cuando no es así.
+ *     `stAccessHint` (en la ficha, que se pinta desde `dashboard.js`) los
+ *     escribe la aplicación al vuelo para decir si el ajuste sirve. Si un
+ *     refactor los metiera en un tooltip, quien no pasara el ratón por encima
+ *     creería que un ajuste guardado funciona cuando no es así.
  *
  * El nombre de la clase se quedó en «Builder» aunque la mitad de los ajustes se
  * mudara a la ficha: la regla que fija estos tests es de las dos pantallas.
@@ -117,7 +117,6 @@ class BuilderHelpTooltipTest
             'stFontNote'     => [$builder, 'en el modal'],
             'stAdvanceHint'  => [$builder, 'en el modal'],
             'stAccessHint'   => [$ficha, 'en la ficha'],
-            'stReviewHint'   => [$ficha, 'en la ficha'],
         ];
 
         foreach ($donde as $id => [$vista, $dondeEsta]) {
@@ -147,7 +146,6 @@ class BuilderHelpTooltipTest
         assertTrue(str_contains($jsBuilder, "st('stFontNote')"), 'el builder escribe el aviso de la fuente');
         assertTrue(str_contains($jsBuilder, "st('stAdvanceHint')"), 'y el del avance automático');
         assertTrue(str_contains($jsFicha, "getElementById('stAccessHint')"), 'la ficha escribe el del modo de acceso');
-        assertTrue(str_contains($jsFicha, "getElementById('stReviewHint')"), 'y el de la revisión');
     }
 
     /**
@@ -216,7 +214,7 @@ class BuilderHelpTooltipTest
 
         foreach ([
             'access_mode', 'open_at', 'close_at', 'quota_max', 'notify_emails',
-            'confirm_to_field', 'webhook_url', 'thanks_message', 'review_enabled',
+            'confirm_to_field', 'webhook_url', 'thanks_message',
             'locale',
         ] as $campo) {
             assertTrue(str_contains($ficha, 'name="' . $campo . '"'), $campo . ' se edita en la ficha');

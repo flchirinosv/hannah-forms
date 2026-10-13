@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1072 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1099 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -377,9 +377,13 @@ Para no perderte, prepara esto antes de empezar:
 | N20 | El mismo borrado con la confirmación rechazada | No pasa nada: el rol sigue ahí | M | |
 | N21 | Abrir `/admin` | El alta y «Acceso de cualquiera» están **en la misma fila** (2/3 y 1/3), y la tabla de usuarios debajo a todo el ancho | M | |
 | N22 | Entrar con un rol sin `admin.access` | Solo se pinta el alta, y ocupa las mismas 8 columnas: no queda un hueco a la derecha | M | |
-| N23 | Plegar «Nuevo usuario», recargar y volver a entrar en `/admin` | Sigue plegado **en esa pantalla**, y al abrir la ficha de un formulario sus siete grupos salen **abiertos**: el estado va por pantalla | A | |
+| N23 | Plegar «Nuevo usuario», recargar y volver a entrar en `/admin` | Sigue plegado **en esa pantalla**, y al abrir la ficha de un formulario sus seis grupos salen **abiertos**: el estado va por pantalla | A | |
 | N24 | Crear un usuario con el registro público **cerrado** | El alta se despliega y se puede enviar igual. Con el **JavaScript desactivado** el formulario también se ve y funciona: es la única vía para crear un `user` o un `editor` | A | |
 | N25 | Plegar «Nuevo usuario» y crear una cuenta con un email repetido | El aviso sale arriba y **el alta se abre sola**, para poder corregir sin desplegar a ciegas | A | |
+| N26 | A un `user` darle `forms.manage_all` desde la columna «Permisos» de su fila | Ve y opera formularios ajenos **sin** cambiarle el rol ni meterlo en un grupo | A | |
+| N27 | Quitarle esa casilla y guardar | Pierde el permiso en la petición siguiente: el POST es la lista completa, no «no lo he tocado» | A | |
+| N28 | Abrir el desplegable «Permisos» de un usuario | Arriba, en solo lectura, el desglose de dónde sale cada permiso (Rol / Grupos / Extra) | M | |
+| N29 | Entrar a `/admin` con un rol sin `admin.users` | Ve las insignias de permisos extra en solo lectura, **no** los checkboxes: mirarlos no mueve la autorización de nadie | M | |
 
 ---
 
@@ -470,7 +474,7 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S7 | «Agregar dentro» en una sección del constructor | El botón ocupa el ancho de la tarjeta, alineado con las de arriba | M | |
 | S8 | Publicar un formulario con reglas de visibilidad | No sale el texto «Se muestra si: …» ni en los campos ni en las secciones; las reglas siguen funcionando (se omiten los campos y las secciones que no aplican) | A | |
 | S9 | Constructor → un campo con condición | El editor **sí** sigue viendo su insignia con la regla: es información de quien edita, no de quien responde | M | |
-| S10 | Ficha del formulario → «Ajustes del formulario» | Siete grupos plegables (Acceso, Programación y cupo, Notificaciones, Webhook, Mensaje final, Revisión e Idioma), con el chevron apuntando al grupo abierto | M | |
+| S10 | Ficha del formulario → «Ajustes del formulario» | Seis grupos plegables (Acceso, Programación y cupo, Notificaciones, Webhook, Mensaje final e Idioma público), con el chevron apuntando al grupo abierto | M | |
 | S11 | Plegar dos grupos, recargar y abrir otro formulario | Cada formulario **recuerda los suyos**: los grupos de este no se mueven al abrir otra ficha | A | |
 | S12 | Plegar un grupo y **guardar con un error** (por ejemplo una fecha de cierre anterior a la de apertura) | Salen todos los grupos abiertos: el aviso está arriba y el ajuste que falló no puede quedar escondido | A | |
 | S13 | Recorrer los grupos con el teclado | El título de cada grupo es un botón enfocable, con anillo de foco visible, y `Enter`/`Espacio` lo pliegan sin enviar nada | A | |
@@ -525,7 +529,7 @@ deja en el quinto es un fallo de la misma clase que un `</div>` de más.
 | T1 | Ficha de un formulario **borrador** → «Publicar» | No recarga. Se apaga el botón mientras vuela y salen juntos: la insignia «Publicado», los botones que tocan, y la tarjeta de compartir con enlace, QR e iframe | A | |
 | T2 | El mismo formulario → «Cerrar» (con confirmación) | Antes de salir: pregunta. Después, sin recarga, «Cerrado» en la insignia **y** desaparece la tarjeta de compartir (ya no hay enlace que repartir) | A | |
 | T3 | Publicar y cerrar dos veces seguidas en la misma pantalla | El estado que se ve es el que **queda**: nunca se ven a la vez «Publicado» y el QR, ni «Cerrado» con el botón de publicar | A | |
-| T4 | Ficha → «Ajustes del formulario» → cambiar el nombre y guardar | No recarga y el título nuevo se ve en el encabezado al instante; los siete grupos **no se repliegan** y el scroll no salta | M | |
+| T4 | Ficha → «Ajustes del formulario» → cambiar el nombre y guardar | No recarga y el título nuevo se ve en el encabezado al instante; los seis grupos **no se repliegan** y el scroll no salta | M | |
 | T5 | Un formulario publicado **con revisión activa** → guardar cualquier ajuste | No recarga, y el aviso dice que volvió a la cola: la insignia pasa a «En revisión» y la aprobación anterior desaparece | A | |
 | T6 | Un formulario **aprobado** → cambiar algo en el constructor y guardar | La insignia pasa a «En revisión» y aparece la acción de aprobar (es la misma regla del builder, ahora también en la insignia) | A | |
 | T7 | Enviar a revisión → aprobar con otra cuenta | No recarga. La insignia pasa a «Publicado», sale la traza **nombrando al aprobador** y el botón es el de cerrar | A | |

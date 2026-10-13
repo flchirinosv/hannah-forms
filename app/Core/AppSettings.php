@@ -32,6 +32,16 @@ final class AppSettings
     public const REGISTRATION = 'registration_enabled';
 
     /**
+     * Política de revisión de la instancia: si está encendida, toda encuesta
+     * pasa por revisión antes de publicarse (salvo dueños exentos por el
+     * permiso `forms.publish_without_review`). Fila ausente = `.env`.
+     */
+    public const REVIEW_REQUIRED = 'review_required';
+
+    /** Aviso por correo a los revisores cuando alguien envía a revisión. */
+    public const REVIEW_NOTIFY_EMAIL = 'review_notify_email';
+
+    /**
      * Override de test, con la misma forma que el de `Config`.
      *
      * Es un seam y no un setter: la app no lo llama nunca. Existe porque el

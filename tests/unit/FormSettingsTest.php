@@ -43,10 +43,9 @@ class FormSettingsTest
         assertArrayHasKey('randomize', $d);
         assertArrayHasKey('embed', $d);
         assertArrayHasKey('honeypot', $d);
-        // F3
-        assertArrayHasKey('review', $d);
-        assertSame(false, $d['review']['enabled']);
-        assertSame(false, $d['review']['notify_email']);
+        // La revisión ya NO es un bloque del formulario: es la política de la
+        // instancia (`app_settings`), así que no tiene clave en `defaults()`.
+        assertFalse(array_key_exists('review', $d), 'la revisión dejó de ser un ajuste por formulario');
         assertArrayHasKey('locale', $d);
         assertSame(['es', 'en'], FormSettings::LOCALES);
     }

@@ -250,7 +250,9 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 | POST | `/admin/users/role` | auth, admin, csrf | Cambiar rol (no permite auto-degradar admin) |
 | POST | `/admin/users/groups` | auth, admin, csrf | Grupos de un usuario (`groups[]` = lista completa; vacíos lo sacan de todos) |
 | POST | `/admin/users/toggle` | auth, admin, csrf | Activar/desactivar usuario (no sobre sí mismo) |
+| POST | `/admin/users/permissions` | auth, admin, csrf | Permisos extra de un usuario (`permissions[]` = lista completa; vacíos los quita; claves fuera del catálogo se descartan; JSON: repinta `vfUserPerms<uid>`) |
 | POST | `/admin/settings/registration` | auth, admin, csrf | Abrir/cerrar el registro público (`admin.access`, JSON: `ok`, `enabled`, `message`) |
+| POST | `/admin/settings/review` | auth, admin, csrf | Política de revisión de la instancia (`review_required`, `review_notify_email`) |
 | GET | `/admin/forms` | auth, admin | Lista global de formularios |
 | GET | `/admin/groups` | auth, admin | Grupos de roles (RBAC) |
 | POST | `/admin/groups/create` | auth, admin, csrf | Crear grupo |

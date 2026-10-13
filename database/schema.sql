@@ -291,6 +291,19 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     CONSTRAINT fk_rp_perm FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Permisos DIRECTOS de un usuario: la cuarta fuente del RBAC (2026-10-13). Es la
+-- vía para dar UN permiso a UNA persona sin cambiarle el rol ni meterla en un
+-- grupo. Se SUMAN a los del rol y a los de los grupos (`Auth::permissions()`),
+-- nunca se restan. Se llama `user_permissions` y no `permissions` para no chocar
+-- con el catálogo de arriba.
+CREATE TABLE IF NOT EXISTS user_permissions (
+    user_id       INT UNSIGNED NOT NULL,
+    permission_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (user_id, permission_id),
+    CONSTRAINT fk_up_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_up_perm FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- Grupo de ROLES: agrupa roles y usuarios. Un usuario hereda los permisos de
 -- su propio rol + los de los roles de sus grupos (Auth::permissions()).
 CREATE TABLE IF NOT EXISTS role_groups (

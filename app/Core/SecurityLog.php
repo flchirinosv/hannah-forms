@@ -136,6 +136,7 @@ final class SecurityLog
             'upload.denied_ext',
             'admin.user_toggle',
             'admin.role_change',
+            'admin.user_permissions',
             'admin.group_create',
             'admin.group_membership',
             'admin.group_delete',
@@ -148,6 +149,8 @@ final class SecurityLog
             // panel «admin» significaría algo distinto.
             'instance.registration_on',
             'instance.registration_off',
+            'instance.review_on',
+            'instance.review_off',
             'form.delete',
             'form.duplicate',
             'form.review_request',

@@ -14,6 +14,7 @@ use App\Core\View;
 use App\Models\Field;
 use App\Models\Form;
 use App\Services\LogicEvaluator;
+use App\Services\ReviewPolicy;
 
 class BuilderController
 {
@@ -329,14 +330,12 @@ class BuilderController
                 // corresponder a lo aprobado, así que vuelve a la cola en vez de
                 // quedarse publicado con cambios que nadie miró.
                 //
-                // Se resuelve la bandera con los settings que VIENEN en este
-                // mismo POST si los hay, y no con los ya guardados: el dueño
-                // puede activar la revisión y guardar a la vez, y en ese mismo
-                // POST el estado ya tiene que quedar sujeto a ella.
-                $reviewRequired = self::reviewRequiredAfterSave(
-                    isset($body['settings']) && is_array($body['settings']) ? $body['settings'] : null,
-                    (int) $form['id']
-                );
+                // La política es de la INSTANCIA y de la pertenencia del dueño,
+                // no de un ajuste del formulario: por eso ya no depende de los
+                // settings que vienen en el POST. Si la instancia exige revisión
+                // y el dueño no está exento, el estado del builder queda sujeto
+                // a ella en este mismo guardado.
+                $reviewRequired = ReviewPolicy::requiredFor($form);
 
                 $requeuedForReview = false;
                 if ($reviewRequired) {
@@ -425,22 +424,6 @@ class BuilderController
             Response::json(['ok' => false, 'error' => 'Ocurrió un error al guardar. Intenta de nuevo.'], 500);
             return;
         }
-    }
-
-    /**
-     * F3 — ¿Quedará este formulario sujeto a revisión tras este guardado?
-     *
-     * `null` de settings entrantes significa «no vienen en este POST»: entonces
-     * manda lo que hay guardado, y se normaliza igual para no distinguir entre
-     * un `true` y un `"1"` de un POST antiguo.
-     */
-    private static function reviewRequiredAfterSave(?array $incoming, int $formId): bool
-    {
-        $settings = $incoming !== null
-            ? \App\Services\FormSettings::normalize($incoming)
-            : Form::settings($formId);
-
-        return !empty($settings['review']['enabled']);
     }
 
     /**

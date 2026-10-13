@@ -232,7 +232,18 @@ no se pinta y sale un aviso explicando por qué. Un rol o un grupo que ya no
 existen (por ejemplo, una pestaña que lleva mucho tiempo abierta) tampoco se
 aplican: sale el motivo junto a la celda y no se cambia nada.
 
-Sin JavaScript, los dos se guardan como formularios de toda la vida y la página
+La tercera columna editable es **Permisos**: ahí puedes dar a una persona
+permisos **sueltos** (un permiso a una persona, sin cambiarle el rol ni meterla
+en un grupo, que afectaría a todo el equipo). Se marcan y se guardan con su
+botón, como los grupos. Arriba del desplegable, en solo lectura, tienes el
+**desglose de dónde sale cada permiso** que ya tiene (Rol / Grupos / Extra), para
+no tener que ir mirando su rol y sus grupos por separado. Borrar el rol de
+alguien y volver a ponérselo **no** borra sus permisos sueltos; para quitárselos
+hay que desmarcarlos aquí. Si tu cuenta no tiene `admin.users` (el permiso que
+mueve la autorización de una persona) verás las insignias de lo que tiene, pero
+no podrás marcar casillas.
+
+Sin JavaScript, los tres se guardan como formularios de toda la vida y la página
 se recarga.
 
 ### 4.4 Roles
@@ -245,8 +256,10 @@ se recarga.
 | `approver` | Revisa y aprueba: entra al panel y a la bandeja de revisión, y no puede crear ni editar formularios. Es el rol para que quien aprueba **no** sea quien puede cambiar el formulario. |
 
 Un rol nuevo se crea sin permisos: la matriz es la que decide qué puede hacer.
-Los permisos efectivos de alguien son **su rol + los roles de sus grupos**, así
-que puedes darle a un grupo entero una capacidad sin tocar a cada persona.
+Los permisos efectivos de alguien son **su rol + los roles de sus grupos + los
+permisos sueltos que le concedas**, así que puedes darle a un grupo entero una
+capacidad sin tocar a cada persona, o a una sola persona un permiso sin tocarle
+ni el rol ni los grupos.
 
 **Los cuatro roles de la tabla son del sistema y no se pueden borrar**: sin
 `admin` la instalación se queda sin panel, sin `user` no hay rol por defecto en
@@ -267,6 +280,7 @@ rol les traía.
 | `forms.delete_own` | Borrar los propios (no lo tiene `editor`). |
 | `forms.manage_all` | Ver y operar los formularios de cualquier usuario. |
 | `forms.review` | **Aprobar o devolver** formularios enviados a revisión. |
+| `forms.publish_without_review` | Publicar sin pasar por la revisión cuando la instancia la exige (ver §4.5 y §8). Pensado para quien responde por la instalación, no para que cada autor se autoapruebe. |
 | `forms.export_own` | Exportar datos. |
 | `responses.view_own` | Ver y eliminar respuestas. |
 | `responses.pii` | Ver los datos personales **sin** enmascarar (ver §9). |
@@ -277,9 +291,12 @@ rol les traía.
 | `dashboard.view` | Entrar al panel de usuario. |
 
 Dato importante: **`forms.review` no es lo mismo que `forms.edit_own`.**
-Poder editar tu propio formulario no te deja publicarlo si el formulario está
-en revisión; hace falta `forms.review`. Existe para que nadie pueda publicar un
-texto por su cuenta.
+Poder editar tu propio formulario no te deja aprobarlo. Si la revisión está
+activada en la instalación (§8, y el interruptor de `/admin`), tu formulario
+tiene que pasar por la bandeja y lo aprueba alguien con `forms.review` — que
+puede ser tú mismo si lo tienes. Quien tenga `forms.publish_without_review`
+publica sin pasar por la bandeja; existe para quien responde por la instalación,
+no para que cada autor se apruebe lo suyo.
 
 ### 4.6 Recuperar la contraseña
 
@@ -456,7 +473,7 @@ Están repartidos en **dos sitios**, según lo que cambia el ajuste:
 
 | Dónde | Qué se edita allí |
 |---|---|
-| **Ficha del formulario** (`/forms/{id}`) — tarjeta *Ajustes del formulario* | Acceso (quién responde), programación, cupo, avisos y confirmación, webhook, mensaje final, revisión e idioma |
+| **Ficha del formulario** (`/forms/{id}`) — tarjeta *Ajustes del formulario* | Acceso (quién responde), programación, cupo, avisos y confirmación, webhook, mensaje final e idioma |
 | **Constructor** — botón *Configuración* | Tema, quiz, orden de las preguntas, avance automático, embed y anti-bot |
 
 La ficha se reparte en **dos columnas**. A la izquierda, la ancha, va lo que
@@ -481,7 +498,6 @@ Grupos y valores por defecto:
 | Correo | Ficha | Aviso al dueño, confirmación al que responde | Desactivado |
 | Webhook | Ficha | Endpoint (JSON o Slack) con firma HMAC | Desactivado |
 | Mensaje final | Ficha | Mensaje de gracias y redirección | Sin redirección |
-| Revisión | Ficha | Revisión antes de publicar + aviso por correo | Desactivado |
 | Idioma | Ficha | `es` o `en` | `es` |
 | Tema | Constructor | Color primario, color de fondo, tipografía | Sin personalización |
 | Comportamiento | Constructor | Quiz, barajado, avance automático, embed | Desactivado |
@@ -603,10 +619,17 @@ constructor. Hay tres acciones distintas y no se sustituyen:
 | **Cerrar** | Deja de aceptar envíos. Las respuestas se conservan. |
 | **Enviar a revisión** | Manda el formulario a la bandeja de revisión. |
 
-**Con revisión activada, «Publicar» no publica.** Se rechaza con un aviso que
-te dice que lo envíes a revisión, en lugar de un 403 que no sabrías
-interpretar. A partir de ahí el formulario solo se mueve con las tres acciones
-de la bandeja (enviar, aprobar, devolver a borrador).
+**Con la revisión activada en la instalación, «Publicar» no publica.** Se rechaza
+con un aviso que te dice que lo envíes a revisión, en lugar de un 403 que no
+sabrías interpretar. A partir de ahí el formulario solo se mueve con las tres
+acciones de la bandeja (enviar, aprobar, devolver a borrador).
+
+La revisión es **una política de la instalación, no un ajuste de cada
+formulario**: un administrador la enciende (o la apaga) en `/admin` — pestaña
+*Usuarios*, tarjeta **Revisión de formularios** — con los interruptores *Exigir
+revisión a todos* y *Avisar por correo a los revisores*. Quien tenga el permiso
+`forms.publish_without_review` (ver §4.5) queda exento y publica sin pasar por la
+bandeja. Antes esto se configuraba formulario a formulario; ya no.
 
 La bandeja de `/review` muestra **todos** los formularios de la instalación que
 están esperando, no solo los tuyos: es un punto de control común. Si revisas los
@@ -886,9 +909,9 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 
 | Síntoma | Causa probable |
 |---|---|
-| «Publicar» no publica y avisa | El formulario exige revisión. Envíalo a revisión (ver §8.1) |
+| «Publicar» no publica y avisa | La revisión está activada en la instalación. Envíalo a revisión (ver §8.1) |
 | El enlace da 403 | Sigue en borrador, o está en revisión o cerrado. |
-| Editar lo devolvió a la cola | Con revisión activa, editar un formulario aprobado borra la aprobación anterior. Es a propósito. |
+| Editar lo devolvió a la cola | Con la revisión activada en la instalación, editar un formulario aprobado borra la aprobación anterior. Es a propósito. |
 | La tabla de respuestas se queda «cargando» | Debe ser un bug de `analytics.js`. Comprobado en `751602c`. |
 | Un campo con condición sigue apareciendo al enviar | La condición se cumple: se muestra, y sus respuestas sí se guardan. |
 | Los correos no llegan | Sin SMTP configurado. Revisa `MAIL_*` y que el remitente esté autorizado. |

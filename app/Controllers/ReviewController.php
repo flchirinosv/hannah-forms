@@ -17,6 +17,7 @@ use App\Core\View;
 use App\Models\Form;
 use App\Models\User;
 use App\Services\FormPanel;
+use App\Services\ReviewPolicy;
 
 /**
  * F3 — Revisión y aprobación de formularios.
@@ -82,10 +83,9 @@ class ReviewController
     /**
      * Dueño: mandar el formulario a revisión.
      *
-     * El aviso por correo es OPCIONAL y va en `settings.review.notify_email`,
-     * no en un parámetro del POST: quien activa la revisión en el builder está
-     * eligiendo si avisar, y el constructor del POST no debería poder activarlo
-     * por su cuenta.
+     * El aviso por correo es OPCIONAL y lo decide la política de la instancia
+     * (`review_notify_email`), no un parámetro del POST: el dueño no debería
+     * poder activarlo por su cuenta al enviar.
      */
     public function sendReview(int $id): void
     {
@@ -266,8 +266,9 @@ class ReviewController
      */
     private function notifyReviewers(array $form): void
     {
-        $settings = Form::settings((int) $form['id']);
-        if (empty($settings['review']['notify_email'])) {
+        // El aviso es una decisión de la INSTANCIA (opt-in), no del formulario:
+        // con el correo apagado el envío a revisión solo aparece en la bandeja.
+        if (!ReviewPolicy::notifyEmail()) {
             return;
         }
 

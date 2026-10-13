@@ -406,8 +406,8 @@ body {
 }
 
 /* ---------- Grupos colapsables de «Ajustes del formulario» ----------
-   Siete grupos plegables (acceso, agenda, avisos, webhook, gracias, revisión
-   e idioma) porque con los siete abiertos el formulario entero ocupaba más
+   Seis grupos plegables (acceso, agenda, avisos, webhook, gracias e idioma)
+   porque con los seis abiertos el formulario entero ocupaba más
    de tres pantallas y el ajuste que se busca casi nunca está en el primero.
    El plegado lo trae Bootstrap Collapse sobre un `<button>` dentro del
    `<legend>`: el `legend` conserva el nombre accesible del `fieldset` y el
@@ -2208,17 +2208,36 @@ body {
    estrecha a lo que necesita y no ensancha la columna. */
 .app-rbac-select { width: auto; min-width: 9rem; }
 
-/* Botón que abre los grupos de un usuario: muestra las badges dentro, y al
-   no tener grupos dice "Sin grupos" en vez de parecer un control vacío. */
-.app-rbac-groups-btn {
+/* Botones que abren los grupos o los permisos extra de un usuario (columna de
+   /admin): muestran las insignias dentro, y sin nada dicen "Sin grupos" /
+   "Sin permisos extra" en vez de parecer un control vacío. Los permisos usan la
+   misma caja que los grupos porque son la misma interacción. */
+.app-rbac-groups-btn,
+.app-rbac-perms-btn {
     display: inline-flex;
     align-items: center;
     gap: .25rem;
     max-width: 18rem;
     flex-wrap: wrap;
 }
-.app-rbac-groups-btn .badge { font-weight: 500; }
-.app-rbac-groups-btn:focus-visible { box-shadow: var(--vf-focus-ring); }
+.app-rbac-groups-btn .badge,
+.app-rbac-perms-btn .badge { font-weight: 500; }
+.app-rbac-groups-btn:focus-visible,
+.app-rbac-perms-btn:focus-visible { box-shadow: var(--vf-focus-ring); }
+
+/* Clave de permiso en las insignias del botón: `code` compacto y en una línea,
+   con la clave completa en el `title`. */
+.app-perm-chip {
+    font-size: .7rem;
+    padding: .05rem .35rem;
+    border-radius: 999px;
+    background: var(--vf-bg, #f4f5fb);
+    color: var(--vf-primary-dark, #4f46e5);
+}
+
+/* El menú de permisos lleva el desglose efectivo + la lista del catálogo: algo
+   más ancho que un menú normal para que las claves no se corten. */
+.app-perms-menu { min-width: 20rem; }
 
 /* ---- Diálogo de confirmación del panel (F0.4-tres) ----
    `#vfConfirm` sustituye al `confirm()` del navegador. El estilo es casi todo de

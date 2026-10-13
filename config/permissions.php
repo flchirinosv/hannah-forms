@@ -48,6 +48,15 @@ return [
     // `approver` es exactamente el rol de quien solo hace eso.
     'forms.review'          => ['Aprobar o devolver formularios enviados a revisión', ['admin', 'approver']],
 
+    // F3 (revisada) — EXENCIÓN de la revisión de la instancia. Cuando la
+    // política de revisión está activa (`review_required`), toda encuesta pasa
+    // por la bandeja antes de publicarse SALVO la de un dueño con este permiso.
+    // Es una CAPACIDAD y no un alcance, como `forms.review`: no decide a qué
+    // formularios se llega, sino si el DUEÑO se salta la cola. Por defecto solo
+    // `admin`: la exención es la excepción, y quien la reparta decide quién
+    // publica sin que nadie mire.
+    'forms.publish_without_review' => ['Publicar formularios propios sin pasar por revisión cuando la instancia la exige', ['admin']],
+
     // Analítica, respuestas y adjuntos de formularios propios.
     'analytics.view_own'    => ['Ver la analítica de formularios propios', ['admin', 'user', 'editor']],
     'responses.view_own'    => ['Ver y eliminar respuestas de formularios propios', ['admin', 'user', 'editor']],

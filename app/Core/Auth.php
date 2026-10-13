@@ -201,8 +201,12 @@ class Auth
 
     /**
      * Permisos efectivos del usuario actual: los de su rol + los de los roles
-     * de sus grupos (RBAC). Cacheado por request: un cambio de rol/grupo se
-     * refleja en el siguiente request, igual que el resto de `Auth`.
+     * de sus grupos + sus permisos DIRECTOS (RBAC, cuatro fuentes). Cacheado por
+     * request: un cambio de rol/grupo/permiso directo se refleja en el siguiente
+     * request, igual que el resto de `Auth`.
+     *
+     * Los directos se SUMAN, nunca se restan: no hay una lista negra. Un permiso
+     * que venga por rol y también directo cuenta una sola vez (`array_unique`).
      *
      * @return array<string>
      */
@@ -212,9 +216,14 @@ class Auth
             return self::$permissions;
         }
         $user = self::user();
-        self::$permissions = $user === null
-            ? []
-            : Role::effectivePermissionKeys((int) $user['role_id'], self::groups());
+        if ($user === null) {
+            self::$permissions = [];
+            return self::$permissions;
+        }
+        $perms = Role::effectivePermissionKeys((int) $user['role_id'], self::groups());
+        $direct = User::permissionKeys((int) $user['id']);
+        self::$permissions = array_values(array_unique(array_merge($perms, $direct)));
+        sort(self::$permissions);
         return self::$permissions;
     }
 
