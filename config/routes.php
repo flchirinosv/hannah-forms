@@ -140,6 +140,7 @@ $router->post('/admin/users/role', [AdminController::class, 'updateRole'], ['aut
 $router->post('/admin/users/groups', [AdminController::class, 'updateUserGroups'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/permissions', [AdminController::class, 'updateUserPermissions'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], ['auth', 'admin', 'csrf']);
+$router->get('/admin/settings', [AdminController::class, 'settings'], ['auth', 'admin']);
 $router->post('/admin/settings/registration', [AdminController::class, 'updateRegistration'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/settings/review', [AdminController::class, 'updateReviewPolicy'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);

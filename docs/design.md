@@ -222,8 +222,8 @@ Fuera del builder, pero con el mismo lenguaje visual.
 | `.app-rbac-section` | Cabecera de sección de la matriz, con «marcar toda la sección» |
 | `.app-rbac-count` | Contador `n/total` de la columna de un rol |
 | `.app-perm-chip` | Insignia de un permiso extra concedido en la columna del listado |
-| `.app-row-menu-btn` | El `⋯` de una fila de usuarios: única puerta de acciones |
-| `.app-row-menu` | Menú con rol, grupos, permisos extra y estado de esa fila (ancho acotado y scroll interno) |
+| `.app-row-menu-btn` | El `⋯` de una fila de usuarios: única puerta de acciones (dispara `#userActionsModal`) |
+| `.app-row-menu` | Panel con rol, grupos, permisos extra y estado de esa fila; dentro del modal, `.modal-body .app-row-menu` suelta el ancho mínimo y el tope de alto |
 | `.app-admin-table` | La tabla de usuarios; en móvil (≤991.98px) se apila en tarjetas con `data-label` |
 
 Dos reglas que nacen de no haber sido designed antes:
@@ -437,11 +437,12 @@ no era el color, era la densidad y la jerarquía.
 - **`app-head-actions` es el contrato de la fila de acciones** (ver §3.11): el
   partial es quien la emite, así que las vistas ya no llevan esa clase suelta.
   Lo ata `FormFichaLayoutTest`.
-- **La sub-navegación conserva sus rótulos en móvil.** Los cinco destinos
-  (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad, Formularios)
-  llevan icono **y** texto en todas las franjas; en móvil la fila se desplaza
-  en horizontal en una sola línea en vez de partirse en tres o quedarse en
-  iconos sueltos (un icono sin rótulo no dice a dónde lleva). Lo ata
+- **La sub-navegación conserva sus rótulos en móvil.** Los seis destinos
+  (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad, Formularios,
+  Ajustes de la instancia) llevan icono **y** texto en todas las franjas; en
+  móvil la fila se desplaza en horizontal en una sola línea en vez de partirse en
+  tres o quedarse en iconos sueltos (un icono sin rótulo no dice a dónde lleva).
+  Lo ata
   `ContentButtonsMobileTest::testLaSubNavegacionDeAdminConservaSusRotulos`.
 - **La densidad se resuelve con jerarquía, no con menos datos.** La tabla de
   usuarios lleva 8 columnas: en móvil se convierte en tarjetas apiladas
@@ -449,21 +450,38 @@ no era el color, era la densidad y la jerarquía.
   `<td>` declara su `data-label`, y la regla `@media (max-width: 991.98px)` de
   `app.css` oculta la cabecera y pinta ese rótulo delante del valor. Una celda
   nueva sin `data-label` sale sin nombre en el móvil y no da ningún error.
-- **La columna muestra el valor; la edición vive en el menú.** Rol, grupos,
+- **La columna muestra el valor; la edición vive en un modal.** Rol, grupos,
   permisos extra y estado son insignias en la fila, no controles estirados por
   ella. El único punto de entrada es el botón `⋯` (`.app-row-menu-btn`) de la
-  última columna, que abre un `.app-row-menu` con los cuatro formularios dentro
-  (`data-bs-auto-close="outside"` para poder editar varias cosas seguidas). Las
-  insignias que el fetch repinta (`vfUserRole/Status/Groups/Perms<uid>`) siguen
-  siendo partials.
-- **La tarjeta de un grupo tiene cabecera-resumen y el buscador filtra sin
-  desmarcar.** El grupo pinta su resumen (nombre, insignias de roles/miembros y
-  «lo que otorga») con   `views/admin/_group_summary.php`, y guardarlo sin recarga
-  repinta ESE hueco (`vfGroupSummary<gid>`) — el GET y el POST usan el mismo
-  partial, así que no pueden divergir. El buscador de miembros es de **cliente**
-  y solo esconde `.app-rbac-item`: la pertenencia es el POST completo, de modo
-  que filtrar en servidor sacaría del grupo a quien no casa al guardar. Lo ata
-  `AdminRbacTest`.
+  última columna; al pulsarlo, `dashboard.js` **mueve** el panel `.app-row-menu`
+  de esa fila al diálogo compartido `#userActionsModal` y lo devuelve a su fila
+  al cerrar. Un solo diálogo para todas las filas: duplicar el panel por usuario
+  serían N copias. Las insignias que el fetch repinta
+  (`vfUserRole/Status/Groups/Perms<uid>`) siguen siendo partials, y el `action` de
+  cada formulario no cambia, así que sin JS el POST nativo sigue funcionando.
+- **Las altas del panel viven en modales, sin duplicar el marcado.** El alta de
+  usuario (`#newUserModal`) y la de grupo (`#newGroupModal`) se sirven **en
+  línea** en la vista (que es lo que se ve sin JS) y `dashboard.js`
+  (`moverFormulariosInline()`) las traslada al diálogo cuando puede; el
+  contenedor en línea se oculta solo después de mover. La alternativa —una copia
+  dentro del modal y otra fuera— serían dos sitios que se separan y un
+  `<noscript>` que solo tapa la copia duplicada.
+- **Los ajustes de la INSTANCIA tienen pantalla propia (`/admin/settings`).** El
+  registro público y la política de revisión dejaron de compartir el listado de
+  usuarios, donde competían en altura sin ser de esa pantalla. La pestaña va con
+  `admin.access` (el permiso del panel), no `admin.users`: abrir el registro o
+  activar la revisión no toca la cuenta de nadie. Lo ata `AdminSettingsPageTest`.
+- **La tarjeta de un grupo tiene cabecera-resumen, es plegable, y «lo que otorga»
+  va al cuerpo.** El resumen (nombre, insignias de roles/miembros y el borrado)
+  lo pinta `views/admin/_group_summary.php`; guardar sin recarga repinta ESE
+  hueco (`vfGroupSummary<gid>`) **y** el efecto (`vfGroupEffect<gid>`,
+  `views/admin/_group_effect.php`), porque el GET y el POST usan los mismos
+  partials y no pueden divergir. La tarjeta abre en su estado por defecto con el
+  plegado genérico por `data-vf-group-key` (clave `admin-grupos`) y paneles
+  `grp-grupo-<gid>`; el alta vive en el modal (§ arriba). El buscador de
+  miembros es de **cliente** y solo esconde `.app-rbac-item`: la pertenencia es
+  el POST completo, de modo que filtrar en servidor sacaría del grupo a quien no
+  casa al guardar. Lo atan `AdminRbacTest` y `GroupCollapseContractTest`.
 - **La matriz de permisos se ancla a sí misma, no al `.table-responsive`.** Con
   el catálogo entero, nombre de rol y contador `n/total` tienen que seguir a la
   vista al bajar. El contenedor propio `.app-rbac-matrix-scroll` acota el alto
@@ -564,17 +582,28 @@ son estética: son la diferencia entre «se ve bonito» y «se puede operar».
   oculta las filas de la página pero no cambia cuáles son, y con la segunda
   página el número que se busca ni está en el DOM.
 - **Una acción primaria por pantalla.** El «alta» (crear usuario, crear grupo,
-  crear rol) vive en su propia tarjeta plegable; las acciones secundarias van en
-  la fila de acciones de la cabecera. No compiten dos botones primarios verdes a
-  la vez.
+  crear rol) abre su **modal** desde el botón de la fila de acciones de la
+  cabecera; las acciones secundarias no compiten con él. No hay dos botones
+  primarios verdes a la vez, y el formulario de alta se sirve en línea (lo que se
+  ve sin JS) para que el mismo nodo viaje al diálogo.
 - **Una sola puerta por fila.** Las cuatro acciones de una fila de usuario (rol,
-  grupos, permisos extra, activar/desactivar) viven en un único menú `⋯` al
-  final de la fila, no en cuatro controles sueltos. El rol es un `<select>` que
-  se envía solo al cambiar (`js-auto-submit`); los otros tres son formularios
-  con botón. El guardado es sin recarga con el patrón bimodal
-  (`data-vf-async="slots"`): mismo markup, mismo controlador y camino nativo sin
-  JS. La fila propia (uno mismo) no ofrece el menú: cambiar tu role o tu estado
-  desde aquí no es una operación del listado.
+  grupos, permisos extra, activar/desactivar) viven en un único panel `⋯` al
+  final de la fila, no en cuatro controles sueltos. El `⋯` dispara
+  `#userActionsModal` y el panel de esa fila se **mueve** dentro (no se clona);
+  al cerrar vuelve a su fila. El rol es un `<select>` que se envía solo al
+  cambiar (`js-auto-submit`); los otros tres son formularios con botón. El
+  guardado es sin recarga con el patrón bimodal (`data-vf-async="slots"`): mismo
+  markup, mismo controlador y camino nativo sin JS. La fila propia (uno mismo) no
+  ofrece el panel: cambiar tu role o tu estado desde aquí no es una operación del
+  listado.
+- **Un modal que se abre desde una fila o un alta no duplica el marcado; mueve el
+  nodo.** `moverFormulariosInline()` y `initTablaAcciones()` (`dashboard.js`)
+  toman el formulario o el panel que ya está en la vista y lo insertan en
+  `[data-vf-modal-body]`; al cerrar, `initTablaAcciones()` lo devuelve a su caja.
+  Los `id` de los huecos, los `action` y los avisos siguen siendo los de la fila,
+  así que el repintado por fetch no se entera de dónde está el nodo. La
+  alternativa —una copia en el modal y otra en la vista— son dos sitios que se
+  separan sin que nada falle.
 - **Lo que se guarda sin recarga no miente.** Un hueco que se repinta por fetch
   declara su `id` en el POST (`vfUserStatus<uid>`, `vfUserGroups<uid>`…) y el
   servidor devuelve ese mismo nombre; el JS solo sustituye el `innerHTML` de los

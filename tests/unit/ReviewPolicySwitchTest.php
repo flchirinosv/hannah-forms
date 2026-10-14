@@ -211,7 +211,7 @@ class ReviewPolicySwitchTest
         $r = $this->post(['review_required' => '1', 'review_notify_email' => '1'], (int) $this->adminId);
 
         assertSame('redirect', (string) ($r['halt']['type'] ?? ''), 'es un POST nativo: redirige');
-        assertSame('/admin', (string) ($r['halt']['url'] ?? ''), 'y vuelve al panel (PRG)');
+        assertSame('/admin/settings', (string) ($r['halt']['url'] ?? ''), 'y vuelve a la pantalla de ajustes (PRG)');
         assertTrue(ReviewPolicy::policyOn(), 'la fila manda sobre el .env apagado');
         assertTrue(ReviewPolicy::notifyEmail());
         assertSame('1', (string) (self::fila(self::NOTIFY)['value'] ?? ''), 'y el aviso por correo también se guardó');
@@ -342,14 +342,20 @@ class ReviewPolicySwitchTest
      * ------------------------------------------------------------------ */
 
     /**
-     * La tarjeta de la revisión vive en `/admin`, va detrás de `admin.access` y
-     * manda al endpoint nativo (nada de URL escrita dentro del JS).
+     * La tarjeta de la revisión vive en `/admin/settings`, la manda al endpoint
+     * nativo (nada de URL escrita dentro del JS) y no comparte pantalla con la
+     * tabla de usuarios: es un ajuste de la INSTANCIA y no una fila de alguien.
      */
     public function testLaVistaPintaLaTarjetaDeRevision(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
+        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/settings.php');
+        $users = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
 
         assertTrue(str_contains($vista, 'action="/admin/settings/review"'), 'la tarjeta apunta al endpoint nativo');
+        assertFalse(
+            str_contains($users, 'action="/admin/settings/review"'),
+            'y ya no está en la ficha de usuarios'
+        );
         assertTrue(str_contains($vista, 'name="review_required"'), 'con su interruptor');
         assertTrue(str_contains($vista, 'name="review_notify_email"'), 'y el del aviso por correo');
         assertTrue(

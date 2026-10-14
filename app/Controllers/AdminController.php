@@ -67,17 +67,30 @@ class AdminController
             'canEditGroups'     => Auth::can('admin.groups'),
             'canEditPermissions' => Auth::can('admin.users'),
             'csrf'              => Csrf::token(),
-            // El interruptor de registro es de la INSTALACIÓN, no de esta
-            // lista de usuarios: se pinta solo con `admin.access` (que es el
-            // permiso del panel), y con el valor ya resuelto para que el
-            // interruptor no tenga que preguntar nada por su cuenta.
+        ]);
+    }
+
+    /**
+     * GET /admin/settings — ajustes de la INSTANCIA (registro y revisión).
+     *
+     * Son de la instalación, no de la cuenta de nadie, así que viven en su
+     * propia pantalla y con su propio permiso (`admin.access`): quien la gestiona
+     * los cambia, pero no necesita poder tocar la cuenta de nadie. Antes iban
+     * apilados en una columna de `/admin`, donde competían en altura con el
+     * listado de usuarios sin ser de esa pantalla.
+     */
+    public function settings(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+
+        View::render('admin/settings', [
             'registrationEnabled' => AuthController::registrationEnabled(),
-            // La política de revisión también es de la INSTALACIÓN: se pinta
-            // con `admin.access` y con el valor YA resuelto (`app_settings`
-            // sobre `.env`) para que la vista no tenga que preguntar nada.
             'reviewRequired'      => ReviewPolicy::policyOn(),
             'reviewNotifyEmail'   => ReviewPolicy::notifyEmail(),
-            'canManageInstance'    => Auth::can('admin.access'),
+            'csrf'                => Csrf::token(),
         ]);
     }
 
@@ -86,9 +99,9 @@ class AdminController
      *
      * El interruptor se guarda por fetch, así que esta acción responde JSON.
      * Y responde JSON con `ok: false` en vez de un flash porque un fetch que
-     * recibe un 302 sigue la redirección y descarga el HTML entero de la ficha
-     * de usuarios en el proceso: el JS vería un `200` con la página dentro y
-     * no sabría que el guardado falló.
+     * recibe un 302 sigue la redirección y descarga la página entera en el
+     * proceso: el JS vería un `200` con la pantalla dentro y no sabría que el
+     * guardado falló.
      *
      * El permiso es `admin.access`, no `admin.users`: quien puede entrar al
      * panel administra la instalación, y abrir el registro no es tocar la
@@ -151,8 +164,9 @@ class AdminController
      *
      * A diferencia del registro público, este POST es NATIVO (no fetch): la
      * pantalla no repinta ningún hueco, así que se responde con el PRG de
-     * siempre (`flash` + redirect a `/admin`) y el camino sin JavaScript es
-     * exactamente el mismo. Un fetch aquí solo añadiría una ruta paralela.
+     * siempre (`flash` + redirect a `/admin/settings`, que es donde se edita)
+     * y el camino sin JavaScript es exactamente el mismo. Un fetch aquí solo
+     * añadiría una ruta paralela.
      *
      * El permiso es `admin.access` (el mismo del middleware `admin` y el que la
      * vista exige para pintar la tarjeta), no `admin.users`: quien entra al
@@ -166,7 +180,7 @@ class AdminController
         }
         if (!Csrf::verifyRequest()) {
             Session::flash('error', 'Token de seguridad inválido.');
-            Response::redirect('/admin');
+            Response::redirect('/admin/settings');
             return;
         }
 
@@ -181,7 +195,7 @@ class AdminController
 
         if (!$ok) {
             Session::flash('error', 'No se pudo guardar el ajuste. ¿Falta ejecutar las migraciones?');
-            Response::redirect('/admin');
+            Response::redirect('/admin/settings');
             return;
         }
 
@@ -199,7 +213,7 @@ class AdminController
             ? 'Revisión activada: los formularios pasan por la bandeja antes de publicarse.'
             : 'Revisión desactivada: cada quien publica su formulario sin revisión.');
 
-        Response::redirect('/admin');
+        Response::redirect('/admin/settings');
     }
 
     /**
@@ -823,15 +837,17 @@ class AdminController
         SecurityLog::record('admin.group_create', 'grupo #' . $groupId . ' actualizado («' . $name . '»)');
 
         if ($json) {
-            /* Solo la cabecera-resumen de la tarjeta (`vfGroupSummary<gid>`), que
-             * es lo único que depende de lo guardado. Las casillas y los inputs
-             * NO se repintan: son los que enviaron el POST, así que ya son la
-             * verdad, y sustituirlos cerraría lo que se esté editando al lado. */
+            /* Dos huecos, porque el rediseño separó el resumen (cabecera) del
+             * efecto del grupo (cuerpo): el renombrado cambia los dos. Las
+             * casillas y los inputs NO se repintan: son los que enviaron el
+             * POST, así que ya son la verdad, y sustituirlos cerraría lo que se
+             * esté editando al lado. */
             Response::json([
                 'ok'      => true,
                 'message' => 'Grupo actualizado.',
                 'html'    => [
                     'vfGroupSummary' . $groupId => self::groupSummaryPartial($groupId, $name, $description, $roleIds, $memberIds),
+                    'vfGroupEffect' . $groupId  => self::groupEffectPartial($roleIds),
                 ],
             ]);
             return;
@@ -899,9 +915,13 @@ class AdminController
     }
 
     /**
-     * La cabecera-resumen de una tarjeta de grupo: nombre, recuentos y el efecto
-     * sobre los permisos. Es lo que repinta `groupUpdate()` sin recargar, y el
-     * MISMO partial que pinta el GET en línea — con dos copias divergirían.
+     * La cabecera-resumen de una tarjeta de grupo: nombre, descripción y los
+     * recuentos de roles y miembros. Es uno de los dos huecos que repinta
+     * `groupUpdate()` sin recargar, y el MISMO partial que pinta el GET en
+     * línea — con dos copias divergirían.
+     *
+     * El efecto («lo que otorga este grupo») ya no va aquí: mudó al cuerpo de
+     * la tarjeta y tiene su propio partial y su propio hueco, `vfGroupEffect`.
      *
      * @param int[] $roleIds
      * @param int[] $memberIds
@@ -919,7 +939,20 @@ class AdminController
             'groupDesc'   => $description,
             'roleCount'   => count($roleIds),
             'memberCount' => count($memberIds),
-            'gPerms'      => self::groupEffectivePermissions($roleIds),
+        ]);
+    }
+
+    /**
+     * El efecto del grupo: los permisos que otorgan sus roles. Segundo hueco de
+     * repintado de `groupUpdate()` (`vfGroupEffect<gid>`), en el cuerpo de la
+     * tarjeta.
+     *
+     * @param int[] $roleIds
+     */
+    private static function groupEffectPartial(array $roleIds): string
+    {
+        return View::partial('admin/_group_effect', [
+            'gPerms' => self::groupEffectivePermissions($roleIds),
         ]);
     }
 

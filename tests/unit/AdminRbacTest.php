@@ -155,8 +155,19 @@ class AdminRbacTest
         $html = (string) $out['html'][$slot];
         assertTrue(str_contains($html, '1 rol'), 'la insignia cuenta el rol: ' . $html);
         assertTrue(str_contains($html, '1 miembro'), 'la insignia cuenta el miembro: ' . $html);
-        assertTrue(str_contains($html, 'app-rbac-effect'), 'se repinta el efecto, con el mismo bloque que pinta el GET');
-        assertTrue(str_contains($html, 'forms'), 'el efecto nombra el prefijo del permiso que otorga el rol');
+        assertFalse(
+            str_contains($html, 'app-rbac-effect'),
+            'el efecto ya NO va en el resumen: mudó al cuerpo de la tarjeta'
+        );
+
+        // El efecto es el SEGUNDO hueco: el renombrado que trae roles nuevos
+        // cambia también «lo que otorga este grupo», y va en su propio slot.
+        $efecto = 'vfGroupEffect' . self::$groupA;
+        assertArrayHasKey($efecto, $out['html'] ?? [], 'y el efecto del grupo se repinta aparte');
+
+        $htmlEfecto = (string) $out['html'][$efecto];
+        assertTrue(str_contains($htmlEfecto, 'app-rbac-effect'), 'con el mismo bloque que pinta el GET');
+        assertTrue(str_contains($htmlEfecto, 'forms'), 'el efecto nombra el prefijo del permiso que otorga el rol');
     }
 
     public function testBorrarGrupoSinRecargaCuentaLosQueQuedan(): void
@@ -848,9 +859,9 @@ class AdminRbacTest
 
     /**
      * La fila tiene UN solo punto de entrada (`⋯`) con las cuatro acciones
-     * dentro, en vez de cuatro controles sueltos estirados por la fila. Los
-     * formularios conservan su `action`, así que sin JavaScript se envían
-     * igual (recargando).
+     * dentro, en vez de cuatro controles sueltos estirados por la fila. El `⋯`
+     * dispara un modal compartido (`#userActionsModal`), y el panel de la fila lo
+     * mueve ahí el JS; cada formulario conserva su `action`.
      */
     public function testLaFilaDeUsuariosTieneUnUnicoMenuDeAcciones(): void
     {
@@ -860,8 +871,12 @@ class AdminRbacTest
         assertSame(1, substr_count($html, 'data-vf-row'), 'la búsqueda deja una sola fila');
         assertSame(1, substr_count($html, 'app-row-menu-btn'), 'una sola puerta de acciones por fila');
         assertTrue(
-            str_contains($html, 'data-bs-auto-close="outside"'),
-            'el menú no puede cerrarse al marcar la primera casilla: se editan varias cosas seguidas'
+            str_contains($html, 'data-vf-user='),
+            'el `⋯` es un disparador con el id de la fila, no un desplegable de Bootstrap'
+        );
+        assertTrue(
+            str_contains($html, 'id="userActionsModal"'),
+            'y existe el modal compartido al que se mueve el panel'
         );
 
         foreach (['role', 'groups', 'permissions', 'toggle'] as $accion) {

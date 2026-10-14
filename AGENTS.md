@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 99 archivos, 1117 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 100 archivos, 1120 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -52,7 +52,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (18), `lang/{es,en}.php`.
-  `views/` = 66 plantillas y partials con `View` (veinticuatro con prefijo `_`, sin ruta
+  `views/` = 68 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **58 de los 99 archivos tocan la BD real** (los que llaman
+- **58 de los 100 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -749,10 +749,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 62 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 68 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
-  anti-vacío —`count($vistas) >= 50` (hay 62), `> 1800` aperturas vistas y
+  anti-vacío —`count($vistas) >= 50` (hay 68), `> 1800` aperturas vistas y
   `>= 6` modales encontrados—
   porque un test de estructura que no recorre pasa verde por construcción, y así
   pasó al escribirlo (`foreach` sobre el `int` de `preg_match_all`).
@@ -1375,13 +1375,13 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 485 comprobaciones manuales en 29 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 500 comprobaciones manuales en 30 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
-  el correo de invitación AA, el listado paginado del panel AB y la galería del
-  modal de nuevo formulario AC), para detectar
+  el correo de invitación AA, el listado paginado del panel AB, la galería del
+  modal de nuevo formulario AC y la consola de administración con modales AD), para detectar
   problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
   panel, R, S, T, U y AA son la

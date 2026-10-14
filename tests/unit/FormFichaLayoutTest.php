@@ -204,14 +204,14 @@ class FormFichaLayoutTest
             'respuestas: los botones de cabecera no llevan btn-sm (32px junto a los 44 del resto)'
         );
 
-        // Desde Fase 1, /admin comparte cabecera: las cinco pantallas incluyen
+        // Desde Fase 1, /admin comparte cabecera: cada pantalla incluye
         // `admin/_page_head`, que es quien emite `.app-head-actions`. Copiada en
         // cada vista, arreglar el reparto en una dejaba a las otras fuera.
         assertTrue(
             str_contains(self::plantilla('admin/_page_head.php'), 'app-head-actions'),
             'la cabecera compartida de /admin emite la fila de acciones'
         );
-        foreach (['admin/users.php', 'admin/forms.php', 'admin/security_log.php', 'admin/groups.php', 'admin/roles.php'] as $rel) {
+        foreach (['admin/users.php', 'admin/forms.php', 'admin/security_log.php', 'admin/groups.php', 'admin/roles.php', 'admin/settings.php'] as $rel) {
             assertTrue(
                 str_contains(self::plantilla($rel), 'admin/_page_head'),
                 $rel . ': su cabecera es la compartida de /admin'

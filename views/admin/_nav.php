@@ -13,6 +13,10 @@ $items = [
     'roles'       => ['/admin/roles', 'Roles y permisos', 'fa-key', 'admin.roles'],
     'security_log'=> ['/admin/security-log', 'Log de seguridad', 'fa-shield-halved', 'logs.view'],
     'forms'       => ['/admin/forms', 'Formularios', 'fa-clipboard-list', 'admin.access'],
+    // Ajustes de la INSTANCIA: registro público y política de revisión. Es
+    // `admin.access` (el permiso del panel entero) y no `admin.users`, porque
+    // ninguno de los dos toca la cuenta de nadie.
+    'settings'    => ['/admin/settings', 'Ajustes de la instancia', 'fa-sliders', 'admin.access'],
 ];
 $visible = array_filter($items, static function ($item) {
     return Auth::can($item[3]);

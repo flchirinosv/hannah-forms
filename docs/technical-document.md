@@ -360,7 +360,8 @@ re-sembrar: una migración nueva es la única forma de re-ejecutar un seed.
 | Fill | `/f/{slug}` | Formulario publico |
 | Thanks/Closed/Draft | `/f/...` | Estados de respuesta |
 | Analytics | `/forms/{id}/analytics` | Graficos + export |
-| Admin | `/admin` | Gestion general |
+| Admin | `/admin` | Gestion general (usuarios, grupos, roles, log, formularios) |
+| Ajustes de la instancia | `/admin/settings` | Registro publico y politica de revision |
 
 ### Accesibilidad
 - Semantic HTML con labels
@@ -467,7 +468,7 @@ php scripts/test.php --path tests/unit
 - Listado de formularios paginado EN EL SERVIDOR (2026-10-05, M2): `Form::page()` (12 por página; 20 en `/admin/forms`) con búsqueda, filtro de estado y orden en la URL (`/dashboard?q=…&estado=…&orden=…&page=…`); el conteo de respuestas va sobre los ids de la página y las tarjetas de arriba son el alcance entero sin filtros (`Form::counts()`, cacheado). El paginador de cliente de `app.js` se fue con la caché: ya no hay nada que ocultar
 - Caché del dashboard (2026-09-28, fase 6; ajustada el 2026-10-05): solo las CUENTAS, `Cache::remember('dash:stats:…', 60, ...)` con TTL e invalidación por prefijo `dash:%` en cada mutación de forms/submissions; la pérdida de caché nunca rompe el request
 - Tabla de analítica paginada EN EL SERVIDOR (2026-09-28): `Submission::byFormFilteredPaginated` + `GET /forms/{id}/analytics/rows` (15/página, lazy-load por fetch); los agregados siguen globales
-- Revisión/aprobación (2026-09-29, F3; política de instancia 2026-10-13): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` y controlador aparte `ReviewController` con las tres transiciones. La exigencia ya no es opt-in por formulario (`settings.review.enabled`): la decide un administrador con `app_settings.review_required`/`review_notify_email` (interruptores en `/admin`, migración 0016, con `App\Services\ReviewPolicy` como única puerta) y exime a los dueños con `forms.publish_without_review`. El estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
+- Revisión/aprobación (2026-09-29, F3; política de instancia 2026-10-13): `forms.status` gana `in_review` + `review_requested_at`/`reviewed_at`/`reviewed_by` (migración 0008); permiso `forms.review` y controlador aparte `ReviewController` con las tres transiciones. La exigencia ya no es opt-in por formulario (`settings.review.enabled`): la decide un administrador con `app_settings.review_required`/`review_notify_email` (interruptores en `/admin/settings`, migración 0016, con `App\Services\ReviewPolicy` como única puerta) y exime a los dueños con `forms.publish_without_review`. El estado solo lo mueven esas acciones — el `status` del payload del builder no publica, y editar un formulario aprobado lo devuelve a la cola
 - `defer` en scripts no críticos (dashboard.js, sortable+builder, chart+analytics), preservando el orden de dependencias
 
 **Despliegue (uploads):**

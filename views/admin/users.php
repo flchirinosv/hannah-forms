@@ -48,179 +48,80 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
         'title'    => 'Usuarios',
         'subtitle' => 'El <strong>rol</strong> es lo que tiene la persona; los <strong>grupos</strong> y los'
             . ' <strong>permisos extra</strong> le suman más. Todo se suma, nada se resta.',
-        'actions'  => '<a href="/admin/forms" class="btn btn-outline-secondary"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>',
+        'actions'  => '<a href="/admin/forms" class="btn btn-outline-secondary me-2"><i class="fa-solid fa-clipboard-list me-1"></i>Ver todos los formularios</a>'
+            . '<button type="button" class="btn btn-primary app-btn-primary" data-bs-toggle="modal" data-bs-target="#newUserModal">'
+            . '<i class="fa-solid fa-user-plus me-1"></i>Nuevo usuario</button>',
     ]) ?>
 
-    <?php // El alta va aquí, y no solo porque sea «lo primero»: con
-          // REGISTRATION_ENABLED cerrado (el default) es la ÚNICA forma de crear
-          // un `user` o un `editor`, ya que `scripts/create-admin.php` solo sabe
-          // hacer administradores. Por eso lleva su propia tarjeta y no es un
-          // botón escondido.
-
-          // El alta y el interruptor comparten un `row` y no van apilados a ancho
-          // completo: son dos tarjetas de la MISMA pantalla y de menos de la mitad
-          // de alto cada una de ese modo. `col-lg-8` / `col-lg-4` es el mismo
-          // reparto que usa la ficha del formulario, así que el panel tiene una
-          // sola retícula. ?>
-    <div class="row g-3 mb-4">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
+    <?php // El alta se sirve EN LÍNEA (camino sin JS) y `initAdminModals()` la
+          // mueve al `#newUserModal` cuando puede. Es la ÚNICA forma de crear un
+          // `user` o un `editor` con el registro público cerrado (el default), así
+          // que sin JS tiene que poder usarse tal cual: el contenedor se oculta
+          // solo después de haber movido el formulario al diálogo. ?>
+    <div class="row g-3 mb-3" id="newUserFormMount" data-vf-modal-move="#newUserModal">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <?php // Plegada por defecto, y el panel llega ABIERTO del
-                          // servidor a propósito: con el registro público cerrado
-                          // este formulario es la única forma de crear un `user`
-                          // o un `editor`, así que sin JS tiene que poder usarse.
-                          // Lo pliega `dashboard.js` leyendo
-                          // `data-vf-group-default="closed"`, no el servidor. ?>
-                    <fieldset class="app-settings-group mb-0"
-                              data-vf-group-key="admin-usuarios" data-vf-group-default="closed">
-                        <legend class="app-settings-group-title">
-                            <button type="button" class="app-group-toggle" data-bs-toggle="collapse" data-bs-target="#grp-nuevo-usuario"
-                                    aria-expanded="true" aria-controls="grp-nuevo-usuario">
-                                <span><i class="fa-solid fa-user-plus me-1"></i>Nuevo usuario</span>
-                                <i class="fa-solid fa-chevron-down app-group-caret ms-auto"></i>
-                            </button>
-                        </legend>
-                        <div class="collapse show" id="grp-nuevo-usuario">
-                            <p class="text-muted small mb-3">
-                                Crea una cuenta con su rol desde aquí. Funciona con el registro público abierto o
-                                cerrado: eso solo controla el alta desde <code>/register</code>.
-                            </p>
-                            <form method="post" action="/admin/users/create">
-                                <?= Csrf::field() ?>
-                                <?php // 3+2 y no cuatro en fila: dentro de `col-lg-8` un
-                                      // `col-md-3` deja el campo de contraseña tan
-                                      // estrecho que el marcador de posición se corta. ?>
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
-                                        <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
-                                        <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
-                                        <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
-                                        <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
-                                        <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
-                                        <div class="form-text">Si no coinciden, el alta se rechaza.</div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
-                                        <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
-                                            <?php foreach ($roles as $rol): ?>
-                                                <?php $rid = (int) $rol['id']; ?>
-                                                <option value="<?= $rid ?>"<?= $rid === 2 ? ' selected' : '' ?>>
-                                                    <?= View::escape((string) $rol['name']) ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <div class="form-text">Lo que la persona podrá hacer. Se puede cambiar después.</div>
-                                    </div>
-                                    <div class="col-12">
-                                        <p class="form-text mb-0">
-                                            Comunícale la contraseña por un canal que no sea el correo: al darle la cuenta
-                                            tú, su email no está verificado.
-                                        </p>
-                                    </div>
-                                    <div class="col-12 d-flex justify-content-end">
-                                        <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
-                                            <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </fieldset>
-                </div>
-            </div>
-        </div>
-
-        <?php // Los ajustes de la INSTALACIÓN (registro y revisión) son de la
-              // instalación, así que van fuera de la tabla de usuarios y con su
-              // propio permiso (`admin.access`): quien la gestiona los cambia,
-              // pero no necesita poder tocar la cuenta de nadie. Se pintan solo
-              // con ese permiso, y no por ser admin, porque el panel entero ya
-              // lo exige.
-
-              // Los dos van apilados en la MISMA `col-lg-4`, no en dos columnas:
-              // el reparto es 8 (alta) + 4 (instalación) y una tercera columna
-              // rompería la retícula. La columna no se emite vacía si no hay
-              // tarjeta, para que el alta se quede en `col-lg-8` de todos modos y
-              // la retícula no dé un salto al desaparecer. ?>
-        <?php if ($canManageInstance ?? false): ?>
-        <div class="col-lg-4">
-            <div class="d-flex flex-column gap-3 h-100">
-                <div class="card border-0 shadow-sm" id="instance"
-                     data-csrf="<?= View::escape(Csrf::token()) ?>"
-                     data-registration-endpoint="/admin/settings/registration">
-                    <div class="card-body">
-                        <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-globe me-2 text-primary"></i>Acceso de cualquiera</h3>
-                        <p class="text-muted small mb-3">
-                            El registro público es la puerta de <code>/register</code>. Con él cerrado, las cuentas
-                            se crean solo desde esta pantalla.
-                        </p>
-                        <div class="form-check form-switch d-flex align-items-center gap-2">
-                            <input type="checkbox" role="switch" class="form-check-input" id="registrationToggle"
-                                   <?= ($registrationEnabled ?? false) ? 'checked' : '' ?>
-                                   aria-describedby="registrationHint">
-                            <label class="form-check-label fw-semibold" for="registrationToggle">
-                                <span data-role="registration-state">
-                                    <?= ($registrationEnabled ?? false) ? 'Registro público abierto' : 'Registro público cerrado' ?>
-                                </span>
-                            </label>
-                        </div>
-                        <p class="form-text mb-0" id="registrationHint" role="status"></p>
-                    </div>
-                </div>
-
-                <?php // F3 (revisada) — La política de revisión es de la INSTANCIA y
-                      // no del formulario. Un POST NATIVO (no fetch): la pantalla
-                      // no repinta huecos, así que el PRG de siempre es el camino
-                      // único, con o sin JavaScript. ?>
-                <div class="card border-0 shadow-sm">
-                    <form method="post" action="/admin/settings/review">
+                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-plus me-1 text-primary"></i>Nuevo usuario</h3>
+                    <?php // El encabezado se queda en la tarjeta (el modal trae el suyo) y
+                          // esto —la nota y el formulario— es lo que viaja al diálogo. ?>
+                    <div data-vf-modal-form>
+                    <p class="text-muted small mb-3">
+                        Crea una cuenta con su rol desde aquí. Funciona con el registro público abierto o
+                        cerrado: eso solo controla el alta desde <code>/register</code>.
+                    </p>
+                    <form method="post" action="/admin/users/create">
                         <?= Csrf::field() ?>
-                        <div class="card-body">
-                            <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-user-check me-2 text-primary"></i>Revisión de formularios</h3>
-                            <p class="text-muted small mb-3">
-                                Con la revisión activa, un formulario pasa por la bandeja de revisión antes de publicarse.
-                            </p>
-                            <div class="form-check form-switch mb-1">
-                                <?php // El `hidden` con el MISMO `name` va delante: sin él, desmarcar la
-                                      // casilla no enviaría nada. El handler trata el ausente como
-                                      // apagado, pero el oculto deja el apagado explícito. ?>
-                                <input type="hidden" name="review_required" value="0">
-                                <input class="form-check-input" type="checkbox" role="switch" id="reviewRequiredToggle"
-                                       name="review_required" value="1"<?= ($reviewRequired ?? false) ? ' checked' : '' ?>>
-                                <label class="form-check-label small fw-semibold" for="reviewRequiredToggle">Exigir revisión a todos</label>
+                        <?php // 3+2 y no cuatro en fila: dentro de `col-lg-8` un
+                              // `col-md-3` deja el campo de contraseña tan
+                              // estrecho que el marcador de posición se corta. ?>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
+                                <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
                             </div>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="review_notify_email" value="0">
-                                <input class="form-check-input" type="checkbox" role="switch" id="reviewNotifyToggle"
-                                       name="review_notify_email" value="1"<?= ($reviewNotifyEmail ?? false) ? ' checked' : '' ?>>
-                                <label class="form-check-label small fw-semibold" for="reviewNotifyToggle">Avisar por correo a los revisores</label>
+                            <div class="col-md-4">
+                                <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
+                                <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
                             </div>
-                            <p class="form-text mb-0">
-                                Quien tenga el permiso <code>forms.publish_without_review</code> queda exento; se concede
-                                en <a href="/admin/roles">Roles y permisos</a> (a un rol) o como
-                                <strong>permiso extra</strong> de una persona, en la tabla de abajo.
-                            </p>
-                        </div>
-                        <div class="card-footer bg-white border-0 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
-                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
-                            </button>
+                            <div class="col-md-4">
+                                <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
+                                <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
+                                <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
+                                <div class="form-text">Si no coinciden, el alta se rechaza.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
+                                <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
+                                    <?php foreach ($roles as $rol): ?>
+                                        <?php $rid = (int) $rol['id']; ?>
+                                        <option value="<?= $rid ?>"<?= $rid === 2 ? ' selected' : '' ?>>
+                                            <?= View::escape((string) $rol['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text">Lo que la persona podrá hacer. Se puede cambiar después.</div>
+                            </div>
+                            <div class="col-12">
+                                <p class="form-text mb-0">
+                                    Comunícale la contraseña por un canal que no sea el correo: al darle la cuenta
+                                    tú, su email no está verificado.
+                                </p>
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                                    <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
+                                </button>
+                            </div>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
     </div>
 
     <?php // La búsqueda y los filtros se resuelven en SQL y viajan en la URL:
@@ -359,19 +260,25 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                     <span class="text-muted small" title="No puedes cambiar tu propia cuenta desde aquí.">—</span>
                                 <?php else: ?>
                                 <?php // UN punto de entrada por fila: rol, grupos, permisos
-                                      // extra y activar/desactivar viven aquí en vez de ser
-                                      // cuatro controles sueltos por la fila. Cada formulario
-                                      // conserva su `method`/`action`/`data-vf-async`, así que
-                                      // sin JavaScript se envía igual (recargando).
-                                      // `data-bs-auto-close="outside"`: marcar casillas o
-                                      // cambiar el rol no cierra el menú a medias. ?>
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary app-row-menu-btn"
-                                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
-                                            id="rowmenu-<?= $uid ?>" aria-label="Acciones para <?= View::escape($user['name']) ?>">
-                                        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end p-2 app-row-menu" aria-labelledby="rowmenu-<?= $uid ?>">
+                                      // extra y activar/desactivar viven en un modal, no en
+                                      // cuatro controles sueltos por la fila. El `⋯` solo
+                                      // DISPARA: `initTablaAcciones()` mueve el panel de ESTA
+                                      // fila al `#userActionsModal` al abrir y lo devuelve al
+                                      // cerrar, así que los formularios, los `id` de los huecos
+                                      // y los avisos siguen siendo los de esta fila y no hay un
+                                      // modal por persona (sería clonar el panel N veces). Cada
+                                      // formulario conserva su `method`/`action`/`data-vf-async`. ?>
+                                <button type="button" class="btn btn-sm btn-outline-secondary app-row-menu-btn"
+                                        data-vf-user="<?= $uid ?>" data-vf-user-name="<?= View::escape($user['name']) ?>"
+                                        aria-label="Acciones para <?= View::escape($user['name']) ?>">
+                                    <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+                                </button>
+                                <?php // El panel se sirve EN LA FILA y oculto: el JS lo mueve al
+                                      // modal. El `<span hidden>` no desactiva los formularios de
+                                      // dentro (solo los deja sin pintar), así que el mismo nodo
+                                      // vale para las dos superficies. ?>
+                                <span id="rowactions-<?= $uid ?>" hidden>
+                                    <div class="p-2 app-row-menu">
 
                                         <?php // ROL: se envía solo al cambiar (`js-auto-submit`),
                                               // por eso el formulario no lleva botón. ?>
@@ -502,7 +409,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                             <?= View::partial('admin/_user_toggle', ['user' => $user, 'uid' => $uid]) ?>
                                         </span>
                                     </div>
-                                </div>
+                                </span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -525,6 +432,44 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
     <?php endif; ?>
 </div>
 
-<?php // `dashboard.js` con `defer`, igual que en el resto del panel: sus bloques
-      // se guardan uno detrás de otro y aquí solo vive el del interruptor. ?>
+<?php // Modales de la pantalla. Van a nivel superior del fragmento (fuera de
+      // `.container-fluid`), como exige `ViewStructureTest`: un `.modal` dentro de
+      // otro elemento oculto no se puede ni abrir ni cerrar.
+      //
+      // Los dos reutilizan el marcado servido en línea: `initAdminModals()` mueve
+      // el formulario de alta a `#newUserModal` y el panel de la fila a
+      // `#userActionsModal`. Aquí no hay ningún campo, solo los cuerpos vacíos. ?>
+<div class="modal fade" id="newUserModal" tabindex="-1" aria-labelledby="newUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0">
+            <div class="modal-header app-navbar text-white border-0 py-2">
+                <div class="d-flex align-items-center gap-2 text-white">
+                    <span class="app-logo-sm"><i class="fa-solid fa-user-plus"></i></span>
+                    <span class="fw-semibold" id="newUserModalLabel">Nuevo usuario</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4" data-vf-modal-body></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userActionsModal" tabindex="-1" aria-labelledby="userActionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0">
+            <div class="modal-header app-navbar text-white border-0 py-2">
+                <div class="d-flex align-items-center gap-2 text-white">
+                    <span class="app-logo-sm"><i class="fa-solid fa-user-gear"></i></span>
+                    <span class="fw-semibold" id="userActionsModalLabel">Acciones de <span data-vf-modal-title></span></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-2" data-vf-modal-body></div>
+        </div>
+    </div>
+</div>
+
+<?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí viven el
+      // interruptor de registro (en `/admin/settings`), el plegado de grupos y el
+      // traslado de los formularios a los modales de esta pantalla. ?>
 <script src="<?= View::asset('js/dashboard.js') ?>" defer></script>

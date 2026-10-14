@@ -849,6 +849,30 @@ Hace falta una instancia con plantillas en `database/templates` y una cuenta con
 | AC11 | Todo esto **sin JavaScript** (marcar una plantilla con el ratón) | Da igual: los radios funcionan y el servidor deriva el nombre de la tarjeta | A | |
 | AC12 | En móvil estrecho (360px) | La rejilla baja a una columna y el diálogo no se sale de la pantalla | M | |
 
+## AD. La consola de administración: ajustes, modales y sin recarga (2026-10-14)
+
+Requiere dos cuentas: un `admin` y una persona con `admin.access` pero **sin**
+`admin.users` (o, más simple, un `admin` y un rol de prueba para el gate). Para
+C4 hace falta al menos un usuario y un grupo.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AD1 | Abrir `/admin/security-log` | La barra de filtros es la misma que la de `/admin/forms`: buscador + desplegable de evento; el desplegable no ocupa toda la fila | M | |
+| AD2 | Abrir `/admin` | La sub-navegación tiene **seis** pestañas, la última «Ajustes de la instancia»; con `admin.access` se entra | M | |
+| AD3 | Abrir `/admin/settings` | Dos tarjetas: registro público (interruptor) y política de revisión (formulario). Ninguna está en la ficha de usuarios | A | |
+| AD4 | Como alguien **sin** `admin.access` | `/admin/settings` responde 403 y la pestaña no aparece | M | |
+| AD5 | Guardar la revisión en `/admin/settings` | PRG que vuelve a `/admin/settings` (no a `/admin`), con el aviso | A | |
+| AD6 | Abrir `/admin/groups` | Cada tarjeta es un grupo **plegable** (abre en su estado por defecto); el resumen lleva nombre, insignias y borrado; «lo que otorga» está en el cuerpo | M | |
+| AD7 | Pulsar «Nuevo grupo» | Abre `#newGroupModal` con el formulario de alta; guardar recarga y la tarjeta nueva aparece | A | |
+| AD8 | Guardar un grupo sin recarga | Se repinta la cabecera-resumen **y** el efecto del grupo, sin recargar | M | |
+| AD9 | Abrir `/admin/users` y pulsar «Nuevo usuario» | Abre `#newUserModal` con el alta; sin JS el formulario sigue en la página | A | |
+| AD10 | Pulsar el `⋯` de una fila | Abre `#userActionsModal` **con el nombre de esa persona** en el título y el panel de su fila dentro | M | |
+| AD11 | Cambiar el rol desde ese modal | Se guarda sin recarga y la insignia de la fila (detrás del modal) queda al día | M | |
+| AD12 | Cerrar el modal y abrir el de otra fila | Cada uno trae su panel; no se ve el de la fila anterior | M | |
+| AD13 | Marcar grupos en el modal | No se cierra al marcar la primera casilla; el aviso de error, si lo hay, sale dentro del modal | M | |
+| AD14 | Todo lo anterior **sin JavaScript** | El alta y las acciones se envían por POST nativo y recargan; nada queda inalcanzable | A | |
+| AD15 | En móvil (390px) | La tabla de usuarios se apila en tarjetas, el `⋯` sigue alcanzable y los modales no se salen de la pantalla | M | |
+
 ## Cuando encuentres un fallo
 
 

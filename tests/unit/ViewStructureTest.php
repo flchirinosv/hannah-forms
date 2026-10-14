@@ -196,7 +196,7 @@ class ViewStructureTest
     public function testNingunaVistaDejaEtiquetasSinCerrar(): void
     {
         $vistas = $this->vistas();
-        assertTrue(count($vistas) >= 50, 'Se esperaban las 62 vistas y se encontraron ' . count($vistas));
+        assertTrue(count($vistas) >= 50, 'Se esperaban las 68 vistas y se encontraron ' . count($vistas));
 
         $rotas = [];
         $analizadas = 0;
@@ -209,7 +209,7 @@ class ViewStructureTest
         }
 
         // Guard anti-vacío: un recorrido que no recorre pasa las dos
-        // comprobaciones. Las 62 vistas suman unas 2000 aperturas,
+        // comprobaciones. Las 68 vistas suman unas 2000 aperturas,
         // y así un `preg_match_all` que no casa o un `foreach` sobre el retorno (un int)
         // salen como fallo y no como un test verde.
         assertTrue(

@@ -352,11 +352,10 @@ class AsyncActionsJsTest
     /**
      * La fila de usuarios de `/admin` envía el rol y los grupos por fetch.
      *
-     * Los dos formularios de la fila (el `select` de rol y el desplegable de
-     * grupos) son de los pocos que se rellenan sin botón —el rol se envía solo al
-     * cambiarlo— así que el `data-vf-async` es lo único que dice «esto no
-     * recarga». Sin él, cambiar el rol de alguien se llevaba la página entera y
-     * con ella el desplegable de grupos que estuviera abierto al lado.
+     * Los dos formularios de la fila (el `select` de rol y el panel de grupos) son de
+     * los pocos que se rellenan sin botón —el rol se envía solo al cambiarlo— así que
+     * el `data-vf-async` es lo único que dice «esto no recarga». Sin él, cambiar el
+     * rol de alguien se llevaba la página entera y con ella el modal abierto.
      */
     public function testLaFilaDeUsuariosEnviaElRolYLosGruposSinRecargar(): void
     {

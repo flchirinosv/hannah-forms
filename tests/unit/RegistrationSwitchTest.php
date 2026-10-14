@@ -377,13 +377,34 @@ class RegistrationSwitchTest
 
     public function testElInterruptorSePintaSoloConAdminAccessYRespetaElEstado(): void
     {
-        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
+        // La pantalla propia del ajuste: los de la INSTANCIA dejaron de compartir
+        // el listado de usuarios, donde competían en altura con la tabla.
+        $vista = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/settings.php');
+        $users = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
 
-        assertTrue(str_contains($vista, 'id="registrationToggle"'), 'el interruptor está en la ficha');
-        assertTrue(str_contains($vista, 'if ($canManageInstance ?? false)'), 'y va detrás del permiso');
+        assertTrue(str_contains($vista, 'id="registrationToggle"'), 'el interruptor está en /admin/settings');
+        assertFalse(
+            str_contains($users, 'id="registrationToggle"'),
+            'y ya no en la ficha de usuarios, que es de personas y no de la instalación'
+        );
+
+        // La puerta vive en el controlador, no en la vista: `settings()` es el
+        // único que compone esta pantalla, igual que `index()` exige `admin.access`
+        // antes de pintar la lista.
+        $ctrl = (string) file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/AdminController.php');
+        $metodo = (string) preg_match(
+            '/public function settings\(\): void\s*\{(.*?)\n    \}/s',
+            $ctrl,
+            $m
+        );
+        assertSame(1, (int) $metodo, 'AdminController::settings() está definido');
+        assertTrue(
+            str_contains($m[1], "Auth::can('admin.access')"),
+            'y va detrás del permiso del panel, no de `admin.users`'
+        );
         assertTrue(
             str_contains($vista, "(\$registrationEnabled ?? false) ? 'checked' : ''"),
-            'el `checked` sale del valor que Resolvió el controlador, no de un default del HTML'
+            'el `checked` sale del valor que resolvió el controlador, no de un default del HTML'
         );
         assertTrue(
             str_contains($vista, "data-registration-endpoint=\"/admin/settings/registration\""),

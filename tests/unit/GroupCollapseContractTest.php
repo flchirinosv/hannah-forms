@@ -8,27 +8,29 @@ namespace Tests\Unit;
  * Los grupos plegables, en las dos pantallas que los tienen.
  *
  * `dashboard.js` solo sabía de un contenedor: la ficha del formulario
- * (`#formSettings`, con `data-vf-form-id`). Ahora el alta de «Usuarios» también es
- * un grupo plegable, y por eso el estado pasó de «POR FORMULARIO» a «POR
- * PANTALLA»: cada contenedor trae su clave y su valor por defecto, y el JS los lee
- * de los dos sitios.
+ * (`#formSettings`, con `data-vf-form-id`). Hoy también son plegables las
+ * tarjetas de `/admin/groups` (con `data-vf-group-key="admin-grupos"`), y por
+ * eso el estado es «POR PANTALLA»: cada contenedor trae su clave, y el JS lee de
+ * los dos sitios. El alta de usuarios dejó de ser un grupo plegable cuando pasó
+ * a un modal, así que el contrato lo fija el listado de grupos.
  *
- * Hay tres cosas aquí que se pueden romper sin que se note, y por eso están fijadas
- * en vez de quedar en el comentario:
+ * Hay tres cosas aquí que se pueden romper sin que se note, y por eso están
+ * fijadas en vez de quedar en el comentario:
  *
- *   1. **El panel llega abierto del servidor.** Con el registro público cerrado (el
- *      default) el alta es la ÚNICA forma de crear un `user` o un `editor`, así que
- *      sin JS tiene que poder usarse. Ponerlo cerrado en el servidor lo escondería
- *      entero de quien no tenga JS, y no daría ningún error: el botón seguiría ahí,
- *      el POST seguiría funcionando y la pantalla parecería normal.
- *   2. **La ficha NO se cierra.** El atributo que dice «cerrado de entrada» es
- *      opcional y por defecto significa «abierto»: si se añadiera a la ficha, sus
- *      siete grupos empezarían cerrados sin que ningún test lo dijera.
+ *   1. **El panel llega abierto del servidor.** La tarjeta de grupo se usa para
+ *      marcar roles y miembros, y plegar es una comodidad con JS: si el panel
+ *      saliera cerrado del servidor, quien no tenga JS vería la cabecera y nada
+ *      dentro, sin ningún error. Además el botón seguiría ahí y el POST seguiría
+ *      funcionando, así que la pantalla parecería normal.
+ *   2. **Ninguna pantalla pide cierre por defecto.** El atributo que dice
+ *      «cerrado de entrada» lo añade el JS y su ausencia SIGNIFICA «abierto»: si
+ *      se colara en la ficha, sus siete grupos empezarían cerrados; si se colara
+ *      en los grupos, las tarjetas nacerían plegadas.
  *   3. **El JS no graba el valor por defecto como si fuera elección de quien
- *      guarda.** El `hide()` de arranque dispara `hidden.bs.collapse` igual que un
- *      clic, y sin el descarte esa escritura se guarda: la primera visita cerraría
- *      el panel para siempre y, si mañana cambiara el default, el usuario seguiría
- *      viendo el viejo.
+ *      guarda.** El `hide()` de arranque dispara `hidden.bs.collapse` igual que
+ *      un clic, y sin el descarte esa escritura se guarda: la primera visita
+ *      cerraría el panel para siempre y, si mañana cambiara el default, el
+ *      usuario seguiría viendo el viejo.
  *
  * Las comprobaciones miran **etiquetas**, no el archivo entero: estas mismas
  * cadenas están escritas en los comentarios que explican el porqué, y un
@@ -38,11 +40,12 @@ namespace Tests\Unit;
  */
 class GroupCollapseContractTest
 {
-    private const VISTA_USUARIOS = __DIR__ . '/../../views/admin/users.php';
+    private const VISTA_GRUPOS = __DIR__ . '/../../views/admin/groups.php';
+    private const RESUMEN_GRUPO = __DIR__ . '/../../views/admin/_group_summary.php';
     private const VISTA_FICHA = __DIR__ . '/../../views/dashboard/forms/show.php';
     private const JS = __DIR__ . '/../../public/assets/js/dashboard.js';
 
-    private const PANEL = 'grp-nuevo-usuario';
+    private const PANEL = 'grp-grupo-';
 
     /** Solo el marcado: sin comentarios, sin texto, sin PHP. */
     private static function etiquetas(string $archivo): string
@@ -61,10 +64,16 @@ class GroupCollapseContractTest
         return (string) preg_replace('/\s+/', ' ', implode(' ', $coincidencias[0]));
     }
 
-    /** El marcado de las dos vistas, con los espacios plegados (atributos partidos en dos líneas). */
-    private static function usuarios(): string
+    /** El marcado del listado de grupos (contenedor, panel y formulario). */
+    private static function grupos(): string
     {
-        return self::etiquetas(self::VISTA_USUARIOS);
+        return self::etiquetas(self::VISTA_GRUPOS);
+    }
+
+    /** El marcado de la cabecera-resumen, que es donde vive el caret. */
+    private static function resumen(): string
+    {
+        return self::etiquetas(self::RESUMEN_GRUPO);
     }
 
     private static function ficha(): string
@@ -81,83 +90,101 @@ class GroupCollapseContractTest
         return (string) preg_replace('#(^|\s)//[^\n]*#', '$1', $sinBloque);
     }
 
-    public function testElAltaDeUsuariosEsUnGrupoPlegableQueLlegaAbierto()
+    public function testLasTarjetasDeGrupoSonPlegablesYLleganAbiertas(): void
     {
-        $html = self::usuarios();
+        $html = self::grupos();
+        $resumenCrudo = (string) file_get_contents(self::RESUMEN_GRUPO);
+        $gruposCrudo  = (string) file_get_contents(self::VISTA_GRUPOS);
 
         assertTrue(
-            str_contains($html, 'data-vf-group-key="admin-usuarios"'),
-            'el alta de usuarios es un grupo plegable y trae su propia clave de estado'
+            str_contains($html, 'data-vf-group-key="admin-grupos"'),
+            'el listado de grupos es un contenedor plegable y trae su propia clave de estado'
         );
 
-        // El botón va dentro del <legend>: `type="button"` porque sin él el título
-        // del fieldset envía el formulario, que en esta pantalla sería «crear
-        // cuenta» al plegar o desplegar el alta.
+        // El caret vive en el partial de la cabecera-resumen (es parte de lo que
+        // el POST repinta), así que se busca ahí.
         assertTrue(
-            str_contains($html, '<button type="button" class="app-group-toggle" data-bs-toggle="collapse"'
-                . ' data-bs-target="#' . self::PANEL . '" aria-expanded="true" aria-controls="' . self::PANEL . '">'),
-            'el grupo se pliega con un <button type="button"> que apunta a #' . self::PANEL
+            str_contains(self::resumen(), '<button type="button" class="app-group-toggle" data-bs-toggle="collapse"'),
+            'la tarjeta se pliega con un <button type="button"> (sin él, el caret enviaría el formulario de al lado)'
+        );
+
+        // El id del panel es dinámico (`grp-grupo-<gid>`), así que la referencia
+        // se ata sobre el código, no sobre el marcado ya sin PHP.
+        assertTrue(
+            str_contains($resumenCrudo, "\$panelId = 'grp-grupo-' . (int) \$groupId;")
+                && str_contains($resumenCrudo, 'data-bs-target="#<?= View::escape($panelId) ?>"')
+                && str_contains($resumenCrudo, 'aria-controls="<?= View::escape($panelId) ?>"'),
+            'el botón apunta al panel #' . self::PANEL . '<gid> por `$panelId`'
         );
 
         assertSame(
             1,
-            preg_match_all('/class="app-group-toggle"/', $html),
-            'en «Usuarios» hay exactamente un grupo plegable'
+            preg_match_all('/class="app-group-toggle"/', self::resumen()),
+            'la cabecera-resumen trae exactamente un caret'
         );
 
         // Y el panel se sirve ABIERTO: es lo que permite usarlo sin JS.
-        assertTrue(
-            str_contains($html, '<div class="collapse show" id="' . self::PANEL . '">'),
-            'el panel #' . self::PANEL . ' llega abierto del servidor (`collapse show`)'
-        );
         assertSame(
             1,
-            preg_match_all('/class="collapse show" id="grp-/', $html),
-            'y hay exactamente un panel de grupo en la vista'
+            substr_count($gruposCrudo, 'class="collapse show" id="<?= $panelId ?>"'),
+            'el panel #' . self::PANEL . '<gid> llega abierto del servidor (`collapse show`)'
         );
     }
 
-    public function testElFormularioDeAltaEstaDentroDelPanelYNoAlLado()
+    public function testElFormularioDelGrupoEstaDentroDelPanelYNoAlLado(): void
     {
-        // El orden y el cierre del fieldset se leen del archivo entero: aquí se
+        // El orden y el cierre del panel se leen del archivo entero: aquí se
         // comprueba una relación entre posiciones, no la presencia de una cadena.
-        $html = (string) file_get_contents(self::VISTA_USUARIOS);
+        $html = (string) file_get_contents(self::VISTA_GRUPOS);
 
-        $panel = strpos($html, 'id="' . self::PANEL . '"');
-        $alta = strpos($html, 'action="/admin/users/create"');
-        assertTrue($panel !== false, 'el panel del alta existe');
-        assertTrue($alta !== false, 'el formulario de alta existe');
+        $panel = strpos($html, 'id="<?= $panelId ?>"');
+        $form  = strpos($html, 'action="/admin/groups/update"');
+        assertTrue($panel !== false, 'el panel del grupo existe');
+        assertTrue($form !== false, 'el formulario del grupo existe');
         assertTrue(
-            $panel < $alta,
-            'el panel se abre antes del formulario: el POST de alta va DENTRO del grupo'
+            $panel < $form,
+            'el panel se abre antes del formulario: el POST de edición va DENTRO del grupo'
         );
 
         // Si alguien mueve el <form> fuera del grupo sin querer, seguiría habiendo
         // `<form>` y habría `<div class="collapse show">`: entre el panel y el
         // formulario no puede cerrarse NINGUNA de las dos etiquetas que lo
-        // envuelven. Con el panel cerrado por defecto, un alta fuera del panel se
-        // vería sin ningún error: el botón seguiría desplegando un panel vacío.
-        $entre = substr($html, (int) $panel, (int) $alta - (int) $panel);
+        // envuelven. Con el panel cerrado por defecto, un formulario fuera del panel
+        // se vería sin ningún error: el botón seguiría desplegando un panel vacío.
+        $entre = substr($html, (int) $panel, (int) $form - (int) $panel);
         foreach (['</div>', '</fieldset>'] as $cierre) {
             assertFalse(
                 str_contains($entre, $cierre),
-                'el alta queda DENTRO del grupo: no se cierra ' . $cierre . ' antes del formulario'
+                'el formulario queda DENTRO del panel: no se cierra ' . $cierre . ' antes de él'
             );
         }
 
-        foreach (['name="name"', 'name="email"', 'name="password"', 'name="password_confirm"', 'name="role_id"'] as $campo) {
+        foreach ([
+            'name="name"', 'name="description"', 'name="roles[]"',
+            'name="users[]"', 'name="group_id"',
+        ] as $campo) {
             assertTrue(
-                str_contains(self::usuarios(), $campo),
-                'el campo ' . $campo . ' sigue en el formulario de alta'
+                str_contains(self::grupos(), $campo),
+                'el campo ' . $campo . ' sigue en el formulario del grupo'
             );
         }
+
+        // El alta es un modal, pero su formulario se sirve en línea y el JS lo
+        // mueve: si el marcado del modal se sirviera solo, sin JS no habría forma
+        // de crear un grupo.
+        assertTrue(
+            str_contains(self::grupos(), 'data-vf-modal-move="#newGroupModal"')
+                && str_contains(self::grupos(), 'data-vf-modal-form')
+                && str_contains(self::grupos(), 'action="/admin/groups/create"'),
+            'el alta se sirve en línea para que el JS la mueva al modal (sin duplicarla)'
+        );
     }
 
-    public function testElCierrePorDefectoLoAplicaElJsYSoloEnUsuarios()
+    public function testElCierrePorDefectoLoAplicaElJsYNingunaPantallaLoPide(): void
     {
-        assertTrue(
-            str_contains(self::usuarios(), 'data-vf-group-default="closed"'),
-            'el alta llega cerrada de entrada, y lo dice en el marcado'
+        assertFalse(
+            str_contains(self::grupos(), 'data-vf-group-default'),
+            'las tarjetas de grupo abren de entrada: no piden cierre por defecto'
         );
 
         // La ficha abre de entrada: el atributo es opcional y su ausencia SIGNIFICA
@@ -174,7 +201,7 @@ class GroupCollapseContractTest
         );
     }
 
-    public function testElJsRecorreTodosLosContenedoresYConservaLaClaveDeLaFicha()
+    public function testElJsRecorreTodosLosContenedoresYConservaLaClaveDeLaFicha(): void
     {
         $js = self::js();
 
@@ -204,7 +231,7 @@ class GroupCollapseContractTest
         );
     }
 
-    public function testElJsNoGrabaElValorPorDefectoComoSiFueraUnaDecision()
+    public function testElJsNoGrabaElValorPorDefectoComoSiFueraUnaDecision(): void
     {
         $js = self::js();
 

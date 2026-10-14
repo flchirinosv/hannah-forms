@@ -265,6 +265,10 @@ body {
    llega intacto y lo único propio que queda es el ancho. */
 .form-select.app-dash-sort { max-width: 200px; }
 .form-select.app-dash-sort:focus { box-shadow: 0 0 0 3px rgba(99,102,241,.14); border-color: var(--vf-primary); }
+/* El filtro de evento del log usa la misma barra, pero sus opciones son claves
+   (`auth.password_reset_request`), no rótulos cortos: a 200px el control las
+   cortaba. */
+.form-select.app-dash-sort-wide { max-width: 320px; }
 .app-dash-meta { display: flex; align-items: center; gap: .25rem; font-size: .76rem; }
 
 /* V5 — Sparkline de actividad por tarjeta (SVG inline, sin <script>). */
@@ -448,6 +452,32 @@ body {
    único que rota — el texto debe quedarse quieto. */
 .app-group-toggle[aria-expanded="true"] .app-group-caret {
     transform: rotate(180deg);
+}
+/* El mismo caret, pero fuera de los grupos de «Ajustes del formulario»: las
+   tarjetas de `/admin/groups` son `.card`, no `.app-settings-group`, así que
+   necesitan su propio tamaño de botón (icono suelto pulsable). Sin esto el
+   `<button>` sale con el borde y el padding del navegador. */
+.app-group-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vf-text-muted);
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+.app-group-toggle:hover {
+    background: #f1f5f9;
+}
+.app-group-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--vf-focus-ring);
 }
 
 /* ---------- Builder ---------- */
@@ -2255,6 +2285,15 @@ body {
     min-width: min(24rem, calc(100vw - 1.5rem));
     max-height: min(60vh, 24rem);
     overflow-y: auto;
+}
+/* El mismo panel, trasladado al modal de acciones: allí no hay `.table-responsive`
+   que recorte, así que se sueltan el tope de alto y el ancho mínimo y scrollea el
+   propio diálogo. Sin esto, el panel quedaba en una caja de 24rem con scroll
+   dentro de otro scroll. */
+.modal-body .app-row-menu {
+    min-width: 0;
+    max-height: none;
+    overflow: visible;
 }
 
 /* La tabla de usuarios (ocho columnas) se convierte en tarjetas apiladas en

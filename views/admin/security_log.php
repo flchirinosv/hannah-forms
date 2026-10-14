@@ -16,31 +16,38 @@ $filtroQs = static function () use ($event, $q): string {
 };
 ?>
 <div class="container-fluid px-lg-4">
-    <?php ob_start(); ?>
-    <?php // F6 — El evento se filtra solo al cambiar (`js-auto-submit`) y con él
-          // viaja lo que haya en el buscador; el buscador se envía con `Enter`
-          // (formulario GET nativo). Sin JS, el botón `noscript` es la salida. ?>
-    <form method="get" action="/admin/security-log" class="d-flex flex-wrap align-items-center gap-2">
-        <select name="event" class="form-select form-select-sm w-auto js-auto-submit" aria-label="Filtrar por evento">
-            <option value="">Todos los eventos</option>
-            <?php foreach ($events as $e): ?>
-                <option value="<?= View::escape($e) ?>" <?= $event === $e ? 'selected' : '' ?>><?= View::escape($e) ?></option>
-            <?php endforeach; ?>
-        </select>
-        <div class="input-group input-group-sm app-dash-search">
-            <span class="input-group-text app-dash-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-            <input type="search" name="q" value="<?= View::escape($q) ?>" class="form-control form-control-sm" placeholder="Buscar detalle, IP o usuario…" aria-label="Buscar en el log">
-        </div>
-        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
-    </form>
-    <?php $logActions = (string) ob_get_clean(); ?>
     <?= View::partial('admin/_page_head', [
         'active'   => 'security_log',
         'icon'     => 'fa-shield-halved',
         'title'    => 'Log de seguridad',
         'subtitle' => 'Eventos de autenticación, CSRF, rate limits, webhooks bloqueados, subidas denegadas y cambios administrativos.',
-        'actions'  => $logActions,
     ]) ?>
+
+    <?php // F6 — La barra es la MISMA que la del listado de formularios
+          // (`views/admin/forms.php`): buscador `.app-dash-search` y selector
+          // `.app-dash-sort`, en una fila que envuelve. El evento se filtra solo
+          // al cambiar (`js-auto-submit`) y con él viaja lo que haya en el
+          // buscador; el buscador se envía con `Enter` (formulario GET nativo).
+          // Sin JS, el botón `noscript` es la salida.
+          //
+          // El evento va en un `<select>` y no en un btn-group de enlaces como el
+          // estado de los formularios: son ~40 eventos conocidos y una fila de 40
+          // botones es ilegible. El modificador `app-dash-sort-wide` ensancha el
+          // control, porque las claves (`auth.password_reset_request`) no son
+          // rótulos cortos y a 200px se cortaban. ?>
+    <form method="get" action="/admin/security-log" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <div class="input-group input-group-sm app-dash-search">
+            <span class="input-group-text app-dash-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="search" name="q" value="<?= View::escape($q) ?>" class="form-control form-control-sm" placeholder="Buscar detalle, IP o usuario…" aria-label="Buscar en el log">
+        </div>
+        <select name="event" class="form-select form-select-sm app-dash-sort app-dash-sort-wide js-auto-submit" aria-label="Filtrar por evento">
+            <option value="">Todos los eventos</option>
+            <?php foreach ($events as $e): ?>
+                <option value="<?= View::escape($e) ?>" <?= $event === $e ? 'selected' : '' ?>><?= View::escape($e) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
+    </form>
 
     <?php if (empty($logs['items'])): ?>
         <?php // F6 — El vacío de un filtro no es «todavía no hay nada»: uno se

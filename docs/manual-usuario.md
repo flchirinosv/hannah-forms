@@ -5,9 +5,11 @@ Si algo de este manual y lo que ves en pantalla no coinciden, el código manda:
 `config/routes.php` para las rutas, `app/Services/FormSettings.php` para los
 ajustes y `config/permissions.php` para los permisos.
 
-Documento terminado: 2026-09-30. Última revisión: 2026-10-05, con el
-listado de participantes (fases 1 a 10), las invitaciones por correo y el
-listado del panel paginado en el servidor (sección 5.1).
+Documento terminado: 2026-09-30. Última revisión: 2026-10-14, con el
+listado de participantes (fases 1 a 10), las invitaciones por correo, el
+listado del panel paginado en el servidor (sección 5.1) y la consola de
+administración rediseñada: los ajustes de la instancia viven en
+`/admin/settings` y las altas y las acciones de fila, en diálogos.
 
 ---
 
@@ -133,7 +135,7 @@ Hay dos maneras de abrirlo, y se pueden pisar:
 | Dónde | Cómo | Cuándo gana |
 |---|---|---|
 | `.env` | `REGISTRATION_ENABLED=true` y reiniciar PHP | Mientras nadie lo toque en el panel |
-| `/admin` — tarjeta **Acceso de cualquiera** | El interruptor *Registro público* | A partir de ese momento |
+| `/admin/settings` — tarjeta **Registro público** | El interruptor *Registro público* | A partir de ese momento |
 
 Lo que se guarda es el interruptor que se ha marcado, no el valor del `.env`:
 así el fichero sigue siendo la referencia de un despliegue limpio y quien
@@ -161,16 +163,16 @@ Con el registro cerrado (el valor por defecto) pasan las dos cosas:
 
 ### 4.3 Crear cuentas desde el panel
 
-En `/admin` (pestaña **Usuarios**) está el alta, arriba de la lista, y funciona
-con el registro público cerrado: es lo contrario de lo que hace `/register`, y a
-propósito.
+En `/admin` (pestaña **Usuarios**) el botón **Nuevo usuario** de la cabecera abre
+el alta en un diálogo, y funciona con el registro público cerrado: es lo
+contrario de lo que hace `/register`, y a propósito.
 
 Quién puede verlo: cualquiera con el permiso **`admin.users`**. Si no lo tienes,
 la pantalla no aparece y el POST responde 403 aunque la ruta exista.
 
 Para crear una cuenta:
 
-1. Abre `/admin` y busca **Nuevo usuario**.
+1. Abre `/admin` y pulsa **Nuevo usuario**.
 2. Nombre, email, contraseña y su repetición.
 3. Elige el **rol** (lo que podrá hacer) y pulsa **Crear cuenta**.
 
@@ -203,13 +205,13 @@ hay que usar `/admin`.
 
 | Valor | `/register` | Quién puede crear cuentas |
 | --- | --- | --- |
-| Sin fila en `app_settings` y `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien tenga `admin.users`, desde `/admin` |
+| Sin fila en `app_settings` y `REGISTRATION_ENABLED=false` (por defecto) | 403 | Solo quien tenga `admin.users`, desde `/admin` (botón **Nuevo usuario**) |
 | Sin fila en `app_settings` y `REGISTRATION_ENABLED=true` | Formulario de alta | Cualquiera que llegue al sitio, y quien tenga `admin.users` |
 | Con fila en `app_settings` | Lo que diga la fila, en los dos sentidos | Igual, según la fila |
 
 > La tabla de arriba es el camino largo. El corto es el interruptor de la
-> tarjeta **Acceso de cualquiera** en `/admin`: escribe la fila, y a partir de
-> ahí manda ella sobre el `.env`.
+> tarjeta **Registro público** en `/admin/settings`: escribe la fila, y a partir
+> de ahí manda ella sobre el `.env`.
 
 > Si además quieres que la ruta devuelva 403 **antes** de que PHP la vea
 > (por ejemplo, en un despliegue con la aplicación en otro servidor), puedes
@@ -292,7 +294,7 @@ rol les traía.
 
 Dato importante: **`forms.review` no es lo mismo que `forms.edit_own`.**
 Poder editar tu propio formulario no te deja aprobarlo. Si la revisión está
-activada en la instalación (§8, y el interruptor de `/admin`), tu formulario
+activada en la instalación (§8, y el interruptor de `/admin/settings`), tu formulario
 tiene que pasar por la bandeja y lo aprueba alguien con `forms.review` — que
 puede ser tú mismo si lo tienes. Quien tenga `forms.publish_without_review`
 publica sin pasar por la bandeja; existe para quien responde por la instalación,
@@ -625,9 +627,9 @@ sabrías interpretar. A partir de ahí el formulario solo se mueve con las tres
 acciones de la bandeja (enviar, aprobar, devolver a borrador).
 
 La revisión es **una política de la instalación, no un ajuste de cada
-formulario**: un administrador la enciende (o la apaga) en `/admin` — pestaña
-*Usuarios*, tarjeta **Revisión de formularios** — con los interruptores *Exigir
-revisión a todos* y *Avisar por correo a los revisores*. Quien tenga el permiso
+formulario**: un administrador la enciende (o la apaga) en `/admin/settings` —
+tarjeta **Política de revisión** — con los interruptores *Exigir revisión a
+todos* y *Avisar por correo a los revisores*. Quien tenga el permiso
 `forms.publish_without_review` (ver §4.5) queda exento y publica sin pasar por la
 bandeja. Antes esto se configuraba formulario a formulario; ya no.
 

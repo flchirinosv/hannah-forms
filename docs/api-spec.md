@@ -246,13 +246,15 @@ de Turnstile; Turnstile solo con las DOS claves de instancia puestas.
 
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
-| GET | `/admin` | auth, admin | Gestión de usuarios |
-| POST | `/admin/users/role` | auth, admin, csrf | Cambiar rol (no permite auto-degradar admin) |
-| POST | `/admin/users/groups` | auth, admin, csrf | Grupos de un usuario (`groups[]` = lista completa; vacíos lo sacan de todos) |
-| POST | `/admin/users/toggle` | auth, admin, csrf | Activar/desactivar usuario (no sobre sí mismo) |
+| GET | `/admin` | auth, admin | Gestión de usuarios (alta en `#newUserModal`, acciones de fila en `#userActionsModal`) |
+| POST | `/admin/users/create` | auth, admin, csrf | Crear una cuenta (`admin.users`; funciona con el registro público cerrado; valida con `AuthController::validateNewUser()`) |
+| POST | `/admin/users/role` | auth, admin, csrf | Cambiar rol (no permite auto-degradar admin; JSON: repinta `vfUserRole<uid>`) |
+| POST | `/admin/users/groups` | auth, admin, csrf | Grupos de un usuario (`groups[]` = lista completa; vacíos lo sacan de todos; JSON: repinta `vfUserGroups<uid>`) |
+| POST | `/admin/users/toggle` | auth, admin, csrf | Activar/desactivar usuario (no sobre sí mismo; JSON: repinta `vfUserToggle<uid>`) |
 | POST | `/admin/users/permissions` | auth, admin, csrf | Permisos extra de un usuario (`permissions[]` = lista completa; vacíos los quita; claves fuera del catálogo se descartan; JSON: repinta `vfUserPerms<uid>`) |
+| GET | `/admin/settings` | auth, admin | Ajustes de la instancia: registro público y política de revisión (`admin.access`) |
 | POST | `/admin/settings/registration` | auth, admin, csrf | Abrir/cerrar el registro público (`admin.access`, JSON: `ok`, `enabled`, `message`) |
-| POST | `/admin/settings/review` | auth, admin, csrf | Política de revisión de la instancia (`review_required`, `review_notify_email`) |
+| POST | `/admin/settings/review` | auth, admin, csrf | Política de revisión de la instancia (`review_required`, `review_notify_email`; PRG a `/admin/settings`) |
 | GET | `/admin/forms` | auth, admin | Lista global de formularios |
 | GET | `/admin/groups` | auth, admin | Grupos de roles (RBAC) |
 | POST | `/admin/groups/create` | auth, admin, csrf | Crear grupo |

@@ -428,12 +428,11 @@
     });
 })();
 
-/* ---- Grupos colapsables (views/dashboard/forms/show.php y views/admin/users.php)
+/* ---- Grupos colapsables (views/dashboard/forms/show.php y views/admin/groups.php)
  * En la ficha del formulario son seis grupos porque, con los seis abiertos,
  * «Ajustes del formulario» ocupaba más de tres pantallas y el ajuste que se busca
- * casi nunca está en el primero; en «Usuarios» el alta viene cerrada de entrada,
- * porque con el registro público cerrado es la única forma de crear una cuenta y
- * lo que se abre en esa pantalla ocho de cada diez veces es la tabla.
+ * casi nunca está en el primero; en «Grupos» cada tarjeta es un grupo y abre en su
+ * estado por defecto.
  *
  * El plegado es de Bootstrap (`data-bs-toggle="collapse"`), así que esto solo
  * recuerda en qué estado quedó cada uno: el estado va en `localStorage` POR
@@ -662,4 +661,82 @@
 
     window.vfInitTabs = initTabs;
     initTabs();
+})();
+
+/* ---------------------------------------------------------------------------
+ * Modales del panel: MOVER, no duplicar.
+ *
+ * Las altas y las acciones de fila del panel viven en un diálogo, pero su
+ * marcado se sirve EN LÍNEA en la vista (que es lo que se ve sin JS) y este
+ * bloque lo traslada al modal. La alternativa —duplicar el formulario, una
+ * copia en línea y otra dentro del modal— son dos sitios que mantener y un
+ * `<noscript>` que solo tapa la copia duplicada, no la ausencia de una.
+ *
+ *  - `data-vf-modal-move="#modal"` en un contenedor + `data-vf-modal-form` en
+ *    un hijo: el hijo se mueve al `[data-vf-modal-body]` y el contenedor se
+ *    oculta (el botón de la cabecera abre el diálogo).
+ *  - `[data-vf-user]` abre el `#userActionsModal` con el panel de ESA fila
+ *    (`#rowactions-<uid>`) movido dentro y devuelto a su fila al cerrar, porque
+ *    los formularios, los `id` de los huecos y los avisos son de esa fila.
+ *    No hay un modal por usuario: sería clonar el panel una vez por fila.
+ * ------------------------------------------------------------------------- */
+(function () {
+    'use strict';
+
+    function moverFormulariosInline() {
+        const montajes = Array.prototype.slice.call(document.querySelectorAll('[data-vf-modal-move]'));
+        montajes.forEach(function (montaje) {
+            const destino = document.querySelector(montaje.getAttribute('data-vf-modal-move'));
+            if (!destino) { return; }
+            const cuerpo = destino.querySelector('[data-vf-modal-body]');
+            const formulario = montaje.querySelector('[data-vf-modal-form]');
+            if (!cuerpo || !formulario) { return; }
+            cuerpo.appendChild(formulario);
+            montaje.hidden = true;
+        });
+    }
+
+    function initTablaAcciones() {
+        const modalEl = document.getElementById('userActionsModal');
+        if (!modalEl || !window.bootstrap) { return; }
+        const cuerpo = modalEl.querySelector('[data-vf-modal-body]');
+        if (!cuerpo) { return; }
+        const titulo = modalEl.querySelector('[data-vf-modal-title]');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        let origen = null;
+
+        Array.prototype.slice.call(document.querySelectorAll('[data-vf-user]')).forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                const uid = boton.getAttribute('data-vf-user');
+                const caja = document.getElementById('rowactions-' + uid);
+                const panel = caja ? caja.firstElementChild : null;
+                if (!panel) { return; }
+                /* El panel es hijo de la caja oculta (el `<span hidden>`): se mueve
+                 * él, no la caja, o viajaría el `hidden` con nosotros. Al cerrar se
+                 * devuelve a su caja, que es de donde salió. */
+                origen = { panel: panel, caja: caja };
+                if (titulo) { titulo.textContent = boton.getAttribute('data-vf-user-name') || ''; }
+                cuerpo.appendChild(panel);
+                modal.show();
+            });
+        });
+
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            if (!origen) { return; }
+            cuerpo.removeChild(origen.panel);
+            origen.caja.appendChild(origen.panel);
+            origen = null;
+        });
+    }
+
+    function iniciar() {
+        moverFormulariosInline();
+        initTablaAcciones();
+    }
+
+    /* Expuesta porque una repintada puede traer marcado nuevo que mover; hoy la
+     * llama el arranque. Idempotente por el `data-vf-modal-*`: un contenedor ya
+     * movido tiene `hidden` y no vuelve a aparecer en `moverFormulariosInline`. */
+    window.vfInitAdminModals = iniciar;
+    iniciar();
 })();

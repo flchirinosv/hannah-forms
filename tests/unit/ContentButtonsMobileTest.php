@@ -78,7 +78,7 @@ class ContentButtonsMobileTest
 
     public function testLaSubNavegacionDeAdminConservaSusRotulos(): void
     {
-        // La sub-navegación de `/admin` son cinco destinos: un icono suelto no
+        // La sub-navegación de `/admin` son varios destinos: un icono suelto no
         // dice a dónde lleva cada uno, así que conserva icono Y rótulo en todas
         // las franjas. Para no partirse en dos o tres líneas ni comerse media
         // pantalla, en móvil se desplaza en horizontal en una sola línea y el
@@ -117,7 +117,8 @@ class ContentButtonsMobileTest
     public function testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera(): void
     {
         // El dueño pidió que la fila de pestañas de /admin (Usuarios, Grupos de
-        // roles, Roles y permisos, Log de seguridad, Formularios) no conviva con
+        // roles, Roles y permisos, Log de seguridad, Formularios, Ajustes de la
+        // instancia) no conviva con
         // el resto de cabeceras a otro tamaño: son `.nav-link`, no `.btn`, así
         // que ni `.app-head-actions` ni la regla de colapso las visten. Deben
         // tomar las MISMAS métricas del botón de cabecera; si esta regla cae,

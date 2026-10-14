@@ -1,7 +1,8 @@
 # Plan — Rediseño de la consola de administración (`/admin`)
 
 **Fecha:** 2026-10-14
-**Estado:** **F0–F6 hechas y verdes**. Plan cerrado.
+**Estado:** **F0–F6 hechas y verdes**. Plan cerrado y, además, la ronda de
+correcciones visuales posterior (C1–C4, abajo) aplicada y verde.
 **Objetivo:** llevar el módulo `/admin` (Usuarios, Grupos de roles, Roles y
 permisos, Log de seguridad, Formularios) a un objetivo de **usabilidad**: cada
 acción, con el menor número de pasos posible. **No se toca la marca** (degradado
@@ -208,9 +209,67 @@ traía su **propio** paginador; `/admin/forms` pintaba tarjetas y paginaba con
 
 ---
 
+### Correcciones visuales posteriores (C1–C4) (hechas)
+
+Ronda corta tras revisar el resultado en el navegador. No reabre el alcance de
+F0–F6: son cuatro ajustes de usabilidad y coherencia, con el mismo contrato.
+
+| # | Alcance | Estado |
+|---|---|---|
+| **C1** | `/admin/security-log`: barra de filtros con el mismo estilo que `/admin/forms` | ✅ hecha |
+| **C2** | Ajustes de la instancia a **pantalla propia** `/admin/settings` (pestaña nueva) | ✅ hecha |
+| **C3** | `/admin/groups`: alta en modal, tarjeta plegable y «lo que otorga» al cuerpo | ✅ hecha |
+| **C4** | `/admin/users`: alta en modal y acciones de fila en un modal compartido | ✅ hecha |
+
+**C1 — Log con la barra de filtros de Formularios.** `views/admin/security_log.php`
+pasa a llevar la búsqueda + filtro de evento con el mismo marcado que
+`forms.php`; `app.css` gana `.form-select.app-dash-sort-wide { max-width: 320px; }`
+para que el desplegable no ocupe toda la fila.
+
+**C2 — Ajustes de la instancia a `/admin/settings`.** Registro público y política
+de revisión dejan de apilarse encima de la tabla de usuarios (competían en altura
+sin ser de esa pantalla). Vista nueva `views/admin/settings.php` (dos tarjetas) y
+la sexta pestaña de `admin/_nav.php` (`admin.access`, no `admin.users`: ninguno
+de los dos toca la cuenta de nadie), ruta
+`GET /admin/settings → AdminController::settings`, y los tres
+`redirect('/admin')` de `updateReviewPolicy()` pasan a `/admin/settings`.
+`AdminController::index()` deja de pasar `registrationEnabled`/`reviewRequired`/
+`reviewNotifyEmail`/`canManageInstance`.
+
+**C3 — Grupos: alta en modal y tarjeta plegable.** `views/admin/groups.php`
+reescrita: el alta vive en `#newGroupModal` (servida en línea en
+`#newGroupFormMount` con `data-vf-modal-move` y movida al diálogo por JS, para
+no duplicar marcado ni depender de `<noscript>`), cada tarjeta es un grupo
+plegable (`data-vf-group-key="admin-grupos"`, paneles `grp-grupo-<gid>` en
+`collapse show`) y «lo que otorga este grupo» se muda al cuerpo de la tarjeta
+en un partial nuevo `views/admin/_group_effect.php`. `groupUpdate()` devuelve
+**dos** huecos: `vfGroupSummary<gid>` y `vfGroupEffect<gid>`.
+
+**C4 — Usuarios: alta en modal y acciones en un modal compartido.** El alta deja
+el `<fieldset>` plegable y se sirve en línea en `#newUserFormMount`, movida a
+`#newUserModal` por JS. El `⋯` de cada fila deja de ser un `dropdown` de
+Bootstrap: es un disparador `data-vf-user="<uid>"` y el panel de la fila (con
+sus cuatro formularios y sus huecos) lo **mueve** `initTablaAcciones()` al
+`#userActionsModal` al abrir y lo devuelve a su fila al cerrar. Un solo modal,
+no uno por usuario; el mismo nodo sirve para las dos superficies (con JS y sin
+JS). CSS: `.modal-body .app-row-menu` suelta el tope de alto y el ancho mínimo
+(dentro del modal scrollea el diálogo, no el panel).
+
+**Contratos que toca C1–C4:** `views/admin/settings.php` y
+`views/admin/_group_effect.php` (nuevas); `views/admin/users.php`,
+`groups.php`, `security_log.php`, `_nav.php`; `AdminController::settings()`
+(nueva), `index()`, `updateReviewPolicy()`, `groupUpdate()`;
+`public/assets/js/dashboard.js` (IIFE `window.vfInitAdminModals`:
+`moverFormulariosInline()` + `initTablaAcciones()`); `public/assets/css/app.css`.
+Lo atan `AdminSettingsPageTest` (nuevo), `GroupCollapseContractTest` (reescrito),
+`AdminRbacTest`, `RegistrationSwitchTest`, `ReviewPolicySwitchTest`,
+`ContentButtonsMobileTest`, `FormFichaLayoutTest`, `ViewStructureTest`.
+
+---
+
 ## Verificación
 
-- Suite completa: `php scripts/test.php` → **1117 tests** (a fecha de F6),
+- Suite completa: `php scripts/test.php` → **1120 tests** (a fecha de C1–C4),
   `Fallidos: 0`, `Errores: 0` (~6 min). Comprobación en navegador para lo que la
   suite no ve (maquetación, teclado, menús): Playwright/Chromium sobre
   `http://127.0.0.1:10001`.
@@ -222,7 +281,8 @@ traía su **propio** paginador; `/admin/forms` pintaba tarjetas y paginaba con
 
 - `views/admin/`: `users.php`, `_page_head.php`, `_nav.php`, `_user_role.php`,
   `_user_groups.php`, `_user_perms.php`, `_user_status.php`, `_user_toggle.php`,
-  `groups.php`, `roles.php`, `security_log.php`, `forms.php`.
+  `groups.php`, `_group_summary.php`, `_group_effect.php`, `roles.php`,
+  `security_log.php`, `forms.php`, `settings.php`.
 - `app/Controllers/AdminController.php`; `app/Models/User.php`, `Form.php`,
   `Role.php`, `RoleGroup.php`, `SecurityLog.php`.
 - `public/assets/css/app.css` (`.app-admin-table`, `.app-row-menu*`,
