@@ -184,21 +184,23 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   **ausencia** significa «abierto», y por eso los seis grupos de la ficha **no**
   llevan el atributo. Hoy hay dos: la ficha (`data-vf-form-id`, clave = id del
   formulario, que no se renombra porque sería perder el estado guardado de todos) y
-  el alta de `/admin` (`data-vf-group-key="admin-usuarios"`, cerrada). Que el panel
-  llegue `show` es lo que permite usarlo sin JS, y en el alta no es opcional: con
-  el registro público cerrado es la **única** forma de crear un `user` o un
-  `editor`.
+  la lista de grupos de `/admin/groups` (`data-vf-group-key="admin-grupos"`, abierta).
+  Que el panel llegue `show` es lo que permite usarlo sin JS.
 - **El `hidden.bs.collapse` de arranque no se guarda.** El `hide()`/`show()` inicial
   dispara el mismo evento que un clic, así que `dashboard.js` apunta lo que él
   decide en `decididos` y descarta esa primera escritura: si se guardara, la primera
   visita cerraría el panel para siempre y un cambio futuro del valor por defecto no
   llegaría a nadie.
-- **`/admin` reparte el alta y el interruptor en `col-lg-8` / `col-lg-4`**, y la
-  columna del interruptor **no se emite vacía** si falta `admin.access`: el alta se
-  queda en 8 columnas de todos modos y la retícula no da un salto al desaparecer.
-  Los cinco campos van en 3+2, y no cuatro en fila, porque dentro de `col-lg-8` un
-  `col-md-3` deja el campo de contraseña tan estrecho que se corta el marcador de
-  posición.
+- **Las altas de `/admin` son formularios servidos EN LÍNEA que `dashboard.js` mueve
+  al diálogo** (`data-vf-modal-move` + `data-vf-modal-form`), nunca markup duplicado:
+  sin JS se ven en su tarjeta de cabecera y el botón del modal no hace falta. El alta
+  de usuario va en **dos columnas** (`col-md-6`), no tres, porque con tres el campo de
+  contraseña se corta; el de grupo va en **una** (`col-12`) con la descripción como
+  `<textarea>`. Las acciones de la fila de usuario (`⋯`) son **otro** modal
+  compartido (`#userActionsModal`) al que el JS **traslada el panel de esa fila** y lo
+  devuelve a su sitio al cerrar: los `id` de los huecos, los `action` y los avisos
+  siguen siendo los de la fila. Los ajustes de la INSTANCIA (registro y revisión) no
+  viven aquí sino en `/admin/settings`.
 - **`fields.label` es contenido, no un rótulo de editor**: un salto de página nace
   con `Página N` —el número de páginas que ya hay más uno, no la posición en el
   lienzo, que cuenta secciones y el bloque implícito—, igual que una sección nace

@@ -439,8 +439,9 @@
  * PANTALLA (`vf:grp:<clave>`) y no en el del navegador, porque el mismo usuario
  * pasa por varias fichas y cerrarlos todos en cada una era más ruido que el que
  * arreglaba. Cada contenedor trae su clave: la ficha la sigue nombrando
- * `data-vf-form-id` (su clave es el id del formulario y no cambia), y el alta de
- * usuarios usa `data-vf-group-key`. `data-vf-group-default="closed"` es lo que
+ * `data-vf-form-id` (su clave es el id del formulario y no cambia), y la lista de
+ * grupos de `/admin/groups` usa `data-vf-group-key="admin-grupos"`.
+ * `data-vf-group-default="closed"` es lo que
  * distingue «cerrado de entrada» de «abierto de entrada», sin tener que mantener
  * dos comportamientos distintos según la pantalla.
  *

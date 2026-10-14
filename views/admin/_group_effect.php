@@ -4,10 +4,12 @@
  * miembros.
  *
  * Vive aparte del resumen porque en el rediseño de `/admin/groups` pasó al
- * CUERPO de la tarjeta (columna 2/3 de la primera fila de la rejilla), mientras
- * que la cabecera-resumen —nombre, descripción, recuentos y borrado— se queda
- * en el encabezado. Son dos huecos distintos que `AdminController::groupUpdate()`
- * repinta sin recargar: `vfGroupSummary<gid>` y `vfGroupEffect<gid>`.
+ * CUERPO de la tarjeta (abajo a la izquierda, junto a «Miembros»: es la
+ * consecuencia de marcar los roles, que van arriba a la derecha, y no su
+ * control), mientras que la cabecera-resumen —nombre, descripción, recuentos y
+ * borrado— se queda en el encabezado. Son dos huecos distintos que
+ * `AdminController::groupUpdate()` repinta sin recargar: `vfGroupSummary<gid>` y
+ * `vfGroupEffect<gid>`.
  *
  * Es el mismo markup en el GET en línea y en la respuesta del POST: con dos
  * copias, cambiar una sola hacía que la pantalla y el repintado divergieran.

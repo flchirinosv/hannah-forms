@@ -476,8 +476,13 @@ no era el color, era la densidad y la jerarquía.
   lo pinta `views/admin/_group_summary.php`; guardar sin recarga repinta ESE
   hueco (`vfGroupSummary<gid>`) **y** el efecto (`vfGroupEffect<gid>`,
   `views/admin/_group_effect.php`), porque el GET y el POST usan los mismos
-  partials y no pueden divergir. La tarjeta abre en su estado por defecto con el
-  plegado genérico por `data-vf-group-key` (clave `admin-grupos`) y paneles
+  partials y no pueden divergir. En el cuerpo, «Roles del grupo» va arriba a la
+  derecha (junto a Nombre/Descripción: es el control que se marca) y «lo que
+  otorga» abajo a la izquierda (junto a Miembros: es la consecuencia de lo
+  marcado). Los ítems de roles y de miembros ocupan **una línea** con
+  `.app-rbac-item-line`: el nombre cede y se recorta, y el recuento de permisos
+  (o el correo) se alinea a la derecha. La tarjeta abre en su estado por defecto
+  con el plegado genérico por `data-vf-group-key` (clave `admin-grupos`) y paneles
   `grp-grupo-<gid>`; el alta vive en el modal (§ arriba). El buscador de
   miembros es de **cliente** y solo esconde `.app-rbac-item`: la pertenencia es
   el POST completo, de modo que filtrar en servidor sacaría del grupo a quien no

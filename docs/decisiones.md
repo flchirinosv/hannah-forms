@@ -1545,3 +1545,13 @@ Ronda de correcciones tras revisar F0–F6 en el navegador. Cuatro ajustes, el m
 
 Lo atan `AdminSettingsPageTest` (nuevo: la ruta, la pestaña con `admin.access` y que las tarjetas ya no estén en la ficha de usuarios), `GroupCollapseContractTest` (reescrito para la tarjeta de grupo), `AdminRbacTest` (el `⋯` es un disparador y existe el modal), `RegistrationSwitchTest`/`ReviewPolicySwitchTest` (la pantalla nueva y el PRG a `/admin/settings`), `ContentButtonsMobileTest`, `FormFichaLayoutTest` y `ViewStructureTest`. Suite completa: 100 archivos / **1120 métodos** en verde.
 
+### Ajustes de retícula de la misma ronda
+
+Segunda pasada sobre las mismas pantallas, ya con el navegador delante:
+
+- **El alta de usuario pasa a dos columnas** (`col-md-6`, no `col-md-3`/`col-md-4`): en tres, el campo de contraseña se estrechaba hasta cortar su marcador de posición. Nombre/Email arriba, Contraseña/Repetir en medio, Rol a la izquierda.
+- **El modal de acciones se parte en dos columnas**: a la izquierda los **permisos efectivos** (auditoría de solo lectura: de dónde le viene cada permiso) y a la derecha lo que se **edita** (rol, grupos y permisos extra). Lo efectivo es contexto de los formularios, no otro formulario, así que deja de competir con ellos en la misma pila. `#userActionsModal` sube a `modal-lg` para que las dos columnas quepan.
+- **El alta de grupo va en una columna** (`col-12`) y la descripción es un `<textarea>`: un `<input>` de una línea para «quiénes son y por qué existen» invitaba a no escribir nada.
+- **En la tarjeta de grupo, «Roles del grupo» sube junto al nombre y «lo que otorga» baja al lado de «Miembros»**: los roles son el control que se marca; el efecto es su consecuencia, y se lee justo debajo de donde se marca. El docblock de `_group_effect.php` deja de decir «columna 2/3».
+- **Los ítems de roles y de miembros ocupan una línea** (`.app-rbac-item-line`): el nombre cede y se recorta, y el dato —el recuento de permisos o el correo— se alinea a la derecha con `justify-content: space-between`. La variante se aplica solo a esas dos listas: los ítems de la fila de usuario (grupos y permisos extra) conservan su nombre y su descripción en dos renglones.
+

@@ -2197,6 +2197,28 @@ body {
 .app-rbac-item-name { display: block; font-size: .875rem; font-weight: 600; color: var(--vf-text, #1e293b); }
 .app-rbac-item-meta { display: block; font-size: var(--vf-hint-fs, .75rem); color: var(--vf-text-muted, #64748b); }
 
+/* Variante de una sola línea (roles del grupo y miembros): el nombre a la
+   izquierda y su dato —el conteo de permisos, el correo— alineado a la derecha.
+   El nombre es el que cede y se recorta; el dato nunca se parte, que es el que
+   se lee alineado. */
+.app-rbac-item-line { align-items: center; }
+.app-rbac-item-line .form-check-input { margin-top: 0 !important; flex: 0 0 auto; }
+.app-rbac-item-line > span {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+}
+.app-rbac-item-line .app-rbac-item-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.app-rbac-item-line .app-rbac-item-meta { text-align: right; white-space: nowrap; }
+
 /* Lo que otorga el grupo: la respuesta a «qué le doy a este grupo». */
 .app-rbac-effect {
     padding: .75rem;
@@ -2270,9 +2292,9 @@ body {
 /* El menú de acciones de una fila de /admin: un único `⋯` que abre el rol, los
    grupos, los permisos extra y el estado. Ancho cómodo para las claves de
    permiso, pero topado al viewport en móvil, y con scroll interno para no
-   salirse de la pantalla con el catálogo entero. La vista lo abre con
-   `data-bs-auto-close="outside"` para poder editar varias cosas sin que se
-   cierre a la primera casilla. */
+   salirse de la pantalla con el catálogo entero. El `⋯` lo TRASLADA a
+   `#userActionsModal` (`dashboard.js`), así que su ancho "de verdad" es el del
+   diálogo; estas medidas quedan por si algún día se pinta sin JS. */
 .app-row-menu-btn { line-height: 1; }
 
 /* La altura se topa a lo poco que deja el viewport, NO al alto que pida el

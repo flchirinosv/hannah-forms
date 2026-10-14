@@ -72,28 +72,28 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                     </p>
                     <form method="post" action="/admin/users/create">
                         <?= Csrf::field() ?>
-                        <?php // 3+2 y no cuatro en fila: dentro de `col-lg-8` un
-                              // `col-md-3` deja el campo de contraseña tan
-                              // estrecho que el marcador de posición se corta. ?>
+                        <?php // Dos columnas y no tres: con tres, el campo de
+                              // contraseña queda tan estrecho que el marcador de
+                              // posición se corta. En dos cada campo respira. ?>
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
                                 <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
                                 <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
                                 <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
                                 <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
                                 <div class="form-text">Si no coinciden, el alta se rechaza.</div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
                                 <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
                                     <?php foreach ($roles as $rol): ?>
@@ -279,7 +279,44 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                       // vale para las dos superficies. ?>
                                 <span id="rowactions-<?= $uid ?>" hidden>
                                     <div class="p-2 app-row-menu">
+                                        <?php // Dos columnas: a la IZQUIERDA la auditoría (de dónde
+                                              // le viene cada permiso, de solo lectura) y a la
+                                              // DERECHA lo que se edita (rol, grupos y extra). Lo
+                                              // efectivo es el contexto de los formularios, no
+                                              // otro formulario, así que no compite con ellos. ?>
+                                        <div class="row g-3">
+                                            <?php $tieneEfectivos = $canEditPermissions && $permissionCatalog !== []; ?>
+                                            <?php if ($tieneEfectivos): ?>
+                                                <?php $eff = $userEffective[$uid] ?? ['rol' => [], 'grupos' => [], 'extra' => []]; ?>
+                                                <?php // AUDITORÍA: de dónde le viene cada permiso a
+                                                      // esta persona. El desglose es lo que hace
+                                                      // visible una concesión directa; sin él, un
+                                                      // permiso suelto sería indistinguible de uno
+                                                      // heredado. ?>
+                                                <div class="col-12 col-lg-6">
+                                                    <div class="app-rbac-effect">
+                                                        <div class="app-rbac-effect-title">
+                                                            <i class="fa-solid fa-bolt me-1"></i>Permisos efectivos
+                                                        </div>
+                                                        <?php foreach (['rol' => 'Rol', 'grupos' => 'Grupos', 'extra' => 'Extra'] as $origen => $etiqueta): ?>
+                                                            <div class="app-rbac-effect-row">
+                                                                <span class="app-rbac-effect-prefix"><?= $etiqueta ?></span>
+                                                                <span class="app-rbac-effect-keys">
+                                                                    <?php if (($eff[$origen] ?? []) === []): ?>
+                                                                        <span class="text-muted">—</span>
+                                                                    <?php else: ?>
+                                                                        <?php foreach ($eff[$origen] as $k): ?>
+                                                                            <code><?= View::escape((string) $k) ?></code>
+                                                                        <?php endforeach; ?>
+                                                                    <?php endif; ?>
+                                                                </span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
 
+                                            <div class="col-12 <?= $tieneEfectivos ? 'col-lg-6' : '' ?>">
                                         <?php // ROL: se envía solo al cambiar (`js-auto-submit`),
                                               // por eso el formulario no lleva botón. ?>
                                         <form method="post" action="/admin/users/role" data-vf-async="slots">
@@ -333,33 +370,8 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                             </form>
                                         <?php endif; ?>
 
-                                        <?php if ($canEditPermissions && $permissionCatalog !== []): ?>
+                                        <?php if ($tieneEfectivos): ?>
                                             <hr class="my-3">
-                                            <?php $eff = $userEffective[$uid] ?? ['rol' => [], 'grupos' => [], 'extra' => []]; ?>
-                                            <?php // AUDITORÍA: de dónde le viene cada permiso a
-                                                  // esta persona. El desglose es lo que hace
-                                                  // visible una concesión directa; sin él, un
-                                                  // permiso suelto sería indistinguible de uno
-                                                  // heredado. ?>
-                                            <div class="app-rbac-effect mb-2">
-                                                <div class="app-rbac-effect-title">
-                                                    <i class="fa-solid fa-bolt me-1"></i>Permisos efectivos
-                                                </div>
-                                                <?php foreach (['rol' => 'Rol', 'grupos' => 'Grupos', 'extra' => 'Extra'] as $origen => $etiqueta): ?>
-                                                    <div class="app-rbac-effect-row">
-                                                        <span class="app-rbac-effect-prefix"><?= $etiqueta ?></span>
-                                                        <span class="app-rbac-effect-keys">
-                                                            <?php if (($eff[$origen] ?? []) === []): ?>
-                                                                <span class="text-muted">—</span>
-                                                            <?php else: ?>
-                                                                <?php foreach ($eff[$origen] as $k): ?>
-                                                                    <code><?= View::escape((string) $k) ?></code>
-                                                                <?php endforeach; ?>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
                                             <form method="post" action="/admin/users/permissions" data-vf-async="slots"
                                                   data-vf-error="permsError<?= $uid ?>">
                                                 <?= \App\Core\Csrf::field() ?>
@@ -397,6 +409,8 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                 </div>
                                             </form>
                                         <?php endif; ?>
+                                            </div>
+                                        </div>
 
                                         <hr class="my-3">
                                         <div class="app-rbac-item-meta text-uppercase fw-bold mb-1">Estado de la cuenta</div>
@@ -455,7 +469,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
 </div>
 
 <div class="modal fade" id="userActionsModal" tabindex="-1" aria-labelledby="userActionsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white">

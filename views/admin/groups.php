@@ -51,24 +51,24 @@ use App\Core\View;
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <h3 class="h6 fw-bold mb-3"><i class="fa-solid fa-plus me-1 text-primary"></i>Nuevo grupo</h3>
-                    <form method="post" action="/admin/groups/create" class="row g-3 align-items-end" data-vf-modal-form>
+                    <form method="post" action="/admin/groups/create" class="row g-3" data-vf-modal-form>
                         <?= \App\Core\Csrf::field() ?>
                         <div class="col-12">
                             <p class="form-text mt-0 mb-1">
                                 Se crea vacío. En cuanto exista aparece su tarjeta y ahí se le marcan los roles y los miembros.
                             </p>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-12">
                             <label class="form-label small fw-semibold" for="groupName">Nombre</label>
                             <input type="text" class="form-control form-control-sm" id="groupName" name="name" required maxlength="80"
                                    placeholder="Soporte">
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-12">
                             <label class="form-label small fw-semibold" for="groupDesc">Descripción</label>
-                            <input type="text" class="form-control form-control-sm" id="groupDesc" name="description" maxlength="255"
-                                   placeholder="Quiénes son y por qué existen">
+                            <textarea class="form-control form-control-sm" id="groupDesc" name="description" maxlength="255"
+                                      rows="3" placeholder="Quiénes son y por qué existen"></textarea>
                         </div>
-                        <div class="col-md-2 d-grid">
+                        <div class="col-12 d-grid">
                             <button type="submit" class="btn btn-sm btn-primary app-btn-mobile-icon">
                                 <i class="fa-solid fa-plus me-1"></i>Crear
                             </button>
@@ -130,15 +130,10 @@ use App\Core\View;
                                           maxlength="255" rows="3"><?= View::escape($group['description'] ?? '') ?></textarea>
                             </div>
 
-                            <?php // El efecto del grupo, junto al nombre: es la respuesta a
-                                  // «¿qué gana alguien por estar aquí?», así que va a la
-                                  // mitad, junto a lo que se edita. ?>
-                            <div class="col-lg-6">
-                                <div id="vfGroupEffect<?= $gid ?>">
-                                    <?= View::partial('admin/_group_effect', ['gPerms' => $gPerms]) ?>
-                                </div>
-                            </div>
-
+                            <?php // Los ROLES del grupo van junto al nombre (arriba a la
+                                  // derecha): son lo que se edita. El efecto —lo que el
+                                  // grupo otorga— baja debajo, con los miembros, porque es
+                                  // la consecuencia de lo marcado, no su control. ?>
                             <div class="col-lg-6">
                                 <label class="form-label small text-muted mb-1" for="groles-<?= $gid ?>">
                                     Roles del grupo
@@ -147,7 +142,7 @@ use App\Core\View;
                                      aria-label="Roles del grupo <?= View::escape($group['name']) ?>">
                                     <?php foreach ($roles as $role): ?>
                                         <?php $rid = (int) $role['id']; ?>
-                                        <label class="app-rbac-item">
+                                        <label class="app-rbac-item app-rbac-item-line">
                                             <input class="form-check-input mt-1" type="checkbox"
                                                    name="roles[]" value="<?= $rid ?>"
                                                    <?= in_array($rid, $gRoles, true) ? 'checked' : '' ?>>
@@ -159,6 +154,17 @@ use App\Core\View;
                                             </span>
                                         </label>
                                     <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <?php // El efecto baja aquí: es la CONSECUENCIA de marcar roles,
+                                  // no un control. Quien administra pregunta «¿qué gana
+                                  // alguien por estar aquí?», y eso se responde al lado de
+                                  // lo que acaba de marcar. Es el mismo hueco que repinta
+                                  // `groupUpdate()` (`vfGroupEffect<gid>`). ?>
+                            <div class="col-lg-6">
+                                <div id="vfGroupEffect<?= $gid ?>">
+                                    <?= View::partial('admin/_group_effect', ['gPerms' => $gPerms]) ?>
                                 </div>
                             </div>
 
@@ -182,7 +188,7 @@ use App\Core\View;
                                         </p>
                                         <?php foreach ($users as $member): ?>
                                             <?php $mid = (int) $member['id']; ?>
-                                            <label class="app-rbac-item">
+                                            <label class="app-rbac-item app-rbac-item-line">
                                                 <input class="form-check-input mt-1" type="checkbox"
                                                        name="users[]" value="<?= $mid ?>"
                                                        <?= in_array($mid, $gMembers, true) ? 'checked' : '' ?>>
