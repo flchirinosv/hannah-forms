@@ -358,6 +358,15 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   botón de cerrar del cajón es `btn-close-white`: sobre el degradado, el
   `btn-close` oscuro de Bootstrap desaparecía. Lo ata
   `SidebarLayoutTest::testEnMovilLaSidebarConservaSusEtiquetas`.
+- **El bloque de usuario ocupa todo el ancho y se despliega hacia arriba.** No es
+  un `.dropdown dropup` (que pintaba una caja blanca flotante por encima del
+  borde y anclaba el menú a la pastilla, no a la barra) sino un `collapse` de
+  Bootstrap: el panel (`#sidebarUserMenu`) va **antes** del botón, que queda
+  pegado al borde inferior, así que se abre hacia arriba; el padding vive dentro
+  del botón y de los enlaces para que el resaltado llegue de borde a borde. El
+  disparador es un `<button>` con `data-bs-toggle="collapse"` y `aria-controls`,
+  y la flecha rota con `[aria-expanded="true"]`. Sin JS propio: es el mismo
+  `collapse` que pliega los grupos de `/admin`.
 - **En móvil, los botones del CONTENIDO con icono muestran solo el icono**
   (`@media (max-width: 991.98px)`): para los `.btn` de `.app-content` que llevan
   un `<i class="fa-…">`, el texto se colapsa con `font-size: 0` (sigue en el
@@ -458,7 +467,11 @@ no era el color, era la densidad y la jerarquía.
   al cerrar. Un solo diálogo para todas las filas: duplicar el panel por usuario
   serían N copias. Las insignias que el fetch repinta
   (`vfUserRole/Status/Groups/Perms<uid>`) siguen siendo partials, y el `action` de
-  cada formulario no cambia, así que sin JS el POST nativo sigue funcionando.
+  cada formulario no cambia, así que sin JS el POST nativo sigue funcionando. El
+  panel se organiza en **tres columnas** —permisos efectivos (auditoría), rol y
+  grupos (identidad) y permisos extra (concesión directa)— y el diálogo sube a
+  `modal-xl` para que quepan; el alta de usuario es de **una sola columna** y su
+  diálogo queda a ancho por defecto (500px).
 - **Las altas del panel viven en modales, sin duplicar el marcado.** El alta de
   usuario (`#newUserModal`) y la de grupo (`#newGroupModal`) se sirven **en
   línea** en la vista (que es lo que se ve sin JS) y `dashboard.js`

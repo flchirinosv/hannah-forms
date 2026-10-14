@@ -182,16 +182,42 @@ body {
 .app-sidebar-cta { padding: 0 .75rem .75rem; }
 .app-sidebar-cta .app-btn-create { background: #fff; border-color: #fff; color: var(--vf-primary-dark); font-weight: 600; }
 .app-sidebar-cta .app-btn-create:hover { background: var(--vf-primary-light); border-color: var(--vf-primary-light); color: var(--vf-primary-dark); }
-.app-sidebar-user { padding: .75rem; border-top: 1px solid rgba(255, 255, 255, .14); }
+/* El bloque de usuario va a TODO el ancho de la barra y se despliega hacia
+   ARRIBA: el panel va ANTES del botón (que queda pegado al borde inferior) y
+   lo abre Bootstrap con `collapse`, no un `dropdown` flotante que se salía del
+   degradado. El padding lateral vive dentro del botón y de los enlaces, no en
+   el contenedor, para que el resaltado del hover llegue de borde a borde. */
+.app-sidebar-user { border-top: 1px solid rgba(255, 255, 255, .14); }
 .app-sidebar-user-btn {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: .6rem;
+    padding: .75rem 1rem;
+    background: transparent;
+    border: 0;
     color: #fff;
+    text-align: left;
+}
+.app-sidebar-user-btn:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.app-sidebar-user-caret { margin-left: auto; font-size: .75rem; transition: transform .2s ease; }
+.app-sidebar-user-btn[aria-expanded="true"] .app-sidebar-user-caret { transform: rotate(180deg); }
+.app-sidebar-user-menu { border-bottom: 1px solid rgba(255, 255, 255, .14); }
+.app-sidebar-user-email { display: block; padding: .6rem 1rem .3rem; font-size: .75rem; color: rgba(255, 255, 255, .7); word-break: break-all; }
+.app-sidebar-user-link {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    padding: .5rem 1rem;
+    background: transparent;
+    border: 0;
+    color: rgba(255, 255, 255, .9);
+    font-size: .85rem;
+    text-align: left;
     text-decoration: none;
 }
-.app-sidebar-user-btn:hover { color: #fff; }
-.app-sidebar-user-btn::after { margin-left: auto; }
+.app-sidebar-user-link:hover { background: rgba(255, 255, 255, .12); color: #fff; }
 .app-sidebar-user-name { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .app-sidebar-user-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: .85rem; }
 .app-content { flex: 1 1 auto; min-width: 0; }

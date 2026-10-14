@@ -69,27 +69,34 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                 </a>
             </div>
             <?php endif; ?>
-            <div class="app-sidebar-user mt-auto dropdown dropup">
-                <a class="app-sidebar-user-btn dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <?php // El usuario vive abajo y a TODO el ancho de la barra. No es un
+                  // desplegable flotante (`.dropdown`): es un colapsable que se
+                  // abre HACIA ARRIBA —el panel va ANTES del botón, que queda
+                  // pegado al borde inferior— y lo gobierna Bootstrap con
+                  // `data-bs-toggle="collapse"`, sin JS propio. Así el bloque
+                  // comparte el degradado de la barra en vez de salirse a una
+                  // caja blanca por encima del borde. ?>
+            <div class="app-sidebar-user mt-auto">
+                <div class="collapse app-sidebar-user-menu" id="sidebarUserMenu">
+                    <ul class="list-unstyled m-0">
+                        <li><span class="app-sidebar-user-email"><?= View::escape($currentUser['email'] ?? '') ?></span></li>
+                        <li><a class="app-sidebar-user-link" href="/account/password"><i class="fa-solid fa-user-shield" aria-hidden="true"></i>Seguridad de mi cuenta</a></li>
+                        <li>
+                            <form method="post" action="/logout" class="m-0">
+                                <?= \App\Core\Csrf::field() ?>
+                                <button type="submit" class="app-sidebar-user-link text-danger"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar sesión</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                <button type="button" class="app-sidebar-user-btn" data-bs-toggle="collapse" data-bs-target="#sidebarUserMenu" aria-expanded="false" aria-controls="sidebarUserMenu">
                     <span class="app-avatar"><?= View::escape(strtoupper(substr($currentUser['name'] ?? 'U', 0, 1))) ?></span>
                     <span class="app-sidebar-label app-sidebar-user-name">
                         <span class="app-sidebar-user-text"><?= View::escape($currentUser['name'] ?? '') ?></span>
                         <span class="badge text-bg-light app-role-badge"><?= View::escape($currentUser['role_name'] ?? '') ?></span>
                     </span>
-                </a>
-                <ul class="dropdown-menu shadow">
-                    <li><span class="dropdown-item-text small text-muted"><?= View::escape($currentUser['email'] ?? '') ?></span></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a class="dropdown-item" href="/account/password"><i class="fa-solid fa-user-shield me-1" aria-hidden="true"></i>Seguridad de mi cuenta</a>
-                    </li>
-                    <li>
-                        <form method="post" action="/logout">
-                            <?= \App\Core\Csrf::field() ?>
-                            <button type="submit" class="dropdown-item text-danger"><i class="fa-solid fa-right-from-bracket me-1" aria-hidden="true"></i>Cerrar sesión</button>
-                        </form>
-                    </li>
-                </ul>
+                    <i class="fa-solid fa-chevron-up app-sidebar-user-caret" aria-hidden="true"></i>
+                </button>
             </div>
         </div>
     </aside>

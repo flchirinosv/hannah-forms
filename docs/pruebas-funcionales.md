@@ -865,13 +865,14 @@ C4 hace falta al menos un usuario y un grupo.
 | AD6 | Abrir `/admin/groups` | Cada tarjeta es un grupo **plegable** (abre en su estado por defecto); el resumen lleva nombre, insignias y borrado; «lo que otorga» está en el cuerpo | M | |
 | AD7 | Pulsar «Nuevo grupo» | Abre `#newGroupModal` con el formulario de alta; guardar recarga y la tarjeta nueva aparece | A | |
 | AD8 | Guardar un grupo sin recarga | Se repinta la cabecera-resumen **y** el efecto del grupo, sin recargar | M | |
-| AD9 | Abrir `/admin/users` y pulsar «Nuevo usuario» | Abre `#newUserModal` con el alta; sin JS el formulario sigue en la página | A | |
-| AD10 | Pulsar el `⋯` de una fila | Abre `#userActionsModal` **con el nombre de esa persona** en el título y el panel de su fila dentro | M | |
+| AD9 | Abrir `/admin/users` y pulsar «Nuevo usuario» | Abre `#newUserModal` con el alta **en una sola columna**; sin JS el formulario sigue en la página | A | |
+| AD10 | Pulsar el `⋯` de una fila | Abre `#userActionsModal` **con el nombre de esa persona** en el título y el panel de su fila dentro, en **tres columnas** (permisos efectivos / rol y grupos / permisos extra) | M | |
 | AD11 | Cambiar el rol desde ese modal | Se guarda sin recarga y la insignia de la fila (detrás del modal) queda al día | M | |
 | AD12 | Cerrar el modal y abrir el de otra fila | Cada uno trae su panel; no se ve el de la fila anterior | M | |
 | AD13 | Marcar grupos en el modal | No se cierra al marcar la primera casilla; el aviso de error, si lo hay, sale dentro del modal | M | |
 | AD14 | Todo lo anterior **sin JavaScript** | El alta y las acciones se envían por POST nativo y recargan; nada queda inalcanzable | A | |
 | AD15 | En móvil (390px) | La tabla de usuarios se apila en tarjetas, el `⋯` sigue alcanzable y los modales no se salen de la pantalla | M | |
+| AD16 | Pulsar el bloque de usuario al pie de la sidebar | Ocupa todo el ancho y se despliega **hacia arriba** (colapsable, no un desplegable flotante), con el correo, «Seguridad de mi cuenta» y «Cerrar sesión»; la flecha rota al abrir | M | |
 
 ## Cuando encuentres un fallo
 

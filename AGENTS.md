@@ -194,13 +194,15 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **Las altas de `/admin` son formularios servidos EN LÍNEA que `dashboard.js` mueve
   al diálogo** (`data-vf-modal-move` + `data-vf-modal-form`), nunca markup duplicado:
   sin JS se ven en su tarjeta de cabecera y el botón del modal no hace falta. El alta
-  de usuario va en **dos columnas** (`col-md-6`), no tres, porque con tres el campo de
-  contraseña se corta; el de grupo va en **una** (`col-12`) con la descripción como
-  `<textarea>`. Las acciones de la fila de usuario (`⋯`) son **otro** modal
-  compartido (`#userActionsModal`) al que el JS **traslada el panel de esa fila** y lo
-  devuelve a su sitio al cerrar: los `id` de los huecos, los `action` y los avisos
-  siguen siendo los de la fila. Los ajustes de la INSTANCIA (registro y revisión) no
-  viven aquí sino en `/admin/settings`.
+  de usuario va en **una sola columna** (`col-12`, diálogo a ancho por defecto) porque
+  en dos el campo de contraseña se corta en pantallas estrechas; el de grupo también en
+  **una** (`col-12`) con la descripción como `<textarea>`. Las acciones de la fila de
+  usuario (`⋯`) son **otro** modal compartido (`#userActionsModal`, `modal-xl`) al que
+  el JS **traslada el panel de esa fila** y lo devuelve a su sitio al cerrar: los `id`
+  de los huecos, los `action` y los avisos siguen siendo los de la fila. El panel se
+  organiza en **tres columnas** (permisos efectivos / rol y grupos / permisos extra).
+  Los ajustes de la INSTANCIA (registro y revisión) no viven aquí sino en
+  `/admin/settings`.
 - **`fields.label` es contenido, no un rótulo de editor**: un salto de página nace
   con `Página N` —el número de páginas que ya hay más uno, no la posición en el
   lienzo, que cuenta secciones y el bloque implícito—, igual que una sección nace
@@ -1377,7 +1379,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 500 comprobaciones manuales en 30 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 501 comprobaciones manuales en 30 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica

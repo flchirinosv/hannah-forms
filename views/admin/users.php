@@ -72,28 +72,29 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                     </p>
                     <form method="post" action="/admin/users/create">
                         <?= Csrf::field() ?>
-                        <?php // Dos columnas y no tres: con tres, el campo de
-                              // contraseña queda tan estrecho que el marcador de
-                              // posición se corta. En dos cada campo respira. ?>
+                        <?php // Una sola columna: el alta tiene cinco campos y la
+                              // pila vertical deja cada uno a todo el ancho del
+                              // diálogo, que es donde el marcador de posición de la
+                              // contraseña ya no se corta. ?>
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="newUserName" class="form-label small fw-semibold">Nombre</label>
                                 <input type="text" class="form-control form-control-sm" id="newUserName" name="name" placeholder="Ana Ruiz" maxlength="100" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="newUserEmail" class="form-label small fw-semibold">Email</label>
                                 <input type="email" class="form-control form-control-sm" id="newUserEmail" name="email" placeholder="ana@ejemplo.com" maxlength="190" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="newUserPassword" class="form-label small fw-semibold">Contraseña</label>
                                 <input type="password" class="form-control form-control-sm" id="newUserPassword" name="password" placeholder="Mínimo <?= (int) $min ?> caracteres" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="newUserPasswordConfirm" class="form-label small fw-semibold">Repetir contraseña</label>
                                 <input type="password" class="form-control form-control-sm" id="newUserPasswordConfirm" name="password_confirm" minlength="<?= (int) $min ?>" autocomplete="new-password" required>
                                 <div class="form-text">Si no coinciden, el alta se rechaza.</div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="newUserRole" class="form-label small fw-semibold">Rol</label>
                                 <select class="form-select form-select-sm" id="newUserRole" name="role_id" required>
                                     <?php foreach ($roles as $rol): ?>
@@ -279,11 +280,12 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                       // vale para las dos superficies. ?>
                                 <span id="rowactions-<?= $uid ?>" hidden>
                                     <div class="p-2 app-row-menu">
-                                        <?php // Dos columnas: a la IZQUIERDA la auditoría (de dónde
-                                              // le viene cada permiso, de solo lectura) y a la
-                                              // DERECHA lo que se edita (rol, grupos y extra). Lo
-                                              // efectivo es el contexto de los formularios, no
-                                              // otro formulario, así que no compite con ellos. ?>
+                                        <?php // Tres columnas, una por fuente de permisos: a la
+                                              // IZQUIERDA la auditoría (de dónde le viene cada
+                                              // permiso, de solo lectura), en MEDIO la identidad
+                                              // (rol y grupos, que cambian el conjunto heredado) y
+                                              // a la DERECHA la concesión directa. Así la columna
+                                              // del medio es la que explica a las otras dos. ?>
                                         <div class="row g-3">
                                             <?php $tieneEfectivos = $canEditPermissions && $permissionCatalog !== []; ?>
                                             <?php if ($tieneEfectivos): ?>
@@ -293,7 +295,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                       // visible una concesión directa; sin él, un
                                                       // permiso suelto sería indistinguible de uno
                                                       // heredado. ?>
-                                                <div class="col-12 col-lg-6">
+                                                <div class="col-12 col-lg-4">
                                                     <div class="app-rbac-effect">
                                                         <div class="app-rbac-effect-title">
                                                             <i class="fa-solid fa-bolt me-1"></i>Permisos efectivos
@@ -316,7 +318,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                 </div>
                                             <?php endif; ?>
 
-                                            <div class="col-12 <?= $tieneEfectivos ? 'col-lg-6' : '' ?>">
+                                            <div class="col-12 <?= $tieneEfectivos ? 'col-lg-4' : 'col-lg-6' ?>">
                                         <?php // ROL: se envía solo al cambiar (`js-auto-submit`),
                                               // por eso el formulario no lleva botón. ?>
                                         <form method="post" action="/admin/users/role" data-vf-async="slots">
@@ -369,9 +371,10 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                 </div>
                                             </form>
                                         <?php endif; ?>
+                                            </div>
 
                                         <?php if ($tieneEfectivos): ?>
-                                            <hr class="my-3">
+                                            <div class="col-12 col-lg-4">
                                             <form method="post" action="/admin/users/permissions" data-vf-async="slots"
                                                   data-vf-error="permsError<?= $uid ?>">
                                                 <?= \App\Core\Csrf::field() ?>
@@ -408,8 +411,8 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                     <p class="small mb-0 d-none text-danger fw-semibold" id="permsError<?= $uid ?>" role="alert"></p>
                                                 </div>
                                             </form>
-                                        <?php endif; ?>
                                             </div>
+                                        <?php endif; ?>
                                         </div>
 
                                         <hr class="my-3">
@@ -454,7 +457,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
       // el formulario de alta a `#newUserModal` y el panel de la fila a
       // `#userActionsModal`. Aquí no hay ningún campo, solo los cuerpos vacíos. ?>
 <div class="modal fade" id="newUserModal" tabindex="-1" aria-labelledby="newUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white">
@@ -469,7 +472,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
 </div>
 
 <div class="modal fade" id="userActionsModal" tabindex="-1" aria-labelledby="userActionsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header app-navbar text-white border-0 py-2">
                 <div class="d-flex align-items-center gap-2 text-white">
