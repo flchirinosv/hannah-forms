@@ -171,6 +171,92 @@ class User
         );
     }
 
+    /** Usuarios por página en el listado de `/admin`. */
+    public const POR_PAGINA = 25;
+
+    /**
+     * Listado de usuarios paginado y filtrrable, para `/admin`.
+     *
+     * Mismo contrato que `Form::page()`: la búsqueda y los filtros viajan en la
+     * URL y se resuelven aquí en SQL. Con el `LIMIT` en la consulta, un filtro
+     * de cliente sobre la página pintada ocultaría filas que no están en el DOM
+     * y el resultado sería el de las primeras veinticinco, no el de la
+     * instalación.
+     *
+     * `$filtros` acepta `q` (nombre o email), `rol` (id de rol) y `estado`
+     * (`activos`/`inactivos`). Un valor desconocido se ignora en vez de romper:
+     * quien lo manda es la URL.
+     *
+     * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
+     */
+    public static function page(array $filtros = [], int $page = 1, ?int $porPagina = null): array
+    {
+        $db = self::db();
+        $porPagina = max(1, min(100, $porPagina ?? self::POR_PAGINA));
+        $page = max(1, $page);
+
+        [$where, $params] = self::whereListado($filtros);
+
+        $row = $db->fetch("SELECT COUNT(*) AS c FROM users u$where", $params);
+        $total = (int) ($row['c'] ?? 0);
+        $pages = max(1, (int) ceil($total / $porPagina));
+        // Una página por encima del final se recorta a la última: filtrar deja
+        // menos filas que las que había, y ese es el caso normal.
+        $page = min($page, $pages);
+
+        $items = $db->fetchAll(
+            "SELECT u.id, u.name, u.email, u.role_id, u.is_active, u.created_at, r.name AS role_name
+             FROM users u
+             JOIN roles r ON r.id = u.role_id$where
+             ORDER BY u.id
+             LIMIT $porPagina OFFSET " . (($page - 1) * $porPagina),
+            $params
+        );
+
+        return [
+            'items'    => $items,
+            'total'    => $total,
+            'page'     => $page,
+            'pages'    => $pages,
+            'per_page' => $porPagina,
+        ];
+    }
+
+    /**
+     * El WHERE del listado de usuarios, con los filtros ya validados.
+     *
+     * El buscador va con UN marcador y `CONCAT`, no dos `LIKE` con `:q`
+     * repetido: `Database` va con `ATTR_EMULATE_PREPARES = false` y un marcador
+     * repetido lanza HY093. El `%` y el `_` de lo escrito se escapan, o buscar
+     * «100%» devolvería la instalación entera.
+     */
+    private static function whereListado(array $filtros): array
+    {
+        $cond = [];
+        $params = [];
+
+        $q = trim((string) ($filtros['q'] ?? ''));
+        if ($q !== '') {
+            $cond[] = 'CONCAT(u.name, " ", u.email) LIKE :q';
+            $params['q'] = '%' . addcslashes($q, '%_\\') . '%';
+        }
+
+        $rol = (int) ($filtros['rol'] ?? 0);
+        if ($rol > 0) {
+            $cond[] = 'u.role_id = :rol';
+            $params['rol'] = $rol;
+        }
+
+        $estado = (string) ($filtros['estado'] ?? '');
+        if ($estado === 'activos') {
+            $cond[] = 'u.is_active = 1';
+        } elseif ($estado === 'inactivos') {
+            $cond[] = 'u.is_active = 0';
+        }
+
+        return $cond === [] ? ['', $params] : [' WHERE ' . implode(' AND ', $cond), $params];
+    }
+
     public static function updateRole(int $id, int $roleId): void
     {
         self::db()->execute('UPDATE users SET role_id = :role_id WHERE id = :id', ['role_id' => $roleId, 'id' => $id]);

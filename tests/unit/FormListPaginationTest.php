@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Controllers\AdminController;
 use App\Controllers\DashboardController;
 use App\Core\Auth;
 use App\Core\Config;
@@ -415,10 +416,67 @@ class FormListPaginationTest
         );
     }
 
+    /**
+     * F6 — `/admin/forms` deja de ser un listado mudo: usa los mismos filtros
+     * (`q`/`estado`/`orden`) que el dashboard, resueltos en `Form::page()`, y
+     * cada tarjeta ofrece «Configurar».
+     */
+    public function testElListadoDeAdminFiltraYEnlazaAConfigurar(): void
+    {
+        $adminId = (int) User::create(
+            'Admin List ' . bin2hex(random_bytes(3)),
+            'admin-list-' . bin2hex(random_bytes(4)) . '@test.local',
+            'password',
+            1
+        );
+        Auth::assumeLoggedIn($adminId);
+        Auth::forgetCache();
+
+        self::formularios(3, 'AdminForm');
+
+        $todos = self::adminForms([]);
+        assertTrue(str_contains($todos, 'AdminForm 01'), 'sin filtro sale la primera');
+        assertTrue(str_contains($todos, 'AdminForm 03'), 'y la última');
+        assertTrue(str_contains($todos, 'name="q"'), 'la barra de búsqueda viaja en el GET');
+        assertTrue(str_contains($todos, 'name="orden"'), 'el orden viaja en el GET');
+        assertTrue(str_contains($todos, 'Configurar'), 'cada tarjeta ofrece el enlace a Configurar');
+
+        // El filtro va en la consulta: con una búsqueda que casa con una sola,
+        // las demás no se pintan (no es un `display:none` de cliente).
+        $una = self::adminForms(['q' => 'AdminForm 02']);
+        assertTrue(str_contains($una, 'AdminForm 02'), 'el buscador encuentra la que casa');
+        assertFalse(str_contains($una, 'AdminForm 01'), 'y no pinta las que no casan');
+
+        // Un filtro sin resultados tiene su propio vacío, con salida.
+        $vacio = self::adminForms(['q' => 'no-existe-xyz']);
+        assertTrue(str_contains($vacio, 'Sin resultados'), 'un filtro sin resultados lo dice');
+        assertTrue(str_contains($vacio, 'Quitar los filtros'), 'y ofrece limpiarlo');
+    }
+
     private static function authAs(): void
     {
         Auth::assumeLoggedIn((int) self::$userId);
         Auth::forgetCache();
+    }
+
+    /** GET de /admin/forms con el query dado (se autentica quien llame antes). */
+    private static function adminForms(array $query): string
+    {
+        $antes = $_GET;
+        $_GET = array_map('strval', $query);
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        Response::setRecordHalt(true);
+        ob_start();
+        try {
+            (new AdminController())->allForms();
+        } finally {
+            $html = (string) ob_get_clean();
+            $_GET = $antes;
+            Response::setRecordHalt(false);
+            Auth::forgetCache();
+        }
+
+        return $html;
     }
 
     /** GET a /dashboard con el query dado, y el HTML que devuelve. */

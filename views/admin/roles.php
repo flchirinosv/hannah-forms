@@ -7,9 +7,9 @@
  * para encontrar una sola, y lo que se quiere es «darle a este rol lo de
  * formularios», que son cinco casillas contiguas.
  *
- * Cada columna empieza con un checkbox de "todo" por sección: sin él, marcar
- * veinte permisos son veinte clics, y ese es exactamente el trabajo que hace un
- * admin al crear un rol nuevo.
+ * Cada sección lleva un checkbox de "todo" que marca esa sección en TODOS los
+ * roles a la vez: sin él, dar veinte permisos son veinte clics, y ese es
+ * exactamente el trabajo que hace un admin al crear un rol nuevo.
  */
 use App\Core\View;
 
@@ -45,16 +45,14 @@ foreach ($permissions as $key => $description) {
 $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$prefix] ?? $prefix);
 ?>
 <div class="container-fluid px-lg-4">
-    <?= View::partial('admin/_nav', ['active' => 'roles']) ?>
-
-    <div class="mb-4">
-        <h2 class="h4 fw-bold mb-1"><i class="fa-solid fa-key me-2 text-primary"></i>Permisos por rol</h2>
-        <p class="text-muted small mb-0">
-            Cada rol tiene una lista de permisos; cada persona hereda los de su rol
-            <strong>y</strong> los de los roles de sus <a href="/admin/groups">grupos</a>. Los permisos se suman,
-            nunca se restan: nadie pierde lo que su rol propio le da.
-        </p>
-    </div>
+    <?= View::partial('admin/_page_head', [
+        'active'   => 'roles',
+        'icon'     => 'fa-key',
+        'title'    => 'Permisos por rol',
+        'subtitle' => 'Cada rol tiene una lista de permisos; cada persona hereda los de su rol'
+            . ' <strong>y</strong> los de los roles de sus <a href="/admin/groups">grupos</a>. Los permisos'
+            . ' se suman, nunca se restan: nadie pierde lo que su rol propio le da.',
+    ]) ?>
 
     <div class="row g-4">
         <div class="col-lg-4">
@@ -150,11 +148,24 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
         </div>
 
         <div class="col-lg-8">
-            <form method="post" action="/admin/roles/save">
+            <?php // El guardado va sin recarga (`data-vf-async`): la matriz es
+                  // larga y al recargar se perdía la posición de scroll, que es
+                  // justo lo que hace falta conservar mientras se repasan 30
+                  // permisos. Sin JS el POST nativo sigue siendo el camino y
+                  // funciona igual. ?>
+            <form method="post" action="/admin/roles/save" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <?php // Contenedor propio y no `.table-responsive`: la
+                              // cabecera y los rótulos de sección tienen que
+                              // quedarse pegados arriba al recorrer la matriz
+                              // con el catálogo entero, y `position: sticky`
+                              // necesita un ancestro con scroll propio (el
+                              // `overflow` de `.table-responsive` computa el eje
+                              // vertical a `auto` y rompe el anclaje respecto al
+                              // viewport). ?>
+                        <div class="app-rbac-matrix-scroll">
                             <table class="table table-hover align-middle mb-0 app-rbac-matrix">
                                 <thead class="table-light">
                                     <tr>
@@ -162,7 +173,7 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                                         <?php foreach ($roles as $role): ?>
                                             <th class="small text-center">
                                                 <div class="fw-semibold text-body text-capitalize"><?= View::escape($role['name']) ?></div>
-                                                <div class="text-muted fw-normal app-rbac-count">
+                                                <div class="text-muted fw-normal app-rbac-count" data-vf-count="<?= (int) $role['id'] ?>">
                                                     <?= count($role['permissions']) ?>/<?= count($permissions) ?>
                                                 </div>
                                             </th>
@@ -209,6 +220,7 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                                                     <td class="text-center">
                                                         <input class="form-check-input js-perm" type="checkbox"
                                                                data-vf-section="<?= View::escape($prefix) ?>"
+                                                               data-vf-role-id="<?= $rid ?>"
                                                                name="perms[<?= $rid ?>][]" value="<?= View::escape($key) ?>"
                                                                <?= $checked ? 'checked' : '' ?>
                                                                <?= $locked ? 'disabled title="El rol admin siempre conserva admin.access"' : '' ?>>
@@ -226,6 +238,7 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                             Un rol sin permisos deja a sus usuarios con lo que les dé su grupo o su rol propio.
                         </span>
                         <button type="submit" class="btn btn-primary btn-sm">
+                            <span class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                             <i class="fa-solid fa-floppy-disk me-1"></i>Guardar matriz
                         </button>
                     </div>

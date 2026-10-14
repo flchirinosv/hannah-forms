@@ -5,16 +5,16 @@ use App\Core\View;
 /**
  * Las insignias de grupos de una fila de `/admin`.
  *
- * Es un partial por la misma razón que `_user_status.php`: el botón de la misma
- * celda va por fetch, y lo que el botón pinta depende de la pertenencia, que
- * acaba de cambiar. Con las insignias dentro de la vista, guardar los grupos
- * recargaba la página y se veían correctas — pero si mañana el guardado deja de
- * recargar (que es justo lo que se hizo), el botón se quedaría diciendo «Sin
- * grupos» sobre una persona que sí los tiene.
+ * Es un partial por la misma razón que `_user_role.php` y `_user_status.php`: la
+ * columna muestra el VALOR (la pertenencia), y el guardado de grupos va por
+ * fetch desde el menú de la fila. Con las insignias dentro de la vista, guardar
+ * los grupos recargaba la página y se veían correctas, pero al dejar de recargar
+ * la columna se quedaría diciendo «Sin grupos» sobre una persona que sí los
+ * tiene. Es el mismo hueco (`vfUserGroups<uid>`) que repone el servidor.
  *
  * Solo van aquí las insignias: las casillas del desplegable las pinta la propia
- * vista y las que enviaron el POST ya son la verdad, así que repintar el botón
- * no las toca (y tocaría el desplegable abierto).
+ * vista y las que enviaron el POST ya son la verdad, así que repintar la columna
+ * no las toca (y no cerraría el menú abierto).
  *
  * Variables: `$myGroups`.
  *

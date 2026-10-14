@@ -76,34 +76,41 @@ class ContentButtonsMobileTest
         );
     }
 
-    public function testLaSubNavegacionDeAdminTambienSeQuedaSoloConElIcono(): void
+    public function testLaSubNavegacionDeAdminConservaSusRotulos(): void
     {
-        // La sub-navegación de `/admin` son `nav-link` (no `.btn`), así que la
-        // regla de los botones del contenido no la alcanza: sin una regla propia
-        // se queda con el texto y parte la fila en varias líneas en móvil.
+        // La sub-navegación de `/admin` son cinco destinos: un icono suelto no
+        // dice a dónde lleva cada uno, así que conserva icono Y rótulo en todas
+        // las franjas. Para no partirse en dos o tres líneas ni comerse media
+        // pantalla, en móvil se desplaza en horizontal en una sola línea y el
+        // texto no se colapsa (lo contrario de la regla de los botones).
         assertSame(
             1,
             preg_match(
-                '#\.app-admin-nav \.nav-link:has\(i\[class\*="fa-"\]\)\s*\{[^}]*font-size:\s*0#s',
+                '#\.app-admin-nav\s*\{[^}]*overflow-x:\s*auto#s',
                 self::css()
             ),
-            'la sub-navegación de /admin colapsa su texto en móvil'
+            'la sub-navegación de /admin se desplaza en horizontal en móvil'
         );
         assertSame(
             1,
             preg_match(
-                '#\.app-admin-nav \.nav-link:has\(i\[class\*="fa-"\]\) i\[class\*="fa-"\]\s*\{[^}]*font-size:\s*1rem#s',
+                '#\.app-admin-nav \.nav-link\s*\{[^}]*white-space:\s*nowrap#s',
                 self::css()
             ),
-            'y el icono recupera su tamaño'
+            'los rótulos de la sub-navegación no se parten'
+        );
+        assertSame(
+            0,
+            preg_match('#\.app-admin-nav \.nav-link:has\([^)]*\)\s*\{[^}]*font-size:\s*0#s', self::css()),
+            'la sub-navegación de /admin ya NO colapsa su texto'
         );
 
-        // Sin icono en las píldoras, la regla no engancharía a ninguna y el test
-        // de CSS pasaría midiendo una regla muerta.
+        // Sin rótulo en las píldoras, «conserva sus rótulos» no comprobaría nada.
         $nav = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/_nav.php');
         assertTrue(
-            str_contains($nav, 'app-admin-nav') && str_contains($nav, 'fa-solid'),
-            'las píldoras de /admin traen icono dentro de app-admin-nav'
+            str_contains($nav, 'app-admin-nav') && str_contains($nav, 'fa-solid')
+                && str_contains($nav, 'View::escape($item[1])'),
+            'las píldoras de /admin traen icono Y rótulo dentro de app-admin-nav'
         );
     }
 
@@ -181,12 +188,12 @@ class ContentButtonsMobileTest
             );
         }
 
-        // El botón de grupos de la fila trae icono (si no, la regla no lo
-        // alcanza) y conserva su gancho de fetch.
+        // La puerta de acciones de cada fila es un único botón `⋯` con icono (si
+        // no, la regla de «solo icono» no lo alcanzaría) y mantiene su gancho.
         $users = (string) file_get_contents(dirname(__DIR__, 2) . '/views/admin/users.php');
         assertTrue(
-            str_contains($users, 'app-rbac-groups-btn') && str_contains($users, 'fa-users'),
-            'el botón de grupos de la fila de /admin trae icono'
+            str_contains($users, 'app-row-menu-btn') && str_contains($users, 'fa-ellipsis'),
+            'el menú de acciones de la fila de /admin trae icono'
         );
     }
 }

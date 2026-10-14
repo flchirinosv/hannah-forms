@@ -221,11 +221,10 @@ Fuera del builder, pero con el mismo lenguaje visual.
 | `.app-rbac-effect-keys` | Las claves como chips `code` |
 | `.app-rbac-section` | Cabecera de sección de la matriz, con «marcar toda la sección» |
 | `.app-rbac-count` | Contador `n/total` de la columna de un rol |
-| `.app-rbac-select` | Select de rol de la tabla de usuarios (auto-envía al cambiar) |
-| `.app-rbac-groups-btn` | Botón que abre los grupos de un usuario |
-| `.app-rbac-perms-btn` | Botón que abre los permisos extra de un usuario (viste como el de grupos) |
-| `.app-perm-chip` | Insignia de un permiso extra concedido |
-| `.app-perms-menu` | El desplegable de permisos extra; más ancho (`min-width: 20rem`) para que quepa el desglose |
+| `.app-perm-chip` | Insignia de un permiso extra concedido en la columna del listado |
+| `.app-row-menu-btn` | El `⋯` de una fila de usuarios: única puerta de acciones |
+| `.app-row-menu` | Menú con rol, grupos, permisos extra y estado de esa fila (ancho acotado y scroll interno) |
+| `.app-admin-table` | La tabla de usuarios; en móvil (≤991.98px) se apila en tarjetas con `data-label` |
 
 Dos reglas que nacen de no haber sido designed antes:
 
@@ -384,11 +383,13 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   las mismas métricas del botón de cabecera (alto `--vf-btn-cta-h`, radio 12,
   peso 600, 16px) y con el par de Bootstrap: la inactiva como
   `btn-outline-secondary` (contorno `secondary`) y la activa rellena de
-  `--vf-primary`, como el CTA. En móvil llevan icono y parten la fila en dos o
-  tres líneas; una regla propia (`.app-admin-nav .nav-link:has(i[class*="fa-"])`,
-  dentro de la misma media query) las deja en el icono y pasan a una sola fila.
-  Lo atan `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
-  y `testLaSubNavegacionDeAdminTambienSeQuedaSoloConElIcono`.
+  `--vf-primary`, como el CTA. En móvil **conservan icono y rótulo** (un icono
+  suelto no dice a dónde lleva cada uno de los cinco destinos) y la fila se
+  desplaza en horizontal en una sola línea (`overflow-x: auto`) en vez de
+  partirse en dos o tres. Desde Fase 1 la sub-navegación la emite la cabecera
+  compartida `views/admin/_page_head.php` (ver §3.12). Lo atan
+  `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
+  y `testLaSubNavegacionDeAdminConservaSusRotulos`.
 - **La fila de acciones de la cabecera es una sola** (`.app-head-actions`) y la
   comparten el dashboard, la ficha, el builder, el listado de respuestas, la
   analítica y las pantallas de administración (usuarios, formularios, log de
@@ -413,6 +414,79 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   `.app-sidebar-inner`, …).
 - `#vfConfirm` sigue siendo hijo directo de `<body>` (lo exige
   `AsyncActionsJsTest`).
+
+### 3.12 Consola de administración (`/admin`)
+
+El módulo `/admin` (Usuarios, Grupos de roles, Roles y permisos, Log de
+seguridad, Formularios) se rediseña con un objetivo de **usabilidad**, no de
+marca: cada acción tiene que poder ejecutarse con el menor número de pasos
+posibles. La referencia es un módulo administrativo real y minimalista —
+**Linear › Settings › Administration › Members** (fila + menú `⋯`, búsqueda y
+filtros que viven en la URL, acciones en bloque) y **Vercel › Settings ›
+Members** (invitación compacta email + rol)—, y para la parte de RBAC la matriz
+de **Supabase**. No se toca la marca (degradado violeta de `.app-navbar` /
+`.app-sidebar`) ni la tipografía Inter: son del shell compartido y el problema
+no era el color, era la densidad y la jerarquía.
+
+- **Una sola cabecera por pantalla.** Las cinco vistas pintan título, subtítulo
+  y la fila de acciones con `views/admin/_page_head.php`, que además incluye la
+  sub-navegación (`admin/_nav`). Antes cada vista repetía su propio
+  `d-flex … mb-4` y con el tiempo divergieron (unas con `align-items-center`,
+  otras sin acciones). El partial es la única fuente: si cambia el reparto
+  título/acciones, cambia en las cinco a la vez.
+- **`app-head-actions` es el contrato de la fila de acciones** (ver §3.11): el
+  partial es quien la emite, así que las vistas ya no llevan esa clase suelta.
+  Lo ata `FormFichaLayoutTest`.
+- **La sub-navegación conserva sus rótulos en móvil.** Los cinco destinos
+  (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad, Formularios)
+  llevan icono **y** texto en todas las franjas; en móvil la fila se desplaza
+  en horizontal en una sola línea en vez de partirse en tres o quedarse en
+  iconos sueltos (un icono sin rótulo no dice a dónde lleva). Lo ata
+  `ContentButtonsMobileTest::testLaSubNavegacionDeAdminConservaSusRotulos`.
+- **La densidad se resuelve con jerarquía, no con menos datos.** La tabla de
+  usuarios lleva 8 columnas: en móvil se convierte en tarjetas apiladas
+  (`.app-admin-table`) en vez de obligar a un scroll horizontal de 1100px. Cada
+  `<td>` declara su `data-label`, y la regla `@media (max-width: 991.98px)` de
+  `app.css` oculta la cabecera y pinta ese rótulo delante del valor. Una celda
+  nueva sin `data-label` sale sin nombre en el móvil y no da ningún error.
+- **La columna muestra el valor; la edición vive en el menú.** Rol, grupos,
+  permisos extra y estado son insignias en la fila, no controles estirados por
+  ella. El único punto de entrada es el botón `⋯` (`.app-row-menu-btn`) de la
+  última columna, que abre un `.app-row-menu` con los cuatro formularios dentro
+  (`data-bs-auto-close="outside"` para poder editar varias cosas seguidas). Las
+  insignias que el fetch repinta (`vfUserRole/Status/Groups/Perms<uid>`) siguen
+  siendo partials.
+- **La tarjeta de un grupo tiene cabecera-resumen y el buscador filtra sin
+  desmarcar.** El grupo pinta su resumen (nombre, insignias de roles/miembros y
+  «lo que otorga») con   `views/admin/_group_summary.php`, y guardarlo sin recarga
+  repinta ESE hueco (`vfGroupSummary<gid>`) — el GET y el POST usan el mismo
+  partial, así que no pueden divergir. El buscador de miembros es de **cliente**
+  y solo esconde `.app-rbac-item`: la pertenencia es el POST completo, de modo
+  que filtrar en servidor sacaría del grupo a quien no casa al guardar. Lo ata
+  `AdminRbacTest`.
+- **La matriz de permisos se ancla a sí misma, no al `.table-responsive`.** Con
+  el catálogo entero, nombre de rol y contador `n/total` tienen que seguir a la
+  vista al bajar. El contenedor propio `.app-rbac-matrix-scroll` acota el alto
+  (`min(70vh, 42rem)`) y desplaza **él**; la cabecera (`thead th`) y el rótulo de
+  cada sección (`.app-rbac-section th`) van `position: sticky`, con el rótulo a
+  `top: var(--vf-rbac-head)`. La variable la mide `app.js` al arrancar: la altura
+  del encabezado depende del ancho (móvil), así que un `top` fijo dejaría un
+  hueco o un solape. **No se usa `.table-responsive`** aunque sea lo natural: su
+  `overflow-y` computa a `auto` y un `sticky` dentro no pega. El contador `n/total`
+  es en vivo (`syncRoleCounts()` lo recalcula al marcar/desmarcar y al «Marcar
+  toda la sección»), y el alta/baja de rol siguen siendo nativas porque cambian
+  el número de columnas. Lo atan `AdminRbacTest` y el arnés
+  `tests/js/async-actions.js`.
+- **El log de seguridad y el listado de formularios del panel usan la barra del
+  dashboard.** Buscador que viaja en el GET, filtros de estado como enlaces (el
+  puesto es el de la URL, no un `active` en memoria), selector de orden con
+  `js-auto-submit`, paginador compartido (`dashboard/_pagination.php`) y estado
+  vacío propio que distingue «todavía no hay nada» de «el filtro no casa» —este
+  último con su enlace para limpiarlo—. El buscador del log casa detalle, IP y
+  usuario; el de formularios reproduce `Form::page()` con 20 por página. Cada
+  tarjeta de `/admin/forms` ofrece **Configurar** (`/forms/{id}`) junto a
+  Analítica y Ver público. Lo atan `SecurityLogTest`, `FormListPaginationTest` y
+  `AdminRbacTest`.
 
 ---
 
@@ -477,6 +551,51 @@ Regla del proyecto, y la razón de que exista el botón `.app-help`:
 - Los `<label for>` dependen de ids únicos: **no se pueden eliminar** al
   duplicar markup (el criterio queda registrado en F2 del plan).
 - Foco visible en tarjetas y campos: `--vf-focus-ring`.
+
+### 4.6 Consola de administración
+
+Reglas de interacción del módulo `/admin` (ver §3.12 para la parte visual). No
+son estética: son la diferencia entre «se ve bonito» y «se puede operar».
+
+- **Filtrar es una consulta, no un `display: none`.** La búsqueda y los filtros
+  de los listados del panel viajan en la **URL** y se resuelven en **SQL** (con
+  su `LIMIT` y su `ORDER BY` con desempate por `id`), igual que el listado de
+  formularios (`Form::page()`). Un filtro de cliente con el `LIMIT` en SQL
+  oculta las filas de la página pero no cambia cuáles son, y con la segunda
+  página el número que se busca ni está en el DOM.
+- **Una acción primaria por pantalla.** El «alta» (crear usuario, crear grupo,
+  crear rol) vive en su propia tarjeta plegable; las acciones secundarias van en
+  la fila de acciones de la cabecera. No compiten dos botones primarios verdes a
+  la vez.
+- **Una sola puerta por fila.** Las cuatro acciones de una fila de usuario (rol,
+  grupos, permisos extra, activar/desactivar) viven en un único menú `⋯` al
+  final de la fila, no en cuatro controles sueltos. El rol es un `<select>` que
+  se envía solo al cambiar (`js-auto-submit`); los otros tres son formularios
+  con botón. El guardado es sin recarga con el patrón bimodal
+  (`data-vf-async="slots"`): mismo markup, mismo controlador y camino nativo sin
+  JS. La fila propia (uno mismo) no ofrece el menú: cambiar tu role o tu estado
+  desde aquí no es una operación del listado.
+- **Lo que se guarda sin recarga no miente.** Un hueco que se repinta por fetch
+  declara su `id` en el POST (`vfUserStatus<uid>`, `vfUserGroups<uid>`…) y el
+  servidor devuelve ese mismo nombre; el JS solo sustituye el `innerHTML` de los
+  ids que vienen. El estado objetivo (activar/desactivar) hace el botón
+  idempotente.
+- **Guardar sin recargar deja la pantalla donde estaba.** El botón de la matriz
+  de permisos envía con `data-vf-async="slots"` y, al no recargar, conserva la
+  posición de scroll: una matriz larga que vuelve arriba tras cada guardado
+  obliga a buscar otra vez la fila que se estaba editando. El giro del botón dice
+  «en vuelo» y el toast, «guardado»; sin JS, el POST nativo sigue siendo la
+  entrada. Las acciones que **cambian el número de columnas o filas** (alta/baja
+  de rol) no se repintan por slots: recargan.
+- **El filtro vacío no es un error.** Un listado sin resultados muestra un
+  estado vacío propio que dice qué filtro lo dejó así y cómo limpiarlo, distinto
+  del vacío «todavía no hay nada».
+- **Un buscador dentro de un formulario esconde, no quita.** Cuando la lista que
+  se filtra son **casillas** cuya selección es el POST completo (los miembros de
+  un grupo), el filtro de cliente solo oculta la fila (`.app-rbac-item`), nunca
+  desmarca: un control oculto sigue enviándose y «filtrar» no puede significar
+  «sacar del grupo». `vfFilterList` (`app.js`) resuelve la lista por
+  `input.closest('[data-vf-list]')` y la nota de vacío por `.app-filter-empty`.
 
 ---
 

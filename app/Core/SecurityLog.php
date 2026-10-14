@@ -67,22 +67,45 @@ final class SecurityLog
     /**
      * Eventos de una página, con paginación server-side.
      *
+     * `$q` (F6) es el buscador del panel: casa con el detalle, la IP o el
+     * nombre de usuario. Va **después** de `$page`/`$perPage` para no romper las
+     * llamadas posicionales que ya existían.
+     *
      * @return array{items: array, total: int, page: int, per_page: int, pages: int}
      */
-    public static function recent(string $event = '', int $page = 1, int $perPage = 50): array
+    public static function recent(string $event = '', int $page = 1, int $perPage = 50, string $q = ''): array
     {
         $perPage = max(1, min(200, $perPage));
         $page = max(1, $page);
 
-        $where = '';
+        $conds = [];
         $params = [];
         if ($event !== '' && in_array($event, self::knownEvents(), true)) {
-            $where = ' WHERE event = :event';
+            $conds[] = 'sl.event = :event';
             $params['event'] = $event;
         }
 
+        // Tres marcadores distintos (no `:q` repetido): `Database` va con
+        // `ATTR_EMULATE_PREPARES = false` y un marcador repetido lanza HY093. El
+        // `%` y el `_` de lo escrito son comodines, no texto: se escapan o buscar
+        // «50%» devuelve todo.
+        $q = trim($q);
+        if ($q !== '') {
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $conds[] = '(sl.detail LIKE :q1 OR sl.ip LIKE :q2 OR u.name LIKE :q3)';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
+        }
+
+        // El `JOIN` va también en el `COUNT` porque el buscador mira `u.name`.
+        $where = $conds === [] ? '' : ' WHERE ' . implode(' AND ', $conds);
+
         $db = Database::getInstance(Config::db());
-        $row = $db->fetch('SELECT COUNT(*) AS c FROM security_log' . $where, $params);
+        $row = $db->fetch(
+            'SELECT COUNT(*) AS c FROM security_log sl LEFT JOIN users u ON u.id = sl.user_id' . $where,
+            $params
+        );
         $total = (int) ($row['c'] ?? 0);
         $pages = (int) max(1, (int) ceil($total / $perPage));
         $page = min($page, $pages);

@@ -73,8 +73,8 @@ class AsyncActionsJsTest
         // «| Fallidos: 0» va en la misma línea y hace falta para atar las dos
         // mitades del resumen.
         assertTrue(
-            preg_match('/^Arranques: 97 \| Fallidos: 0$/m', $text) === 1,
-            'el arnés no llegó a sus 97 casos, o alguno falló:\n' . $text
+            preg_match('/^Arranques: 109 \| Fallidos: 0$/m', $text) === 1,
+            'el arnés no llegó a sus 109 casos, o alguno falló:\n' . $text
         );
     }
 
@@ -442,6 +442,40 @@ class AsyncActionsJsTest
             str_contains($js, "document.querySelectorAll('.js-auto-submit').forEach(vfAutoSubmit)"),
             'la función con nombre es la que se ata a los selectores: es lo único que '
                 . 'permite que el arnés la ejecute contra un DOM mínimo'
+        );
+    }
+
+    /**
+     * La matriz de permisos guarda sin recarga y su contador se recalcula en
+     * cliente. El `syncRoleCounts()` con nombre es lo que el arnés extrae y
+     * ejecuta (el caso «el contador de la matriz se recalcula con lo marcado»);
+     * sin atarlo a `initRoleMatrix()` en el arranque, el cálculo existe y no se
+     * llama nunca.
+     */
+    public function testElGuardadoDeLaMatrizYSuContadorEstanAtados(): void
+    {
+        $vista = $this->sinComentarios($this->read('views/admin/roles.php'));
+
+        assertTrue(str_contains($vista, 'data-vf-async="slots"'), 'guardar la matriz tiene que ir sin recarga');
+        assertTrue(
+            str_contains($vista, 'app-rbac-matrix-scroll'),
+            'la matriz necesita su contenedor con scroll propio: sin él `position: sticky` no pega la cabecera'
+        );
+        assertTrue(str_contains($vista, 'data-vf-count="'), 'cada rol necesita su contador con data-vf-count');
+        assertTrue(str_contains($vista, 'data-vf-role-id="'), 'cada casilla necesita data-vf-role-id para agrupar su contador');
+
+        $js = $this->read(self::JS);
+        assertTrue(
+            str_contains($js, 'function syncRoleCounts('),
+            'syncRoleCounts() tiene que ser una función con nombre: el arnés la extrae y la corre'
+        );
+        assertTrue(
+            str_contains($js, "document.addEventListener('DOMContentLoaded', initRoleMatrix)"),
+            'initRoleMatrix() tiene que atarse al documento'
+        );
+        assertTrue(
+            str_contains($js, 'syncRoleCounts(matrix)'),
+            'y el cálculo de contadores tiene que llamarse desde el arranque'
         );
     }
 

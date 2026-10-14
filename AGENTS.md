@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 99 archivos, 1099 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 99 archivos, 1117 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -52,7 +52,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (18), `lang/{es,en}.php`.
-  `views/` = 63 plantillas y partials con `View` (veintiuna con prefijo `_`, sin ruta
+  `views/` = 66 plantillas y partials con `View` (veinticuatro con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -939,6 +939,34 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Lo `%` y el `_` de lo que se escribe en el buscador **se escapan**
   (`addcslashes`): sin eso, buscar «100%» devuelve el alcance entero y parece un
   buscador roto.
+- **El listado de usuarios de `/admin` usa la misma regla** (`User::page()`,
+  espejo de `Form::page()`): buscador (nombre o correo), filtro por rol y por
+  estado viajan en la URL y se resuelven en SQL, con `LIMIT` de 25 y el
+  paginador reponiendo los tres. Un filtro de cliente sobre la página pintada
+  diría «sin resultados» de la persona 26. El paginador se comparte con el
+  listado de formularios (`views/dashboard/_pagination.php`), que acepta
+  `$sujeto`/`$aria` para no decir «formularios» en la pantalla de usuarios.
+  El buscador del dashboard NO se reutiliza aquí (`data-vf-dash-search` está
+  atado a `#dashSearch`/`#dashSort`): los desplegables van con `js-auto-submit`
+  y el texto con `Enter`.
+- **La fila de usuarios tiene UNA sola puerta de acciones** (fase 3): un botón
+  `⋯` (`.app-row-menu-btn`, `data-bs-auto-close="outside"`) abre el menú
+  `.app-row-menu` con los cuatro formularios (rol con `js-auto-submit`, grupos,
+  permisos extra y el toggle de estado). Las columnas muestran el VALOR
+  (insignias), no controles: por eso cambiar el rol **sí** devuelve un hueco
+  (`vfUserRole<uid>`, `views/admin/_user_role.php`) y no solo el aviso. La fila
+  propia (uno mismo) no ofrece el menú: cambiar el rol o el estado de uno mismo
+  no es una operación del listado. Los ids de los huecos van en `<span>` que
+  **envuelven** a cada `<form>`, nunca dentro: el repintado mete markup dentro
+  del nodo y un formulario anidado lo descarta el parser.
+- **En móvil la tabla se apila en tarjetas** (`.app-admin-table`, ≤991.98px):
+  la cabecera se oculta y cada `<td>` pinta su `data-label` con `::before`. Una
+  celda nueva sin `data-label` sale sin nombre y no da ningún error; a qué
+  rótulo corresponde lo vigila `AdminRbacTest`. El menú `⋯` vive dentro de
+  `.table-responsive` (`overflow-x: auto`, que también recorta en vertical), así
+  que su `max-height` está topado a `min(60vh, 24rem)`: un menú más alto se
+  sale por abajo y queda cortado (y no lo caza ningún test de PHP, se vio en el
+  navegador).
 
 **Router, params y respuestas**
 
@@ -1368,6 +1396,8 @@ probando la rama equivocada).
 - `docs/plan-participantes-2026-10-04.md`: fases 0–11 del listado de participantes,
   con `invited_at` y el correo de invitación; su tabla de estado es la que se
   actualiza al cerrar cada fase.
+- `docs/plan-admin-rediseno-2026-10-14.md`: rediseño de usabilidad de la consola
+  `/admin` (fases F0–F6); su tabla de estado se actualiza al cerrar cada fase.
 - `docs/design.md`: spec del builder (tokens, componentes, reglas para código
   nuevo).
 - `docs/api-spec.md`: referencia de endpoints. Para el middleware EXACTO de cada

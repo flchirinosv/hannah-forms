@@ -1,42 +1,79 @@
 <?php
 use App\Core\View;
+
+$q = (string) ($q ?? '');
+$filtrado = $event !== '' || $q !== '';
+
+// Los filtros viajan en la URL y el paginador los conserva. Mismo patrón que el
+// buscador de la analítica y el listado del panel: un `?page=2` sin `event`/`q`
+// es la página 2 de todo lo demás.
+$filtroQs = static function () use ($event, $q): string {
+    $qs = array_filter([
+        'event' => $event !== '' ? $event : null,
+        'q'     => $q !== '' ? $q : null,
+    ], static fn ($v): bool => $v !== null);
+    return $qs === [] ? '' : '?' . http_build_query($qs);
+};
 ?>
 <div class="container-fluid px-lg-4">
-    <?= View::partial('admin/_nav', ['active' => 'security_log']) ?>
-
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-        <div>
-            <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Log de seguridad</h2>
-            <p class="text-muted small mb-0">Eventos de autenticación, CSRF, rate limits, webhooks bloqueados, subidas denegadas y cambios administrativos.</p>
+    <?php ob_start(); ?>
+    <?php // F6 — El evento se filtra solo al cambiar (`js-auto-submit`) y con él
+          // viaja lo que haya en el buscador; el buscador se envía con `Enter`
+          // (formulario GET nativo). Sin JS, el botón `noscript` es la salida. ?>
+    <form method="get" action="/admin/security-log" class="d-flex flex-wrap align-items-center gap-2">
+        <select name="event" class="form-select form-select-sm w-auto js-auto-submit" aria-label="Filtrar por evento">
+            <option value="">Todos los eventos</option>
+            <?php foreach ($events as $e): ?>
+                <option value="<?= View::escape($e) ?>" <?= $event === $e ? 'selected' : '' ?>><?= View::escape($e) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <div class="input-group input-group-sm app-dash-search">
+            <span class="input-group-text app-dash-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="search" name="q" value="<?= View::escape($q) ?>" class="form-control form-control-sm" placeholder="Buscar detalle, IP o usuario…" aria-label="Buscar en el log">
         </div>
-        <form method="get" action="/admin/security-log" class="d-flex gap-2 align-items-center app-head-actions">
-            <select name="event" class="form-select" style="width:auto">
-                <option value="">Todos los eventos</option>
-                <?php foreach ($events as $e): ?>
-                    <option value="<?= View::escape($e) ?>" <?= $event === $e ? 'selected' : '' ?>><?= View::escape($e) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="btn btn-outline-secondary"><i class="fa-solid fa-filter"></i></button>
-        </form>
-    </div>
+        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
+    </form>
+    <?php $logActions = (string) ob_get_clean(); ?>
+    <?= View::partial('admin/_page_head', [
+        'active'   => 'security_log',
+        'icon'     => 'fa-shield-halved',
+        'title'    => 'Log de seguridad',
+        'subtitle' => 'Eventos de autenticación, CSRF, rate limits, webhooks bloqueados, subidas denegadas y cambios administrativos.',
+        'actions'  => $logActions,
+    ]) ?>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="px-4 small text-muted" style="width:170px;">Fecha</th>
-                            <th class="small text-muted" style="width:200px;">Evento</th>
-                            <th class="small text-muted">Detalle</th>
-                            <th class="small text-muted" style="width:180px;">IP</th>
-                            <th class="small text-muted" style="width:160px;">Usuario</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($logs['items'])): ?>
-                            <tr><td colspan="5" class="text-center py-5 text-muted small">Sin eventos<?= $event !== '' ? ' para «' . View::escape($event) . '»' : '' ?>.</td></tr>
-                        <?php else: ?>
+    <?php if (empty($logs['items'])): ?>
+        <?php // F6 — El vacío de un filtro no es «todavía no hay nada»: uno se
+              // limpia y el otro solo espera. Con la barra todavía arriba. ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="app-empty-icon mb-3"><i class="fa-solid fa-shield-halved"></i></div>
+                <h4 class="h6 fw-bold"><?= $filtrado ? 'Sin resultados' : 'Todavía no hay eventos' ?></h4>
+                <p class="text-muted small mb-3">
+                    <?= $filtrado
+                        ? 'Ningún evento coincide con el filtro o la búsqueda.'
+                        : 'Aquí aparecerán los eventos de seguridad según vayan ocurriendo.' ?>
+                </p>
+                <?php if ($filtrado): ?>
+                    <a href="/admin/security-log" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-rotate-left me-1"></i>Quitar los filtros</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4 small text-muted" style="width:170px;">Fecha</th>
+                                <th class="small text-muted" style="width:200px;">Evento</th>
+                                <th class="small text-muted">Detalle</th>
+                                <th class="small text-muted" style="width:180px;">IP</th>
+                                <th class="small text-muted" style="width:160px;">Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             <?php foreach ($logs['items'] as $log): ?>
                             <tr>
                                 <td class="px-4 small text-muted"><?= View::datetime($log['created_at']) ?></td>
@@ -46,24 +83,18 @@ use App\Core\View;
                                 <td class="small"><?= $log['user_name'] !== null ? View::escape($log['user_name']) : '<span class="text-muted">—</span>' ?></td>
                             </tr>
                             <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
 
-    <?php if ((int) $logs['pages'] > 1): ?>
-    <nav aria-label="Paginación del log" class="mt-3">
-        <ul class="pagination pagination-sm justify-content-center">
-            <li class="page-item <?= (int) $logs['page'] <= 1 ? 'disabled' : '' ?>">
-                <a class="page-link" href="/admin/security-log?page=<?= max(1, (int) $logs['page'] - 1) ?><?= $event !== '' ? '&event=' . urlencode($event) : '' ?>">Anterior</a>
-            </li>
-            <li class="page-item disabled"><span class="page-link"><?= (int) $logs['page'] ?> / <?= (int) $logs['pages'] ?></span></li>
-            <li class="page-item <?= (int) $logs['page'] >= (int) $logs['pages'] ? 'disabled' : '' ?>">
-                <a class="page-link" href="/admin/security-log?page=<?= min((int) $logs['pages'], (int) $logs['page'] + 1) ?><?= $event !== '' ? '&event=' . urlencode($event) : '' ?>">Siguiente</a>
-            </li>
-        </ul>
-    </nav>
+        <?= View::partial('dashboard/_pagination', [
+            'listado' => $logs,
+            'base'    => '/admin/security-log',
+            'qs'      => $filtroQs(),
+            'sujeto'  => 'evento',
+            'aria'    => 'Paginación del log de seguridad',
+        ]) ?>
     <?php endif; ?>
 </div>

@@ -544,57 +544,128 @@
     document.querySelectorAll('.js-auto-submit').forEach(vfAutoSubmit);
 
     /* ---------------------------------------------------------------
-     * Matriz de permisos: marcar una sección entera (admin.roles)
+     * Buscador de una lista de casillas (los miembros de un grupo)
      *
-     * Dar permisos a un rol nuevo son ~20 clics de casillas por sección,
-     * y la sección es la unidad que la persona piensa ("lo de
-     * formularios"), no la casilla. Un [data-vf-bulk-all="<prefijo>"]
-     * mueve todas las .js-perm de su sección.
-     *
-     * - Se saltan las casillas [disabled] (admin.access del rol admin no se
-     *   puede desmarcar: el servidor lo vuelve a poner igual).
-     * - Al tocar una casilla suelta, su "marcar toda" se recalcula, y queda
-     *   indeterminate a medias: es la única forma de ver que la sección está
-     *   a medio marcar sin contarlas a mano.
+     * `data-vf-filter` marca el campo de búsqueda; la lista a filtrar es su
+     * ancestro `[data-vf-list]`. Esconde las filas que no casan pero NO toca los
+     * checkboxes: un input oculto sigue viajando en el POST, y la pertenencia a
+     * un grupo es la lista COMPLETA —esconder a alguien no es sacarlo—. Por eso
+     * el filtro es de cliente y no una consulta: filtrar en servidor dejaría
+     * fuera del formulario a quien no casa, y guardar lo echaría del grupo sin
+     * que nadie lo pidiera.
      * --------------------------------------------------------------- */
-    function initPermissionBulkToggles() {
-        var permSel = '.js-perm[data-vf-section]';
+    function vfFilterList(input) {
+        var cont = input.closest('[data-vf-list]');
+        if (!cont) return;
+        var items = Array.prototype.slice.call(cont.querySelectorAll('.app-rbac-item'));
+        var vacio = cont.querySelector('.app-filter-empty');
 
-        document.querySelectorAll('[data-vf-bulk-all]').forEach(function (bulk) {
+        input.addEventListener('input', function () {
+            var q = String(input.value || '').trim().toLowerCase();
+            var visibles = 0;
+            items.forEach(function (item) {
+                var casa = q === '' || String(item.textContent || '').toLowerCase().indexOf(q) !== -1;
+                item.hidden = !casa;
+                if (casa) visibles++;
+            });
+            if (vacio) vacio.hidden = visibles > 0;
+        });
+    }
+    document.querySelectorAll('[data-vf-filter]').forEach(vfFilterList);
+
+    /* ---------------------------------------------------------------
+     * Matriz de permisos (admin.roles)
+     *
+     * Tres cosas, todas de la misma pantalla:
+     *
+     * 1. Marcar una sección entera. Dar permisos a un rol nuevo son ~20 clics
+     *    de casillas por sección, y la sección es la unidad que la persona
+     *    piensa ("lo de formularios"), no la casilla. Un
+     *    [data-vf-bulk-all="<prefijo>"] mueve todas las .js-perm de su sección.
+     *
+     * 2. El contador «n/total» de cada rol, en vivo. El de la cabecera lo
+     *    pinta el servidor al cargar, pero marcar casillas no recarga, así que
+     *    sin esto el número se queda congelado en el de la última carga y deja
+     *    de cuadrar con lo que se ve marcado.
+     *
+     * 3. La altura de la cabecera pegajosa: los rótulos de sección se pegan
+     *    justo debajo del encabezado, y esa altura depende del ancho (en móvil
+     *    el nombre del rol ocupa dos líneas), así que se mide y se deja en una
+     *    variable CSS en vez de fijarla a mano.
+     * --------------------------------------------------------------- */
+
+    /** Repinta los contadores de rol a partir de las casillas marcadas. */
+    function syncRoleCounts(matrix) {
+        var cells = Array.prototype.slice.call(matrix.querySelectorAll('.js-perm[data-vf-role-id]'));
+        var counts = Array.prototype.slice.call(matrix.querySelectorAll('[data-vf-count]'));
+
+        counts.forEach(function (el) {
+            var rid = el.getAttribute('data-vf-count');
+            var total = 0;
+            var on = 0;
+            cells.forEach(function (c) {
+                if (c.getAttribute('data-vf-role-id') !== rid) return;
+                total++;
+                if (c.checked) on++;
+            });
+            el.textContent = on + '/' + total;
+        });
+    }
+
+    function initRoleMatrix() {
+        var matrix = document.querySelector('.app-rbac-matrix');
+        if (!matrix) return;
+
+        // La cabecera pegajosa se mide sobre el contenedor con scroll propio.
+        var scroll = matrix.closest('.app-rbac-matrix-scroll');
+        var thead = matrix.querySelector('thead');
+        var ajustar = function () {
+            if (scroll && thead) {
+                scroll.style.setProperty('--vf-rbac-head', thead.offsetHeight + 'px');
+            }
+        };
+        ajustar();
+        window.addEventListener('resize', ajustar);
+
+        var cells = Array.prototype.slice.call(matrix.querySelectorAll('.js-perm'));
+
+        matrix.querySelectorAll('[data-vf-bulk-all]').forEach(function (bulk) {
             var section = bulk.getAttribute('data-vf-bulk-all');
-            var cells = function () {
-                return Array.prototype.filter.call(
-                    document.querySelectorAll(permSel),
-                    function (c) { return c.getAttribute('data-vf-section') === section; }
-                );
-            };
+            var seccion = cells.filter(function (c) {
+                return c.getAttribute('data-vf-section') === section;
+            });
 
             var sync = function () {
-                var all = cells().filter(function (c) { return !c.disabled; });
-                var on = all.filter(function (c) { return c.checked; }).length;
-                bulk.checked = all.length > 0 && on === all.length;
-                bulk.indeterminate = on > 0 && on < all.length;
+                var habiles = seccion.filter(function (c) { return !c.disabled; });
+                var on = habiles.filter(function (c) { return c.checked; }).length;
+                bulk.checked = habiles.length > 0 && on === habiles.length;
+                bulk.indeterminate = on > 0 && on < habiles.length;
             };
 
             bulk.addEventListener('change', function () {
-                cells().forEach(function (c) {
+                seccion.forEach(function (c) {
                     if (!c.disabled) c.checked = bulk.checked;
                 });
                 sync();
+                syncRoleCounts(matrix);
             });
 
-            document.querySelectorAll(permSel).forEach(function (cell) {
-                if (cell.getAttribute('data-vf-section') !== section) return;
-                cell.addEventListener('change', sync);
+            seccion.forEach(function (cell) {
+                cell.addEventListener('change', function () {
+                    sync();
+                    syncRoleCounts(matrix);
+                });
             });
 
             sync();
         });
+
+        syncRoleCounts(matrix);
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPermissionBulkToggles);
+        document.addEventListener('DOMContentLoaded', initRoleMatrix);
     } else {
-        initPermissionBulkToggles();
+        initRoleMatrix();
     }
 })();

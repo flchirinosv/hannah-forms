@@ -73,6 +73,7 @@ class AdminRbacTest
     public function tearDown(): void
     {
         $_POST = [];
+        $_GET = [];
     }
 
     /* ---------------------------------------------------------------
@@ -132,6 +133,65 @@ class AdminRbacTest
         $group = RoleGroup::find(self::$groupB);
         assertSame('Renombrado ' . self::$prefix, (string) $group['name']);
         assertSame('descripción nueva', (string) $group['description']);
+    }
+
+    public function testGuardarGrupoSinRecargaDevuelveLaCabeceraResumen(): void
+    {
+        $editorId = (int) $this->roleWithPermission('rbac-sum', 'forms.create');
+        $this->authAsAdmin();
+
+        $out = $this->callJson('groupUpdate', [
+            'group_id' => (string) self::$groupA,
+            'name'     => 'Grupo A ' . self::$prefix,
+            'roles'    => [(string) $editorId],
+            'users'    => [(string) self::$targetId],
+        ]);
+
+        assertTrue(($out['ok'] ?? false) === true, 'guardar sin recarga responde ok: ' . json_encode($out));
+
+        $slot = 'vfGroupSummary' . self::$groupA;
+        assertArrayHasKey($slot, $out['html'] ?? [], 'el hueco repintado es la cabecera-resumen');
+
+        $html = (string) $out['html'][$slot];
+        assertTrue(str_contains($html, '1 rol'), 'la insignia cuenta el rol: ' . $html);
+        assertTrue(str_contains($html, '1 miembro'), 'la insignia cuenta el miembro: ' . $html);
+        assertTrue(str_contains($html, 'app-rbac-effect'), 'se repinta el efecto, con el mismo bloque que pinta el GET');
+        assertTrue(str_contains($html, 'forms'), 'el efecto nombra el prefijo del permiso que otorga el rol');
+    }
+
+    public function testBorrarGrupoSinRecargaCuentaLosQueQuedan(): void
+    {
+        $this->authAsAdmin();
+
+        $out = $this->callJson('groupDelete', ['group_id' => (string) self::$groupA]);
+
+        assertTrue(($out['ok'] ?? false) === true, 'borrar sin recarga responde ok: ' . json_encode($out));
+        assertTrue(RoleGroup::find(self::$groupA) === null, 'la fila tiene que dejar de existir');
+
+        // El conteo es del SERVIDOR porque la lista es global: el cliente no
+        // sabe cuántos grupos hay en la instalación, y es con ese número (cero)
+        // con el que el JS decide recargar cuando se borra el último.
+        assertSame(
+            count(RoleGroup::all()),
+            (int) ($out['count'] ?? -1),
+            'el count es el de los grupos que quedan, no el de la pantalla'
+        );
+        assertTrue((int) $out['count'] >= 1, 'groupB sigue ahí: con la lista no vacía no toca recargar');
+    }
+
+    public function testLaListaDeMiembrosTieneBuscadorYNotaDeVacio(): void
+    {
+        $this->authAsAdmin();
+
+        $html = $this->renderGroups();
+
+        assertTrue(str_contains($html, 'data-vf-filter'), 'el buscador de miembros va marcado para el filtro de cliente');
+        assertTrue(str_contains($html, 'data-vf-list'), 'y su ancestro declara la lista que filtra');
+        assertTrue(str_contains($html, 'app-filter-empty'), 'hay una nota para cuando la búsqueda no casa con nadie');
+        assertTrue(
+            str_contains($html, 'id="vfGroupSummary' . self::$groupA . '"'),
+            'la cabecera-resumen es el hueco que el POST repinta sin recargar'
+        );
     }
 
     /* ---------------------------------------------------------------
@@ -210,6 +270,130 @@ class AdminRbacTest
 
         assertSame(403, $out['halt']['code'] ?? 0, 'sin `admin.roles` la respuesta es 403, no un flash');
         assertNull(Role::findByName($name), 'y el rol no se crea');
+    }
+
+    /* ---------------------------------------------------------------
+     * 2b. Matriz de permisos: guardado sin recarga
+     * --------------------------------------------------------------- */
+
+    /**
+     * Guardar la matriz por fetch devuelve un JSON con su aviso, y deja los
+     * permisos exactamente como los manda el navegador: la matriz COMPLETA
+     * (todos los roles), que es lo que envía el formulario. Un POST parcial
+     * —solo el rol tocado— no es lo que manda el navegador y el controlador lo
+     * interpretaría como «el resto sin permisos».
+     */
+    public function testLaMatrizSeGuardaSinRecarga(): void
+    {
+        $this->authAsAdmin();
+        $rolId = $this->roleWithPermission('rbac-matriz-' . self::$prefix, 'forms.create');
+
+        // Se envía la foto completa más el cambio del rol de este test.
+        $perms = [];
+        $antes = [];
+        foreach (Role::all() as $rol) {
+            $rid = (int) $rol['id'];
+            $perms[(string) $rid] = Role::permissionKeys($rid);
+            $antes[$rid] = self::sorted(Role::permissionKeys($rid));
+        }
+        $perms[(string) $rolId] = ['logs.view'];
+
+        $out = $this->callJson('updateRoleMatrix', ['perms' => $perms]);
+
+        assertTrue(($out['ok'] ?? false) === true, 'la respuesta JSON tiene que ser ok:true');
+        assertTrue(
+            str_contains((string) ($out['message'] ?? ''), 'Matriz'),
+            'y traer el aviso del guardado: ' . json_encode($out)
+        );
+        assertSame(['logs.view'], self::sorted(Role::permissionKeys($rolId)), 'el rol tocado queda con lo marcado');
+
+        // El resto de roles se queda como estaba: el POST venía completo.
+        foreach (Role::all() as $rol) {
+            $rid = (int) $rol['id'];
+            if ($rid === $rolId) {
+                continue;
+            }
+            assertSame(
+                $antes[$rid],
+                self::sorted(Role::permissionKeys($rid)),
+                'un rol que no se tocó no cambia de permisos'
+            );
+        }
+    }
+
+    /** Una matriz vacía por JSON no borra nada: no hay nada que guardar. */
+    public function testLaMatrizVaciaPorJsonNoBorraNada(): void
+    {
+        $this->authAsAdmin();
+        $rolId = $this->roleWithPermission('rbac-vacia-' . self::$prefix, 'forms.create');
+
+        $out = $this->callJson('updateRoleMatrix', []);
+
+        assertTrue(($out['ok'] ?? true) === false, 'sin `perms` la respuesta tiene que ser un «no»');
+        assertSame(['forms.create'], Role::permissionKeys($rolId), 'y los permisos no se tocan');
+    }
+
+    /** El guardado de la matriz por JSON exige `admin.roles` como el nativo. */
+    public function testLaMatrizPorJsonExigeElPermiso(): void
+    {
+        $this->authAs((int) $this->roleWithPermission('rbac-sin-matriz-' . self::$prefix, 'forms.create'));
+
+        $out = $this->callJson('updateRoleMatrix', ['perms' => ['1' => ['admin.access']]]);
+
+        assertTrue(($out['ok'] ?? true) === false, 'sin `admin.roles` no hay ok:true');
+        assertTrue(
+            str_contains((string) ($out['error'] ?? ''), 'permiso'),
+            'y el motivo lo dice: ' . json_encode($out)
+        );
+    }
+
+    /**
+     * La vista de la matriz trae los ganchos del rediseño: el guardado sin
+     * recarga, el contenedor con scroll propio (sin él la cabecera no se pega)
+     * y el `data-vf-count` / `data-vf-role-id` que el JS usa para recalcular el
+     * «n/total» en vivo.
+     */
+    public function testLaVistaDeLaMatrizTraeContadoresYGuardadoSinRecarga(): void
+    {
+        $this->authAsAdmin();
+        $html = $this->renderRoles();
+
+        assertTrue(str_contains($html, 'data-vf-async="slots"'), 'guardar la matriz no debe recargar');
+        assertTrue(str_contains($html, 'app-rbac-matrix-scroll'), 'falta el contenedor con scroll propio de la cabecera pegajosa');
+        assertTrue(str_contains($html, 'data-vf-count="'), 'cada columna necesita su contador con data-vf-count');
+        assertTrue(str_contains($html, 'data-vf-role-id="'), 'y cada casilla su data-vf-role-id para agrupar el contador');
+
+        $roles = Role::all();
+        assertSame(
+            count($roles),
+            substr_count($html, 'data-vf-count="'),
+            'tiene que haber un contador por rol'
+        );
+    }
+
+    /**
+     * F6 — La vista del log filtra por evento (se envía solo) y por búsqueda de
+     * detalle/IP/usuario, con su vacío propio.
+     */
+    public function testLaVistaDelLogFiltraYPaginaConLaUrl(): void
+    {
+        $this->authAsAdmin();
+        $marca = 'rbac-log-' . self::$prefix;
+        SecurityLog::record('admin.role_change', $marca);
+
+        $html = $this->renderSecurityLog(['q' => $marca]);
+        assertTrue(str_contains($html, 'name="q"'), 'la búsqueda viaja en el GET');
+        assertTrue(str_contains($html, 'js-auto-submit'), 'el filtro de evento se envía solo al cambiar');
+        assertTrue(str_contains($html, $marca), 'la fila que casa con la búsqueda sale');
+
+        $vacio = $this->renderSecurityLog(['q' => 'zzz-no-existe-' . self::$prefix]);
+        assertTrue(str_contains($vacio, 'Sin resultados'), 'un filtro sin resultados tiene su vacío');
+        assertTrue(str_contains($vacio, 'Quitar los filtros'), 'con su enlace de salida');
+
+        Database::getInstance(Config::db())->execute(
+            'DELETE FROM security_log WHERE detail = :d',
+            ['d' => $marca]
+        );
     }
 
     /* ---------------------------------------------------------------
@@ -572,6 +756,175 @@ class AdminRbacTest
     }
 
     /* ---------------------------------------------------------------
+     * Fase 2 — El buscador y los filtros del listado de usuarios
+     * --------------------------------------------------------------- */
+
+    /**
+     * El filtro va en la CONSULTA, no en la página: con el `LIMIT` de 25 ya
+     * aplicado, un filtro de cliente solo ocultaría las filas ya pintadas y la
+     * búsqueda de la persona 26 diría «sin resultados» con la fila ahí mismo.
+     */
+    public function testElBuscadorDeUsuariosFiltraEnSqlYNoSoloEnLaPagina(): void
+    {
+        $this->authAsAdmin();
+
+        // La tabla marca sus filas con `data-vf-row`: el email del admin que
+        // está mirando la página sale en la barra superior, así que «no aparece
+        // su email» no probaría nada; el número de FILAS sí.
+        $html = $this->renderUsers(['q' => self::$prefix . '-target']);
+        assertTrue(
+            str_contains($html, self::$prefix . '-target@test.local'),
+            'la búsqueda por email encuentra a la persona'
+        );
+        assertSame(
+            1,
+            substr_count($html, 'data-vf-row'),
+            'y deja UNA sola fila: el filtro va en la consulta, no esconde el resto en cliente'
+        );
+
+        $vacio = $this->renderUsers(['q' => 'zzz-nadie-' . self::$prefix]);
+        assertTrue(str_contains($vacio, 'Sin resultados'), 'una búsqueda sin coincidencias lo dice');
+        assertSame(0, substr_count($vacio, 'data-vf-row'), 'y no hay ninguna fila que enseñar');
+        assertFalse(
+            str_contains($vacio, 'Todavía no hay usuarios'),
+            'y no confunde «sin resultados» con una instalación vacía'
+        );
+    }
+
+    /** El estado se resuelve en SQL: activos/inactivos de verdad, no en cliente. */
+    public function testElFiltroDeEstadoDeUsuariosViajaEnLaUrl(): void
+    {
+        User::setActive(self::$targetId, false);
+        $this->authAsAdmin();
+
+        $inactivos = $this->renderUsers(['q' => self::$prefix . '-target', 'estado' => 'inactivos']);
+        assertTrue(
+            str_contains($inactivos, self::$prefix . '-target@test.local'),
+            'el inactivo sale al filtrar por inactivos'
+        );
+
+        $activos = $this->renderUsers(['q' => self::$prefix . '-target', 'estado' => 'activos']);
+        assertFalse(
+            str_contains($activos, self::$prefix . '-target@test.local'),
+            'y NO sale al filtrar por activos'
+        );
+    }
+
+    /** El rol también se filtra en SQL, no se descarta sobre lo ya pintado. */
+    public function testElFiltroDeRolDeUsuariosEsElDeLaUrl(): void
+    {
+        $this->authAsAdmin();
+
+        $comoAdmin = $this->renderUsers(['q' => self::$prefix, 'rol' => '1']);
+        assertTrue(str_contains($comoAdmin, self::$prefix . '-admin@test.local'), 'el admin (rol 1) entra');
+        assertFalse(str_contains($comoAdmin, self::$prefix . '-target@test.local'), 'y el user (rol 2) queda fuera');
+    }
+
+    /**
+     * `User::page()` es el contrato del listado: sin él, «filtrar en SQL» sería
+     * una promesa. Cuenta el TOTAL filtrado (no el de la página) y numera las
+     * páginas sobre ese total.
+     */
+    public function testUserPageCuentaElTotalFiltradoYRecortaLasPaginas(): void
+    {
+        User::create('RBAC Extra ' . self::$prefix, self::$prefix . '-extra@test.local', 'clave-rbac-123', 2);
+
+        $p1 = User::page(['q' => self::$prefix], 1, 2);
+        assertSame(3, $p1['total'], 'tres usuarios de este test coinciden con el prefijo');
+        assertSame(2, count($p1['items']), 'la página trae dos');
+        assertSame(2, $p1['pages'], 'y salen dos páginas');
+
+        $p2 = User::page(['q' => self::$prefix], 2, 2);
+        assertSame(1, count($p2['items']), 'la segunda página trae el que falta');
+        assertSame(2, $p2['page']);
+
+        $fuera = User::page(['q' => self::$prefix], 99, 2);
+        assertSame(2, $fuera['page'], 'una página por encima del final se recorta a la última');
+    }
+
+    /* ---------------------------------------------------------------
+     * Fase 3 — La fila de usuarios: una puerta de acciones y tarjetas móviles
+     * --------------------------------------------------------------- */
+
+    /**
+     * La fila tiene UN solo punto de entrada (`⋯`) con las cuatro acciones
+     * dentro, en vez de cuatro controles sueltos estirados por la fila. Los
+     * formularios conservan su `action`, así que sin JavaScript se envían
+     * igual (recargando).
+     */
+    public function testLaFilaDeUsuariosTieneUnUnicoMenuDeAcciones(): void
+    {
+        $this->authAsAdmin();
+        $html = $this->renderUsers(['q' => self::$prefix . '-target']);
+
+        assertSame(1, substr_count($html, 'data-vf-row'), 'la búsqueda deja una sola fila');
+        assertSame(1, substr_count($html, 'app-row-menu-btn'), 'una sola puerta de acciones por fila');
+        assertTrue(
+            str_contains($html, 'data-bs-auto-close="outside"'),
+            'el menú no puede cerrarse al marcar la primera casilla: se editan varias cosas seguidas'
+        );
+
+        foreach (['role', 'groups', 'permissions', 'toggle'] as $accion) {
+            assertSame(
+                1,
+                substr_count($html, 'action="/admin/users/' . $accion . '"'),
+                'la fila tiene que llevar el formulario de /admin/users/' . $accion
+            );
+        }
+    }
+
+    /**
+     * Cada celda lleva su `data-label` y la tabla su clase `.app-admin-table`:
+     * es lo que la convierte en tarjetas apiladas en móvil. Una columna que se
+     * añada sin rótulo sale sin nombre en el móvil y no da ningún error.
+     */
+    public function testLasCeldasDelListadoLlevanRotuloParaMovil(): void
+    {
+        $this->authAsAdmin();
+        $html = $this->renderUsers(['q' => self::$prefix . '-target']);
+
+        assertTrue(str_contains($html, 'app-admin-table'), 'la tabla lleva la clase que la apila en móvil');
+        foreach (['Usuario', 'Email', 'Rol', 'Grupos', 'Permisos extra', 'Estado', 'Registro', 'Acciones'] as $rotulo) {
+            assertTrue(
+                str_contains($html, 'data-label="' . $rotulo . '"'),
+                'falta el rótulo de la celda «' . $rotulo . '»'
+            );
+        }
+
+        // La hoja de estilos es la mitad del contrato: sin la regla que oculta
+        // la cabecera, los `data-label` no se llegan a pintar nunca.
+        $css = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/app.css');
+        assertTrue(
+            (bool) preg_match('/@media[^{]*\{\s*\.app-admin-table thead\s*\{\s*display:\s*none/s', $css),
+            'app.css apila la tabla de usuarios en móvil ocultando su cabecera'
+        );
+    }
+
+    /**
+     * Cambiar el rol por fetch repinta la insignia de la columna: el `<select>`
+     * del menú ya viene con el valor nuevo, pero lo que se VE en la fila es la
+     * insignia, y sin repintarla el panel seguiría diciendo el rol anterior.
+     */
+    public function testCambiarElRolRepintaLaInsigniaDeLaFila(): void
+    {
+        $this->authAsAdmin();
+        $editor = Role::findByName('editor');
+        assertNotNull($editor, 'el rol editor existe');
+
+        $out = $this->callJson('updateRole', [
+            'user_id' => (string) self::$targetId,
+            'role_id' => (string) $editor['id'],
+        ]);
+
+        assertTrue(($out['ok'] ?? false) === true, 'el cambio de rol responde ok: ' . json_encode($out));
+        assertArrayHasKey('vfUserRole' . self::$targetId, $out['html'] ?? [], 'la respuesta trae el hueco de la insignia');
+        assertTrue(
+            str_contains((string) ($out['html']['vfUserRole' . self::$targetId] ?? ''), 'editor'),
+            'y la insignia repintada dice el rol nuevo'
+        );
+    }
+
+    /* ---------------------------------------------------------------
      * Utilidades
      * --------------------------------------------------------------- */
 
@@ -614,14 +967,31 @@ class AdminRbacTest
     }
 
     /** GET del panel de usuarios: devuelve el HTML pintado. */
-    private function renderUsers(): string
+    private function renderUsers(array $query = []): string
     {
         $_POST = [];
+        $_GET = $query;
         $_SERVER['REQUEST_METHOD'] = 'GET';
-        $_SERVER['REQUEST_URI'] = '/admin';
+        $_SERVER['REQUEST_URI'] = '/admin' . ($query === [] ? '' : '?' . http_build_query($query));
         ob_start();
         try {
             (new AdminController())->index();
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        return $html;
+    }
+
+    /** GET del panel de grupos: devuelve el HTML pintado. */
+    private function renderGroups(): string
+    {
+        $_POST = [];
+        $_GET = [];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/admin/groups';
+        ob_start();
+        try {
+            (new AdminController())->groups();
         } finally {
             $html = (string) ob_get_clean();
         }
@@ -645,6 +1015,22 @@ class AdminRbacTest
         ob_start();
         try {
             (new AdminController())->roles();
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        return $html;
+    }
+
+    /** GET del log de seguridad: devuelve el HTML pintado. */
+    private function renderSecurityLog(array $query = []): string
+    {
+        $_POST = [];
+        $_GET = $query;
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/admin/security-log' . ($query === [] ? '' : '?' . http_build_query($query));
+        ob_start();
+        try {
+            (new AdminController())->securityLog();
         } finally {
             $html = (string) ob_get_clean();
         }
@@ -698,6 +1084,34 @@ class AdminRbacTest
             'exito' => Session::getFlash('success'),
             'error' => Session::getFlash('error'),
         ];
+    }
+
+    /**
+     * Como `call()`, pero simulando `X-Requested-With` para que el controlador
+     * responda JSON, y devolviendo el cuerpo decodificado: es la única forma de
+     * comprobar los huecos (`html`) que el fetch repone sin recargar.
+     */
+    private function callJson(string $action, array $post): array
+    {
+        Session::set('_csrf_token', Csrf::token());
+        $_POST = ['_token' => (string) Session::get('_csrf_token')] + $post;
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+        Request::setRequestBodyForTests(null);
+
+        Response::setRecordHalt(true);
+        ob_start();
+        try {
+            (new AdminController())->{$action}();
+        } finally {
+            $raw = (string) ob_get_clean();
+        }
+        Response::setRecordHalt(false);
+        unset($_SERVER['HTTP_X_REQUESTED_WITH']);
+
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     private static function groupUsers(int $groupId): array

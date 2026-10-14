@@ -6,13 +6,14 @@ use App\Core\View;
  * Las insignias de permisos DIRECTOS de una fila de `/admin`.
  *
  * Es un partial por la misma razón que `_user_groups.php`: el guardado va por
- * fetch y el botón de la celda se repinta sin recargar. Con las insignias dentro
- * de la vista, el botón se quedaría diciendo «Sin permisos extra» sobre alguien a
- * quien se le acaba de conceder uno.
+ * fetch desde el menú de la fila y la columna se repinta sin recargar. Con las
+ * insignias dentro de la vista, la columna se quedaría diciendo «Sin permisos
+ * extra» sobre alguien a quien se le acaba de conceder uno. Es el mismo hueco
+ * (`vfUserPerms<uid>`) que repone el servidor.
  *
  * Solo van aquí las insignias: las casillas del desplegable las pinta la propia
- * vista y las que enviaron el POST ya son la verdad, así que repintar el botón no
- * las toca (y no cierra el desplegable abierto).
+ * vista y las que enviaron el POST ya son la verdad, así que repintar la columna
+ * no las toca (y no cierra el menú abierto).
  *
  * Variables: `$myPerms` (lista de claves del catálogo).
  *

@@ -539,14 +539,14 @@ class AsyncFormActionsTest
     /**
      * El rol y los grupos de una fila se guardan por fetch.
      *
-     * El rol va sin ningún hueco que reponer, y es a propósito: cambiar el rol no
-     * cambia nada de lo que se ve en la fila (el `select` ya está en el valor
-     * nuevo), así que lo único que hay que pintar es el aviso. Repintar la fila
-     * entera tiraría por la ventana el desplegable de grupos que se estuviera
-     * editando al lado.
+     * Los dos tienen hueco desde la fase 3: la fila muestra el rol como insignia
+     * (y se edita desde el menú `⋯`), así que cambiar el rol SÍ cambia lo que se
+     * ve y el servidor devuelve `vfUserRole<uid>`. Mandar solo el aviso dejaría
+     * la insignia con el rol anterior. El hueco es lo único que se repinta, no
+     * la fila: así no se cierra el menú que se estuviera editando.
      *
-     * Los grupos sí tienen hueco: las insignias del botón son lo único de esa
-     * celda que depende de la pertenencia.
+     * Los grupos repintan sus insignias (`vfUserGroups<uid>`), que es lo único
+     * de esa celda que depende de la pertenencia.
      */
     public function testCambiarElRolYLosGruposDeUnaFilaRespondeJson(): void
     {
@@ -567,9 +567,13 @@ class AsyncFormActionsTest
 
         assertTrue($r['json']['ok'] ?? false, 'cambiar el rol por fetch responde ok');
         assertTrue(
-            !isset($r['json']['html']),
-            'y NO devuelve HTML: nada de la fila depende del rol, y mandar markup '
-                . 'para nada es una forma de reescribir algo que ya está bien'
+            isset($r['json']['html']['vfUserRole' . $id]),
+            'la insignia de la columna «Rol» viene con el id de la fila: es lo '
+                . 'único de la fila que depende del rol'
+        );
+        assertTrue(
+            str_contains((string) ($r['json']['html']['vfUserRole' . $id] ?? ''), 'editor'),
+            'y la insignia repintada dice el rol nuevo'
         );
         assertSame(
             3,

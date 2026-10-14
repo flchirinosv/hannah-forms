@@ -16,12 +16,16 @@
  *
  * Variables esperadas: $listado (`items/total/page/pages/per_page`), $base (la
  * ruta) y $qs (el query string de los filtros, con `?` delante o vacío).
+ * Opcionales: `$sujeto` (el singular de lo listado, para el recuento) y `$aria`
+ * (la etiqueta del nav). Por defecto, formularios.
  */
 use App\Core\View;
 
 $listado = is_array($listado ?? null) ? $listado : ['items' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 1];
 $base = (string) ($base ?? '/dashboard');
 $qs = (string) ($qs ?? '');
+$sujeto = (string) ($sujeto ?? 'formulario');
+$aria = (string) ($aria ?? 'Paginación de formularios');
 $page = max(1, (int) $listado['page']);
 $pages = max(1, (int) $listado['pages']);
 $total = (int) $listado['total'];
@@ -38,9 +42,9 @@ $link = static function (int $destino) use ($base, $qs): string {
 <?php if ($pages > 1): ?>
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 app-pager">
     <span class="small text-muted">
-        <?= $total ?> formulario<?= $total === 1 ? '' : 's' ?> · Página <?= $page ?> de <?= $pages ?>
+        <?= $total ?> <?= View::escape($sujeto) ?><?= $total === 1 ? '' : 's' ?> · Página <?= $page ?> de <?= $pages ?>
     </span>
-    <nav aria-label="Paginación de formularios">
+    <nav aria-label="<?= View::escape($aria) ?>">
         <ul class="pagination pagination-sm mb-0">
             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
                 <?php if ($page <= 1): ?>

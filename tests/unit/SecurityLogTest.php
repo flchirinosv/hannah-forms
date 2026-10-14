@@ -87,6 +87,47 @@ class SecurityLogTest
         assertSame($unknown['total'], SecurityLog::recent('', 1, 10)['total'], 'un evento desconocido NO filtra (cae al total global)');
     }
 
+    public function testRecentBuscaPorDetalleIpYUsuario(): void
+    {
+        Auth::assumeLoggedIn(self::$userId);
+        Auth::forgetCache();
+        SecurityLog::record('form.delete', 'marca-slog-c');
+
+        // Detalle.
+        $porDetalle = SecurityLog::recent('', 1, 50, 'marca-slog-c');
+        assertTrue(
+            in_array('marca-slog-c', array_column($porDetalle['items'], 'detail'), true),
+            'el buscador casa con el detalle'
+        );
+
+        // Nombre de usuario: la fila se guardó con self::$userId, cuyo nombre es
+        // «Log User»; el buscador mira `u.name` por el JOIN.
+        $porUsuario = SecurityLog::recent('', 1, 50, 'Log User');
+        assertTrue(
+            in_array('marca-slog-c', array_column($porUsuario['items'], 'detail'), true),
+            'el buscador casa con el nombre del usuario'
+        );
+
+        // IP: se inserta a mano porque `record()` usa la IP del request (vacía en CLI).
+        Database::getInstance(Config::db())->execute(
+            "INSERT INTO security_log (event, detail, ip) VALUES ('auth.login_ok', :d, :ip)",
+            ['d' => 'marca-slog-a', 'ip' => '203.0.113.77']
+        );
+        $porIp = SecurityLog::recent('', 1, 50, '203.0.113.77');
+        assertTrue(
+            in_array('marca-slog-a', array_column($porIp['items'], 'detail'), true),
+            'el buscador casa con la IP'
+        );
+
+        // El `%` escrito es texto, no comodín: sin escapar, buscar «%» traería el
+        // log entero y parecería que el buscador está roto.
+        $soloPct = SecurityLog::recent('', 1, 50, '%');
+        assertFalse(
+            in_array('marca-slog-c', array_column($soloPct['items'], 'detail'), true),
+            'un «%» literal no hace de comodín'
+        );
+    }
+
     public function testPurgeOlderThanBorraSoloLoAnterior(): void
     {
         $db = Database::getInstance(Config::db());

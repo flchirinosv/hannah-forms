@@ -1031,16 +1031,22 @@ body {
            botón: sin reponerlas, `font-size: 0` las deja invisibles y con ellas
            la pertenencia de la fila. */
         .app-content .btn:has(i[class*="fa-"]) .badge { font-size: 0.7rem; }
-        /* La sub-navegación de /admin es la fila de botones con icono + texto
-           (Usuarios, Grupos de roles, Roles y permisos, Log de seguridad,
-           Formularios) que en un móvil se parte en dos o tres líneas. Siguen
-           siendo `.nav-link` —visten como botón, pero no son `.btn`—, así que
-           la regla de arriba no las alcanzaba y se quedaban con el texto; en
-           modo móvil se quedan con el icono, igual que el resto de botones del
-           contenido. */
-        .app-admin-nav .nav-link:has(i[class*="fa-"]) { font-size: 0; }
-        .app-admin-nav .nav-link:has(i[class*="fa-"]) i[class*="fa-"] { font-size: 1rem; }
     }
+
+    /* La sub-navegación de /admin (Usuarios, Grupos de roles, Roles y permisos,
+       Log de seguridad, Formularios) CONSERVA sus rótulos en móvil: son cinco
+       destinos y un icono suelto no dice a dónde lleva cada uno. Para que la
+       fila no se parta en dos o tres líneas ni se coma media pantalla, se
+       desplaza en horizontal en una sola línea. No lleva `:has()` porque no
+       necesita saber si hay icono: el rótulo se queda siempre. */
+    .app-admin-nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .app-admin-nav::-webkit-scrollbar { display: none; }
+    .app-admin-nav .nav-link { flex: 0 0 auto; white-space: nowrap; }
 }
 
 /* --- Responsive mobile --- */
@@ -2204,29 +2210,97 @@ body {
 .app-rbac-count { font-variant-numeric: tabular-nums; }
 .app-rbac-matrix .text-monospace { font-family: var(--vf-mono); }
 
-/* Selector de rol en la tabla de usuarios: auto-envía al cambiar, así que se
-   estrecha a lo que necesita y no ensancha la columna. */
-.app-rbac-select { width: auto; min-width: 9rem; }
-
-/* Botones que abren los grupos o los permisos extra de un usuario (columna de
-   /admin): muestran las insignias dentro, y sin nada dicen "Sin grupos" /
-   "Sin permisos extra" en vez de parecer un control vacío. Los permisos usan la
-   misma caja que los grupos porque son la misma interacción. */
-.app-rbac-groups-btn,
-.app-rbac-perms-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    max-width: 18rem;
-    flex-wrap: wrap;
+/* Contenedor con scroll propio: es lo que hace posible la cabecera pegajosa. Con
+   el `overflow` de `.table-responsive` (computa el eje vertical a `auto`) el
+   `position: sticky` del encabezado no engancha respecto a nada visible. */
+.app-rbac-matrix-scroll {
+    max-height: min(70vh, 42rem);
+    overflow: auto;
 }
-.app-rbac-groups-btn .badge,
-.app-rbac-perms-btn .badge { font-weight: 500; }
-.app-rbac-groups-btn:focus-visible,
-.app-rbac-perms-btn:focus-visible { box-shadow: var(--vf-focus-ring); }
 
-/* Clave de permiso en las insignias del botón: `code` compacto y en una línea,
-   con la clave completa en el `title`. */
+/* La cabecera (nombres de rol y su «n/total») se queda arriba mientras se
+   recorre la matriz. Fondo explícito: sin él, las filas que pasan por debajo
+   se leen a través. */
+.app-rbac-matrix-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--vf-bg, #f4f5fb);
+}
+
+/* El rótulo de sección se pega justo debajo del encabezado. `--vf-rbac-head` lo
+   mide `initRoleMatrix()`: la altura del encabezado depende del ancho (en móvil
+   el nombre del rol ocupa dos líneas) y una altura fija se quedaría corta. */
+.app-rbac-matrix-scroll .app-rbac-section th {
+    position: sticky;
+    top: var(--vf-rbac-head, 0px);
+    z-index: 2;
+}
+
+/* El menú de acciones de una fila de /admin: un único `⋯` que abre el rol, los
+   grupos, los permisos extra y el estado. Ancho cómodo para las claves de
+   permiso, pero topado al viewport en móvil, y con scroll interno para no
+   salirse de la pantalla con el catálogo entero. La vista lo abre con
+   `data-bs-auto-close="outside"` para poder editar varias cosas sin que se
+   cierre a la primera casilla. */
+.app-row-menu-btn { line-height: 1; }
+
+/* La altura se topa a lo poco que deja el viewport, NO al alto que pida el
+   contenido: el menú vive dentro de `.table-responsive`, que con
+   `overflow-x: auto` también recorta en vertical, así que un menú de 42rem
+   (el alto natural con el catálogo de permisos) se salía por abajo y quedaba
+   cortado. Con ~24rem el contenido scrollea dentro y Popper lo coloca (o lo
+   voltea hacia arriba) sin salirse. */
+.app-row-menu {
+    min-width: min(24rem, calc(100vw - 1.5rem));
+    max-height: min(60vh, 24rem);
+    overflow-y: auto;
+}
+
+/* La tabla de usuarios (ocho columnas) se convierte en tarjetas apiladas en
+   móvil: un scroll horizontal de 1100px no es una tabla, es puntería. Cada
+   `<td>` lleva su `data-label` y lo pinta como rótulo. Solo aplica a
+   `.app-admin-table`, así que las otras tablas del panel no se tocan. En
+   escritorio la tabla es una tabla normal y los `data-label` no se usan. */
+@media (max-width: 991.98px) {
+    .app-admin-table thead { display: none; }
+    .app-admin-table,
+    .app-admin-table tbody,
+    .app-admin-table tr,
+    .app-admin-table td { display: block; width: 100%; }
+    .app-admin-table tr {
+        border: 1px solid var(--vf-border, #e2e8f0);
+        border-radius: var(--vf-radius, 14px);
+        background: var(--vf-surface, #fff);
+        margin-bottom: .75rem;
+        padding: .25rem .9rem;
+    }
+    .app-admin-table td {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .45rem 0;
+        border: 0;
+        border-bottom: 1px solid var(--vf-border, #e2e8f0);
+        text-align: right;
+    }
+    .app-admin-table td:last-child { border-bottom: 0; }
+    .app-admin-table td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        text-align: left;
+        font-size: var(--vf-hint-fs, .75rem);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--vf-text-muted, #64748b);
+    }
+    .app-admin-table td[data-label="Usuario"] { font-size: 1rem; }
+}
+
+/* Clave de permiso en las insignias de la columna: `code` compacto y en una
+   línea, con la clave completa en el `title`. */
 .app-perm-chip {
     font-size: .7rem;
     padding: .05rem .35rem;
@@ -2234,10 +2308,6 @@ body {
     background: var(--vf-bg, #f4f5fb);
     color: var(--vf-primary-dark, #4f46e5);
 }
-
-/* El menú de permisos lleva el desglose efectivo + la lista del catálogo: algo
-   más ancho que un menú normal para que las claves no se corten. */
-.app-perms-menu { min-width: 20rem; }
 
 /* ---- Diálogo de confirmación del panel (F0.4-tres) ----
    `#vfConfirm` sustituye al `confirm()` del navegador. El estilo es casi todo de

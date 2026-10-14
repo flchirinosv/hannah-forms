@@ -491,6 +491,8 @@ function montar(esc) {
         extract('vfConfirmGo'),
         extract('vfHandleSubmit'),
         extract('vfAutoSubmit'),
+        extract('vfFilterList'),
+        extract('syncRoleCounts'),
     ].join('\n\n');
 
     const contexto = {
@@ -523,7 +525,7 @@ function montar(esc) {
     const fn = new Function(
         nombres.join(','),
         codigo + '\nreturn { handle: vfHandleSubmit, post: window.vfPost, toast: window.vfToast,'
-            + ' autoSubmit: vfAutoSubmit,'
+            + ' autoSubmit: vfAutoSubmit, filter: vfFilterList, sync: syncRoleCounts,'
             + ' wire: vfConfirmWire, ask: vfAsk, go: vfConfirmGo };'
     );
     const api = fn.apply(null, nombres.map((n) => contexto[n]));
@@ -1111,6 +1113,98 @@ async function main() {
         is('se manda X-Requested-With (es lo que hace bimodal al servidor)', cabeceras['X-Requested-With'], 'XMLHttpRequest');
         is('y el token del body', cabeceras['X-CSRF-Token'], 'token-de-prueba');
         is('el cuerpo va tal cual, sin Content-Type a mano', cabeceras['Content-Type'], undefined);
+    }
+
+    console.log('El buscador de la lista esconde filas sin sacar a nadie del grupo');
+    {
+        // La pertenencia a un grupo es el POST COMPLETO: esconder a alguien con
+        // el buscador no puede desmarcarlo, o guardar la ficha lo echaría del
+        // grupo sin que nadie lo pidiera. Por eso el filtro es de cliente y
+        // esconde la fila entera (con su casilla) en vez de tocarla.
+        const esc = escenario({});
+        const cont = el('div', { 'data-vf-list': '' });
+        const input = el('input', { type: 'search' });
+        input.value = '';
+
+        const lista = el('div', { class: 'app-rbac-list' });
+        lista.classes = ['app-rbac-list'];
+
+        const fila = (nombre, correo) => {
+            const item = el('label', { class: 'app-rbac-item' });
+            item.classes = ['app-rbac-item'];
+            item.textContent = nombre + ' ' + correo;
+            const cb = el('input', { type: 'checkbox' });
+            cb.checked = true;
+            item.appendChild(cb);
+            return item;
+        };
+        const ana = fila('Ana Ruiz', 'ana@test.local');
+        const beto = fila('Beto Silva', 'beto@test.local');
+        const vacio = el('p', { class: 'app-filter-empty' });
+        vacio.classes = ['app-filter-empty'];
+        vacio.hidden = true;
+
+        lista.appendChild(ana);
+        lista.appendChild(beto);
+        lista.appendChild(vacio);
+        cont.appendChild(input);
+        cont.appendChild(lista);
+        esc.document.body.appendChild(cont);
+
+        const { filter } = montar(esc);
+        filter(input);
+
+        input.value = 'ana';
+        input.emit('input');
+        is('quien casa se queda visible', ana.hidden, false);
+        is('quien no casa se esconde', beto.hidden, true);
+        is('la nota de «sin coincidencias» sigue oculta', vacio.hidden, true);
+        is('y la casilla de quien se escondió sigue marcada (guardar no lo saca)', ana.querySelector('input').checked, true);
+        is('la fila escondida sigue en el DOM (el POST la manda)', ana.removed, false);
+
+        input.value = 'zzz';
+        input.emit('input');
+        is('sin coincidencias se esconden todos', ana.hidden && beto.hidden, true);
+        is('y aparece la nota', vacio.hidden, false);
+
+        input.value = '';
+        input.emit('input');
+        is('al vaciar el buscador vuelven todos', ana.hidden === false && beto.hidden === false, true);
+        is('y la nota se vuelve a ocultar', vacio.hidden, true);
+    }
+
+    console.log('El contador de la matriz se recalcula con lo marcado');
+    {
+        // La matriz guarda sin recargar, así que el «n/total» de la cabecera no
+        // lo puede repintar el servidor al marcar una casilla: si no se
+        // recalculara aquí, el número se quedaría en el de la última carga y
+        // diría una cosa mientras las casillas dicen otra.
+        const esc = escenario({});
+        const matrix = el('table', { class: 'app-rbac-matrix' });
+        matrix.classes = ['app-rbac-matrix'];
+
+        const contA = el('div', { 'data-vf-count': '1' });
+        const contB = el('div', { 'data-vf-count': '2' });
+        matrix.appendChild(contA);
+        matrix.appendChild(contB);
+
+        const casilla = (rid, marcada) =>
+            el('input', { 'data-vf-role-id': rid }, { checked: marcada, classes: ['js-perm'] });
+        const a1 = casilla('1', true);
+        const a2 = casilla('1', false);
+        const b1 = casilla('2', true);
+        matrix.appendChild(a1);
+        matrix.appendChild(a2);
+        matrix.appendChild(b1);
+
+        const { sync } = montar(esc);
+        sync(matrix);
+        is('el contador del rol 1 cuenta solo sus casillas', contA.textContent, '1/2');
+        is('y el del rol 2, las suyas', contB.textContent, '1/1');
+
+        a2.checked = true;
+        sync(matrix);
+        is('marcar otra casilla sube el contador del rol', contA.textContent, '2/2');
     }
 
     console.log('');

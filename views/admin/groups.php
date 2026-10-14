@@ -5,40 +5,32 @@
  * Un grupo es un contenedor de ROLES y USUARIOS: sus miembros heredan los
  * permisos de los roles del grupo, además de los de su propio rol.
  *
- * Dos decisiones de UI que no son estéticas:
+ * Tres decisiones de UI que no son estéticas:
  * - Los roles y los miembros son **checkboxes**, no `<select multiple>`: un
  *   multiselect obliga a mantener pulsado Ctrl para elegir más de uno, y no
  *   hay nada en la pantalla que lo diga. Aquí se marca y se guarda.
  * - Se pinta el **efecto** (los permisos que otorga el grupo), no solo el
  *   cableado: la pregunta de quien administra es qué pasa si saco a esta
  *   persona del grupo, no qué roles tiene el grupo.
+ * - El buscador de miembros es de **cliente** y solo ESCONDE filas: la
+ *   pertenencia es el POST completo (`users[]`), así que esconder a alguien no
+ *   puede desmarcarlo — filtrar en servidor lo sacaría del grupo al guardar.
  *
  * OJO: este formulario tiene que mandar `name` y `description`. Un POST sin
  * ellos se interpreta como "no los toques" (ver AdminController::groupUpdate),
  * pero mandarlos mantiene el alta y la edición en el mismo camino.
  */
 use App\Core\View;
-
-/** Agrupa una lista plana de claves por prefijo, para legibilidad. */
-$groupPermKeys = static function (array $keys): array {
-    $out = [];
-    foreach ($keys as $key) {
-        $out[explode('.', (string) $key)[0]][] = (string) $key;
-    }
-    return $out;
-};
 ?>
 <div class="container-fluid px-lg-4">
-    <?= View::partial('admin/_nav', ['active' => 'groups']) ?>
-
-    <div class="mb-4">
-        <h2 class="h4 fw-bold mb-1"><i class="fa-solid fa-layer-group me-2 text-primary"></i>Grupos de roles</h2>
-        <p class="text-muted small mb-0">
-            Un grupo reúne usuarios y roles. Quien está en el grupo hereda los permisos de esos roles
-            <strong>además</strong> de los de su propio rol: es la forma de dar a un equipo una capacidad
-            extra (operar formularios de cualquiera, revisar, ver el log) sin cambiarle el rol a nadie.
-        </p>
-    </div>
+    <?= View::partial('admin/_page_head', [
+        'active'   => 'groups',
+        'icon'     => 'fa-layer-group',
+        'title'    => 'Grupos de roles',
+        'subtitle' => 'Un grupo reúne usuarios y roles. Quien está en el grupo hereda los permisos de esos'
+            . ' roles <strong>además</strong> de los de su propio rol: es la forma de dar a un equipo una'
+            . ' capacidad extra (operar formularios de cualquiera, revisar, ver el log) sin cambiarle el rol a nadie.',
+    ]) ?>
 
     <div class="row g-4">
         <div class="col-lg-4">
@@ -85,36 +77,21 @@ $groupPermKeys = static function (array $keys): array {
                 $gMembers = $groupMembers[$gid] ?? [];
                 $gPerms = $groupPerms[$gid] ?? [];
                 ?>
-                <div class="card border-0 shadow-sm mb-3">
+                <div class="card border-0 shadow-sm mb-3" data-vf-row>
                     <div class="card-body">
-                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <div>
-                                <h3 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
-                                    <i class="fa-solid fa-layer-group text-primary"></i>
-                                    <?= View::escape($group['name']) ?>
-                                </h3>
-                                <?php if (!empty($group['description'])): ?>
-                                    <span class="small text-muted"><?= View::escape($group['description']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge text-bg-light border">
-                                    <i class="fa-solid fa-user-group me-1"></i><?= count($gMembers) ?>
-                                    <?= count($gMembers) === 1 ? 'miembro' : 'miembros' ?>
-                                </span>
-                                <form method="post" action="/admin/groups/delete" class="d-inline"
-                                      data-confirm="¿Eliminar el grupo '<?= View::escape($group['name']) ?>'? Se desvincula de sus usuarios, sin borrarlos."
-                                      data-confirm-ok="Eliminar grupo">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <input type="hidden" name="group_id" value="<?= $gid ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar grupo" aria-label="Eliminar grupo <?= View::escape($group['name']) ?>">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
+                        <div id="vfGroupSummary<?= $gid ?>" class="mb-3">
+                            <?= View::partial('admin/_group_summary', [
+                                'groupId'     => $gid,
+                                'groupName'   => (string) $group['name'],
+                                'groupDesc'   => (string) ($group['description'] ?? ''),
+                                'roleCount'   => count($gRoles),
+                                'memberCount' => count($gMembers),
+                                'gPerms'      => $gPerms,
+                            ]) ?>
                         </div>
 
-                        <form method="post" action="/admin/groups/update" class="row g-3 align-items-start">
+                        <form method="post" action="/admin/groups/update" class="row g-3 align-items-start"
+                              data-vf-async="slots">
                             <?= \App\Core\Csrf::field() ?>
                             <input type="hidden" name="group_id" value="<?= $gid ?>">
 
@@ -126,31 +103,6 @@ $groupPermKeys = static function (array $keys): array {
                                 <label class="form-label small text-muted mb-1 mt-3" for="gdesc-<?= $gid ?>">Descripción</label>
                                 <input type="text" class="form-control form-control-sm" id="gdesc-<?= $gid ?>" name="description"
                                        value="<?= View::escape($group['description'] ?? '') ?>" maxlength="255">
-
-                                <div class="app-rbac-effect mt-3">
-                                    <div class="app-rbac-effect-title">
-                                        <i class="fa-solid fa-bolt me-1"></i>Lo que otorga este grupo
-                                    </div>
-                                    <?php if ($gPerms === []): ?>
-                                        <p class="small text-muted mb-0">
-                                            Ningún permiso todavía: marca un rol abajo para que el grupo sirva de algo.
-                                        </p>
-                                    <?php else: ?>
-                                        <?php foreach ($groupPermKeys($gPerms) as $prefix => $keys): ?>
-                                            <div class="app-rbac-effect-row">
-                                                <span class="app-rbac-effect-prefix"><?= View::escape($prefix) ?>.</span>
-                                                <span class="app-rbac-effect-keys">
-                                                    <?php foreach ($keys as $k): ?>
-                                                        <code><?= View::escape(substr($k, strlen($prefix) + 1)) ?></code>
-                                                    <?php endforeach; ?>
-                                                </span>
-                                            </div>
-                                        <?php endforeach; ?>
-                                        <p class="small text-muted mb-0 mt-2">
-                                            Se suman a los del rol propio de cada miembro, nunca se restan.
-                                        </p>
-                                    <?php endif; ?>
-                                </div>
                             </div>
 
                             <div class="col-md-8">
@@ -178,27 +130,37 @@ $groupPermKeys = static function (array $keys): array {
                                         </div>
                                     </div>
 
-                                    <div class="col-md-6">
-                                        <label class="form-label small text-muted mb-1" for="gusers-<?= $gid ?>">
+                                    <div class="col-md-6" data-vf-list>
+                                        <label class="form-label small text-muted mb-1" for="gusers-search-<?= $gid ?>">
                                             Miembros
                                         </label>
+                                        <?php if (!empty($users)): ?>
+                                            <input type="search" class="form-control form-control-sm mb-2"
+                                                   id="gusers-search-<?= $gid ?>" data-vf-filter
+                                                   placeholder="Buscar por nombre o correo"
+                                                   aria-label="Buscar miembro del grupo <?= View::escape($group['name']) ?>">
+                                        <?php endif; ?>
                                         <div class="app-rbac-list" id="gusers-<?= $gid ?>" role="group"
                                              aria-label="Miembros del grupo <?= View::escape($group['name']) ?>">
                                             <?php if (empty($users)): ?>
                                                 <p class="small text-muted mb-0 px-2 py-2">No hay usuarios en la instalación.</p>
+                                            <?php else: ?>
+                                                <p class="app-filter-empty small text-muted mb-0 px-2 py-2" hidden>
+                                                    Ningún miembro coincide con la búsqueda.
+                                                </p>
+                                                <?php foreach ($users as $member): ?>
+                                                    <?php $mid = (int) $member['id']; ?>
+                                                    <label class="app-rbac-item">
+                                                        <input class="form-check-input mt-1" type="checkbox"
+                                                               name="users[]" value="<?= $mid ?>"
+                                                               <?= in_array($mid, $gMembers, true) ? 'checked' : '' ?>>
+                                                        <span>
+                                                            <span class="app-rbac-item-name"><?= View::escape($member['name']) ?></span>
+                                                            <span class="app-rbac-item-meta"><?= View::escape($member['email']) ?></span>
+                                                        </span>
+                                                    </label>
+                                                <?php endforeach; ?>
                                             <?php endif; ?>
-                                            <?php foreach ($users as $member): ?>
-                                                <?php $mid = (int) $member['id']; ?>
-                                                <label class="app-rbac-item">
-                                                    <input class="form-check-input mt-1" type="checkbox"
-                                                           name="users[]" value="<?= $mid ?>"
-                                                           <?= in_array($mid, $gMembers, true) ? 'checked' : '' ?>>
-                                                    <span>
-                                                        <span class="app-rbac-item-name"><?= View::escape($member['name']) ?></span>
-                                                        <span class="app-rbac-item-meta"><?= View::escape($member['email']) ?></span>
-                                                    </span>
-                                                </label>
-                                            <?php endforeach; ?>
                                         </div>
                                     </div>
                                 </div>

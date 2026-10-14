@@ -41,8 +41,20 @@ class AdminController
             return;
         }
 
+        // La búsqueda y los filtros viajan en la URL y se resuelven en SQL
+        // (`User::page()`), como en el listado de formularios: un filtro de
+        // cliente con el `LIMIT` ya aplicado solo oculta las filas de la página.
+        $filtros = [
+            'q'      => trim((string) Request::query('q', '')),
+            'rol'    => (string) Request::query('rol', ''),
+            'estado' => (string) Request::query('estado', ''),
+        ];
+        $listado = User::page($filtros, max(1, (int) Request::query('page', '1')));
+
         View::render('admin/users', [
-            'users'             => User::all(),
+            'users'             => $listado['items'],
+            'listado'           => $listado,
+            'filtros'           => $filtros,
             'roles'             => Role::all(),
             'groups'            => RoleGroup::all(),
             'userGroups'        => User::groupsMap(),
@@ -277,6 +289,14 @@ class AdminController
             Response::json([
                 'ok'      => true,
                 'message' => 'Rol de «' . $target['name'] . '»: ' . ucfirst((string) $role['name']) . '.',
+                // La insignia de la columna «Rol» se repinta: desde la fase 3 la
+                // fila muestra el rol como insignia (se edita en el menú), así
+                // que sin esto el panel seguiría diciendo el rol anterior.
+                'html'    => [
+                    'vfUserRole' . $userId => View::partial('admin/_user_role', [
+                        'roleName' => (string) $role['name'],
+                    ]),
+                ],
             ]);
             return;
         }
@@ -643,15 +663,26 @@ class AdminController
             return;
         }
 
-        // M2 — El mismo listado paginado que el dashboard: aquí sin filtros
-        // (la vista es "todos los formularios" a secas) y por página propia,
-        // que es más corta porque la tarjeta es más pequeña. Con veinte mil
-        // formularios la consulta devolvía veinte mil filas para pintar nueve.
-        $listado = Form::page(0, true, [], max(1, (int) Request::query('page', '1')), 20);
+        // M2/F6 — El mismo listado que el dashboard (`Form::page()`), con su
+        // buscador/filtro/orden en la URL y su paginación server-side. Por
+        // página propia (20), que es más corta porque la tarjeta es más pequeña;
+        // el alcance es global (`$userId = 0`, `$scopeAll = true`) porque esta
+        // vista es de administración. Un `estado`/`orden` que no exista se cae
+        // al predeterminado: quien los manda es la URL.
+        $estado = (string) Request::query('estado', '');
+        $orden = (string) Request::query('orden', '');
+        $filtros = [
+            'q'      => (string) Request::query('q', ''),
+            'estado' => in_array($estado, Form::STATUS, true) ? $estado : '',
+            'orden'  => in_array($orden, Form::ORDENES, true) ? $orden : 'updated',
+        ];
+
+        $listado = Form::page(0, true, $filtros, max(1, (int) Request::query('page', '1')), 20);
         View::render('admin/forms', [
-            'forms' => $listado['items'],
+            'forms'   => $listado['items'],
             'listado' => $listado,
-            'csrf'  => Csrf::token(),
+            'filtros' => $filtros,
+            'csrf'    => Csrf::token(),
         ]);
     }
 
@@ -719,11 +750,21 @@ class AdminController
 
     public function groupUpdate(): void
     {
+        $json = Response::wantsJson();
+
         if (!Auth::can('admin.groups')) {
-            Response::forbidden();
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para gestionar los grupos.'], 403);
+            } else {
+                Response::forbidden();
+            }
             return;
         }
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin/groups');
             return;
@@ -732,6 +773,10 @@ class AdminController
         $groupId = (int) Request::post('group_id', 0);
         $current = RoleGroup::find($groupId);
         if ($current === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Grupo no encontrado.'], 404);
+                return;
+            }
             Session::flash('error', 'Grupo no encontrado.');
             Response::redirect('/admin/groups');
             return;
@@ -749,6 +794,10 @@ class AdminController
         } else {
             $name = trim((string) $postedName);
             if ($name === '' || mb_strlen($name) > 80) {
+                if ($json) {
+                    Response::json(['ok' => false, 'error' => 'El nombre del grupo es obligatorio (máx. 80 caracteres).'], 422);
+                    return;
+                }
                 Session::flash('error', 'El nombre del grupo es obligatorio (máx. 80 caracteres).');
                 Response::redirect('/admin/groups');
                 return;
@@ -767,9 +816,27 @@ class AdminController
         if ($name !== (string) $current['name'] || $description !== (string) ($current['description'] ?? '')) {
             RoleGroup::update($groupId, $name, $description);
         }
-        RoleGroup::setRoles($groupId, self::postedIds('roles'));
-        RoleGroup::setUsers($groupId, self::postedIds('users'));
+        $roleIds = self::postedIds('roles');
+        $memberIds = self::postedIds('users');
+        RoleGroup::setRoles($groupId, $roleIds);
+        RoleGroup::setUsers($groupId, $memberIds);
         SecurityLog::record('admin.group_create', 'grupo #' . $groupId . ' actualizado («' . $name . '»)');
+
+        if ($json) {
+            /* Solo la cabecera-resumen de la tarjeta (`vfGroupSummary<gid>`), que
+             * es lo único que depende de lo guardado. Las casillas y los inputs
+             * NO se repintan: son los que enviaron el POST, así que ya son la
+             * verdad, y sustituirlos cerraría lo que se esté editando al lado. */
+            Response::json([
+                'ok'      => true,
+                'message' => 'Grupo actualizado.',
+                'html'    => [
+                    'vfGroupSummary' . $groupId => self::groupSummaryPartial($groupId, $name, $description, $roleIds, $memberIds),
+                ],
+            ]);
+            return;
+        }
+
         Session::flash('success', 'Grupo actualizado.');
         Response::redirect('/admin/groups');
         return;
@@ -777,11 +844,21 @@ class AdminController
 
     public function groupDelete(): void
     {
+        $json = Response::wantsJson();
+
         if (!Auth::can('admin.groups')) {
-            Response::forbidden();
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para gestionar los grupos.'], 403);
+            } else {
+                Response::forbidden();
+            }
             return;
         }
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin/groups');
             return;
@@ -790,6 +867,10 @@ class AdminController
         $groupId = (int) Request::post('group_id', 0);
         $group = RoleGroup::find($groupId);
         if ($group === null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Grupo no encontrado.'], 404);
+                return;
+            }
             Session::flash('error', 'Grupo no encontrado.');
             Response::redirect('/admin/groups');
             return;
@@ -797,9 +878,49 @@ class AdminController
 
         RoleGroup::delete($groupId);
         SecurityLog::record('admin.group_delete', 'grupo #' . $groupId . ' eliminado');
+
+        if ($json) {
+            /* El JS quita la tarjeta por `[data-vf-row]` y, si `count` queda en
+             * cero, recarga (con una columna entera vacía no hay tarjeta que
+             * quite y el vacío es del marco, no de la fila). Es exactamente el
+             * contrato del borrado de respuestas: el `count` es del servidor
+             * porque la lista es global y el cliente no la conoce. */
+            Response::json([
+                'ok'      => true,
+                'message' => 'Grupo eliminado.',
+                'count'   => count(RoleGroup::all()),
+            ]);
+            return;
+        }
+
         Session::flash('success', 'Grupo eliminado.');
         Response::redirect('/admin/groups');
         return;
+    }
+
+    /**
+     * La cabecera-resumen de una tarjeta de grupo: nombre, recuentos y el efecto
+     * sobre los permisos. Es lo que repinta `groupUpdate()` sin recargar, y el
+     * MISMO partial que pinta el GET en línea — con dos copias divergirían.
+     *
+     * @param int[] $roleIds
+     * @param int[] $memberIds
+     */
+    private static function groupSummaryPartial(
+        int $groupId,
+        string $name,
+        string $description,
+        array $roleIds,
+        array $memberIds
+    ): string {
+        return View::partial('admin/_group_summary', [
+            'groupId'     => $groupId,
+            'groupName'   => $name,
+            'groupDesc'   => $description,
+            'roleCount'   => count($roleIds),
+            'memberCount' => count($memberIds),
+            'gPerms'      => self::groupEffectivePermissions($roleIds),
+        ]);
     }
 
     // ------------------------------------------------------------------
@@ -951,10 +1072,21 @@ class AdminController
     public function updateRoleMatrix(): void
     {
         if (!Auth::can('admin.roles')) {
-            Response::forbidden();
+            if (Response::wantsJson()) {
+                Response::json(['ok' => false, 'error' => 'No tienes permiso para editar los permisos.'], 403);
+            } else {
+                Response::forbidden();
+            }
             return;
         }
+
+        $json = Response::wantsJson();
+
         if (!Csrf::verifyRequest()) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Token de seguridad inválido.'], 419);
+                return;
+            }
             Session::flash('error', 'Token inválido.');
             Response::redirect('/admin/roles');
             return;
@@ -969,6 +1101,10 @@ class AdminController
         // y vaciarla dejaría todos los roles sin permisos salvo admin.access.
         $posted = Request::post('perms', []);
         if ($posted === []) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'No se recibió la matriz de permisos. Nada que guardar.'], 422);
+                return;
+            }
             Session::flash('error', 'No se recibió la matriz de permisos. Nada que guardar.');
             Response::redirect('/admin/roles');
             return;
@@ -1003,6 +1139,11 @@ class AdminController
 
         // Un cambio de permisos afecta a la caché de permisos de CADA request;
         // con la caché de procesos y el retorno normal se ve en el siguiente.
+        if ($json) {
+            Response::json(['ok' => true, 'message' => 'Matriz de permisos actualizada.']);
+            return;
+        }
+
         Session::flash('success', 'Matriz de permisos actualizada.');
         Response::redirect('/admin/roles');
         return;
@@ -1020,13 +1161,15 @@ class AdminController
         }
 
         $event = trim(Request::query('event', ''));
+        $q = trim(Request::query('q', ''));
         $page = max(1, (int) Request::query('page', '1'));
 
-        $logs = SecurityLog::recent($event, $page, 50);
+        $logs = SecurityLog::recent($event, $page, 50, $q);
 
         View::render('admin/security_log', [
             'logs'    => $logs,
             'event'   => $event,
+            'q'       => $q,
             'events'  => SecurityLog::knownEvents(),
             'csrf'    => Csrf::token(),
         ]);

@@ -31,7 +31,7 @@ $uid = (int) ($uid ?? 0);
 $vaActivar = (int) ($user['is_active'] ?? 1) === 1;
 $accion = $vaActivar ? 'Desactivar' : 'Activar';
 ?>
-<form method="post" action="/admin/users/toggle" class="d-inline"
+<form method="post" action="/admin/users/toggle" class="d-block"
       data-confirm="¿<?= $accion ?> la cuenta de <?= View::escape($user['name']) ?>?<?= $vaActivar ? ' No podrá entrar hasta que se la vuelva a activar.' : '' ?>"
       data-confirm-ok="<?= $accion ?>" data-confirm-tone="<?= $vaActivar ? 'danger' : 'primary' ?>" data-vf-async="slots">
     <?= \App\Core\Csrf::field() ?>
@@ -39,7 +39,11 @@ $accion = $vaActivar ? 'Desactivar' : 'Activar';
     <?php // El estado OBJETIVO, no «invertir»: es lo que hace idempotente el
           // POST (ver `User::setActive()`). ?>
     <input type="hidden" name="active" value="<?= (int) $user['is_active'] === 1 ? 0 : 1 ?>">
-    <button type="submit" class="btn btn-sm <?= (int) $user['is_active'] === 1 ? 'btn-outline-warning' : 'btn-outline-success' ?>" title="<?= (int) $user['is_active'] === 1 ? 'Desactivar' : 'Activar' ?>" aria-label="<?= (int) $user['is_active'] === 1 ? 'Desactivar' : 'Activar' ?> a <?= View::escape($user['name']) ?>">
-        <i class="fa-solid <?= (int) $user['is_active'] === 1 ? 'fa-ban' : 'fa-check' ?>"></i>
+    <?php // `w-100` a propósito: vive dentro del menú de la fila, donde un botón
+          // de ancho completo se lee mejor que un icono suelto, y además queda
+          // fuera de la regla de «solo icono» en móvil (esa regla excluye los
+          // `w-100`), así que conserva su texto en todas las franjas. ?>
+    <button type="submit" class="btn btn-sm w-100 <?= (int) $user['is_active'] === 1 ? 'btn-outline-warning' : 'btn-outline-success' ?>">
+        <i class="fa-solid <?= (int) $user['is_active'] === 1 ? 'fa-ban' : 'fa-check' ?> me-1"></i><?= $accion ?> la cuenta
     </button>
 </form>
