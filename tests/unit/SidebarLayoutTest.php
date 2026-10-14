@@ -88,6 +88,44 @@ class SidebarLayoutTest
         );
     }
 
+    public function testElCierreDeSesionTieneContrasteSobreElDegradado(): void
+    {
+        // El rojo oscuro de Bootstrap (`text-danger`, #dc3545) queda a ~1:1 sobre
+        // el violeta de la marca: es invisible, literalmente. El bloque de
+        // usuario se lee como superficie propia (velo oscuro) y el cierre usa un
+        // rojo CLARO. Es un fallo que ni PHP ni el navegador señalan.
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/views/layouts/main.php');
+
+        assertTrue(
+            preg_match('/app-sidebar-user-link[^"]*text-danger/', $src) !== 1,
+            'el cierre de sesión no usa `text-danger` sobre el degradado'
+        );
+        assertTrue(
+            str_contains($src, 'app-sidebar-user-danger'),
+            'el cierre de sesión lleva su propio color'
+        );
+
+        assertSame(
+            1,
+            preg_match('/\.app-sidebar-user-menu\s*\{([^}]*)\}/', self::css(), $menu),
+            'existe la regla del panel de usuario'
+        );
+        assertTrue(
+            str_contains($menu[1], 'background:'),
+            'el panel de usuario tiene superficie propia (velo) para que el texto no se pierda en el degradado'
+        );
+
+        assertSame(
+            1,
+            preg_match('/\.app-sidebar-user-danger\s*\{([^}]*)\}/', self::css(), $danger),
+            'existe la regla del rojo claro del cierre de sesión'
+        );
+        assertTrue(
+            str_contains($danger[1], '#fecaca') && !str_contains($danger[1], '#dc3545'),
+            'es un rojo claro legible, no el `text-danger` oscuro'
+        );
+    }
+
     public function testElPlegadoDeEscritorioViveEnSuMediaQuery(): void
     {
         // Directo con un regex que ancla la media query AL selector: no vale

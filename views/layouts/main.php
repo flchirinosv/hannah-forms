@@ -84,7 +84,7 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                         <li>
                             <form method="post" action="/logout" class="m-0">
                                 <?= \App\Core\Csrf::field() ?>
-                                <button type="submit" class="app-sidebar-user-link text-danger"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar sesión</button>
+                                <button type="submit" class="app-sidebar-user-link app-sidebar-user-danger"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Cerrar sesión</button>
                             </form>
                         </li>
                     </ul>

@@ -364,9 +364,14 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   Bootstrap: el panel (`#sidebarUserMenu`) va **antes** del botón, que queda
   pegado al borde inferior, así que se abre hacia arriba; el padding vive dentro
   del botón y de los enlaces para que el resaltado llegue de borde a borde. El
-  disparador es un `<button>` con `data-bs-toggle="collapse"` y `aria-controls`,
-  y la flecha rota con `[aria-expanded="true"]`. Sin JS propio: es el mismo
-  `collapse` que pliega los grupos de `/admin`.
+  panel lleva un **velo oscuro translúcido** (`rgba(0,0,0,.25)`) para leerse como
+  superficie: sin él el texto va sobre el degradado y el rojo oscuro de
+  `text-danger` (`#dc3545`) quedaba a ~1:1 con el violeta, invisible; con el velo
+  el blanco sube a ~7:1 y el rojo **claro** del cierre de sesión
+  (`.app-sidebar-user-danger`, `#fecaca`) a ~4.6:1. El disparador es un `<button>`
+  con `data-bs-toggle="collapse"` y `aria-controls`, y la flecha rota con
+  `[aria-expanded="true"]`. Sin JS propio: es el mismo `collapse` que pliega los
+  grupos de `/admin`. Lo ata `SidebarLayoutTest`.
 - **En móvil, los botones del CONTENIDO con icono muestran solo el icono**
   (`@media (max-width: 991.98px)`): para los `.btn` de `.app-content` que llevan
   un `<i class="fa-…">`, el texto se colapsa con `font-size: 0` (sigue en el
