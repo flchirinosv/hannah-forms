@@ -102,6 +102,8 @@ mínimo. Las que de verdad importan:
 | `UPLOAD_MAX_FILES` | `5` | Ídem con el número de archivos. |
 | `DASH_CREATE_PER_HOUR` | `30` | Formularios que un usuario puede crear o duplicar por hora. |
 | `DASH_EXPORT_PER_HOUR` | `120` | Exportaciones por hora y usuario. |
+| `FILL_SUBMIT_PER_10MIN` | `10` | Envíos que una misma IP puede mandar al formulario cada 10 minutos. Sube el número para un censo con muchas respuestas desde la misma red; bájalo para apretar. |
+| `ROSTER_CODE_PER_15MIN` | `10` | Intentos de **código de lista** que una IP puede probar cada 15 minutos. Baja este número en un padrón sensible. Lo que **no** se cambia por aquí son los intentos por código concreto: son siempre 10 por un rato, y contar por código es lo que hace que adivinarlo cueste. |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | *(vacías)* | Cloudflare Turnstile. **Sin las dos**, un formulario con anti-bot activado no se sirve (403). |
 | Bloque `MAIL_*` | vacío | SMTP. Con `MAIL_HOST` vacío los correos no se envían, pero la app **no se rompe**: es el modo por defecto en desarrollo. |
 
@@ -724,9 +726,10 @@ fallo.
 
 ## 11. Correos
 
-Seis plantillas: aviso de respuesta recibida, confirmación al que responde,
-solicitud de acceso, recuperación de contraseña, aviso de revisión y la
-invitación a un listado de participantes (ver §12.3).
+Siete plantillas: aviso de respuesta recibida, confirmación al que responde,
+solicitud de acceso, recuperación de contraseña, aviso de revisión, la
+invitación a un listado de participantes y su recordatorio (ver §12.3 y
+§12.4).
 
 Dos comportamientos que conviene conocer:
 
@@ -847,7 +850,40 @@ a nadie a quien no le llegó el correo. Repite el botón para reintentar.
 > **códigos no cambian** al cambiar el identificador: los enlaces repartidos siguen
 > sirviendo.
 
-### 12.4 Ver y comparar respuestas
+### 12.4 Enviar recordatorios
+
+Cuando ya se ha invitado y **todavía faltan respuestas**, la misma tarjeta de
+invitaciones muestra otro botón, **«Enviar recordatorios»**, con el número de
+quienes llevan la invitación y siguen sin responder.
+
+Cinco reglas, porque un recordatorio no es «invitar otra vez»:
+
+1. **Solo a quien fue invitado y no respondió.** Quien nunca recibió la
+   invitación no es candidato a un recordatorio, y a quien ya respondió le
+   estarías pidiendo algo que ya hizo. A quien nunca se le invitó, la invitación
+   es su botón.
+2. **Se puede recordar muchas veces.** No es de un solo uso como la invitación:
+   la fila guarda el **contador** de recordatorios y su fecha. El envío se marca
+   **después** de que el correo salga, nunca antes, para que un fallo no saque
+   a nadie de la cola.
+3. **No insiste solo sobre los mismos.** Cada tanda empieza por quien no ha
+   recibido ningún recordatorio y sigue por el más antiguo, así que rotan.
+4. **De 50 en 50, con corte a tres fallos.** El texto del confirmador dice el
+   tope y el número de gente. Si el servidor de correo cae, el aviso dice cuántos
+   salieron y cuántos fallaron, y **los que fallaron vuelven a estar pendientes**.
+5. **Solo con identificación por correo y con SMTP configurado.** Con cédula,
+   indicador o código no hay recordatorio que mandar: el enlace lo repartes tú
+   desde la columna «Código».
+
+Si el formulario tiene **fecha de cierre**, el correo la cita; si no tiene, el
+correo simplemente no dice nada de fechas.
+
+> **Los dos botones conviven.** «Enviar invitaciones» cuenta a los que aún no
+> recibieron nada, «Enviar recordatorios» cuenta a los que ya lo recibieron y no
+> han respondido. Los dos mandan 50 por pulsación y ninguno marca a quien no le
+> llegó el correo.
+
+### 12.5 Ver y comparar respuestas
 
 Dos cosas aparecen ahora en la ficha y en la analítica del formulario:
 
@@ -918,6 +954,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | Un campo con condición sigue apareciendo al enviar | La condición se cumple: se muestra, y sus respuestas sí se guardan. |
 | Los correos no llegan | Sin SMTP configurado. Revisa `MAIL_*` y que el remitente esté autorizado. |
 | No aparece el botón de invitar por correo | El formulario tiene que ser de lista **y** de identificación por correo (ver §12.3). |
+| No aparece el botón de recordatorios | No hay nadie pendiente: hay que haber invitado antes y faltar respuestas, con identificación por correo (ver §12.4). |
 | El webhook no llega a una IP local | Faltan los **dos** opt-ins. |
 | Los adjuntos no se suben | Permisos de escritura en `storage/uploads/`, o el tipo no está en la lista. |
 | Un usuario ve todo enmascarado | Es correcto: le falta `responses.pii`. |

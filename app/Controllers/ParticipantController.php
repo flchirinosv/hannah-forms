@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Access;
 use App\Core\Auth;
+use App\Core\Clock;
 use App\Core\Csrf;
 use App\Core\I18n;
 use App\Core\Mailer;
@@ -624,6 +625,193 @@ class ParticipantController
         $this->ok(
             $id,
             I18n::t('roster.invite_sent', $locale, ['n' => $enviados]),
+            true,
+            [],
+            ['invites', 'stats']
+        );
+    }
+
+    /**
+     * Texto de la fecha límite (hora de la zona de la app) para el correo.
+     */
+    private static function deadlineTexto(string $closeAt, string $locale): string
+    {
+        $closeAt = trim($closeAt);
+        if ($closeAt === '') {
+            return '';
+        }
+
+        try {
+            $dt = new \DateTimeImmutable($closeAt, Clock::displayZone());
+
+            return $dt->format('d/m/Y H:i');
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    /**
+     * POST /forms/{id}/participants/reminders — manda un recordatorio a quien
+     * recibió la invitación y no ha respondido.
+     *
+     * ## Diseño
+     * - Es **repetible**: a la misma persona se le pueden mandar varios
+     *   recordatorios si no responde. De ahí `reminded_at` y `reminder_count` en
+     *   lugar de un booleano «ya se le recordó».
+     * - Orden de la tanda: primero quien nunca ha recibido ningún recordatorio
+     *   (`reminded_at IS NULL DESC`), después los que llevan alguno, ordenados por
+     *   el más antiguo (`reminded_at ASC`). Esto evita martillar siempre a los
+     *   mismos y deja que quien no ha sido avisado nada tenga prioridad.
+     * - Como en `invitations()`, la marca `reminded_at`/`reminder_count` se hace
+     *   **después** del envío correcto, no antes: un fallo nunca saca la fila de
+     *   «pendientes».
+     * - Se aplica la misma protección contra fallos seguidos (3) y el mismo tope
+     *   por tanda (50), para que un SMTP caído no dispare las 800 líneas.
+     * - El calendario del formulario (`schedule.close_at`) se cita en el correo
+     *   si existe, en la zona de la app.
+     *
+     * Gate: mismo permiso `send_invitations` (a quien puede invitar, puede
+     * recordar). Solo se ofrece si el identificador es `correo` y hay SMTP, y solo
+     * a quienes ya fueron invitados y no han respondido (`correo <> ''`).
+     */
+    public function remind(int $id): void
+    {
+        $form = $this->rosterForm($id, 'send_invitations');
+        if ($form === null) {
+            return;
+        }
+
+        if (!$this->csrfOk($id, 'roster.invalid_csrf')) {
+            return;
+        }
+
+        $settings = Form::settings($id);
+        $locale = I18n::forRequest($settings);
+
+        $identificador = FormParticipant::identifierFor($id);
+        if ($identificador !== FormParticipant::IDENT_CORREO) {
+            $this->ok(
+                $id,
+                I18n::t('roster.remind_no_cedula', $locale, [
+                    'id' => self::nombreIdentificador($identificador, $locale),
+                ]),
+                false
+            );
+
+            return;
+        }
+
+        if (!Mailer::isConfigured()) {
+            $this->ok($id, I18n::t('roster.remind_no_smtp', $locale), false);
+
+            return;
+        }
+
+        $pendientes = FormParticipant::pendingReminders($id, RosterPanel::INVITE_POR_TANDA);
+        if ($pendientes === []) {
+            $this->ok($id, I18n::t('roster.remind_none_left', $locale), true);
+
+            return;
+        }
+
+        $slug = (string) $form['slug'];
+        $titulo = (string) $form['title'];
+        $enviados = 0;
+        $fallidos = 0;
+        $seguidos = 0;
+        $parado = false;
+        $deadline = self::deadlineTexto((string) ($settings['schedule']['close_at'] ?? ''), $locale);
+
+        foreach ($pendientes as $p) {
+            $correo = trim((string) ($p['correo'] ?? ''));
+            $url = PublicUrl::rosterUrl($slug, (string) $p['code']);
+
+            try {
+                if (!Mailer::send(
+                    [$correo],
+                    I18n::t('roster.remind_subject', $locale, ['form' => $titulo]),
+                    View::partial('mail/roster_reminder', [
+                        'form'     => $form,
+                        'url'      => $url,
+                        'nombre'   => (string) ($p['nombre'] ?? ''),
+                        'locale'   => $locale,
+                        'deadline' => $deadline,
+                    ]),
+                    I18n::t('mail.remind_alt', $locale, ['form' => $titulo, 'url' => $url])
+                )) {
+                    throw new \RuntimeException('Mailer::send() devolvió false.');
+                }
+            } catch (\Throwable $e) {
+                $fallidos++;
+                $seguidos++;
+                error_log('[roster.reminders] no se pudo enviar a ' . $correo . ': ' . $e->getMessage());
+
+                if ($seguidos >= self::INVITE_FALLOS_SEGUIDOS) {
+                    $parado = true;
+                    break;
+                }
+
+                continue;
+            }
+
+            FormParticipant::markReminded((int) $p['id']);
+            $enviados++;
+            $seguidos = 0;
+        }
+
+        // `quedan` es «a cuántos NO se les ha mandado en esta tanda», no el total
+        // de no-respondidos: como el recordatorio es REPETIBLE, marcar un envío no
+        // saca la fila de `pendingReminders()`, así que restar es lo único que da
+        // un número honesto. Con tope 50 y 60 elegibles quedan 10; con 5 y 3
+        // enviados quedan 2 (los fallidos). Es el mismo significado que tiene
+        // `pendingInviteCount()` para la invitación, donde los enviados SÍ salen de
+        // la cola.
+        $quedan = max(0, FormParticipant::pendingReminderCount($id) - $enviados);
+
+        SecurityLog::record(
+            'roster.reminders',
+            $enviados . ' recordatorios enviados, ' . $fallidos . ' fallidas, ' . $quedan . ' pendientes en /forms/' . $id
+        );
+
+        if ($parado) {
+            $this->ok(
+                $id,
+                I18n::t('roster.remind_stopped', $locale, ['n' => $fallidos, 's' => $enviados]),
+                false,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        if ($fallidos > 0) {
+            $this->ok(
+                $id,
+                I18n::t('roster.remind_sent_some', $locale, ['n' => $enviados, 'f' => $fallidos]),
+                false,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        if ($quedan > 0) {
+            $this->ok(
+                $id,
+                I18n::t('roster.remind_sent_cap', $locale, ['n' => $enviados, 'q' => $quedan]),
+                true,
+                [],
+                ['invites', 'stats']
+            );
+
+            return;
+        }
+
+        $this->ok(
+            $id,
+            I18n::t('roster.remind_sent', $locale, ['n' => $enviados]),
             true,
             [],
             ['invites', 'stats']

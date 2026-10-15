@@ -102,6 +102,10 @@ $router->post('/forms/{id}/participants/attribute', [ParticipantController::clas
 // Fase 10 — el correo de invitación del listado. Sin `post-max` (no hay archivo) y
 // con `csrf` como el resto de acciones que cambian algo.
 $router->post('/forms/{id}/participants/invitations', [ParticipantController::class, 'invitations'], ['auth', 'csrf']);
+// Fase 12 — el recordatorio por correo a quien recibió la invitación y no ha
+// respondido. Misma forma que la invitación: sin `post-max` (no hay archivo) y con
+// `csrf`.
+$router->post('/forms/{id}/participants/reminders', [ParticipantController::class, 'remind'], ['auth', 'csrf']);
 // P7
 $router->post('/forms/{id}/duplicate', [FormController::class, 'duplicate'], ['auth', 'csrf']);
 $router->get('/forms/{id}/qr.svg', [FormController::class, 'qrSvg'], ['auth']);

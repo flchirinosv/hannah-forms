@@ -752,6 +752,106 @@ class FormParticipant
         );
     }
 
+    /**
+     * A quién toca recordarle que responda, y solo lo que el correo necesita.
+     *
+     * El recordatorio NO es «invitar otra vez»: es el correo que se manda a quien
+     * **ya recibió la invitación y no ha respondido**. Los tres filtros lo dicen:
+     *
+     *  - `invited_at IS NOT NULL`: sin invitación previa esto sería una invitación
+     *    disfrazada, y quien nunca recibió nada se merece el correo de bienvenida,
+     *    no el «te lo vuelvo a recordar». El botón de invitar es el que cubre ese
+     *    caso.
+     *  - `responded_at IS NULL`: a quien ya respondió no se le escribe. Es el
+     *    mismo criterio que `pendingInvites()` y por la misma razón: el correo le
+     *    pediría algo que ya hizo.
+     *  - `correo <> ''`: una fila sin correo no se puede avisar por correo; es una
+     *    persona de la lista que se reparte por otro canal.
+     *
+     * El `ORDER BY` es lo que hace que el recordatorio sea útil en un censo de
+     * ochocientas personas y no un bucle sobre las mismas cinco:
+     *
+     *  - `reminded_at IS NULL DESC`: primero quien NO ha recibido ningún
+     *    recordatorio. Así la primera tanda cubre gente nueva y no insiste sobre
+     *    los que ya llevan uno si quedan sin-avisar.
+     *  - `reminded_at ASC`: entre los ya recordados, primero el más antiguo. Es lo
+     *    que hace rotar las tandas siguientes en vez de martillar a los mismos.
+     *  - `id ASC`: el desempate estable, como en `pendingInvites()` — el orden en
+     *    que se repartió el código.
+     *
+     * Que el identificador del formulario sea `correo` NO se comprueba aquí, a
+     * propósito: es una propiedad del FORMULARIO y la cierra el controlador antes
+     * de llegar (`identifierFor()`), igual que en `pendingInvites()`.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function pendingReminders(int $formId, int $limite): array
+    {
+        if ($limite <= 0) {
+            return [];
+        }
+
+        return self::db()->fetchAll(
+            'SELECT id, nombre, correo, code FROM form_participants
+              WHERE form_id = :form_id
+                AND invited_at IS NOT NULL
+                AND responded_at IS NULL
+                AND correo <> \'\'
+              ORDER BY reminded_at IS NULL DESC, reminded_at ASC, id ASC
+              LIMIT ' . (int) $limite,
+            ['form_id' => $formId]
+        );
+    }
+
+    /**
+     * Cuántos siguen sin responder y sin estar al día en recordatorios, con el
+     * MISMO criterio que `pendingReminders()`.
+     *
+     * Es un `COUNT` con los tres filtros y sin el `ORDER BY` (contar no ordena),
+     * por la misma razón que `pendingInviteCount()`: el botón dice «quedan 612» y
+     * ese número tiene que ser el de TODAS las que faltan, no el del lote que se
+     * manda ahora. Traerlas todas para contarlas es lo que no se hace.
+     */
+    public static function pendingReminderCount(int $formId): int
+    {
+        $row = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM form_participants
+              WHERE form_id = :form_id
+                AND invited_at IS NOT NULL
+                AND responded_at IS NULL
+                AND correo <> \'\'',
+            ['form_id' => $formId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Marca el recordatorio enviado: mueve la fecha y suma uno al contador.
+     *
+     * Se llama **después** de `Mailer::send()`, una vez por persona y solo si el
+     * envío salió bien, igual que `markInvited()`. Marcado antes del envío, un
+     * fallo perdería el correo sin avisar: la fila desaparecería de «pendientes»
+     * y el fallo no se notaría.
+     *
+     * A diferencia de `markInvited()`, aquí NO hay guarda de «una sola vez»: el
+     * recordatorio es repetible por diseño. Lo que sí se comprueba es
+     * `responded_at IS NULL`, para no sumarle un recordatorio a quien respondió
+     * entre el `SELECT` y el correo. `Database::execute()` ya devuelve el
+     * `rowCount` (0 si la fila ya respondió), así que no hace falta `rowCount()`
+     * encima.
+     */
+    public static function markReminded(int $id): int
+    {
+        return self::db()->execute(
+            'UPDATE form_participants
+                SET reminded_at = UTC_TIMESTAMP(),
+                    reminder_count = reminder_count + 1
+              WHERE id = :id AND responded_at IS NULL',
+            ['id' => $id]
+        );
+    }
+
     public static function find(int $id): ?array
     {
         return self::db()->fetch(

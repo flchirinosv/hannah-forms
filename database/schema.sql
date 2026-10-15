@@ -159,6 +159,8 @@ CREATE TABLE IF NOT EXISTS form_participants (
     code             CHAR(16) NOT NULL COMMENT 'Credencial personal; NO es la fila ni el identificador',
     responded_at     DATETIME DEFAULT NULL COMMENT 'Su único escritor es el mismo POST que crea la respuesta',
     invited_at       DATETIME DEFAULT NULL COMMENT 'Invitación por correo enviada (fase 10); NULL = nunca',
+    reminded_at      DATETIME DEFAULT NULL COMMENT 'Último recordatorio por correo (fase 12); NULL = nunca',
+    reminder_count   INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Recordatorios por correo enviados (fase 12)',
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_form_participant_identifier (form_id, identifier_value),

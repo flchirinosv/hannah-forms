@@ -135,6 +135,13 @@ final class RosterPanel
             'porInvitar'    => $identificador === FormParticipant::IDENT_CORREO
                 ? FormParticipant::pendingInviteCount($formId)
                 : 0,
+            // Fase 12. Los que ya recibieron la invitación y siguen sin responder:
+            // es a quienes tiene sentido recordarles. Mismo criterio que
+            // `porInvitar`: solo se cuenta si el formulario se identifica por correo,
+            // porque en los otros no hay botón que lo use.
+            'porRecordar'   => $identificador === FormParticipant::IDENT_CORREO
+                ? FormParticipant::pendingReminderCount($formId)
+                : 0,
             'formId'        => $formId,
             'q'             => $q,
             'page'          => $page,

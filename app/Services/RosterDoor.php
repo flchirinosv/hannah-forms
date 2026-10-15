@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Config;
 use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\SecurityLog;
@@ -175,8 +176,15 @@ final class RosterDoor
     {
         $codigo = self::normalizar($codigo);
 
-        if (!RateLimiter::isAllowed('form_code', (string) $formId . '|' . $ip, self::MAX_INTENTOS, self::VENTANA)) {
-            SecurityLog::record('rate_limit.form_code', 'bloqueo por IP (' . self::MAX_INTENTOS . ' / 15 min)');
+        // El límite por IP es configurable (`ROSTER_CODE_PER_15MIN`): un censo se
+        // contesta desde una IP compartida (kiosco, colegio, NAT de sede) y el
+        // límite que frena a quien prueba códigos es el mismo que deja fuera a la
+        // persona número 11. El de por código NO se configura: es una sola
+        // persona tecleando y no lo agota un kiosco.
+        $maxIp = max(1, (int) Config::get('app.limits.roster_code_per_15min', self::MAX_INTENTOS));
+
+        if (!RateLimiter::isAllowed('form_code', (string) $formId . '|' . $ip, $maxIp, self::VENTANA)) {
+            SecurityLog::record('rate_limit.form_code', 'bloqueo por IP (' . $maxIp . ' / 15 min)');
 
             return false;
         }

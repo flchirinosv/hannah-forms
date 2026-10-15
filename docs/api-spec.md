@@ -151,6 +151,8 @@ con el mismo texto en flash.
 | POST | `/forms/{int}/participants/import` | auth, post-max, csrf | Importar XLSX (`modo= fusionar|reemplazar`) |
 | POST | `/forms/{int}/participants/truncate` | auth, post-max, csrf | Vaciar la lista. **No** lee el `modo` del POST |
 | POST | `/forms/{int}/participants/attribute` | auth, post-max, csrf | Quitar un atributo del catálogo (`key_name`) |
+| POST | `/forms/{int}/participants/invitations` | auth, csrf | Manda la invitación a los pendientes, 50 por tanda. **No** lleva `post-max`: no hay archivo, y el guard solo estorbaría |
+| POST | `/forms/{int}/participants/reminders` | auth, csrf | Manda el recordatorio a **quien ya fue invitado y sigue sin responder**, 50 por tanda. Las dos salen en JSON con `{ok, message, html}` si hay `X-Requested-With` |
 
 Todas exigen que el formulario sea del usuario (`Access::canEdit()`) y que esté en
 modo `roster`: si no está en modo lista, la respuesta es **404 y no 403**, porque

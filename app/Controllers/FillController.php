@@ -750,10 +750,14 @@ class FillController
             }
         }
 
-        // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos
+        // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos por
+        // defecto. El número es configurable (`FILL_SUBMIT_PER_10MIN`) porque un
+        // censo se responde desde una IP compartida y el límite que frena a un
+        // automatismo es el mismo que deja fuera a la persona número 11.
         $scope = 'submit:' . (int) $form['id'];
         $ip = Request::ip();
-        if (!RateLimiter::isAllowed($scope, $ip, 10, 600)) {
+        $maxEnvios = max(1, (int) Config::get('app.limits.fill_submit_per_10min', 10));
+        if (!RateLimiter::isAllowed($scope, $ip, $maxEnvios, 600)) {
             \App\Core\SecurityLog::record('rate_limit.fill', 'bloqueo por IP al enviar /f/' . (string) $form['slug']);
             Response::abort(429, I18n::t('err.too_many', $locale));
             return;

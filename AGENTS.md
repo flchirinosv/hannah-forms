@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 100 archivos, 1121 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 102 archivos, 1139 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -52,7 +52,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (18), `lang/{es,en}.php`.
-  `views/` = 68 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
+  `views/` = 69 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **58 de los 100 archivos tocan la BD real** (los que llaman
+- **60 de los 102 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -218,6 +218,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Honeypot `_vf_hp`: se chequea **antes** del rate limit y **finge éxito sin
   persistir**. Turnstile va tras el honeypot y antes del rate limit; sin **las
   dos** claves de instancia el formulario **no se sirve** (403).
+- **Dos rate limits son configurables por `.env`** (centro de censo):  `app.limits.fill_submit_per_10min` (`FILL_SUBMIT_PER_10MIN`, default **10**, ventana de
+  **600 s**) para el envío del fill y `app.limits.roster_code_per_15min`
+  (`ROSTER_CODE_PER_15MIN`, default **10**, ventana de `RosterDoor::VENTANA` = **900 s**)
+  para la puerta de código de una lista. Los defaults son los valores que antes estaban
+  escritos a mano, así que una instalación sin las claves se comporta **igual**; basta
+  ponerlas para apretar o aflojar. `Config::get()` lee con notación de punto, y lo
+  importante es que **el default es el que se prueba**, no el del `.env`. Lo que NO se
+  configura es el segundo límite de `RosterDoor` (el **por código**, `MAX_INTENTOS`):
+  contar por clave es lo que hace que enumerar el padrón cueste, y aflojarlo por
+  variables es dejar que un `.env` olvidado abra esa puerta. Los ata  `RateLimitConfigTest`.
 - La randomización aplica **solo en GET** (`show`/`embed`): el re-render de errores
   del POST no baraja.
 - Toda closure de `views/fill/show.php` que lea una variable de la vista la
@@ -376,7 +386,9 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   FORMA** (un tecleo con forma de código dice lo mismo exista o no; lo que no la
   tiene se contesta con el texto del identificador que el formulario pide) y da
   **404** si el formulario no es de lista. En embed **no hay variante con
-  `/embed`**: el canje redirige el frame entero.
+  `/embed`**: el canje redirige el frame entero. De esas dos claves, la que es por
+  **IP** es la configurable (`ROSTER_CODE_PER_15MIN`) y la que es por **código**
+  no lo es: ver «Dos rate limits son configurables» en *Fill y thanks*.
 - **La puerta de un formulario de lista admite DOS credenciales y nada más: su
   `code` y el dato `settings.access.identifier`.** `RosterDoor::buscarAmbos()`
   prueba el código y a continuación **solo** el identificador configurado (antes
@@ -510,6 +522,58 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **El correo no menciona la lista** ni cuántas personas son: dice que hay un formulario
   que responder. Escribir «te toca entre 400» es filtrarle el listado a quien todavía
   no ha respondido nada, y `views/mail/roster_invite.php` no lleva el `form_id`.
+
+**El recordatorio del correo (fase 12)**
+
+- **El recordatorio NO es «invitar otra vez»** y solo va **a quien fue invitado y no
+  respondió**: `pendingReminders()` filtra `invited_at IS NOT NULL AND responded_at IS
+  NULL AND correo <> ''`, el mismo criterio que usa el contador del botón (`porRecordar`
+  = `pendingReminderCount()`, y solo con identificador `correo`). Recordar a quien nunca
+  recibió la invitación sería una invitación disfrazada; a quien ya respondió le
+  estarías pidiendo algo que ya hizo. Los tres casos conviven en el mismo formulario en
+  `RosterReminderMailTest::testSoloSeRecuerdaAQuienFueInvitadoYNoRespondio`, para que un
+  filtro que falte se note.
+- **Es repetible, con contador** (`reminded_at` + `reminder_count`, migración **0018**):
+  a diferencia de la invitación, que se manda una sola vez, a la misma persona se le
+  puede recordar muchas veces —el `remindersent`/`remindercount` de LimeSurvey—. Por eso
+  `markReminded()` **no** tiene guarda de una sola vez y **se llama DESPUÉS del
+  `send()`, nunca antes**: marcado antes, un fallo le quita a la fila la cola sin que
+  el correo llegara. Lo atan `testElRecordatorioEsRepetibleYSumaElContador` y
+  `testUnFalloSueltoNoFallaLaTandaDeRecordatorios` (contador 0 en los fallidos, 1 en
+  los que salieron).
+- **`pendingReminderCount()` NO baja al enviar** — la diferencia con
+  `pendingInviteCount()`, donde los invitados salen de la cola: marcar un recordatorio
+  no saca a nadie porque siguen sin responder. Por eso el «quedan N» del mensaje NO sale
+  de ese contador sino de `max(0, pendingReminderCount() - enviados)`, que es a cuántos
+  no se llegó en **esta** tanda (los fallidos y los que quedaron fuera del tope). Con
+  60 elegibles y 50 enviados dicen «Quedan 10»; con 5 y 3 salidos, «2 fallaron».
+  Confundirlos deja un mensaje falso en los dos sentidos.
+- **La tanda rota y se corta con las mismas constantes que la invitación**:  `ORDER BY reminded_at IS NULL DESC, reminded_at ASC, id ASC` (el que no ha recibido
+  ninguno primero, y después el más antiguo, para no martillar a los mismos), tope
+  `RosterPanel::INVITE_POR_TANDA` (50) y parada a `INVITE_FALLOS_SEGUIDOS` (3) fallos
+  seguidos. Compartir constantes es a propósito: el botón y el texto dicen el mismo
+  número porque es el mismo.
+- **La fecha de cierre es contenido del correo, no del builder**: sale de
+  `schedule.close_at` dentro de `deadlineTexto()` y se formatea `d/m/Y H:i` con
+  `Clock::displayZone()`. Sin fecha el bloque simplemente no aparece; lo que **no** hay
+  es un «cierra el » a la mitad.
+- **La puerta es la misma que la de la invitación**: `rosterForm($id,
+  'send_invitations')`, `csrfOk()`, identificador `correo` y `Mailer::isConfigured()`
+  **antes** de `Mailer::send()`, en ese orden. Un `POST` de recordatorio con cédula o
+  sin SMTP responde `ok:false` con el motivo y **no marca a nadie**. La ruta lleva
+  `['auth','csrf']` y **no** `post-max` (igual que la de invitaciones: sin archivo, el
+  guard solo estorbaría).
+- **Dos `<form>` en el mismo partial**, uno por acción, ambos con `data-confirm` /
+  `data-confirm-ok` / `data-confirm-tone="primary"` y con los ocultos `rosterQ` /
+  `rosterPage` / `rosterSort`. El aviso va a **`vfToast`** (`rosterInvites` es el hueco
+  que reponer y **NO** lleva `data-vf-error`, la misma excepción que en la invitación) y
+  `$cambia` es `['invites','stats']`: el recordatorio no cambia la lista ni el catálogo,
+  así que repintarlos sería un `catalogFor` de más por clic. El botón no aparece con
+  `$porInvitar > 0 && $porRecordar === 0` y `$porInvitar === 0 && $porRecordar === 0`
+  son dos ramas distintas del partial.
+- **Un recordatorio no es «una respuesta por persona»**: nada de esto toca
+  `responded_at`. Marcar respuesta sigue siendo solo de `Submission::create()` en el
+  fill (quinta argumento de `Submission::create()`).
 
 **El filtro de la analítica (fase 7)**
 
@@ -753,10 +817,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 68 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 69 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
-  anti-vacío —`count($vistas) >= 50` (hay 68), `> 1800` aperturas vistas y
+  anti-vacío —`count($vistas) >= 50` (hay 69), `> 1800` aperturas vistas y
   `>= 6` modales encontrados—
   porque un test de estructura que no recorre pasa verde por construcción, y así
   pasó al escribirlo (`foreach` sobre el `int` de `preg_match_all`).
@@ -1379,16 +1443,17 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 501 comprobaciones manuales en 30 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 521 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pestaña de
   participantes V, el identificador de la lista W, el filtro de la analítica
   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
   el correo de invitación AA, el listado paginado del panel AB, la galería del
-  modal de nuevo formulario AC y la consola de administración con modales AD), para detectar
+  modal de nuevo formulario AC, la consola de administración con modales AD y el
+  recordatorio por correo AE), para detectar
   problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
-  panel, R, S, T, U y AA son la
+  panel, R, S, T, U, AA y AE son la
   lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
@@ -1397,7 +1462,7 @@ probando la rama equivocada).
   F2/F3/F4, RBAC y el listado de participantes con su `invited_at`).
 - `docs/plan-remediacion-2026-09-27.md` y `docs/roadmap-encuesta.md`: fases 0–6 y
   P1–P10 con su diagnóstico, **todas cerradas**.
-- `docs/plan-participantes-2026-10-04.md`: fases 0–11 del listado de participantes,
+- `docs/plan-participantes-2026-10-04.md`: fases 0–12 del listado de participantes,
   con `invited_at` y el correo de invitación; su tabla de estado es la que se
   actualiza al cerrar cada fase.
 - `docs/plan-admin-rediseno-2026-10-14.md`: rediseño de usabilidad de la consola

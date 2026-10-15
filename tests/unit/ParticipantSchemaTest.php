@@ -178,6 +178,81 @@ class ParticipantSchemaTest
         );
     }
 
+    public function testElRecordatorioTieneFechaYContadorYVaDetrasDeLaInvitacion(): void
+    {
+        // Fase 12: `reminded_at` dice CUÁNDO se mandó el ÚLTIMO recordatorio
+        // (NULL = nunca) y `reminder_count` CUÁNTOS lleva. No es `invited_at` otra
+        // vez: la invitación se manda UNA sola vez y el recordatorio es repetible,
+        // así que hacen falta las dos cosas —la fecha para saber a quién toca, el
+        // contador para saber a quién se ha insistido—.
+        $recordado = self::columna('form_participants', 'reminded_at');
+        assertNotNull($recordado, 'sin reminded_at el recordatorio no tiene memoria');
+        assertSame('datetime', strtolower((string) $recordado['COLUMN_TYPE']));
+        assertSame('YES', $recordado['IS_NULLABLE'], 'NULL = nunca se le ha recordado');
+        assertTrue(
+            $recordado['COLUMN_DEFAULT'] === null || $recordado['COLUMN_DEFAULT'] === 'NULL',
+            'y el valor de fábrica no es una fecha (viene: ' . var_export($recordado['COLUMN_DEFAULT'], true) . ')'
+        );
+
+        $contador = self::columna('form_participants', 'reminder_count');
+        assertNotNull($contador, 'sin reminder_count no se sabe cuántas veces se insistió');
+        assertSame('NO', $contador['IS_NULLABLE'], 'empieza en cero, no en NULL');
+        assertSame(0, (int) $contador['COLUMN_DEFAULT'], 'y el cero es el default');
+
+        // Las dos justo detrás de `invited_at`: son la memoria de los dos correos.
+        $posiciones = [];
+        $st = self::pdo()->query(
+            "SELECT COLUMN_NAME, ORDINAL_POSITION FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'form_participants'
+              ORDER BY ORDINAL_POSITION"
+        );
+        foreach ($st->fetchAll() as $fila) {
+            $posiciones[(string) $fila['COLUMN_NAME']] = (int) $fila['ORDINAL_POSITION'];
+        }
+        assertTrue(
+            $posiciones['reminded_at'] === $posiciones['invited_at'] + 1,
+            'reminded_at va justo detrás de invited_at (posiciones: ' . json_encode($posiciones) . ')'
+        );
+        assertTrue(
+            $posiciones['reminder_count'] === $posiciones['reminded_at'] + 1,
+            'reminder_count va justo detrás de reminded_at'
+        );
+    }
+
+    public function testLaMigracion0018PoneElRecordatorioDetrasDeLaInvitacion(): void
+    {
+        // La 0018 es de una migración DISTINTA de la 0015 y de la 0014, así que se
+        // lee su propio fichero. Se comprueba que las dos columnas están en las dos
+        // fuentes (schema limpio y migración) y con la posición `AFTER` en la
+        // migración: sin ella, una base migrada dejaría las columnas al final y no
+        // coincidiría con la limpia.
+        $schema = (string) file_get_contents(dirname(__DIR__, 2) . '/database/schema.sql');
+        $migracion = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/database/migrations/0018_form_participants_reminded_at.php'
+        );
+
+        foreach (['schema.sql' => $schema, 'la migración 0018' => $migracion] as $nombre => $fuente) {
+            assertTrue(str_contains($fuente, 'reminded_at'), 'reminded_at no aparece en ' . $nombre);
+            assertTrue(str_contains($fuente, 'reminder_count'), 'reminder_count no aparece en ' . $nombre);
+        }
+        assertTrue(
+            (bool) preg_match('/AFTER invited_at/s', $migracion),
+            'la 0018 pone reminded_at AFTER invited_at'
+        );
+        assertTrue(
+            (bool) preg_match('/AFTER reminded_at/s', $migracion),
+            'y reminder_count AFTER reminded_at'
+        );
+        assertTrue(
+            (bool) preg_match('/reminded_at[^,]*DATETIME[^,]*DEFAULT NULL/s', $schema),
+            'en schema.sql reminded_at es DATETIME DEFAULT NULL (nullable = nunca recordado)'
+        );
+        assertTrue(
+            (bool) preg_match('/reminder_count[^,]*INT UNSIGNED NOT NULL DEFAULT 0/s', $schema),
+            'en schema.sql reminder_count es INT UNSIGNED NOT NULL DEFAULT 0'
+        );
+    }
+
     public function testRespondioQuedaMarcadoSinBorrarLaRespuesta(): void
     {
         $respondio = self::columna('form_participants', 'responded_at');

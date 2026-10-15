@@ -101,8 +101,10 @@ roles (1)──(N) users (1)──(N) forms (1)──(N) fields
 ```
 
 El listado de participantes son tres tablas: `form_participants` (una fila por
-persona, con su `code` de acceso, su `responded_at` y su `invited_at`, que es
-«cuándo se le mandó el correo de invitación», justo detrás de `responded_at`),
+persona, con su `code` de acceso, su `responded_at`, su `invited_at`, que es
+«cuándo se le mandó el correo de invitación», justo detrás de `responded_at`, y
+su `reminded_at` + `reminder_count`, que es «cuándo recibió el último recordatorio»
+y «cuántos ha recibido» —el recordatorio es repetible, la invitación no—),
 `form_participant_fields` (el catálogo de atributos, que sobrevive a vaciar la lista)
 y `form_participant_attrs` (el valor de un atributo para una persona).
 

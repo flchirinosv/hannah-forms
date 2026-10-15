@@ -51,6 +51,7 @@ use App\Services\RosterPanel;
  */
 $identificador = (string) ($roster['identificador'] ?? 'cedula');
 $porInvitar = (int) ($roster['porInvitar'] ?? 0);
+$porRecordar = (int) ($roster['porRecordar'] ?? 0);
 $esCorreo = $identificador === FormParticipant::IDENT_CORREO;
 $haySmtp = Mailer::isConfigured();
 ?>
@@ -76,30 +77,53 @@ $haySmtp = Mailer::isConfigured();
                 así que el envío está apagado. Los códigos de la columna «Código»
                 siguen funcionando.
             </p>
-        <?php } elseif ($porInvitar === 0) { ?>
+        <?php } elseif ($porInvitar === 0 && $porRecordar === 0) { ?>
             <p class="small mb-0 text-muted">
                 <i class="fa-solid fa-circle-check me-1"></i>
                 No queda nadie pendiente de invitación.
             </p>
         <?php } else { ?>
-            <form method="post" action="/forms/<?= (int) $formId ?>/participants/invitations"
-                  data-vf-async="slots"
-                  data-confirm="¿Enviar la invitación a <?= (int) $porInvitar ?> persona(s)? Esta tanda manda como mucho <?= (int) RosterPanel::INVITE_POR_TANDA ?>; a los que ya recibieron el enlace no se les vuelve a escribir."
-                  data-confirm-ok="Sí, enviar" data-confirm-tone="primary">
-                <?= Csrf::field() ?>
-                <input type="hidden" name="rosterQ" value="<?= View::escape((string) ($roster['q'] ?? '')) ?>">
-                <input type="hidden" name="rosterPage" value="<?= (int) ($roster['page'] ?? 1) ?>">
-                <input type="hidden" name="rosterSort" value="<?= View::escape((string) ($roster['sort'] ?? 'cedula')) ?>">
-                <button type="submit" class="btn btn-outline-primary btn-sm">
-                    <i class="fa-solid fa-paper-plane me-1"></i>Enviar invitaciones
-                    (<?= (int) $porInvitar ?>)
-                </button>
-                <span class="small text-muted ms-1">
-                    <?= $porInvitar > RosterPanel::INVITE_POR_TANDA
-                        ? 'esta tanda manda ' . (int) RosterPanel::INVITE_POR_TANDA
-                        : 'a todos los que quedan' ?>
-                </span>
-            </form>
+            <?php if ($porInvitar > 0) { ?>
+                <form method="post" action="/forms/<?= (int) $formId ?>/participants/invitations"
+                      data-vf-async="slots"
+                      data-confirm="¿Enviar la invitación a <?= (int) $porInvitar ?> persona(s)? Esta tanda manda como mucho <?= (int) RosterPanel::INVITE_POR_TANDA ?>; a los que ya recibieron el enlace no se les vuelve a escribir."
+                      data-confirm-ok="Sí, enviar" data-confirm-tone="primary">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="rosterQ" value="<?= View::escape((string) ($roster['q'] ?? '')) ?>">
+                    <input type="hidden" name="rosterPage" value="<?= (int) ($roster['page'] ?? 1) ?>">
+                    <input type="hidden" name="rosterSort" value="<?= View::escape((string) ($roster['sort'] ?? 'cedula')) ?>">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Enviar invitaciones
+                        (<?= (int) $porInvitar ?>)
+                    </button>
+                    <span class="small text-muted ms-1">
+                        <?= $porInvitar > RosterPanel::INVITE_POR_TANDA
+                            ? 'esta tanda manda ' . (int) RosterPanel::INVITE_POR_TANDA
+                            : 'a todos los que quedan' ?>
+                    </span>
+                </form>
+            <?php } ?>
+            <?php if ($porRecordar > 0) { ?>
+                <form method="post" action="/forms/<?= (int) $formId ?>/participants/reminders"
+                      class="<?= $porInvitar > 0 ? 'mt-2' : '' ?>"
+                      data-vf-async="slots"
+                      data-confirm="¿Enviar un recordatorio a <?= (int) $porRecordar ?> persona(s)? Esta tanda manda como mucho <?= (int) RosterPanel::INVITE_POR_TANDA ?>. Solo se avisa a quienes ya recibieron la invitación y aún no han respondido; el recordatorio es repetible y no insistirá solo sobre los mismos."
+                      data-confirm-ok="Sí, recordar" data-confirm-tone="primary">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="rosterQ" value="<?= View::escape((string) ($roster['q'] ?? '')) ?>">
+                    <input type="hidden" name="rosterPage" value="<?= (int) ($roster['page'] ?? 1) ?>">
+                    <input type="hidden" name="rosterSort" value="<?= View::escape((string) ($roster['sort'] ?? 'cedula')) ?>">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-bell me-1"></i>Enviar recordatorios
+                        (<?= (int) $porRecordar ?>)
+                    </button>
+                    <span class="small text-muted ms-1">
+                        <?= $porRecordar > RosterPanel::INVITE_POR_TANDA
+                            ? 'esta tanda manda ' . (int) RosterPanel::INVITE_POR_TANDA
+                            : 'a todos los que quedan' ?>
+                    </span>
+                </form>
+            <?php } ?>
         <?php } ?>
     <?php } ?>
 </div>

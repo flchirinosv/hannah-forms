@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1099 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1139 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,15 +23,16 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**481 pruebas** en 29 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**521 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
 la lista de acceso (U), la pestaña de participantes (V), el identificador del
 listado (W), el filtro de la analítica por atributo (X), la comparación por
-atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA) y
-el listado paginado del panel (AB).
+atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA),
+el listado paginado del panel (AB), la galería del modal de nuevo formulario
+(AC), la consola de administración (AD) y el recordatorio por correo (AE).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -40,9 +41,9 @@ Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
 
 - Antes de un despliegue: A, B, N y O enteras.
 - Después de tocar el constructor: D, G y R enteras.
-- Después de tocar el fill o el panel: E, F, K, R, T, U y AA enteras.
+- Después de tocar el fill o el panel: E, F, K, R, T, U, AA y AE enteras.
 - Después de tocar la analítica: K y X enteras.
-- Después de tocar el listado de participantes: V, W y X enteras.
+- Después de tocar el listado de participantes: V, W, X y AE enteras.
 - Después de tocar seguridad o permisos: M, N y O enteras.
 
 ---
@@ -873,6 +874,39 @@ C4 hace falta al menos un usuario y un grupo.
 | AD14 | Todo lo anterior **sin JavaScript** | El alta y las acciones se envían por POST nativo y recargan; nada queda inalcanzable | A | |
 | AD15 | En móvil (390px) | La tabla de usuarios se apila en tarjetas, el `⋯` sigue alcanzable y los modales no se salen de la pantalla | M | |
 | AD16 | Pulsar el bloque de usuario al pie de la sidebar | Ocupa todo el ancho y se despliega **hacia arriba** (colapsable, no un desplegable flotante), con el correo, «Seguridad de mi cuenta» y «Cerrar sesión»; la flecha rota al abrir | M | |
+
+## AE. El recordatorio por correo (fase 12, 2026-10-15)
+
+El botón de recordatorio vive al lado del de invitaciones, en la misma tarjeta, y
+es lo que la suite no puede ver: que el correo **se entienda**, que el número que
+promete **no mienta** después de un envío a medias y que la tanda **no insista**
+sobre los mismos. La lista tiene que tener gente ya **invitada** y sin responder,
+con identificador «correo» y SMTP configurado.
+
+Para llegar: panel → el formulario → *Participantes*.
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AE1 | Lista recién importada, nadie invitado | **No** hay botón de recordatorio: lo que se dice es que no queda nadie pendiente de invitación | A | |
+| AE2 | Con 30 invitados y sin respuestas | Aparece «Enviar recordatorios (30)» **debajo** de «Enviar invitaciones», y el número es el de invitados sin responder, no el de la lista | A | |
+| AE3 | Pulsa el botón con SMTP configurado | Sale el aviso con cuántos salieron, y el número del botón **no** baja a cero: el recordatorio es repetible, no es «quedan sin recibir» | A | |
+| AE4 | Comprueba que los dos números son distintos | Mientras queden personas **sin invitar**, los dos botones cuentan cosas distintas (las que no recibieron nada / las que recibieron y no contestaron) | M | |
+| AE5 | Abre el correo que acaba de llegar | Trae el enlace y, si el formulario tiene fecha de cierre, la cita con día y hora. **Si no tiene fecha, no hay ninguna línea de fechas** | A | |
+| AE6 | Con identificador «cédula» o «indicador» | No aparece el botón: se dice que el enlace se reparte desde la columna «Código» | A | |
+| AE7 | Con `MAIL_HOST` vacío | Se dice que el correo está apagado, **no** un error de servidor, y el número de pendientes no se toca | A | |
+| AE8 | Pulsando con el formulario **cambiado a cédula** justo antes | 403 y no se manda nada | A | |
+| AE9 | Pulsando en un formulario que **no es de lista** | 404, sin correo | A | |
+| AE10 | Pulsa el botón **otra vez** al día siguiente | Sí se vuelve a mandar: nadie queda fuera por «ya le tocó» | A | |
+| AE11 | Deja caer el SMTP a mitad de una tanda (con 20 pendientes) | El aviso dice cuántos salieron y **cuántos fallaron**, y el número del botón sigue contándolos a todos | A | |
+| AE12 | Tras AE11, comprueba quién quedó marcado | Los que salieron sí; los que fallaron **no** recibieron nada y siguen en la cola | A | |
+| AE13 | Marca a alguien como «respondió» en la lista | El número de recordatorios baja: a quien ya respondió no se le insiste | A | |
+| AE14 | Con más de 50 pendientes | Se mandan 50 y el aviso dice **a cuántos no se llegó** («Quedan 10»), no «50 enviados» | A | |
+| AE15 | Dos tandas seguidas con más de 50 pendientes | La segunda empieza por los que no recibieron ninguno y sigue por los más antiguos: no se martilla a los mismos | M | |
+| AE16 | El confirmador del botón | Dice cuántos son, que la tanda manda 50, quién puede recibirlo y el botón que se acepta es «Sí, recordar» | M | |
+| AE17 | Tras un envío, mira la lista y el catálogo de atributos | **No** parpadean: solo cambian los números y las invitaciones, que es lo que este botón toca | B | |
+| AE18 | Pulsa el botón **sin JavaScript** | Pide confirmación, envía por POST y recarga; el resultado y los números son los mismos | A | |
+| AE19 | Con teclado: tabula hasta el botón y pulsa `Enter` | Abre la confirmación y, en «Cancelar», devuelve el foco al botón | M | |
+| AE20 | Borra a una persona de la lista | Su correo sale de la cola: dejar de estar en la lista cierra la puerta, aunque tenga enlace | A | |
 
 ## Cuando encuentres un fallo
 

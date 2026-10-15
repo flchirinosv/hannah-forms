@@ -106,6 +106,16 @@ return [
         'limits' => [
             'create_per_hour' => (int) App\Core\Env::get('DASH_CREATE_PER_HOUR', 30),
             'export_per_hour' => (int) App\Core\Env::get('DASH_EXPORT_PER_HOUR', 120),
+            // Anti-abuso del fill, por IP y formulario. Los dos son configurables
+            // porque una encuesta de censo se contesta desde una IP compartida
+            // (un kiosco, un colegio, la NAT de una sede) y el límite que protege
+            // al servidor es el mismo que bloquea a la persona número 11 si está
+            // fijo. El default no cambia el comportamiento histórico.
+            'fill_submit_per_10min' => (int) App\Core\Env::get('FILL_SUBMIT_PER_10MIN', 10),
+            // Intentos de código de la puerta `roster`, por IP y 15 min. El
+            // segundo límite de `RosterDoor` (por código) NO se configura: es una
+            // sola persona tecleando y no lo agota un kiosco.
+            'roster_code_per_15min' => (int) App\Core\Env::get('ROSTER_CODE_PER_15MIN', 10),
         ],
         // Idioma por defecto de la app (P9, i18n reducido): es | en.
         // Un formulario puede sobrescribirlo con settings.locale.code.

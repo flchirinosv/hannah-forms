@@ -183,6 +183,7 @@ el existente y lo dice.
 | 9 | Quién respondió, `responses.pii` | bajo | **Hecha** (13 tests nuevos) |
 | 10 | Correo de invitaciones, opt-in | bajo | **Hecha** (13 tests nuevos) |
 | 11 | Documentación y recuentos | — | **Hecha** |
+| 12 | **Recordatorio** por correo, repetible | bajo | **Hecha** (15 tests nuevos) |
 
 ### Tres reglas que no son sugerencias
 
@@ -1022,6 +1023,45 @@ quien escribió a quien, no una respuesta ni un atributo del listado. Quien gest
 lista la ve en la insignia de los números (`37 invitations enviadas`); las exportaciones
 siguen siendo lo que exportaban antes, sin una columna nueva.
 
+## Fase 12 — el recordatorio del correo — **HECHA**
+
+La invitación se manda una vez. Un censo de 800 personas en julio a mitad de agosto
+necesita poder insistir, y la plataforma de referencia lo llama `remindersent` /
+`remindercount`. Es lo que se implementa aquí.
+
+### Qué es, y qué no
+
+- **No es «invitar otra vez».** Van los que **tuvieron la invitación y siguen sin
+  responder**: `pendingReminders()` filtra `invited_at IS NOT NULL AND responded_at
+  IS NULL AND correo <> ''`, el mismo criterio que usa el contador del botón. A quien
+  nunca se le invitó, le toca la invitación; a quien ya respondió, nada.
+- **Es repetible, con contador.** `reminded_at` (fecha del último recordatorio, `NULL`
+  = nunca) y `reminder_count` (cuántos), migración **0018**. `markReminded()` **no**
+  tiene guarda de un solo uso.
+- **No toca `responded_at`.** Marcar respuesta es solo de `Submission::create()` en el
+  fill.
+
+### Las decisiones
+
+| Tema | Decisión |
+|---|---|
+| Migración | **`0018`**, con `AFTER invited_at` / `AFTER reminded_at` para que una base migrada y una limpia queden en la misma posición |
+| Puerta | Igual que la invitación: `rosterForm(…, 'send_invitations')`, `csrfOk()`, identificador `correo` y `Mailer::isConfigured()` antes de `Mailer::send()` |
+| Orden de la tanda | `ORDER BY reminded_at IS NULL DESC, reminded_at ASC, id ASC`: primero el que nunca recibió ninguno y después el más antiguo |
+| Topes | Los mismos de la invitación: `RosterPanel::INVITE_POR_TANDA` (50) y corte a `INVITE_FALLOS_SEGUIDOS` (3) fallos seguidos |
+| El «quedan N» | `max(0, pendingReminderCount() - enviados)`, **no** `pendingReminderCount()`: como es repetible, enviar no saca a nadie de la cola, así que ese contador sigue diciendo 60 justo cuando quedan 10 |
+| Marca | **Después** del `send()` con éxito, nunca antes |
+| Fecha de cierre | Sale de `schedule.close_at` (`deadlineTexto()`, `d/m/Y H:i` en `Clock::displayZone()`); sin fecha, el bloque no aparece |
+| Aviso | `vfToast`, hueco `rosterInvites` repintado con `$cambia = ['invites','stats']` (la lista y el catálogo no cambian) |
+| Ruta | `POST /forms/{id}/participants/reminders`, middleware `['auth','csrf']` sin `post-max` |
+
+### Dónde está el riesgo
+
+El que el contador **no** baje al enviar es lo que puede escribir un mensaje falso en
+las dos direcciones: con él a secas, «quedan 60» sería cierto siempre (siguen sin
+responder) y «se mandó todo» sería mentira cuando la tanda se cortó. El resto es
+paradoja de la invitación, ya resuelta en la fase 10.
+
 ## Decisiones de correo
 
 - **`Mailer::setTransport(callable)`** intercepta el sobre entero en memoria y no toca
@@ -1064,3 +1104,4 @@ siguen siendo lo que exportaban antes, sin una columna nueva.
 | 9 | **Hecha** — 996 tests |
 | 10 | **Hecha** — 1012 tests |
 | 11 | **Hecha** — manual (§12), bloque manual AA y recuentos |
+| 12 | **Hecha** — 1139 tests |
