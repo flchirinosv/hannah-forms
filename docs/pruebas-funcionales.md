@@ -277,8 +277,8 @@ Para no perderte, prepara esto antes de empezar:
 | I12 | Escribir un correo sin formato y pulsar *Añadir* | No se añade nada y el motivo dice que el correo no es válido (no un error de red) | M | |
 | I13 | Añadir con el teclado (Enter en la caja) | Funciona igual que con el botón, sin recargar | M | |
 | I14 | Abrir la ficha con JavaScript deshabilitado y añadir un correo | El alta funciona con el POST normal y avisa con un flash | M | |
-| I15 | `/admin` con un `user` normal | No aparece la tarjeta *Acceso de cualquiera* | A | |
-| I16 | `/admin` con un admin: mover el interruptor del registro | El estado cambia al instante, sin recargar, y el texto de al lado se actualiza | M | |
+| I15 | `/admin/settings` con un `user` normal | 403: el panel entero exige `admin.access` | A | |
+| I16 | `/admin/settings` con un admin: mover el interruptor del registro | El estado cambia al instante, sin recargar, y el texto de al lado se actualiza | M | |
 | I17 | El interruptor, sin red (parar MySQL o cortar la conexión) | La casilla **vuelve** a lo que dice el servidor y sale un aviso rojo: no se queda marcada sin guardar | M | |
 | I18 | Poner `REGISTRATION_ENABLED=true` en `.env` con el interruptor apagado y abrir `/register` | 403: la fila de `app_settings` gana al `.env` | A | |
 
@@ -375,15 +375,15 @@ Para no perderte, prepara esto antes de empezar:
 | N18 | Intentar borrar un rol propio que alguien lleva | No se borra y el motivo dice cuántas personas lo tienen | A | |
 | N19 | Borrar un rol propio que no lleva nadie | Se borra, avisa, y también desaparece de los grupos que lo confieran (con aviso previo al confirmar) | M | |
 | N20 | El mismo borrado con la confirmación rechazada | No pasa nada: el rol sigue ahí | M | |
-| N21 | Abrir `/admin` | El alta y «Acceso de cualquiera» están **en la misma fila** (2/3 y 1/3), y la tabla de usuarios debajo a todo el ancho | M | |
-| N22 | Entrar con un rol sin `admin.access` | Solo se pinta el alta, y ocupa las mismas 8 columnas: no queda un hueco a la derecha | M | |
-| N23 | Plegar «Nuevo usuario», recargar y volver a entrar en `/admin` | Sigue plegado **en esa pantalla**, y al abrir la ficha de un formulario sus seis grupos salen **abiertos**: el estado va por pantalla | A | |
-| N24 | Crear un usuario con el registro público **cerrado** | El alta se despliega y se puede enviar igual. Con el **JavaScript desactivado** el formulario también se ve y funciona: es la única vía para crear un `user` o un `editor` | A | |
-| N25 | Plegar «Nuevo usuario» y crear una cuenta con un email repetido | El aviso sale arriba y **el alta se abre sola**, para poder corregir sin desplegar a ciegas | A | |
-| N26 | A un `user` darle `forms.manage_all` desde la columna «Permisos» de su fila | Ve y opera formularios ajenos **sin** cambiarle el rol ni meterlo en un grupo | A | |
+| N21 | Abrir `/admin` | La cabecera «Usuarios» lleva *Nuevo usuario*; debajo, la barra de filtros (buscador, rol y estado) y la tabla de usuarios a todo el ancho. El alta vive en su diálogo, no en una tarjeta de la fila | M | |
+| N22 | Entrar a `/admin` con un rol sin `admin.access` | 403: el panel entero exige `admin.access` | M | |
+| N23 | Abrir la ficha de un formulario, plegar uno de sus seis grupos, recargar y volver | Sigue plegado **en esa pantalla**, y al entrar en `/admin/groups` la lista sale **abierta**: el estado va por pantalla | A | |
+| N24 | Crear un usuario con el registro público **cerrado** | *Nuevo usuario* abre el diálogo y la cuenta se crea igual. Con el **JavaScript desactivado** el formulario se ve en su tarjeta y funciona: es la única vía para crear un `user` o un `editor` | A | |
+| N25 | Con el diálogo de alta abierto, crear una cuenta con un email repetido | El aviso sale dentro del diálogo, que **sigue abierto**, para corregir sin volver a abrirlo | A | |
+| N26 | A un `user` darle `forms.manage_all` desde *Permisos extra* del menú `⋯` de su fila | Ve y opera formularios ajenos **sin** cambiarle el rol ni meterlo en un grupo | A | |
 | N27 | Quitarle esa casilla y guardar | Pierde el permiso en la petición siguiente: el POST es la lista completa, no «no lo he tocado» | A | |
-| N28 | Abrir el desplegable «Permisos» de un usuario | Arriba, en solo lectura, el desglose de dónde sale cada permiso (Rol / Grupos / Extra) | M | |
-| N29 | Entrar a `/admin` con un rol sin `admin.users` | Ve las insignias de permisos extra en solo lectura, **no** los checkboxes: mirarlos no mueve la autorización de nadie | M | |
+| N28 | Abrir el menú `⋯` de un usuario | En la primera columna del diálogo, en solo lectura, el desglose de dónde sale cada permiso (Rol / Grupos / Extra) | M | |
+| N29 | Entrar a `/admin` con un rol con `admin.access` pero sin `admin.users` | 403: el listado exige `admin.users`, no basta con el acceso al panel | M | |
 
 ---
 
@@ -494,8 +494,8 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S27 | Constructor → «Agregar elemento» (regresión) | **Aparece el diálogo con sus 21 tipos.** Si se ve la pantalla oscurecida y ningún diálogo, es que `#addFieldModal` ha vuelto a quedar anidado dentro de otro `.modal`: lo delata `tests/unit/ViewStructureTest` | A | |
 | S28 | Constructor → «Agregar elemento» **en un móvil** (o con la ventana estrecha) | El diálogo entra entero en la pantalla, con **dos columnas** de tipos y el encabezado «Agregar elemento» arriba; no hay que recargar para cerrarlo | A | |
 | S29 | Constructor → vista previa del formulario, abajo del todo | El botón es el del formulario publicado: degradado morado con **«Enviar» en blanco**, no un botón blanco con el texto en negro | M | |
-| S30 | `/admin` en pantalla ancha | El alta ocupa 2/3 y «Acceso de cualquiera» 1/3, con el chevron de «Nuevo usuario» a la derecha de su título | M | |
-| S31 | `/admin` a 375 px | Las dos tarjetas se apilan y **ninguna** desborda; los cinco campos del alta se reparten en 3+2 sin cortes | M | |
+| S30 | `/admin` en pantalla ancha | Cabecera, filtros y tabla a todo el ancho; *Nuevo usuario* es un botón de la cabecera y el alta se abre en un diálogo | M | |
+| S31 | `/admin` a 375 px | La tabla se apila en tarjetas (con su rótulo por celda) y **nada** desborda; el diálogo de alta se abre a una columna y los cinco campos se leen enteros | M | |
 | S32 | Ficha del formulario, en pantalla ancha | Columna ancha: Detalles, Campos y Acceso, en ese orden. Columna estrecha: Enlace para compartir y Ajustes del formulario | M | |
 | S33 | Ficha con una **larga lista de correos** | La lista se lee con holgura y no estira la columna de los ajustes, que se queda a su ancho | M | |
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |

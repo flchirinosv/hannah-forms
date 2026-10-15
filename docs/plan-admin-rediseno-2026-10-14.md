@@ -1,8 +1,8 @@
 # Plan — Rediseño de la consola de administración (`/admin`)
 
 **Fecha:** 2026-10-14
-**Estado:** **F0–F6 hechas y verdes**. Plan cerrado y, además, la ronda de
-correcciones visuales posterior (C1–C4, abajo) aplicada y verde.
+**Estado:** **F0–F6 hechas y verdes**. Plan cerrado y, además, las rondas de
+correcciones visuales posteriores (C1–C4 y C5–C7, abajo) aplicadas y verdes.
 **Objetivo:** llevar el módulo `/admin` (Usuarios, Grupos de roles, Roles y
 permisos, Log de seguridad, Formularios) a un objetivo de **usabilidad**: cada
 acción, con el menor número de pasos posible. **No se toca la marca** (degradado
@@ -267,9 +267,48 @@ Lo atan `AdminSettingsPageTest` (nuevo), `GroupCollapseContractTest` (reescrito)
 
 ---
 
+### Segunda revisión en navegador (C5–C7) (hechas)
+
+Otra ronda corta al mirar la consola ya rediseñada en el navegador. Tampoco
+reabre el alcance de F0–F6: son ajustes de retícula, densidad y contraste, con el
+mismo contrato.
+
+| # | Alcance | Estado |
+|---|---|---|
+| **C5** | Retícula de las altas y del modal de acciones, y tarjeta de grupo | ✅ hecha |
+| **C6** | Alta de usuario en **una** columna, acciones de fila en **tres**, y usuario de la sidebar colapsable a todo el ancho | ✅ hecha |
+| **C7** | Contraste del menú de usuario de la sidebar | ✅ hecha |
+
+**C5 — Retícula.** `views/admin/users.php`: el alta se reparte en dos columnas y el
+`#userActionsModal` en dos; `views/admin/groups.php` y `_group_effect.php`: la
+tarjeta de grupo pone los roles arriba a la derecha y «lo que otorga» abajo a la
+izquierda; `app.css` gana `.app-rbac-item-line` (cada ítem del RBAC en una línea).
+Commit `f210153`. (C6 rehace las columnas de `users.php`: C5 fue el primer
+intento.)
+
+**C6 — Una columna y tres columnas.** El alta de usuario queda en **una sola
+columna** (`col-12` ×5) y su modal baja a ancho por defecto; `#userActionsModal`
+sube a `modal-xl` y se reparte en **tres** columnas (permisos efectivos / rol y
+grupos / permisos extra), de modo que la del medio explica a las otras dos. El
+bloque de usuario de la sidebar se convierte en un colapsable a todo el ancho
+(`#sidebarUserMenu`, botón `data-bs-toggle="collapse"`, se abre **hacia arriba**,
+con `aria-expanded` que rota la flecha). Commit `77ceccf`.
+
+**C7 — Contraste de la sidebar.** El «Cerrar sesión» en `text-danger` sobre el
+degradado medía ~1.0 de contraste (invisible); el panel del menú pasa a llevar un
+velo `rgba(0,0,0,.25)` y el enlace destructivo a `#fecaca`, con el correo a blanco
+al 85 %. Commit `4ea7867`; lo ata
+`SidebarLayoutTest::testElCierreDeSesionTieneContrasteSobreElDegradado`.
+
+**Contratos que toca C5–C7:** `views/admin/users.php`, `groups.php`,
+`_group_effect.php`, `views/layouts/main.php`; `public/assets/css/app.css`;
+`public/assets/js/dashboard.js`; test `SidebarLayoutTest` (método nuevo).
+
+---
+
 ## Verificación
 
-- Suite completa: `php scripts/test.php` → **1120 tests** (a fecha de C1–C4),
+- Suite completa: `php scripts/test.php` → **1121 tests** (a fecha de C7),
   `Fallidos: 0`, `Errores: 0` (~6 min). Comprobación en navegador para lo que la
   suite no ve (maquetación, teclado, menús): Playwright/Chromium sobre
   `http://127.0.0.1:10001`.
@@ -289,4 +328,4 @@ Lo atan `AdminSettingsPageTest` (nuevo), `GroupCollapseContractTest` (reescrito)
   `.app-rbac-*`); `public/assets/js/dashboard.js`, `app.js` (`vfHandleSubmit`).
 - Tests: `tests/unit/AdminRbacTest.php`, `AsyncFormActionsTest.php`,
   `AsyncActionsJsTest.php`, `ContentButtonsMobileTest.php`, `FormFichaLayoutTest.php`,
-  `ViewStructureTest.php`, `ControllerActionsTest.php`.
+  `SidebarLayoutTest.php`, `ViewStructureTest.php`, `ControllerActionsTest.php`.

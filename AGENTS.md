@@ -1046,9 +1046,9 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **La cuarta fuente son los permisos DIRECTOS** (`user_permissions`, migración
   **0017**): dar UN permiso a UNA persona sin cambiarle el rol (que mueve todo su
   conjunto) ni meterla en un grupo (que se lo da al equipo). Se editan desde la
-  columna «Permisos» de su fila en `/admin` (gate `admin.users`, el mismo del rol:
-  mueve la autorización de esa persona; sin él se ven las insignias en solo lectura,
-  no los checkboxes) y caen en cascada al borrar el usuario. `User::setPermissions()`
+  tercera columna (*Permisos extra*) del menú `⋯` de su fila en `/admin`
+  (`#userActionsModal`; gate `admin.users`, el mismo del rol: mueve la autorización
+  de esa persona) y caen en cascada al borrar el usuario. `User::setPermissions()`
   **reemplaza la lista completa**: un POST sin casillas quita todos los directos, y
   las claves fuera del catálogo se descartan en silencio (el catálogo no se borra).
   `Auth::permissions()` es la unión de las tres fuentes; `User::hasPermission()` y

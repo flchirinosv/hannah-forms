@@ -59,8 +59,8 @@ class AdminController
             'groups'            => RoleGroup::all(),
             'userGroups'        => User::groupsMap(),
             'userPermissions'   => User::permissionsMap(),
-            // Desglose efectivo por usuario (rol / grupos / extra): lo pinta el
-            // desplegable de la columna «Permisos», que es lo que hace
+            // Desglose efectivo por usuario (rol / grupos / extra): lo pinta la
+            // primera columna del menú `⋯` de la fila, que es lo que hace
             // auditable una concesión directa.
             'userEffective'     => User::effectivePermissionsMap(),
             'permissionCatalog' => self::catalog(),

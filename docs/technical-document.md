@@ -292,7 +292,8 @@ PK (user_id, permission_id). RBAC (migración 0017): la cuarta fuente. Da **un**
 permiso a **una** persona sin cambiarle el rol (que mueve todo su conjunto) ni
 meterla en un grupo (que se lo da a todo el equipo). `User::setPermissions()`
 reemplaza la lista completa; las claves fuera de `config/permissions.php` se
-descartan en silencio. Se editan en la columna «Permisos» de `/admin`.
+descartan en silencio. Se editan desde *Permisos extra*, en el menú `⋯` de su fila
+en `/admin`.
 
 #### rate_limits
 | Campo | Tipo | Notas |
@@ -449,7 +450,7 @@ php scripts/test.php --path tests/unit
 - ✅ Escape sistemático de salida (View::escape)
 - ✅ Redirects internos solo relativos (anti open-redirect); `thanks.redirect_url` externa pasa por la allowlist de servidor `APP_REDIRECT_ALLOWLIST` (vacía = bloqueada por defecto, F5.1)
 - ✅ Rate limit del dashboard por usuario (crear/exportar, F5.3): `DASH_CREATE_PER_HOUR`/`DASH_EXPORT_PER_HOUR`, 429 con `views/errors/429.php`
-- ✅ RBAC (2026-09-28, fase 6; permisos directos 2026-10-13): catálogo de permisos en `config/permissions.php` + matriz en `role_permissions`; `Auth::can()` como única puerta de negocio y permisos efectivos = rol propio + roles de sus grupos (`role_groups*`) + permisos directos por usuario (`user_permissions`, migración 0017, editables desde la columna «Permisos» de `/admin`); `App\Core\Access` para el alcance del dueño (`*_own` && dueño || `forms.manage_all`); middleware `admin` = `Auth::can('admin.access')`
+- ✅ RBAC (2026-09-28, fase 6; permisos directos 2026-10-13): catálogo de permisos en `config/permissions.php` + matriz en `role_permissions`; `Auth::can()` como única puerta de negocio y permisos efectivos = rol propio + roles de sus grupos (`role_groups*`) + permisos directos por usuario (`user_permissions`, migración 0017, editables desde *Permisos extra*, en el menú `⋯` de su fila en `/admin`); `App\Core\Access` para el alcance del dueño (`*_own` && dueño || `forms.manage_all`); middleware `admin` = `Auth::can('admin.access')`
 - ✅ Log de eventos de seguridad (2026-09-28, fase 6): tabla `security_log` + `/admin/security-log` (`SecurityLog::record` nunca rompe el request, valida el formato del evento, `user_id` NULL si la sesión apunta a un usuario inexistente, purga por `purgeOlderThan()`)
 - ✅ Límite de tamaño de cuerpo JSON y 405 para métodos no permitidos
 - ✅ CSP y X-Frame-Options configurables por `.env` (CSP activa por defecto desde 2026-09-25; datos de servidor vía `data-*`, handlers JS externalizados)
