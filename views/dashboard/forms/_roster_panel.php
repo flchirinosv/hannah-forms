@@ -169,7 +169,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                           // el montaje y el botón no hace nada. ?>
                     <button type="button" class="btn btn-outline-primary btn-sm"
                             data-bs-toggle="modal" data-bs-target="#rosterAddModal">
-                        <i class="fa-solid fa-user-plus me-1"></i>Añadir uno a la lista
+                        <i class="fa-solid fa-user-plus me-1"></i>Agregar
                     </button>
                 </div>
 

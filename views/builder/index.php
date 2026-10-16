@@ -37,7 +37,7 @@ $fieldTypes = [
     'file'     => ['label' => 'Archivo',     'icon' => 'fa-paperclip',   'desc' => 'Subir uno o varios archivos'],
 ];
 ?>
-<div class="container-fluid px-lg-4">
+<div class="container px-lg-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>

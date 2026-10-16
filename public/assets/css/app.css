@@ -387,6 +387,32 @@ body {
     border-color: var(--vf-primary);
     box-shadow: 0 0 0 .2rem rgba(99,102,241,.15);
 }
+/* Los campos del PANEL, legibles sobre la tarjeta blanca.
+   El panel mete los controles en tarjetas blancas (`.card`), así que un
+   `.form-control` blanco con borde claro casi no se distinguía del fondo. Se les
+   da el mismo off-white que el fill usa en `.vf-control-wrap` (`#fbfcfe`) y se
+   suben los labels a 600: el formulario público y el panel se leen igual sin
+   compartir una clase. Va acotado a `.app-content` (el shell del panel), así que
+   no toca ni el fill (que se renderiza sin este layout) ni las pantallas de
+   auth. El foco vuelve a blanco para que el estado activo se note, y el
+   `input-group-text` acompaña al campo (si no, el icono del buscador quedaba de
+   otro blanco que el campo de al lado). */
+.app-content .form-control,
+.app-content .form-select {
+    background-color: #fbfcfe;
+}
+.app-content .form-control:focus,
+.app-content .form-select:focus {
+    background-color: #fff;
+}
+.app-content .input-group-text {
+    background-color: #fbfcfe;
+}
+.app-content .form-label,
+.app-content .col-form-label,
+.app-content legend.form-label {
+    font-weight: 600;
+}
 .error-code { text-shadow: 0 4px 40px rgba(255,255,255,.3); }
 
 /* ---------- Ayuda con tooltip ---------- */
@@ -1043,10 +1069,16 @@ body {
    `.app-head-actions`: convivían a 40px/radio 6/peso 400 mientras la cabecera
    mide 44px/radio 12/peso 600. Se visten con las MISMAS métricas y con el par
    de Bootstrap: la inactiva como `btn-outline-secondary` (contorno gris) y la
-   activa como `btn-primary` (relleno), que es lo que ya insinuaba el `nav-pills`. */
+   activa como `btn-primary` (relleno), que es lo que ya insinuaba el `nav-pills`.
+   La fila va PEGADA A LA DERECHA como el resto de `.app-head-actions`, para que
+   las pestañas de /admin acompañen al título en vez de quedarse sueltas a la
+   izquierda. En móvil se resetea a `flex-start` (ver más abajo): con
+   `overflow-x: auto` y `justify-content: flex-end`, al desbordar los primeros
+   destinos quedaban fuera del alcance del scroll en algunos navegadores. */
 .app-admin-nav {
     gap: .5rem;
     flex-wrap: wrap;
+    justify-content: flex-end;
 }
 .app-admin-nav .nav-link {
     display: inline-flex;
@@ -1102,12 +1134,15 @@ body {
        destinos y un icono suelto no dice a dónde lleva cada uno. Para que la
        fila no se parta en dos o tres líneas ni se coma media pantalla, se
        desplaza en horizontal en una sola línea. No lleva `:has()` porque no
-       necesita saber si hay icono: el rótulo se queda siempre. */
+       necesita saber si hay icono: el rótulo se queda siempre. Y se alinea a la
+       IZQUIERDA: con `overflow-x: auto`, `justify-content: flex-end` dejaría los
+       primeros destinos fuera del alcance del scroll. */
     .app-admin-nav {
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        justify-content: flex-start;
     }
     .app-admin-nav::-webkit-scrollbar { display: none; }
     .app-admin-nav .nav-link { flex: 0 0 auto; white-space: nowrap; }
@@ -1157,7 +1192,12 @@ body {
    `:not(:first-child) + .btn` tiene más especificidad. Y la fila puede partirse:
    con controles de 44px, una cabecera estrecha (tablet) prefiere dos líneas a
    salirse de la pantalla. */
-.app-head-actions { flex-wrap: wrap; }
+/* `margin-left: auto` mantiene la fila pegada a la derecha aunque la cabecera
+   envuelva: con `space-between` en el contenedor, al partirse a dos líneas la
+   fila de acciones caía al borde IZQUIERDO. Vale para la ficha, el builder, el
+   dashboard, respuestas y las pantallas de /admin (todas emiten
+   `.app-head-actions`). */
+.app-head-actions { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
 .app-head-actions .btn,
 .app-head-actions .form-control,
 .app-head-actions .form-select {
@@ -1173,6 +1213,15 @@ body {
 .app-head-actions .app-dd-btn {
     width: var(--vf-btn-cta-h);
     height: var(--vf-btn-cta-h);
+}
+/* El pie de un modal es otra fila de botones que tienen que medir lo mismo: sin
+   esta regla, el «Cancelar» de 38px convivía con el CTA de `app-btn-primary`
+   (44px) en el mismo pie. Toma el mismo alto y radio que `.app-head-actions`;
+   la sombra y el color siguen siendo de cada variante. Acotado a `.app-content`
+   (el panel), que es donde viven estos modales. */
+.app-content .modal-footer .btn {
+    min-height: var(--vf-btn-cta-h);
+    border-radius: 12px;
 }
 .app-field-list .list-group-item { border-color: var(--vf-border); }
 .app-share-input { letter-spacing: .02em; }

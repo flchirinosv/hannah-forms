@@ -25,7 +25,7 @@ framework: son custom properties nativas sobre Bootstrap 5.
 | `--vf-bg` | `#f4f5fb` | Fondo de página |
 | `--vf-background` | gradiente de `.fill-body` | **Lo emite el tema**: «Color de fondo» del builder. Sin ajuste es el gradiente; con él, el color elegido |
 | `--vf-font` | (sin valor) | **Lo emite el tema**: «Fuente». `body` la usa con `fallback` a Inter |
-| `--vf-surface` | `#ffffff` | Tarjetas, paneles, campos |
+| `--vf-surface` | `#ffffff` | Tarjetas y paneles (los campos van en off-white, ver §1.2) |
 | `--vf-text` | `#1e293b` | Texto principal |
 | `--vf-text-muted` | `#64748b` | Texto secundario, labels |
 | `--vf-border` | `#e2e8f0` | Bordes de tarjetas y separadores |
@@ -59,6 +59,17 @@ padding). No se sobreescriben: un bloque global con la misma especificidad que
 los `-sm` —y cargado después de Bootstrap— deja a todos los `-sm` sin efecto
 (ver §4, regla 4). Lo único propio es el **color** del anillo de foco, que sale
 de `--vf-primary`.
+
+**Regla (campos legibles, 2026-10-16):** en el **panel** los campos viven
+dentro de tarjetas blancas (`.card`), así que un `.form-control` blanco con
+borde claro casi no se distinguía de su fondo. Acotado a `.app-content` —el
+shell del panel, que el fill no usa porque se renderiza sin este layout—, los
+`.form-control`/`.form-select`/`.input-group-text` toman el off-white
+`#fbfcfe` (el mismo que el fill ya usaba en `.vf-control-wrap`), el foco vuelve
+a blanco, y `.form-label`/`.col-form-label`/`legend.form-label` suben a
+`font-weight: 600`. No se comparte clase con el fill: se comparte el **valor**.
+El grid del `-sm` no se toca (es la regla 4 la que hay que respetar: solo se
+sobreescribe el `background-color`, nunca el padding ni el alto).
 
 ---
 
@@ -400,7 +411,10 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   `--vf-primary`, como el CTA. En móvil **conservan icono y rótulo** (un icono
   suelto no dice a dónde lleva cada uno de los cinco destinos) y la fila se
   desplaza en horizontal en una sola línea (`overflow-x: auto`) en vez de
-  partirse en dos o tres. Desde Fase 1 la sub-navegación la emite la cabecera
+  partirse en dos o tres. La fila va **pegada a la derecha** con
+  `justify-content: flex-end`, **resetado a `flex-start` en móvil**: con
+  `overflow-x: auto`, un `flex-end` deja los primeros destinos fuera del alcance
+  del scroll. Desde Fase 1 la sub-navegación la emite la cabecera
   compartida `views/admin/_page_head.php` (ver §3.12). Lo atan
   `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
   y `testLaSubNavegacionDeAdminConservaSusRotulos`.
@@ -412,16 +426,25 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
   ~32px de `btn-sm`. Con la clase, sus `.btn` y también los controles de filtro
   (`.form-control`/`.form-select`) toman el alto del CTA (`--vf-btn-cta-h`, 44px),
   radio 12 y peso 600, y el contenido se centra; la fila puede **envolver**
-   (`flex-wrap`) antes que desbordar. En la barra de filtros de analítica los
+  (`flex-wrap`) antes que desbordar, y va **pegada a la derecha** (`justify-content:
+  flex-end` + `margin-left: auto`): con solo `space-between` en el contenedor, al
+  partirse en dos líneas la fila de acciones caía al borde izquierdo. En la barra de filtros de analítica los
    campos se miden por su contenido (`width:auto`) y la barra **no fuerza
    `nowrap`** en ninguna franja: con los controles a 44px, `flex-sm-nowrap`
    empujaba la página en tablet y `flex-lg-nowrap` lo hacía en la franja 992–1023
    (el sidebar deja ~700px de contenido y la barra mide 722), así que se parte en
    una fila más cuando no cabe y sigue en una sola cuando hay sitio. Y el botón
-   «Exportar CSV» **no lleva `w-100`**: en escritorio estiraba la fila porque el
-   `w-sm-auto` con el que se pretendía deshacerlo no existe (Bootstrap no trae
-   utilidades de ancho por breakpoint). Lo ata
-   `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
+    «Exportar CSV» **no lleva `w-100`**: en escritorio estiraba la fila porque el
+    `w-sm-auto` con el que se pretendía deshacerlo no existe (Bootstrap no trae
+    utilidades de ancho por breakpoint). Lo ata
+    `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
+- **El pie de un modal es otra fila de acciones con el mismo alto.** Un
+  `.modal-footer` mezclaba un «Cancelar» de 38px (`.btn` a secas) con el CTA de
+  `app-btn-primary` (44px). `.app-content .modal-footer .btn` toma el mismo
+  `min-height`/radio que `.app-head-actions` (`--vf-btn-cta-h` + 12px), sin
+  heredar su color ni su sombra, que siguen siendo de cada variante. Acotado a
+  `.app-content`, donde viven estos modales. Lo ata
+  `FormFichaLayoutTest::testElPieDeLosModalesUnificaLosBotones`.
 - `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
   cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
   cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,

@@ -113,7 +113,7 @@ $accessMode = (string) ($accessMode ?? 'public');
                 <div class="modal-header app-navbar text-white border-0 py-2">
                     <div class="d-flex align-items-center gap-2 text-white">
                         <span class="app-logo-sm" aria-hidden="true"><i class="fa-solid fa-user-plus"></i></span>
-                        <span class="fw-semibold" id="rosterAddModalLabel">Añadir uno a la lista</span>
+                        <span class="fw-semibold" id="rosterAddModalLabel">Agregar participante</span>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>

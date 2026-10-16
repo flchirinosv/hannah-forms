@@ -251,8 +251,100 @@ class FormFichaLayoutTest
         );
         assertSame(
             1,
+            preg_match('/\.app-head-actions\s*\{[^}]*margin-left:\s*auto/', $css),
+            'y la fila de acciones queda pegada a la derecha aunque envolva'
+        );
+        assertSame(
+            1,
+            preg_match('/\.app-head-actions\s*\{[^}]*justify-content:\s*flex-end/', $css),
+            'también al partirse en dos líneas'
+        );
+        assertSame(
+            1,
             preg_match('/\.analytics-filters\s+\.form-control,\s*\.analytics-filters\s+\.form-select\s*\{[^}]*width:\s*auto/', $css),
             'los campos de la barra de filtros se miden por su contenido para poder envolver'
+        );
+    }
+
+    /**
+     * Las cuatro vistas de un formulario comparten el ancho de contenido.
+     *
+     * Ficha, participantes y respuestas ya usaban `.container px-lg-4`; el
+     * builder iba en `container-fluid` (ancho completo), así que su lienzo era
+     * más ancho que el resto y la misma pantalla «se movía» al entrar y salir del
+     * constructor. El dashboard y la analítica siguen a ancho completo a
+     * propósito (no son de un formulario y la analítica quiere sitio para las
+     * gráficas), así que el test mira exactamente estas cuatro.
+     */
+    public function testLasCuatroVistasDeFormularioCompartenElAnchoDeContenido(): void
+    {
+        foreach ([
+            'dashboard/forms/show.php',
+            'builder/index.php',
+            'dashboard/forms/access.php',
+            'responses/index.php',
+        ] as $rel) {
+            $html = self::plantilla($rel);
+            assertTrue(
+                str_contains($html, '<div class="container px-lg-4">'),
+                $rel . ': usa el ancho de contenido común (.container px-lg-4)'
+            );
+            assertFalse(
+                str_contains($html, 'container-fluid'),
+                $rel . ': no vuelve a ancho completo (container-fluid)'
+            );
+        }
+    }
+
+    /**
+     * Los campos del panel se distinguen de la tarjeta blanca y sus labels van
+     * en negrita.
+     *
+     * El panel mete los controles en `.card` blancas, así que un `.form-control`
+     * blanco con borde claro casi no se distinguía del fondo. La solución es el
+     * mismo off-white que el fill ya usaba (`#fbfcfe`) y `font-weight: 600` en
+     * los labels, acotado a `.app-content` para no tocar el formulario público.
+     */
+    public function testLosCamposDelPanelSeDistinguenYLosLabelsVanEnNegrita(): void
+    {
+        $campo = self::bloque('.app-content .form-control');
+        assertNotNull($campo, 'app.css da a los campos del panel un fondo propio');
+        assertSame(
+            1,
+            preg_match('/background-color:\s*#fbfcfe/i', (string) $campo),
+            'los campos del panel dejan de ser blancos sobre tarjeta blanca'
+        );
+
+        $label = self::bloque('.app-content .form-label');
+        assertNotNull($label, 'app.css sube los labels del panel a negrita');
+        assertSame(
+            1,
+            preg_match('/font-weight:\s*600/', (string) $label),
+            'los labels del panel van en negrita (600)'
+        );
+    }
+
+    /**
+     * El pie de un modal es otra fila de acciones.
+     *
+     * Sin una regla propia, el «Cancelar» (38px, un `.btn` a secas) convivía
+     * con el CTA de `app-btn-primary` (44px) en el mismo `modal-footer`. Toma el
+     * alto y el radio del CTA, como `.app-head-actions`, sin heredar su color ni
+     * su sombra.
+     */
+    public function testElPieDeLosModalesUnificaLosBotones(): void
+    {
+        $btn = self::bloque('.app-content .modal-footer .btn');
+        assertNotNull($btn, 'app.css unifica el alto de los botones del pie de modal');
+        assertSame(
+            1,
+            preg_match('/min-height:\s*var\(--vf-btn-cta-h\)/', (string) $btn),
+            'los botones del pie suben al alto del CTA (44px)'
+        );
+        assertSame(
+            1,
+            preg_match('/border-radius:\s*12px/', (string) $btn),
+            'y al mismo radio'
         );
     }
 }

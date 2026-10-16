@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 103 archivos, 1143 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 103 archivos, 1146 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -734,7 +734,11 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **La cabecera de los modales del roster replica la de `/admin`**
   (`modal-header app-navbar text-white border-0 py-2` + `app-logo-sm` + `btn-close
   btn-close-white`), y el **buscador de participantes es un `input-group`** (icono +
-  campo + botón «Buscar», en la misma fila que «Añadir uno a la lista»).
+  campo + botón «Buscar», en la misma fila que el botón de alta). El botón de alta
+  se llama **«Agregar»** (no «Añadir uno a la lista»): rótulo corto y del mismo
+  `btn-sm` que «Buscar», para que los dos pesen lo mismo en la fila. El título del
+  modal sí dice «Agregar participante». El disparador se localiza por
+  `fa-user-plus me-1"></i>Agregar`, no por un texto largo.
 - **Los dos modales van a UNA columna** (`col-12`, como el alta de usuario de
   `/admin`): en dos columnas, con tres o cuatro atributos, los campos quedaban
   estrechos y desalineados. El de alta se queda a **ancho por defecto** (el mismo
@@ -918,6 +922,34 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   ancestro**, que es un diagnóstico distinto del de «es demasiado alto y se sale por
   arriba». La medición de `show.bs.modal` en `builder.js` (rectángulo, `top`,
   viewport, ancho) está para eso, y así un 0×0 manda a mirar la vista.
+- **Las cuatro vistas de un formulario comparten el ancho de contenido**
+  (`.container px-lg-4`): ficha, builder, participantes y respuestas. El builder
+  iba en `container-fluid` (ancho completo), así que su lienzo era más ancho que
+  el resto y la misma pantalla «se movía» al entrar y salir del constructor; el
+  dashboard y la analítica siguen a ancho completo a propósito. Lo ata
+  `FormFichaLayoutTest::testLasCuatroVistasDeFormularioCompartenElAnchoDeContenido`.
+- **Los campos del panel se distinguen de la tarjeta blanca y sus labels van en
+  negrita**: acotado a `.app-content`, `.form-control`/`.form-select`/
+  `.input-group-text` toman el off-white `#fbfcfe` (el mismo valor que el fill usa
+  en `.vf-control-wrap`), el foco vuelve a blanco y `.form-label`/`.col-form-label`/
+  `legend.form-label` suben a `font-weight: 600`. No se comparte clase con el fill,
+  se comparte el valor; el formulario público y las pantallas de auth quedan
+  fuera porque no cuelgan de `.app-content`. Y `.app-head-actions` queda pegado a
+  la derecha (`justify-content: flex-end` + `margin-left: auto`): con solo
+  `space-between` en el contenedor, al envolver la fila de acciones caía al borde
+  izquierdo. Lo ata
+  `FormFichaLayoutTest::testLosCamposDelPanelSeDistinguenYLosLabelsVanEnNegrita`.
+- **Las tres filas de botones del panel miden lo mismo y van a la derecha.** La
+  de cabecera (`.app-head-actions`, ya existía), la sub-navegación de `/admin`
+  (`.app-admin-nav`: son `nav-link` de un `nav-pills`, no `.btn`, y estaban
+  sueltas a la izquierda) y el pie de los modales
+  (`.app-content .modal-footer .btn`, donde un «Cancelar» de 38px convivía con el
+  CTA de 44). Las tres toman `min-height: var(--vf-btn-cta-h)` + radio 12; la
+  nav de `/admin` añade `justify-content: flex-end`, **resetado a `flex-start`
+  en móvil** porque con `overflow-x: auto` un `flex-end` deja los primeros
+  destinos fuera del alcance del scroll. Lo atan
+  `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
+  y `FormFichaLayoutTest::testElPieDeLosModalesUnificaLosBotones`.
 
 **Acciones sin recarga (bimodal)**
 

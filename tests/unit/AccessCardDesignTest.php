@@ -265,7 +265,7 @@ class AccessCardDesignTest
 
         assertEquals(
             1,
-            substr_count($html, 'Añadir uno a la lista'),
+            substr_count($html, 'fa-user-plus me-1"></i>Agregar'),
             'el alta no puede tener dos disparadores con la misma etiqueta'
         );
     }

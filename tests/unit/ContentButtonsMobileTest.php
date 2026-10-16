@@ -142,6 +142,28 @@ class ContentButtonsMobileTest
             ),
             'la pestaña activa de /admin se rellena como el CTA'
         );
+
+        // La fila se pega a la derecha como el resto de cabeceras. Antes quedaba
+        // suelta a la izquierda, debajo del título, mientras el resto de filas
+        // de acciones iban a la derecha.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav\s*\{[^}]*justify-content:\s*flex-end#s',
+                self::css()
+            ),
+            'la sub-navegación de /admin va pegada a la derecha'
+        );
+        // Pero en móvil vuelve a `flex-start`: con `overflow-x: auto`, flex-end
+        // deja los primeros destinos inalcanzables al hacer scroll.
+        assertSame(
+            1,
+            preg_match(
+                '#\.app-admin-nav\s*\{[^}]*overflow-x:\s*auto[^}]*justify-content:\s*flex-start#s',
+                self::css()
+            ),
+            'en móvil la sub-navegación vuelve a flex-start para que el scroll alcance todo'
+        );
     }
 
     public function testElColapsoVaBajoSupportsYNoPierdeNiInsigniasNiLoQueDebe(): void
