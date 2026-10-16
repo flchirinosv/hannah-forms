@@ -73,9 +73,9 @@ class AccessCardDesignTest
             '.vf-access-row-actions',
             '.vf-access-empty',
             '.vf-access-linkout',
-            '.vf-tabs-nav',
-            '.vf-tab',
-            '.vf-details-trigger',
+            '.vf-import-details',
+            '.vf-import-summary',
+            '.vf-import-danger',
             '.vf-stat-strip',
             '.vf-stat',
             '.vf-stat-value',
@@ -135,7 +135,7 @@ class AccessCardDesignTest
         assertTrue(str_contains($html, '/access/email/remove'), 'falta remove');
     }
 
-    public function testElRosterConservaSusIdsYElContractoDePestanas(): void
+    public function testElRosterConservaSusIdsYReparteLasDosTarjetas(): void
     {
         self::modo(FormSettings::ACCESS_ROSTER);
         $html = self::tarjeta();
@@ -146,8 +146,72 @@ class AccessCardDesignTest
         assertEquals(2, substr_count($html, 'data-vf-pane'), 'deben ser 2 data-vf-pane');
         assertEquals(0, preg_match('/\shidden(\s|=|>)/', $html), 'no debe tener hidden del servidor');
         assertEquals(0, substr_count($html, 'data-bs-toggle="tab"'), 'no usar tab de bootstrap');
-        assertTrue(str_contains($html, 'vf-tabs-nav'), 'falta vf-tabs-nav');
-        assertTrue(str_contains($html, 'vf-tab'), 'falta vf-tab');
+
+        // Lista e importar son DOS tarjetas, no dos pestañas: la de la lista con el
+        // buscador y las filas, y la de importar plegada con un `<summary>` nativo.
+        assertTrue(str_contains($html, 'id="rosterListCard"'), 'falta la tarjeta de la lista');
+        assertTrue(str_contains($html, 'id="rosterImportCard"'), 'falta la tarjeta de importar');
+        assertTrue(str_contains($html, 'vf-import-summary'), 'el importar se pliega con un <summary>');
+    }
+
+    /**
+     * «Vaciar la lista» NO puede quedar dentro del `<details>`.
+     *
+     * Es la única acción que no se puede deshacer, y una acción así no se guarda
+     * detrás de un clic: el `<form>` de vaciado va DESPUÉS del cierre del
+     * `<details>`, con su `hr` y su explicación a la vista. Se ata la POSICIÓN
+     * (índice del cierre `</details>` anterior al del formulario) y no solo que
+     * exista, porque un formulario que existe pero oculto sigue sin poder usarse.
+     */
+    public function testVaciarLaListaQuedaFueraDelColapsable(): void
+    {
+        self::modo(FormSettings::ACCESS_ROSTER);
+        FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        $html = self::tarjeta();
+
+        $inicio = strpos($html, 'id="rosterImportCard"');
+        $vaciar = strpos($html, 'participants/truncate');
+        assertTrue($inicio !== false, 'está la tarjeta de importar');
+        assertTrue($vaciar !== false, 'y el formulario de vaciar la lista');
+        $cierre = strpos($html, '</details>', $inicio);
+        assertTrue($cierre !== false, 'la tarjeta de importar tiene su <details> que plegar');
+        assertTrue($vaciar > $cierre, 'vaciar va FUERA del <details>: es irreversible y no puede esconderse');
+    }
+
+    /**
+     * El `<details>` de importar nace cerrado y solo se ABRE cuando hay informe.
+     *
+     * Sin JavaScript el POST de importar es nativo: la recarga vuelve a pintar
+     * la pantalla y, si el resultado quedara dentro del colapso cerrado, no se
+     * vería ningún cambio — lo mismo que no pintarlo. Un informe que el dueño
+     * tiene que ir a buscar a mano es un error que no da ningún error.
+     */
+    public function testElColapsableDeImportarSeAbreCuandoHayInforme(): void
+    {
+        self::modo(FormSettings::ACCESS_ROSTER);
+        FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        $form = Form::find((int) self::$formId);
+
+        $sinInforme = RosterPanel::panel(RosterPanel::data((int) self::$formId), $form, null);
+        $inicio = strpos($sinInforme, 'class="vf-import-details"');
+        assertTrue($inicio !== false, 'está el colapsable de importar');
+        $etiqueta = substr($sinInforme, $inicio, 40);
+        assertTrue(
+            !str_contains($etiqueta, 'open'),
+            'sin informe el colapsable va cerrado: quien mira la lista no carga con el formulario de subir'
+        );
+
+        $informe = ['total' => 2, 'omitidos' => 1, 'problemas' => [
+            ['fila' => 3, 'motivo' => 'sin identificador', 'detalle' => 'V-9'],
+        ]];
+        $conInforme = RosterPanel::panel(RosterPanel::data((int) self::$formId), $form, $informe);
+        $inicio = strpos($conInforme, 'class="vf-import-details"');
+        assertTrue($inicio !== false, 'con informe sigue estando el colapsable');
+        $etiqueta = substr($conInforme, $inicio, 40);
+        assertTrue(
+            str_contains($etiqueta, ' open'),
+            'con informe el colapsable viene abierto: si no, el resultado de un importar sin JS se pinta plegado'
+        );
     }
 
     public function testLosSeisHuecosDelRosterExisten(): void
@@ -189,9 +253,10 @@ class AccessCardDesignTest
     /**
      * El alta tiene UN disparador, no dos apilados.
      *
-     * El panel ya envuelve el alta en un `<details>`; si el partial repite su
-     * propio `<details>`, el `<summary>` de dentro sale con la misma etiqueta y
-     * hay que pulsar dos veces para ver el formulario.
+     * El panel ofrece el alta con un botón que abre el modal; si el partial
+     * repitiera su propio disparador (o la etiqueta del botón apareciera además
+     * en el cuerpo del modal), habría dos puertas al mismo formulario. La
+     * etiqueta del botón sale una sola vez.
      */
     public function testElAltaTieneUnSoloDisparador(): void
     {
@@ -201,25 +266,36 @@ class AccessCardDesignTest
         assertEquals(
             1,
             substr_count($html, 'Añadir uno a la lista'),
-            'el alta no puede tener dos <details> con la misma etiqueta'
+            'el alta no puede tener dos disparadores con la misma etiqueta'
         );
     }
 
-    /** La tarjeta de Acceso tal como la pinta la ficha, en el modo que hay. */
+    /**
+     * La pantalla de acceso (cabecera + tablero + lista) en el modo que hay.
+     *
+     * La cabecera la pinta `_access_card.php` y el tablero y la lista
+     * `RosterPanel::panel()`, que `access.php` orquesta. El helper concatena los
+     * dos, como la pantalla real: si solo pintara el partial, los ids del roster
+     * no aparecerían y el contrato se comprobaría sobre algo que no existe.
+     */
     private static function tarjeta(): string
     {
         $formId = (int) self::$formId;
         $mode = FormAccess::mode(Form::settings($formId));
         $esAllowlist = $mode === FormSettings::ACCESS_ALLOWLIST;
 
-        return View::partial('dashboard/forms/_access_card', [
+        $html = View::partial('dashboard/forms/_access_card', [
             'form'        => Form::find($formId),
             'accessMode'  => $mode,
             'accessList'  => $esAllowlist ? FormAccess::allowlistFor($formId, '', 200) : [],
             'accessCount' => $esAllowlist ? FormAccess::allowlistCount($formId) : 0,
-            'roster'      => $mode === FormSettings::ACCESS_ROSTER ? RosterPanel::data($formId) : null,
-            'informe'     => null,
         ]);
+
+        if ($mode === FormSettings::ACCESS_ROSTER) {
+            $html .= RosterPanel::panel(RosterPanel::data($formId), Form::find($formId), null);
+        }
+
+        return $html;
     }
 
     private static function modo(string $modo, string $identificador = 'cedula'): void

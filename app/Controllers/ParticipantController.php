@@ -899,7 +899,7 @@ class ParticipantController
             Response::json(['ok' => false, 'error' => $mensaje], 419);
         } else {
             Session::flash('error', $mensaje);
-            Response::redirect('/forms/' . $id . '#participantes');
+            Response::redirect('/forms/' . $id . '/access#participantes');
         }
 
         return false;
@@ -997,7 +997,7 @@ class ParticipantController
      * Y solo cuando no hay JSON por una razón concreta: con JS el informe ya está
      * pintado en el `html` y dejarlo además en la sesión lo haría **reaparecer en
      * la siguiente carga** de la ficha, que es cuando el dueño vuelve a la
-     * pestaña «Lista» y se encuentra con un aviso de una importación que ya
+     * tarjeta de la lista y se encuentra con un aviso de una importación que ya
      * terminó de mirar.
      *
      * @param list<string> $cambia `list`, `stats`, `invites`, `catalog`, `addForm`,
@@ -1036,7 +1036,7 @@ class ParticipantController
         }
 
         Session::flash($exito ? 'success' : 'error', $mensaje);
-        Response::redirect('/forms/' . $id . '#participantes');
+        Response::redirect('/forms/' . $id . '/access#participantes');
     }
 
     private static function wantsJson(): bool
@@ -1094,7 +1094,7 @@ class ParticipantController
      *
      * Vive en i18n y no en un array del controlador porque la misma etiqueta sale
      * en el error de la importación, en la cabecera de la columna y en el texto de
-     * ayuda de la pestaña; tres sitios con un array propio se quedan desfasados en
+     * ayuda de la pantalla; tres sitios con un array propio se quedan desfasados en
      * cuanto se traduce.
      */
     private static function nombreIdentificador(string $tipo, string $locale): string

@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 102 archivos, 1139 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 103 archivos, 1143 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -52,7 +52,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (18), `lang/{es,en}.php`.
-  `views/` = 69 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
+  `views/` = 70 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **60 de los 102 archivos tocan la BD real** (los que llaman
+- **61 de los 103 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -465,8 +465,9 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `ParticipantController::index()` (la API JSON) usa 50 y
   `RosterPanel::POR_PAGINA` (la pantalla) usa 25. El 50 es un contrato con su test
   atado al número; el 25 es una decisión de pantalla, porque cada fila lleva su
-  `<details>` de edición con un input por atributo y a 50 el botón de «Quitar» deja
-  de notarse. Si se cambian, se cambian los dos sitios y sus tests.
+  menú `⋯` con la edición (`#rowactions-<pid>`, un input por atributo) y a 50 el
+  botón de «Quitar» deja de notarse. Si se cambian, se cambian los dos sitios y sus
+  tests.
 
 **El correo de invitación (fase 10)**
 
@@ -710,16 +711,81 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   nuevo dejó de taparlo y el test falló sin que el código vigilado cambiara
   (`FormAccessTest`).
 
-**El panel de la ficha (fase 5)**
+**El panel de participantes (fase 5; en su propia pantalla desde el rediseño)**
 
-- `roster` tiene su propia rama en `_access_card.php` y su propio partial:
-  meterlo en el `else` habría producido un alta de correo por persona. Y el `else`
-  sigue siendo exactamente la allowlist de F4 (`testLaRamaDeLaAllowlistNoSeHaTocado`).
+- **La tarjeta de Acceso y su listado viven en `GET /forms/{id}/access`**, no en la
+  ficha. Se separaron porque el listado del roster (pestañas, alta, importación y,
+  desde el rediseño, modales) no cabía con dignidad en la columna de los ajustes de
+  la ficha. La ficha lleva un botón **«Participantes»** entre «Editar campos» y
+  «Respuestas» (`show.php`). El **modo** y el **identificador**
+  (`settings.access.mode`) se siguen editando en «Ajustes del formulario» de la
+  ficha: `access.php` los LEE. Mismos guards que `show()` (`canEdit`).
+- **La pantalla son CUATRO tarjetas a todo el ancho, no una** (rediseño
+  2026-10-15): la **cabecera** de acceso (`#access`, que pinta `_access_card.php`),
+  el **tablero** (`#rosterBoardCard`: `#rosterStats` + `#rosterInvites`), la
+  **lista** (`#rosterListCard`: buscador + filas + paginador) y la **importación**
+  (`#rosterImportCard`). Antes iban apiladas dentro de `#access` y una lista real
+  se leía como un bloque recargado. `RosterPanel::panel()` lo llama `access.php` y
+  **no** `_access_card.php`: la cabecera no cambia con el estado de la lista ni la
+  lista con el modo de acceso. Los huecos (`rosterStats`/`rosterInvites`/…) no
+  cambian de id, así que `RosterPanel::html()` los repone igual. Los tests que
+  pintan el partial `_access_card` solo (`AccessCardDesignTest`, `RosterPanelTest`)
+  concatenan el panel en su helper, como la pantalla real.
+- **La cabecera de los modales del roster replica la de `/admin`**
+  (`modal-header app-navbar text-white border-0 py-2` + `app-logo-sm` + `btn-close
+  btn-close-white`), y el **buscador de participantes es un `input-group`** (icono +
+  campo + botón «Buscar», en la misma fila que «Añadir uno a la lista»).
+- **Los dos modales van a UNA columna** (`col-12`, como el alta de usuario de
+  `/admin`): en dos columnas, con tres o cuatro atributos, los campos quedaban
+  estrechos y desalineados. El de alta se queda a **ancho por defecto** (el mismo
+  patrón que `/admin`) y el de edición bajó de `modal-xl` a **`modal-lg`**: con una
+  sola columna, en `xl` los inputs salían de más de 1000 px. Y los **botones del
+  modal de edición se alinean en un pie propio**: «Quitar» (`data-confirm`, a la
+  izquierda) y «Guardar» a la derecha con `ms-auto`, en un `d-flex` **fuera** del
+  `<form>` de edición; el «Guardar» se ata con `form="rosterEditForm<pid>"`, el
+  mismo patrón del «Guardar» de la ficha (`vfSubmitButton()` ya busca
+  `button[form="…"]`). El error de la fila (`#rosterEditError<pid>`) sigue **dentro**
+  del form, que es donde `data-vf-error` lo pinta.
+- **La tarjeta «Importar» va en DOS columnas** (`_roster_panel.php`: `col-lg-7`
+  «Subir un archivo» con plantilla, formulario e informe, y `col-lg-5` el catálogo
+  `#rosterCatalog`), ambas **dentro de un `<details>`** con `summary.vf-import-summary`
+  (el tris de colapso es CSS propio, no Bootstrap), y «Vaciar la lista» cierra
+  abajo **a todo el ancho pero FUERA del `<details>`**, con su `hr` y su
+  explicación: en una sola columna, un catálogo de veinte atributos empujaba el
+  formulario de importar fuera de la vista; y como lo único que no se puede deshacer
+  viviera plegado, parecería que la función ya no existía. Lo ata
+  `AccessCardDesignTest::testVaciarLaListaQuedaFueraDelColapsable`.
+- **`FormPanel::accessSlot()` ya no existe** y `json()` no acepta `$extraSlots`:
+  guardar ajustes devuelve **solo** los cuatro huecos del estado (`slots()`), no la
+  tarjeta. La tarjeta se pinta directa en `access.php`, y su repintado
+  (`data-vf-async="slots"` del alta/borrado) la repone por los huecos internos que
+  viven en `_access_card.php`, no por un hueco de la ficha. Lo ata
+  `AsyncFormActionsTest::testGuardarAjustesNoReponeLaTarjetaDeAccesoQueYaTieneSuPantalla`.
+- `roster` tiene su propia rama en `_access_card.php` (solo la cabecera) y su
+  propio partial (`_roster_panel.php`: el tablero y la lista, que `access.php`
+  compone): meterlo en el `else` habría producido un alta de correo por persona. Y
+  el `else` sigue siendo exactamente la allowlist de F4
+  (`testLaRamaDeLaAllowlistNoSeHaTocado`).
+- **Alta y edición del listado van en MODAL, con la UX de `/admin`** (y se acepta
+  perder la edición sin JS): el alta conserva camino sin JS (el formulario se sirve
+  EN LÍNEA y `moverFormulariosInline()` de `dashboard.js` lo traslada a
+  `#rosterAddModal`, con `data-vf-modal-move="#rosterAddModal"` + `data-vf-modal-form`
+  sobre `#rosterAddForm`); la edición por fila es el mismo patrón que la tabla de
+  usuarios (`⋯` = `data-vf-participant`, panel `#rowactions-<pid>` que se MUEVE a
+  `#rosterEditModal` y se devuelve al cerrar). `dashboard.js` generalizó
+  `initTablaAcciones()` a **`initAccionesDeFila(modalId, atributo, prefijoCaja)`**,
+  que sirven tanto `/admin/users` como el roster. Los dos modales van a nivel
+  SUPERIOR del fragmento (fuera de `#participantes`): un `.modal` anidado lo
+  descarta el parser (`ViewStructureTest`).
+- **El listado del roster pagina con `views/dashboard/_pagination.php`** (el mismo
+  paginador que el dashboard y `/admin`): enlaces reales, `POR_PAGINA = 25`, y
+  conserva `q`/`sort` en el `$qs`. Ya no hay «Anterior/Siguiente» propio ni «Página
+  X de Y» en el toolbar.
 - **El panel son SEIS huecos y ninguno está en un `<form>`**: `rosterStats`,
   `rosterList`, `rosterCatalog`, `rosterAddForm`, `rosterImportReport` y
   `rosterInvites`. Los tres markup salen de `RosterPanel::html()`, que pinta **los
-  mismos partials** que la ficha: con dos copias, la lista repuesta tras un borrado y
-  la que se vería recargando divergirían sin que nada fallara.
+  mismos partials** que la pantalla: con dos copias, la lista repuesta tras un
+  borrado y la que se vería recargando divergirían sin que nada fallara.
 - **Cada acción declara qué huecos cambian** (`$cambia` en `ok()`): alta/edición/
   borrado/vaciar → lista+números+invitaciones; baja de atributo →
   lista+catalogo+alta; importación → los seis. Reponerlos todos hace un
@@ -733,24 +799,47 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **El alta NO repone `rosterAddForm`**: el repintado borraría lo que el dueño
   tiene a medio escribir y el foco que devuelve `data-vf-clear` apuntaría a un nodo
   que ya no está.
-- **Las pestañas NO son el `tab` de Bootstrap**: `.tab-pane` sin `.active` está
-  oculto por CSS, así que sin JS desaparecería un panel entero. El servidor pinta
-  las dos zonas SIN `hidden` y `dashboard.js` lo pone. Si el servidor empezara a
-  pintar `hidden`, el segundo panel se pierde y ningún test de PHP lo nota
+- **Las pestañas del roster se retiraron con la separación Lista/Importar**: no
+  quedan `vf-tabs*` en el CSS, ni `initTabs()`/`vfInitTabs` en `dashboard.js`/`app.js`,
+  ni `data-vf-tab` en ninguna vista. Lo que antes se alternaba son **dos tarjetas
+  apiladas** (lista, importación), así que el `<details>` es el único colapso que
+  queda y es **nativo** (se ve y funciona sin JS). `testLaTarjetaDeImportarSePliegaConCssPropio`
+  además mira que `.vf-tabs` no haya vuelto al CSS: verificar que una función retirada
+  sigue funcionando no dice nada de la pantalla nueva.
+- **`#vfPaneRosterLista` y `#vfPaneRosterImportar` conservan `data-vf-pane` sin
+  `hidden`**: son los dos identificadores con que los tests (y el CSS) distinguen
+  las zonas, y el servidor sigue pintando las dos a la vista. Si empezara a pintar
+  `hidden`, una tarjeta entera se perdería y ningún test de PHP lo notaría
   (`testLasDosZonasSePintanLasDosYNingunaVieneEscondida`).
-- **La búsqueda y el orden viajan en la URL** (`/forms/{id}?q=…&page=…`), y las
-  acciones por fetch los reponen en `rosterQ`/`rosterPage`/`rosterSort`. Sin ellos,
-  borrar a alguien salta a la primera página y a ordenar por cédula, y el cambio
-  parece un fallo de la operación.
+- **La búsqueda del listado es AJAX y cambia la URL por `pushState`**: el form
+  `data-vf-roster-search` de `_roster_panel.php` se envía con
+  `X-Requested-With`, el servidor (`FormController::access()`) responde solo
+  `['rosterList' => …]` cuando esa cabecera va con modo `roster`, y
+  `initBuscarRoster()` repinta `#rosterList` y escribe `?q=…&page=…&sort=…`.
+  **Sin la cabecera la misma ruta sirve la página entera**, que es el camino nativo
+  y el fallback de `form.submit()`: un `fetch` que no devuelve JSON no mata el
+  formulario. `popstate` re-sincroniza el campo. Lo atan
+  `AccessPageTest::testLaBusquedaPorAjaxRespondeJSONConElHuecoDeLaLista` y
+  `testSinCabeceraJsonSigueSiendoLaPaginaEntera`, y
+  `RosterPanelTest::testElBuscadorDelRosterSeEnviaSinRecargar`.
+- **`initAccionesDeFila()` es DELEGACIÓN en `document`** (con guarda
+  `data-vf-actions-ready`), no un listener por botón: repintar `#rosterList`
+  tras buscar o borrar sustituiría nodos con listeners colgados y los `⋯` de las
+  filas nuevas dejarían de abrir el modal. Por eso no hace falta re-correr
+  `vfInitAdminModals()` después de cada repintado.
+- **La búsqueda y el orden viajan en la URL**
+  (`/forms/{id}/access?q=…&page=…&sort=…`), y las acciones por fetch los reponen en
+  `rosterQ`/`rosterPage`/`rosterSort`. Sin ellos, borrar a alguien salta a la primera
+  página y a ordenar por cédula, y el cambio parece un fallo de la operación.
 - **La búsqueda es un `LIKE '%…%'`**, así que `V-1` también casa con `V-10`. Un test
   que filtre esperando una fila tiene que usar cédulas de ancho fijo (`V-01`).
 - **El informe de la importación llega por los DOS caminos** y son decisiones
   distintas: con JS va en `html.rosterImportReport` —**también con `ok:false`**, que
   es cuando más falta hace, y `app.js` lo aplica antes de pintar el aviso—; sin JS
-  va en `Session::flashValue('roster_report')`, que consume `FormController::show()`
+  va en `Session::flashValue('roster_report')`, que consume `FormController::access()`
   con `takeValue()` (un solo uso). Solo se guarda en sesión en el camino nativo: si
   se guardara también con JS, el informe reaparecería en la siguiente carga de la
-  ficha.
+  pantalla.
 - **Un `$error` con cero omitidas NO se pinta como informe** (`informe()` devuelve
   `null`): un `.xlsx` ilegible no ha guardado «las 0 filas», y el partial con
   `omitidos = 0` diría exactamente eso al lado de un mensaje que sí dice la verdad.
@@ -817,10 +906,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   está antes de los modales: anidarlo dentro de algo oculto no cambia nada de lo que
   se ve, y por eso el fallo parecía del modal y no de la vista. **Cuando algo se ve
   pero no funciona, comprueba que lo que se movió estaba vacío.**
-- `ViewStructureTest` recorre las 69 vistas como el parser del navegador: ninguna
+- `ViewStructureTest` recorre las 70 vistas como el parser del navegador: ninguna
   etiqueta sin cerrar, y **ningún `.modal` dentro de otro elemento** (todo lo que lo
   contiene está oculto, por definición casi). Los dos tests llevan guard
-  anti-vacío —`count($vistas) >= 50` (hay 69), `> 1800` aperturas vistas y
+  anti-vacío —`count($vistas) >= 50` (hay 70), `> 1800` aperturas vistas y
   `>= 6` modales encontrados—
   porque un test de estructura que no recorre pasa verde por construcción, y así
   pasó al escribirlo (`foreach` sobre el `int` de `preg_match_all`).
@@ -853,11 +942,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   panel dejaría de mentir por poco.
 - **Un hueco va con lo que depende de SU estado, no con lo que se repinta de
   más**: `slots()` son los cuatro de `forms.status` y se devuelven en todas las
-  acciones de estado; la tarjeta de Acceso (`vfSlotAccess`, `accessSlot()`) es de
-  los **ajustes**, y por eso va aparte y solo la manda `updateSettings()`.
-  Sumarla a `slots()` repondría la tarjeta en cada publicar/cerrar/aprobar, y con
-  ella el enlace recién emitido (que `issue()` rota al regenerarlo) y lo que
-  alguien tuviera a medio teclear en el alta. Al añadir un hueco, pregunta de
+  acciones de estado. La tarjeta de Acceso **ya no es un hueco de la ficha**: tiene
+  pantalla propia (`GET /forms/{id}/access`) y la pinta `access.php`; su repintado
+  interno (alta/borrado de la allowlist) va por `data-vf-async="slots"` y repone
+  sus huecos propios, no los de la ficha. Al añadir un hueco, pregunta de
   qué estado depende: si es de otro que no cambia, `js-auto-submit` lo despacha
   **sin** `html` (el `select` ya está en el valor nuevo), y si hay algo que
   reponer, el `id` lo compone el POST y el servidor devuelve ese mismo nombre.
@@ -1443,9 +1531,9 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 521 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 539 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
-  diálogo de confirmación con el alta de la allowlist U, la pestaña de
+  diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica
   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
   el correo de invitación AA, el listado paginado del panel AB, la galería del

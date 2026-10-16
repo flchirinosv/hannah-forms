@@ -19,6 +19,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
               // que usa la tarjeta del dashboard. ?>
         <div class="d-flex flex-wrap gap-2 app-head-actions">
             <a href="/forms/<?= (int) $form['id'] ?>/builder" class="btn btn-primary app-btn-primary"><i class="fa-solid fa-pen me-1"></i>Editar campos</a>
+            <a href="/forms/<?= (int) $form['id'] ?>/access" class="btn btn-outline-primary"><i class="fa-solid fa-users me-1"></i>Participantes</a>
             <a href="/forms/<?= (int) $form['id'] ?>/responses" class="btn btn-outline-primary"><i class="fa-solid fa-inbox me-1"></i>Respuestas</a>
             <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-outline-success"><i class="fa-solid fa-chart-column me-1"></i>Analítica</a>
             <div class="dropdown app-dash-dd">
@@ -107,60 +108,12 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                 </div>
             </div>
 
-            <?php // F4 — Acceso. La lista se edita aquí y NO en el builder a propósito:
-                  // quitar un email revoca sus enlaces, y esa consecuencia se ve
-                  // mejor junto al formulario que dentro de un modal de ajustes.
-                  //
-                  // Va en la columna ANCHA y al final, y no dentro del desplegable
-                  // «Acceso» de «Ajustes del formulario», por dos razones. La
-                  // lista puede ser larga —cientos de correos— y en un `col-lg-4`
-                  // estiraba la columna de los ajustes; en la ancha se lee y no
-                  // empuja a nadie. Y el desplegable está dentro del formulario
-                  // de ajustes: meter aquí los formularios de la allowlist
-                  // anidaría dos `<form>`, que no es HTML válido y el parser
-                  // descarta el interior —la lista desaparecería de verdad, no
-                  // solo de maquetación—. Un comentario como este no puede
-                  // escribir el identificador de ese formulario con sus comillas:
-                  // `AsyncActionsJsTest` cuenta esas apariciones en crudo y
-                  // daría un id repetido que no existe por ningún lado.
-                  //
-                  // Por eso el MODO sigue en el desplegable y esta tarjeta solo
-                  // explica y lista. Y las dos se nombran sin decir «más abajo»:
-                  // en dos columnas esa dirección depende de cuánto ocupe cada
-                  // una, así que el mismo texto era verdad o mentira según los
-                  // formularios que hubiera en la instancia. ?>
-            <?php $accessMode = $accessMode ?? 'public'; ?>
-            <?php $accessList = $accessList ?? []; ?>
-            <?php $accessCount = $accessCount ?? 0; ?>
-            <?php // Fase 5 — el listado solo se lee en modo `roster`, y el informe
-                  // solo existe una vez (en el GET que sigue a una importación
-                  // sin JavaScript): `FormController::show()` lo saca de la
-                  // sesión, y aquí solo se pasa. ?>
-            <?php $roster = $roster ?? null; ?>
-            <?php $informe = $informe ?? null; ?>
-            <div class="card border-0 shadow-sm" id="access"
-                 data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
-                 data-link-endpoint="/forms/<?= (int) $form['id'] ?>/access/link">
-                <?php // F0.4-cuatro — El CUERPO de esta tarjeta es un partial
-                      // (`_access_card.php`) porque lo que lo cambia es un ajuste
-                      // —el modo de acceso— y el guardado de ajustes va por fetch:
-                      // el `POST /settings` repone este hueco (`vfSlotAccess`) y sin
-                      // él la tarjeta seguía diciendo «Público» con el formulario
-                      // ya en «Solo la lista». El `id` va en el `card-body` y no en
-                      // la tarjeta, porque la tarjeta lleva lo que el JS lee
-                      // (`data-csrf`, `data-link-endpoint`) y repintar el hueco
-                      // borraría esos atributos. ?>
-                <div class="card-body" id="vfSlotAccess">
-                    <?= View::partial('dashboard/forms/_access_card', [
-                        'form'        => $form,
-                        'accessMode'  => $accessMode,
-                        'accessList'  => $accessList,
-                        'accessCount' => $accessCount,
-                        'roster'      => $roster,
-                        'informe'     => $informe,
-                    ]) ?>
-                </div>
-            </div>
+            <?php // F4 / Fase 5 — La tarjeta de acceso y el listado de participantes
+                  // viven ahora en su propia pantalla (`GET /forms/{id}/access`,
+                  // botón «Participantes» en la cabecera): juntos eran una tarjeta
+                  // de altura impredecible —la lista puede ser larga— dentro de la
+                  // columna de los ajustes. El MODO y el identificador se siguen
+                  // editando en «Ajustes del formulario», aquí abajo. ?>
         </div>
 
         <div class="col-lg-4">

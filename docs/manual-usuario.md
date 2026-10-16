@@ -481,11 +481,16 @@ Están repartidos en **dos sitios**, según lo que cambia el ajuste:
 | **Constructor** — botón *Configuración* | Tema, quiz, orden de las preguntas, avance automático, embed y anti-bot |
 
 La ficha se reparte en **dos columnas**. A la izquierda, la ancha, va lo que
-describe el formulario: *Detalles*, *Campos* y *Acceso*. A la derecha, la
-estrecha, lo que se comparte y lo que se configura: *Enlace para compartir* y
-*Ajustes del formulario*. La lista de correos está donde está porque puede
-llegar a tener cientos de líneas, y en la columna estrecha estiraba la de los
-ajustes. En móvil las dos columnas se apilan en ese mismo orden.
+describe el formulario: *Detalles* y *Campos*. A la derecha, la estrecha, lo que
+se comparte y lo que se configura: *Enlace para compartir* y *Ajustes del
+formulario*. En móvil las dos columnas se apilan en ese mismo orden.
+
+La **lista de correos** y el **listado de participantes** ya no viven en la ficha:
+tienen su propia pantalla, `GET /forms/{id}/access`, que abres con el botón
+**Participantes** (entre *Editar campos* y *Respuestas*). El **modo** de acceso y
+**con qué se identifica** cada persona se siguen editando en la ficha, en el grupo
+*Acceso* de *Ajustes del formulario*; esa pantalla los **lee** para saber qué panel
+pintar.
 
 La regla es qué cambia el ajuste: los de la ficha cambian **a quién llega el
 formulario y cuándo** (y ahí se ven las consecuencias: si la lista de correos
@@ -510,13 +515,14 @@ Grupos y valores por defecto:
 
 ### La lista de correos con acceso
 
-Cuando el modo de acceso es **Solo la lista**, la tarjeta *Acceso* de la ficha
-tiene el alta de correos. Escribes el correo y pulsas *Añadir*: la lista se
-actualiza en el sitio, sin recargar, y la caja queda lista para el siguiente. Si
+Cuando el modo de acceso es **Solo la lista**, la pantalla **Participantes**
+(`/forms/{id}/access`) tiene el alta de correos. Escribes el correo y pulsas
+*Añadir*: la lista se actualiza en el sitio, sin recargar, y la caja queda lista
+para el siguiente. Si
 el correo no es válido, ya estaba en la lista o el formulario no está en modo
 *Solo la lista*, el motivo sale debajo de la caja y **no** se añade nada.
 
-Dos botones accompany a cada correo de la lista: el de **enlace** genera y copia
+Dos botones acompañan a cada correo de la lista: el de **enlace** genera y copia
 el enlace de acceso de esa persona, y el de **quitar** la saca de la lista.
 Quitar **invalida los enlaces que ya se le hayan enviado**: no es solo borrar una
 fila. Los dos piden confirmación.
@@ -526,9 +532,9 @@ correos sin volver al ratón. Sin JavaScript, el alta sigue funcionando igual:
 el formulario se envía y la página se recarga.
 
 El **modo** se cambia en el grupo *Acceso* de la tarjeta *Ajustes del
-formulario*, con su botón *Guardar ajustes*. Ese guardado tampoco recarga, y la
-tarjeta *Acceso* se entera: pasa a decir «Solo la lista» con el alta y los
-correos, o a «Público» sin ellos, sin tocar nada más.
+formulario* de la ficha, con su botón *Guardar ajustes*. Esa pantalla de
+**Participantes** es la que dice «Solo la lista» con el alta y los correos, o
+«Público» sin ellos, sin tocar nada más.
 
 > El enlace se genera **al vuelo**: el token de acceso solo existe en claro en
 > el momento de emitirlo, así que si el portapapeles falla, la caja de texto que
@@ -772,19 +778,27 @@ cualquiera de los cuatro modos.
 
 ### 12.1 El panel de Participantes
 
-Una vez cargada la lista, la tarjeta **Acceso** de la ficha tiene el panel del
-listado, con dos zonas (Lista / Importar) y siete cosas en total:
+Una vez cargada la lista, la pantalla **Participantes** (`/forms/{id}/access`,
+botón *Participantes* en la ficha) se organiza en **cuatro tarjetas**: arriba, la
+cabecera de **acceso** (cómo entra la gente); debajo, el **resumen** (los números
+y el botón de invitar); después, la **lista**; y al final, la **importación**,
+plegada. Son siete cosas en total:
 
 **Lista** — todo lo del día a día:
 
 1. **Los números**: cuántas personas hay en total, cuántas han respondido,
    cuántas quedan por responder y cuántas han recibido el enlace por correo.
 2. **El botón de invitar por correo** (ver §12.3).
-3. **El alta de una persona** suelta, para quien llega tarde.
-4. **La lista** en sí: con buscador, orden por columna, edición de cada persona
-   y su código de entrada.
+3. **El alta de una persona** suelta, para quien llega tarde. El botón *Añadir a la
+   lista* abre un diálogo con el formulario (una sola columna, para que los campos
+   se lean enteros).
+4. **La lista** en sí, con buscador (campo + botón *Buscar*), orden por columna y
+   un menú `⋯` por fila que abre la edición de esa persona y su código de entrada.
+   La lista se **pagina** de 25 en 25, con el recuento total, el número de página
+   y flechas de anterior/siguiente.
 
-**Importar** — la lista en sí y su formato:
+**Importar** — el archivo y su formato. La tarjeta viene **plegada**: pulsa su
+título para abrirla.
 
 5. **Descargar la plantilla** o **subir un `.xlsx`**. La plantilla tiene una hoja
    con una fila de encabezados; las columnas fijas (`cédula`, `nombre`,
@@ -792,20 +806,26 @@ listado, con dos zonas (Lista / Importar) y siete cosas en total:
    genera la app) se reconocen por su encabezado, y **cualquier otro
    encabezado es un atributo**.
 6. **El informe de una importación**: qué filas entraron, cuántas quedaron
-   fuera y por qué, con el detalle de las omitidas.
+   fuera y por qué, con el detalle de las omitidas. Tras importar, la tarjeta se
+   abre sola para que veas el resultado.
 7. **El catálogo de atributos**: las columnas extra (sede, zona, segmento…) que
    puedes renombrar o quitar. Se administra en el mismo panel, junto al
    importador, porque **es el formato del `.xlsx`**: vaciar la lista no lo borra.
 
+Dentro de **Importar**, el formulario de subida y el catálogo de atributos van
+uno al lado del otro, y el botón *Vaciar la lista* queda **fuera** del bloque
+plegable, abajo del todo: es lo único que no se puede deshacer.
+
 > La búsqueda es un «contiene»: buscar `V-1` también encuentra `V-10`. Usa
 > identificadores de ancho fijo (`V-01`) si te importa. La lista se muestra de
-> 25 en 25.
+> 25 en 25. La búsqueda **no recarga la página**: cambia solo la lista y la
+> dirección, así que puedes compartirla o volver con «atrás».
 
 ### 12.2 Importar
 
 1. Descarga la plantilla y rellénala. Los identificadores van **como texto**, no
    como número (una cédula `00123` tiene tres ceros).
-2. En el panel Participantes, en la zona **Importar**, sube el archivo.
+2. En el panel Participantes, abre la tarjeta **Importar** y sube el archivo.
 3. Elige si **fusiona** con lo que ya había o si **reemplaza** toda la lista.
 4. Lee el informe: dice cuántas filas entraron, cuántas quedaron fuera y por qué.
 
@@ -979,7 +999,8 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | Ruta | Qué es |
 |---|---|
 | `/dashboard` | Lista de tus formularios, paginada y con búsqueda, filtro de estado y orden en la URL. |
-| `/forms/{id}` | Ficha: enlace, QR, embed, respuestas, analítica, ajustes y la tarjeta **Acceso** (con el panel del listado si el formulario es de lista). |
+| `/forms/{id}` | Ficha: enlace, QR, embed, ajustes, y los botones *Editar campos*, *Participantes* y *Respuestas*. |
+| `/forms/{id}/access` | Pantalla de **Participantes**: la tarjeta de acceso (allowlist) y el listado de la lista, con buscador, paginación y edición. |
 | `/forms/{id}/builder` | Constructor. |
 | `/responses` | Respuestas de todos tus formularios. |
 | `/analytics` | Analítica agregada. |

@@ -171,25 +171,22 @@ class AsyncFormActionsTest
     }
 
     /**
-     * Guardar ajustes repone TAMBIÉN la tarjeta de Acceso, que es lo único que
-     * depende del modo.
+     * Guardar ajustes NO repone la tarjeta de Acceso: vive en su propia pantalla.
      *
-     * El hueco va aparte de los cuatro del estado (`FormPanel::accessSlot()`) y
-     * por eso lo pedía solo el guardado de ajustes: `slots()` se devuelve también
-     * al publicar y al cerrar, que es cuando el modo no ha cambiado, y mandar
-     * esa tarjeta ahí tiraría el enlace de acceso recién emitido y lo que
-     * alguien tuviera escrito en el campo del alta.
+     * Antes la tarjeta de Acceso era un quinto hueco de la ficha que el guardado
+     * de ajustes tenía que repintar (`FormPanel::accessSlot()`). Desde que tiene
+     * pantalla propia (`/forms/{id}/access`) ya no está en la ficha: el POST
+     * devuelve solo los cuatro huecos del estado y la tarjeta se lee —ya con el
+     * modo nuevo— al abrir esa pantalla. Reponerla aquí la devolvería también al
+     * publicar o cerrar, que es cuando el modo no ha cambiado.
      *
-     * Lo que se comprueba es el modo NUEVO en el HTML: es un ajuste que se
-     * guarda bien y no se ve, y eso no da error ni en el navegador ni en el log.
+     * Lo que sí se guarda es el modo: sin eso, la pantalla de acceso lo leería
+     * viejo. Por eso se relee de la base y no del POST.
      */
-    public function testGuardarAjustesReponeLaTarjetaDeAcceso(): void
+    public function testGuardarAjustesNoReponeLaTarjetaDeAccesoQueYaTieneSuPantalla(): void
     {
         $this->publish();
-        FormAccess::addEmail((int) self::$formId, 'antes@ejemplo.com');
 
-        // A «solo la lista»: tiene que volver la lista CON el alta, que es la
-        // parte que no existía en la pantalla anterior.
         $r = $this->post('updateSettings', new FormController(), (int) self::$formId, [
             'access_mode' => 'allowlist',
         ]);
@@ -197,43 +194,19 @@ class AsyncFormActionsTest
         assertTrue($r['json']['ok'] ?? false, 'guardar ajustes por fetch responde ok');
         $html = (array) ($r['json']['html'] ?? []);
 
-        assertTrue(
-            isset($html['vfSlotAccess']),
-            'el hueco de la tarjeta de Acceso viene en el mismo POST que la insignia: '
-                . 'sin él, cambiar «quién puede responder» se guardaba y la tarjeta '
-                . 'seguía diciendo el modo anterior'
-        );
-        $tarjeta = (string) $html['vfSlotAccess'];
-        assertTrue(
-            str_contains($tarjeta, 'id="accessAddForm"') && str_contains($tarjeta, 'antes@ejemplo.com'),
-            'y vuelve pintada con la lista, que es lo que el modo nuevo habilita'
+        assertSame(
+            ['vfSlotStatusBadge', 'vfSlotReviewTrail', 'vfSlotActions', 'vfSlotShare'],
+            array_keys($html),
+            'el POST devuelve los cuatro huecos del estado y ninguno de acceso'
         );
         assertTrue(
-            str_contains($tarjeta, 'Solo la lista'),
-            'la insignia de la tarjeta dice el modo que queda'
+            !isset($html['vfSlotAccess']),
+            'la tarjeta de Acceso ya no es un hueco de la ficha: vive en /forms/{id}/access'
         );
-
-        // Y a «público»: la lista desaparece de la tarjeta (dejarla puesta sería
-        // decir que el formulario está cerrado para el mundo cuando no lo está).
-        $r2 = $this->post('updateSettings', new FormController(), (int) self::$formId, [
-            'access_mode' => 'public',
-        ]);
-        $tarjeta2 = (string) ($r2['json']['html']['vfSlotAccess'] ?? '');
-
-        assertTrue(
-            str_contains($tarjeta2, 'Público'),
-            'al volver a público, la insignia lo dice'
-        );
-        assertTrue(
-            !str_contains($tarjeta2, 'id="accessAddForm"'),
-            'y el alta de la lista ya no se pinta: es la otra variante de la tarjeta'
-        );
-
-        // Los cuatro huecos del estado siguen ahí: `accessSlot()` se SUMA, no
-        // reemplaza. Sin esto, añadir el quinto hueco habría roto la insignia.
-        assertTrue(
-            isset($r2['json']['html']['vfSlotStatusBadge'], $r2['json']['html']['vfSlotShare']),
-            'y los cuatro huecos del estado vienen igualmente: son cinco, no uno'
+        assertSame(
+            'allowlist',
+            FormAccess::mode(Form::settings((int) self::$formId)),
+            'el modo se guardó, que es lo que leerá la pantalla de acceso'
         );
     }
 

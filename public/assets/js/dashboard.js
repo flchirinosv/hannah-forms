@@ -532,139 +532,6 @@
 })();
 
 /* ---------------------------------------------------------------------------
- * Pestañas de un panel: `data-vf-tabs`
- *
- * Fase 5 (listado de participantes). La tarjeta de Acceso trae dos pestañas
- * («Lista» e «Importar») y aquí está el interruptor.
- *
- * ## Por qué NO es el `tab` de Bootstrap
- *
- * Porque el de Bootstrap esconde sus paneles con CSS (`.tab-pane` sin `.active` es
- * `display: none`), así que sin JavaScript el segundo panel **desaparece sin decir
- * nada**. Aquí todo lo que hay debajo es de dueño y con `Access::canEdit()` detrás:
- * un panel que depende de JS para existir es un panel que se pierde en el
- * navegador que menos lo puede permitir.
- *
- * Con `hidden` (el atributo nativo) el degradado sale solo: la vista pinta los dos
- * paneles SIN `hidden` y este script lo pone. Sin JS, no hay nadie que lo ponga y
- * se ven los dos, uno debajo de otro.
- *
- * ## El estado va en `localStorage` por PANTALLA, como los grupos
- *
- * `vf:tab:<clave>`, con la clave del contenedor (`data-vf-tabs="roster-<id>"`),
- * porque quien importa un archivo vuelve a la pestaña «Importar» con el informe
- * delante y no a «Lista» con el informe escondido en la otra.
- *
- * Y con la misma trampa que los grupos: el `hidden` que pone este arranque NO se
- * guarda. Si se guardara, la primera visita decidiría la pestaña para siempre y un
- * cambio futuro del valor por defecto no llegaría a nadie (`decididos`).
- * ------------------------------------------------------------------------- */
-(function () {
-    'use strict';
-
-    const leido = (clave) => {
-        try {
-            return window.localStorage.getItem('vf:tab:' + clave) || '';
-        } catch (e) {
-            return '';
-        }
-    };
-    const guardado = (clave, valor) => {
-        try {
-            window.localStorage.setItem('vf:tab:' + clave, valor);
-        } catch (e) { /* sin localStorage las pestañas funcionan igual, sin memoria */ }
-    };
-
-    /* El arranque vive en una función CON NOMBRE y expuesta en `window` porque
-     * este contenedor se puede REPINTAR: la tarjeta de Acceso entera es el hueco
-     * `vfSlotAccess`, y guardar los ajustes la repone con `innerHTML`. El HTML
-     * nuevo trae las pestañas otra vez SIN `hidden` (es lo que pinta el servidor
-     * a propósito), así que si nadie vuelve a inicializarlas se ven las dos
-     * zonas a la vez. `app.js` llama a `vfInitTabs()` después de reponer los
-     * huecos (guardar ajustes entre ellos).
-     *
-     * `data-vf-tabs-ready` hace el arranque idempotente: sin él, un contenedor
-     * que NO se repintó acumularía un `click` por cada repintado de otro hueco.
-     * El contenedor repintado es un nodo nuevo y no lo lleva, así que se vuelve
-     * a inicializar una sola vez. */
-    function initTabs() {
-        const contenedores = Array.prototype.slice.call(document.querySelectorAll('[data-vf-tabs]'))
-            .filter((caja) => caja.getAttribute('data-vf-tabs-ready') !== '1');
-        if (contenedores.length === 0) { return; }
-
-        contenedores.forEach((caja) => {
-            const clave = caja.getAttribute('data-vf-tabs') || '';
-            const botones = Array.prototype.slice.call(caja.querySelectorAll('[data-vf-tab]'));
-            if (botones.length === 0) { return; }
-
-            const panelDe = (boton) => document.getElementById(boton.getAttribute('data-vf-tab'));
-            const porId = (id) => botones.filter((b) => b.getAttribute('data-vf-tab') === id)[0];
-
-            /* Pintar una pestaña = `aria-selected` en el botón y `hidden` en el resto.
-             * Los paneles que no son el elegido se ocultan TODOS, no solo los que el
-             * botón conoce: un panel sin su botón (porque el servidor lo pintó y el
-             * JS no lo vio) se queda visible, que es lo que se ve sin JS. */
-            const pintar = (id, guardar) => {
-                const elegido = panelDe(porId(id) || botones[0]);
-                if (!elegido) { return; }
-                botones.forEach((b) => {
-                    const suyo = b.getAttribute('data-vf-tab') === elegido.id;
-                    b.classList.toggle('active', suyo);
-                    b.setAttribute('aria-selected', suyo ? 'true' : 'false');
-                    if (suyo) { b.removeAttribute('tabindex'); } else { b.setAttribute('tabindex', '-1'); }
-                    const panel = panelDe(b);
-                    if (panel) {
-                        if (suyo) { panel.removeAttribute('hidden'); } else { panel.setAttribute('hidden', ''); }
-                    }
-                });
-                if (guardar && clave !== '') { guardado(clave, elegido.id); }
-            };
-
-            /* El arranque NO guarda. La primera visita enseña la pestaña activa del
-             * servidor y no la fija para siempre (ver la nota de `decididos` arriba). */
-            const guardada = clave !== '' ? leido(clave) : '';
-            const inicial = (guardada && porId(guardada)) ? guardada : botones[0].getAttribute('data-vf-tab');
-            pintar(inicial, false);
-
-            botones.forEach((b) => {
-                b.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    pintar(this.getAttribute('data-vf-tab'), true);
-                });
-            });
-
-            /* Volver al panel después de buscar.
-             *
-             * El buscador es un GET a esta misma ficha, así que la página se recarga y
-             * el navegador deja arriba del todo, con el resultado fuera de pantalla:
-             * se ha buscado y parece que no ha pasado nada. El ancla está en el
-             * `action` de la vista, pero un envío GET puede llevársela, y por eso se
-             * la pone aquí justo antes de enviar.
-             *
-             * Y es una mejora, no la puerta: si el navegador se sigue llevando el
-             * fragmento por delante, la búsqueda devuelve la página entera con el
-             * resultado, solo que arriba del todo, y sin JavaScript es exactamente eso
-             * lo que hay. Lo único que hace este bloque es añadir un `#`; nunca toca
-             * el `query`, así que no puede cambiar lo que se busca. */
-            const buscador = caja.querySelector('form[role="search"]');
-            if (buscador) {
-                buscador.addEventListener('submit', function () {
-                    const accion = buscador.getAttribute('action') || '';
-                    if (accion.indexOf('#') === -1) {
-                        buscador.setAttribute('action', accion + '#' + caja.id);
-                    }
-                });
-            }
-
-            caja.setAttribute('data-vf-tabs-ready', '1');
-        });
-    }
-
-    window.vfInitTabs = initTabs;
-    initTabs();
-})();
-
-/* ---------------------------------------------------------------------------
  * Modales del panel: MOVER, no duplicar.
  *
  * Las altas y las acciones de fila del panel viven en un diálogo, pero su
@@ -680,6 +547,9 @@
  *    (`#rowactions-<uid>`) movido dentro y devuelto a su fila al cerrar, porque
  *    los formularios, los `id` de los huecos y los avisos son de esa fila.
  *    No hay un modal por usuario: sería clonar el panel una vez por fila.
+ *  - `[data-vf-participant]` hace lo mismo en la pantalla de participantes
+ *    (`/forms/{id}/access`): abre `#rosterEditModal` con el panel de esa fila
+ *    (`#rowactions-<pid>`). Mismo patrón, otro listado.
  * ------------------------------------------------------------------------- */
 (function () {
     'use strict';
@@ -697,42 +567,127 @@
         });
     }
 
-    function initTablaAcciones() {
-        const modalEl = document.getElementById('userActionsModal');
+    function initAccionesDeFila(modalId, atributo, prefijoCaja) {
+        const modalEl = document.getElementById(modalId);
         if (!modalEl || !window.bootstrap) { return; }
+        /* Idempotente: `iniciar()` puede reejecutarse tras un repintado, y sin esta
+         * guarda cada llamada acumularía un `click` más en el documento. */
+        if (modalEl.getAttribute('data-vf-actions-ready') === '1') { return; }
         const cuerpo = modalEl.querySelector('[data-vf-modal-body]');
         if (!cuerpo) { return; }
         const titulo = modalEl.querySelector('[data-vf-modal-title]');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         let origen = null;
 
-        Array.prototype.slice.call(document.querySelectorAll('[data-vf-user]')).forEach(function (boton) {
-            boton.addEventListener('click', function () {
-                const uid = boton.getAttribute('data-vf-user');
-                const caja = document.getElementById('rowactions-' + uid);
-                const panel = caja ? caja.firstElementChild : null;
-                if (!panel) { return; }
-                /* El panel es hijo de la caja oculta (el `<span hidden>`): se mueve
-                 * él, no la caja, o viajaría el `hidden` con nosotros. Al cerrar se
-                 * devuelve a su caja, que es de donde salió. */
-                origen = { panel: panel, caja: caja };
-                if (titulo) { titulo.textContent = boton.getAttribute('data-vf-user-name') || ''; }
-                cuerpo.appendChild(panel);
-                modal.show();
-            });
+        /* Delegación sobre el documento y no un `click` por botón: la lista del
+         * roster se repinta entera (borrar a alguien, buscar sin recargar), así
+         * que los `⋯` nuevos no tendrían listener y no abrirían nada. Con
+         * `closest`, cualquier botón presente o futuro del documento resuelve. */
+        document.addEventListener('click', function (e) {
+            const boton = e.target.closest('[' + atributo + ']');
+            if (!boton) { return; }
+            const id = boton.getAttribute(atributo);
+            const caja = document.getElementById(prefijoCaja + id);
+            const panel = caja ? caja.firstElementChild : null;
+            if (!panel) { return; }
+            /* El panel es hijo de la caja oculta (el `<span hidden>`): se mueve
+             * él, no la caja, o viajaría el `hidden` con nosotros. Al cerrar se
+             * devuelve a su caja, que es de donde salió. */
+            origen = { panel: panel, caja: caja };
+            if (titulo) { titulo.textContent = boton.getAttribute(atributo + '-name') || ''; }
+            cuerpo.appendChild(panel);
+            modal.show();
         });
 
         modalEl.addEventListener('hidden.bs.modal', function () {
             if (!origen) { return; }
-            cuerpo.removeChild(origen.panel);
-            origen.caja.appendChild(origen.panel);
+            /* La lista puede haberse repintado con el modal abierto (guardar por
+             * fetch repone `rosterList` y recrea el `<span>`): si la caja original
+             * ya no está en el documento, el panel se queda en el modal en vez de
+             * devolverse a un nodo muerto. */
+            if (origen.panel.parentNode === cuerpo) { cuerpo.removeChild(origen.panel); }
+            if (origen.caja && origen.caja.parentNode) { origen.caja.appendChild(origen.panel); }
             origen = null;
         });
+
+        modalEl.setAttribute('data-vf-actions-ready', '1');
     }
+
+    /* La búsqueda del roster sin recargar. El formulario es un GET a la MISMA
+     * pantalla (`/forms/{id}/access?q=…`) y sin JavaScript se va por su camino
+     * nativo, que ya funciona. Aquí se le añade el atajo: `fetch` con
+     * `X-Requested-With` para que `FormController::access()` responda JSON con el
+     * hueco `rosterList` repintado, y `pushState` para que la URL siga siendo la
+     * de la búsqueda (compartible, «atrás» funciona, recargar no la pierde).
+     *
+     * El modo de fallo que importa: si algo sale mal se cae al `submit()` nativo,
+     * nunca a una pantalla a medias. `vfPost`/`vfApplySlots` no sirven aquí porque
+     * son de POST; este es un GET y no lleva CSRF ni cuerpo. */
+    (function initBuscarRoster() {
+        const form = document.querySelector('[data-vf-roster-search]');
+        if (!form) { return; }
+
+        /* El envío NATIVO (el que hay sin JS, y el rescate si el `fetch` falla)
+         * tiene que aterrizar en el panel y no en lo alto de la pantalla: el
+         * `action` lleva el ancla. El `fetch` usa la acción SIN el fragmento
+         * (la URL de la petición no es la del navegador), pero el `submit()`
+         * nativo sí lo ve. Se lee antes de tocarlo para quedarnos con el destino
+         * limpio. Ojo: `form.action` devuelve el absoluto, se lee el atributo. */
+        const destino = (form.getAttribute('action') || '').split('#')[0];
+        if ((form.getAttribute('action') || '').indexOf('#') === -1) {
+            form.setAttribute('action', destino + '#participantes');
+        }
+
+        form.addEventListener('submit', function (e) {
+            if (typeof window.fetch !== 'function' || !window.history) { return; }
+
+            e.preventDefault();
+            const params = new URLSearchParams(new FormData(form));
+            const url = destino + '?' + params.toString();
+            const lista = document.getElementById('rosterList');
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then(function (res) {
+                    if (!res.ok) { throw new Error('HTTP ' + res.status); }
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (!data || data.ok !== true || !data.html || !lista) {
+                        form.submit();
+                        return;
+                    }
+                    /* `html` es un mapa de id → markup, igual que en el POST sin
+                     * recarga: hoy solo trae `rosterList`, pero se recorre entero
+                     * para que añadir un hueco al buscador no obligue a tocar esto. */
+                    Object.keys(data.html).forEach(function (id) {
+                        const slot = document.getElementById(id);
+                        if (slot) { slot.innerHTML = data.html[id]; }
+                    });
+                    window.history.pushState(null, '', url + '#participantes');
+                })
+                .catch(function () {
+                    /* Red caída, JSON inválido o un 500: se termina por donde
+                     * empezó todo, el GET nativo. `form.submit()` no dispara
+                     * `submit`, así que no vuelve a entrar aquí. */
+                    form.submit();
+                });
+        });
+
+        /* La URL del `pushState` y el `<input value>` del buscador tienen que
+         * decir lo mismo: al ir «atrás», el navegador restaura el `value` que
+         * había en ese momento, pero el buscador no se reenvía solo. Se copia el
+         * `q` de la URL al campo para que el formulario y la pantalla no mientan. */
+        window.addEventListener('popstate', function () {
+            const q = new URLSearchParams(window.location.search).get('q') || '';
+            const campo = form.querySelector('[name="q"]');
+            if (campo && campo.value !== q) { campo.value = q; }
+        });
+    })();
 
     function iniciar() {
         moverFormulariosInline();
-        initTablaAcciones();
+        initAccionesDeFila('userActionsModal', 'data-vf-user', 'rowactions-');
+        initAccionesDeFila('rosterEditModal', 'data-vf-participant', 'rowactions-');
     }
 
     /* Expuesta porque una repintada puede traer marcado nuevo que mover; hoy la

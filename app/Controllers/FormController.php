@@ -177,19 +177,86 @@ class FormController
             'reviewTrail'    => $form['status'] === 'in_review' || $form['reviewed_at'] !== null
                 ? Form::reviewTrail($id)
                 : null,
+            // Las etiquetas de los campos de tipo email alimentan el datalist de
+            // la confirmación: `notify.confirmation.to_field` se resuelve por
+            // etiqueta EXACTA y `Notifier` se come el fallo en silencio (una
+            // línea de log, ningún aviso), así que la lista es lo que quita la
+            // adivinanza. El builder lo sacaba de su estado en memoria; aquí se
+            // lee de la BD, que es donde están de verdad.
+            'emailFieldLabels' => $this->emailFieldLabels($id),
+        ]);
+    }
+
+    /**
+     * Pantalla del acceso y del listado de participantes.
+     *
+     * Antes era una tarjeta al final de la ficha; se movió aquí para aligerarla y
+     * dar sitio al listado del roster (alta, importación, búsqueda). El modo y el
+     * identificador se siguen editando en los ajustes de la ficha: esta pantalla
+     * los lee, no los cambia.
+     *
+     * Mismos guards que `show()` —`canEdit` es la única puerta—, y los mismos
+     * datos que alimentaban la tarjeta: la lista de la allowlist solo se carga en
+     * ese modo (recortada a 200) y el roster solo se consulta en `roster`.
+     */
+    public function access(int $id): void
+    {
+        $form = Form::find($id);
+        $user = Auth::user();
+
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+        if ($user === null) {
+            Response::redirect('/login');
+            return;
+        }
+        if (!$this->canEdit($form, (int) $user['id'])) {
+            Response::forbidden();
+            return;
+        }
+
+        $settings = Form::settings($id);
+        $mode = FormAccess::mode($settings);
+
+        /* La búsqueda del listado se puede hacer sin recargar la pantalla: el
+         * formulario es un GET y `dashboard.js` lo envía por `fetch` con
+         * `X-Requested-With`, así que la misma ruta responde JSON. El hueco que
+         * devuelve es `rosterList`, el mismo markup que pinta el GET normal
+         * (viene de `RosterPanel::html()`), y por eso los dos caminos no pueden
+         * divergir. Sin la cabecera —navegador sin JS o enlace compartido— la
+         * petición sigue el camino de siempre y sirve la pantalla entera. */
+        if (Response::wantsJson() && $mode === FormSettings::ACCESS_ROSTER) {
+            Response::json([
+                'ok'   => true,
+                'html' => RosterPanel::html(
+                    $id,
+                    (string) Request::query('q', ''),
+                    (int) Request::query('page', 1),
+                    (string) Request::query('sort', 'cedula'),
+                    ['list']
+                ),
+            ]);
+            return;
+        }
+
+        View::render('dashboard/forms/access', [
+            'form'        => $form,
+            'user'        => $user,
             // F4 — La lista solo se carga en modo `allowlist`, que es el único
             // caso en que existe: en los otros dos son dos consultas de más en
-            // cada visita al detalle. Y recortada a 200, porque pintar 5000
+            // cada visita a la pantalla. Y recortada a 200, porque pintar 5000
             // emails en un `<ul>` no ayuda a nadie a administrarlos.
-            'accessMode'     => FormAccess::mode($settings),
-            'accessList'     => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
+            'accessMode'  => $mode,
+            'accessList'  => $mode === FormSettings::ACCESS_ALLOWLIST
                 ? FormAccess::allowlistFor($id, '', 200)
                 : [],
-            'accessCount'    => FormAccess::mode($settings) === FormSettings::ACCESS_ALLOWLIST
+            'accessCount' => $mode === FormSettings::ACCESS_ALLOWLIST
                 ? FormAccess::allowlistCount($id)
                 : 0,
             // Fase 5 — La búsqueda y la página de la lista de participantes son
-            // un GET a ESTA misma ficha (`?q=`, `?page=`, `?sort=`), y no un
+            // un GET a ESTA misma pantalla (`?q=`, `?page=`, `?sort=`), y no un
             // fetch: así llegan sin JavaScript, se pueden compartir y el botón
             // «atrás» del navegador deshace una búsqueda. El ancla `#participantes`
             // es la que usan el POST nativo del alta y el redirect del
@@ -199,7 +266,7 @@ class FormController
             // Y el informe de la importación se saca de la sesión AQUÍ, una sola
             // vez: es lo que hace que el camino sin JavaScript enseñe las filas
             // que no entraron y no solo cuántas fueron.
-            'roster'         => FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER
+            'roster'      => $mode === FormSettings::ACCESS_ROSTER
                 ? RosterPanel::data(
                     $id,
                     (string) Request::query('q', ''),
@@ -207,16 +274,9 @@ class FormController
                     (string) Request::query('sort', 'cedula')
                 )
                 : null,
-            'informe'        => FormAccess::mode($settings) === FormSettings::ACCESS_ROSTER
+            'informe'     => $mode === FormSettings::ACCESS_ROSTER
                 ? Session::takeValue('roster_report')
                 : null,
-            // Las etiquetas de los campos de tipo email alimentan el datalist de
-            // la confirmación: `notify.confirmation.to_field` se resuelve por
-            // etiqueta EXACTA y `Notifier` se come el fallo en silencio (una
-            // línea de log, ningún aviso), así que la lista es lo que quita la
-            // adivinanza. El builder lo sacaba de su estado en memoria; aquí se
-            // lee de la BD, que es donde están de verdad.
-            'emailFieldLabels' => $this->emailFieldLabels($id),
         ]);
     }
 
@@ -504,14 +564,11 @@ class FormController
             : 'Ajustes guardados.';
 
         if ($json) {
-            /* F0.4-cuatro — Además de los cuatro huecos del estado, el de la
-             * tarjeta de Acceso: guardar ajustes es lo único que cambia el modo
-             * de acceso, y sin reponerlo la tarjeta seguía diciendo «Público» con
-             * el formulario ya en «Solo la lista» (o al revés, con el formulario
-             * abierto a todo el mundo y una lista que ya no protege nada). El
-             * hueco se pide DESPUÉS de guardar, para que el HTML sea el del
-             * ajuste que queda y no el del que se envió. */
-            FormPanel::json($id, $message, FormPanel::accessSlot($id));
+            /* Solo los cuatro huecos del estado. La tarjeta de Acceso ya no se
+             * repinta aquí: vive en su propia pantalla (`GET /forms/{id}/access`),
+             * que se lee al abrirla, así que guardar el modo no deja ninguna
+             * tarjeta desactualizada en la ficha. */
+            FormPanel::json($id, $message);
             return;
         }
 

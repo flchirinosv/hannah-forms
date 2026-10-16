@@ -34,7 +34,7 @@ use App\Services\RosterPanel;
  * se escribiría en un nodo que ya no está en el documento. Un mensaje invisible es
  * peor que un aviso flotante, y este botón no tiene un campo al que el aviso pueda
  * ser adyacente: es un botón y nada más. Por eso el resultado llega como `vfToast`,
- * el camino que ya usan las otras acciones de la pestaña.
+ * el camino que ya usan las otras acciones de la pantalla.
  *
  * ## El `data-confirm` dice cuántos
  *

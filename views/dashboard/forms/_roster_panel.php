@@ -6,39 +6,43 @@ use App\Core\View;
  * FASE 5 — El panel de participantes de la pantalla de acceso
  * (`/forms/{id}/access`).
  *
- * ## Dos tarjetas: el tablero y la lista (rediseño 2026-10-15)
+ * ## Tres tarjetas dentro del panel (rediseño 2026-10-15)
  *
- * Los números del formulario y la tabla de filas estaban apilados dentro de la
- * tarjeta de Acceso, y la suma se leía como un bloque recargado. Ahora el tablero
- * (números + invitaciones por correo) y la lista (buscador, filas y paginador) van
- * cada uno en su tarjeta, a todo el ancho. La cabecera de acceso es una tercera,
- * pero esa la pinta `_access_card.php`.
+ * El tablero de números y la lista están apilados con la cabecera de acceso, y a
+ * un listado real (buscador, 25 filas, paginador, dos modales) la suma se lee
+ * como un bloque recargado. Aquí cada cosa va en su tarjeta, a todo el ancho: el
+ * tablero (`#rosterBoardCard`, lo que es del formulario entero), la lista
+ * (`#rosterListCard`) y la importación (`#rosterImportCard`). La cabecera de
+ * acceso es una cuarta, pero esa la pinta `_access_card.php`.
  *
- * ## Por qué dos pestañas dentro de la tarjeta de la lista
+ * ## Lista e Importar son dos tarjetas, no dos pestañas
  *
  * Porque las dos cosas que hace el dueño con la lista —mirar quién está y meter
  * gente— no se usan juntas: quien importa 200 filas no está leyendo la tabla, y
  * quien busca a uno para cambiarle el correo no tiene un archivo delante. Con las
  * dos cosas en un bloque, la tabla de 25 filas empuja el formulario de importación
- * fuera de la pantalla, que es lo que pasa en las pantallas de verdad.
+ * fuera de la pantalla. Y con dos tarjetas no hace falta ningún interruptor que
+ * dependa de JavaScript para que la segunda *exista*: las dos están siempre.
  *
- * ## Las dos pestañas se ven SIN JavaScript, y es a propósito
+ * ## La tarjeta de importar se pliega con `<details>`, y «Vaciar» no
  *
- * El interruptor lo pone `dashboard.js` **añadiendo** `hidden` (el atributo
- * nativo), así que sin JS no hay nadie que lo ponga y las dos pestañas salen
- * abiertas, una debajo de otra. Es lo contrario de lo que hace
- * `data-bs-toggle` de Bootstrap, donde `.tab-pane` sin `.active` está oculto por
- * CSS: un panel que depende de JavaScript para *existir* desaparece sin decir
- * nada en el navegador que no lo tiene, y aquí todo lo que hay debajo es de
- * dueño, con `Access::canEdit()` detrás.
+ * El formulario de subir y el catálogo van dentro de un `<details>` **nativo**,
+ * cerrado por defecto: quien entra a mirar la lista no carga con un formulario de
+ * archivo. Un `<details>` lo abre el navegador solo, así que sin JavaScript sigue
+ * habiendo puerta (a diferencia de un panel que se esconde con CSS, que
+ * desaparece de verdad). Se **abre solo cuando hay informe**: sin JS el POST de
+ * importar es nativo y la recarga vuelve a pintar la tarjeta, y el resultado no
+ * puede quedar dentro de un colapso cerrado (un informe que hay que ir a buscar a
+ * mano es indistinguible de no haber informado). «Vaciar la lista» va **fuera**
+ * del colapsable y siempre a la vista: es lo único que no se puede deshacer, y lo
+ * que no se puede deshacer no se guarda detrás de un clic.
  *
  * ## El tablero va FUERA de `#participantes`
  *
  * Porque los números son del formulario entero (y lo mismo las invitaciones, que
- * no cambian al abrir una pestaña), así que no tienen por qué viajar con el
- * interruptor de la lista. `#rosterStats` y `#rosterInvites` siguen siendo los
- * mismos huecos que repone `RosterPanel::html()`: lo que cambió es su tarjeta, no
- * su contrato.
+ * no cambian al buscar), así que no tienen por qué viajar con el ancla de la
+ * lista. `#rosterStats` y `#rosterInvites` siguen siendo los mismos huecos que
+ * repone `RosterPanel::html()`: lo que cambió es su tarjeta, no su contrato.
  *
  * ## Los ids de los huecos van en ENVOLTORIOS `<div>`, nunca en el `<form>`
  *
@@ -51,15 +55,15 @@ use App\Core\View;
  *
  * ## El rediseño no cambió el contrato
  *
- * `#participantes`, `vfPaneRosterLista`/`vfPaneRosterImportar`, los dos
- * `data-vf-pane`, los seis huecos y las acciones con `data-confirm` siguen
- * siendo los mismos: lo único que cambió es el aspecto y que tablero y lista
- * viven en tarjetas distintas. Lo fija `RosterPanelTest`. `#rosterList` lo pone
- * su propio partial (`_roster_list.php`): antes el panel lo envolvía en OTRO
- * `<div id="rosterList">` y quedaba un id duplicado y anidado.
+ * `#participantes`, los seis huecos, los dos `data-vf-pane`
+ * (`vfPaneRosterLista`/`vfPaneRosterImportar`) y las acciones con `data-confirm`
+ * siguen siendo los mismos: lo único que cambió es el aspecto y que lista e
+ * importar viven en tarjetas distintas. Lo fija `RosterPanelTest`. `#rosterList`
+ * lo pone su propio partial (`_roster_list.php`): antes el panel lo envolvía en
+ * OTRO `<div id="rosterList">` y quedaba un id duplicado y anidado.
  *
  * Variables: `$form`, `$roster`, y opcionalmente `$informe` (el informe de la
- * última importación, que solo existe en el GET de la ficha; ver
+ * última importación, que solo existe en el GET de la pantalla; ver
  * `ParticipantController::import()`).
  *
  * @var array $form
@@ -108,37 +112,30 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
     </div>
 </div>
 
-<?php // TARJETA 2: la lista. Pestañas Lista/Importar, el buscador, las filas y el
-      // paginador. `#participantes` es el contenedor de las pestañas y `dashboard.js`
-      // lo marca con `data-vf-tabs-ready` para re-inicializarlo tras un repintado. ?>
-<div class="card border-0 shadow-sm" id="rosterListCard">
+<?php // TARJETA 2: la lista. El buscador, el alta de uno y las filas. `#participantes`
+      // es el ancla que usan la paginación, la búsqueda y los redirects, y
+      // `#vfPaneRosterLista` conserva su id y su `data-vf-pane` como contrato. ?>
+<div class="card border-0 shadow-sm mb-4" id="rosterListCard">
     <div class="card-body">
-        <div id="participantes" class="vf-tabs" data-vf-tabs="roster-<?= (int) $form['id'] ?>">
-            <div class="vf-tabs-nav" role="tablist" aria-label="Participantes">
-                <button type="button" class="vf-tab active" id="vfTabRosterLista" role="tab"
-                        aria-selected="true" aria-controls="vfPaneRosterLista" data-vf-tab="vfPaneRosterLista">
-                    <i class="fa-solid fa-users me-1"></i>Lista (<?= (int) $roster['total'] ?>)
-                </button>
-                <button type="button" class="vf-tab" id="vfTabRosterImportar" role="tab"
-                        aria-selected="false" aria-controls="vfPaneRosterImportar" data-vf-tab="vfPaneRosterImportar">
-                    <i class="fa-solid fa-file-arrow-up me-1"></i>Importar
-                </button>
-            </div>
-
-            <?php // «Lista»: el buscador, el alta de uno y las filas (el tablero y las
-                  // invitaciones quedaron arriba, en su tarjeta). ?>
-            <div id="vfPaneRosterLista" role="tabpanel" aria-labelledby="vfTabRosterLista" data-vf-pane">
+        <div id="participantes">
+            <div id="vfPaneRosterLista" data-vf-pane>
                 <?php // El buscador es un GET a la MISMA pantalla con `?q=` y `?page=`, y no
-                      // un fetch: así llega sin JavaScript, se puede compartir en un
-                      // correo y el botón «atrás» del navegador deshace una búsqueda. Las
-                      // acciones por fetch guardan la búsqueda actual en `rosterQ` /
-                      // `rosterPage` para reponer la misma vista en la que se estaba.
+                      // un fetch obligatorio: así llega sin JavaScript, se puede compartir
+                      // en un correo y el botón «atrás» del navegador deshace una búsqueda.
+                      // Con JavaScript, `dashboard.js` lo envía por `fetch`
+                      // (`data-vf-roster-search`) y repone `#rosterList` sin recargar:
+                      // el mismo POST responde HTML o JSON. Las acciones por fetch
+                      // guardan la búsqueda actual en `rosterQ` / `rosterPage` para
+                      // reponer la misma vista en la que se estaba.
                       //
-                      // El `sort` sí viaja (oculto) porque el orden también es estado de la
-                      // vista. La página NO viaja, y a propósito: una búsqueda nueva empieza
-                      // por la primera, que es lo que se espera de un buscador. ?>
+                      // El `sort` sí viaja (oculto) porque el orden también es estado de
+                      // la vista. La página NO viaja, y a propósito: una búsqueda nueva
+                      // empieza por la primera, que es lo que se espera de un buscador.
+                      // (El hueco que se repinta con JS es el más ancho: busca el
+                      // atributo `data-vf-roster-search` en `_roster_list.php`.) ?>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <form method="get" action="/forms/<?= $formId ?>/access" class="flex-grow-1" role="search">
+                    <form method="get" action="/forms/<?= $formId ?>/access" class="flex-grow-1"
+                          role="search" data-vf-roster-search>
                         <?php if ((string) $roster['sort'] !== 'cedula') { ?>
                             <input type="hidden" name="sort" value="<?= View::escape((string) $roster['sort']) ?>">
                         <?php } ?>
@@ -169,10 +166,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                           // sin JavaScript) y `moverFormulariosInline()` de `dashboard.js` lo
                           // traslada al diálogo `#rosterAddModal` —patrón de `/admin/users`—.
                           // El botón solo lo convierte en modal con JS; sin él sigue viéndose
-                          // el montaje y el botón no hace nada. Esto reemplaza al `<details>`
-                          // anterior, que era un cajón sin JS de Bootstrap: con la tarjeta de
-                          // Acceso en su propia pantalla ya hay sitio para el modal, y en la
-                          // misma página está el `⋯` de editar que lo necesita. ?>
+                          // el montaje y el botón no hace nada. ?>
                     <button type="button" class="btn btn-outline-primary btn-sm"
                             data-bs-toggle="modal" data-bs-target="#rosterAddModal">
                         <i class="fa-solid fa-user-plus me-1"></i>Añadir uno a la lista
@@ -194,13 +188,28 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                     'formId' => $formId,
                 ]) ?>
             </div>
+        </div>
+    </div>
+</div>
 
-            <?php // «Importar»: subir un archivo y el catálogo de atributos en DOS
-                  // columnas, porque el catálogo puede ser largo y el formulario corto
-                  // (en una sola columna, veinte atributos empujaban el botón de
-                  // importar fuera de la vista). «Vaciar la lista» cierra abajo, a todo
-                  // el ancho y separado: es lo único que no se puede deshacer. ?>
-            <div id="vfPaneRosterImportar" role="tabpanel" aria-labelledby="vfTabRosterImportar" data-vf-pane>
+<?php // TARJETA 3: importar. El `<details>` es nativo (sin JS sigue habiendo
+      // puerta) y va cerrado por defecto: quien mira la lista no carga con el
+      // formulario de subir. Dentro van el archivo, el «modo» y el catálogo, en
+      // DOS columnas porque el catálogo puede ser largo y el formulario corto.
+      // Se ABRE solo cuando hay informe: sin JS el POST es nativo y la recarga
+      // pintaría el resultado plegado, que es lo mismo que no pintarlo. ?>
+<div class="card border-0 shadow-sm" id="rosterImportCard">
+    <div class="card-body">
+        <?php $hayInforme = !empty($informe); ?>
+        <details class="vf-import-details"<?= $hayInforme ? ' open' : '' ?>>
+            <summary class="vf-import-summary">
+                <span class="fw-bold">
+                    <i class="fa-solid fa-file-arrow-up me-1 text-primary" aria-hidden="true"></i>Importar participantes
+                </span>
+                <span class="small text-muted ms-2 d-none d-sm-inline">Sube un <code>.xlsx</code> y gestiona el catálogo de atributos</span>
+            </summary>
+
+            <div id="vfPaneRosterImportar" data-vf-pane class="pt-3">
                 <div class="row g-4">
                     <div class="col-lg-7">
                         <h4 class="h6 fw-bold mb-1">
@@ -263,32 +272,32 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                             'formId' => $formId,
                         ]) ?>
                     </div>
-
-                    <?php // Vaciar la lista y quitar un atributo son las dos cosas que no se
-                          // pueden deshacer, así que las dos preguntan. Y «vaciar» NO borra
-                          // el catálogo (ver `FormParticipant::truncate()`): vaciar quita
-                          // gente, y las columnas son el formato del próximo archivo. ?>
-                    <div class="col-12">
-                        <hr class="my-0">
-                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
-                            <p class="small text-muted mb-0">
-                                <strong>Vaciar la lista</strong> quita a todas las personas. El catálogo
-                                de atributos se queda, para que el próximo archivo tenga el mismo formato.
-                            </p>
-                            <form method="post" action="/forms/<?= $formId ?>/participants/truncate"
-                                  data-vf-async="slots" data-confirm="¿Vaciar la lista entera? Se quedan fuera todas las personas; sus respuestas, si ya respondieron, siguen guardadas."
-                                  data-confirm-ok="Sí, vaciar" data-confirm-tone="danger">
-                                <?= \App\Core\Csrf::field() ?>
-                                <input type="hidden" name="rosterQ" value="<?= View::escape((string) $roster['q']) ?>">
-                                <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
-                                <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="fa-solid fa-eraser me-1"></i>Vaciar la lista
-                                </button>
-                            </form>
-                        </div>
-                    </div>
                 </div>
+            </div>
+        </details>
+
+        <?php // «Vaciar la lista» va FUERA del `<details>`: es lo único que no se puede
+              // deshacer, y no puede quedar detrás de un clic. Comprende y pregunta:
+              // quitar gente NO borra el catálogo (ver `FormParticipant::truncate()`),
+              // y el aviso lo dice para que nadie crea que se lleva el formato. ?>
+        <div class="vf-import-danger">
+            <hr class="my-0">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
+                <p class="small text-muted mb-0">
+                    <strong>Vaciar la lista</strong> quita a todas las personas. El catálogo
+                    de atributos se queda, para que el próximo archivo tenga el mismo formato.
+                </p>
+                <form method="post" action="/forms/<?= $formId ?>/participants/truncate"
+                      data-vf-async="slots" data-confirm="¿Vaciar la lista entera? Se quedan fuera todas las personas; sus respuestas, si ya respondieron, siguen guardadas."
+                      data-confirm-ok="Sí, vaciar" data-confirm-tone="danger">
+                    <?= \App\Core\Csrf::field() ?>
+                    <input type="hidden" name="rosterQ" value="<?= View::escape((string) $roster['q']) ?>">
+                    <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
+                    <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="fa-solid fa-eraser me-1"></i>Vaciar la lista
+                    </button>
+                </form>
             </div>
         </div>
     </div>

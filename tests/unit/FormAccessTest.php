@@ -571,13 +571,12 @@ class FormAccessTest
     public function testElFormularioDelAltaFuncionaSinJavaScript(): void
     {
         /* F0.4-cuatro: el alta y el botón de copiar viven en
-         * `_access_card.php`, que `show.php` pinta dentro de `#vfSlotAccess` (el
-         * hueco que devuelve `FormPanel::accessSlot()`). Se buscan en los DOS
-         * ficheros: el partial es el que trae el formulario, y si un día se
-         * movía sin actualizar este test el alta se quedaba sin `data-vf-async`
-         * sin que nada se enterara. */
+         * `_access_card.php`, que `access.php` pinta dentro de la pantalla de
+         * participantes. Se buscan en los DOS ficheros: el partial es el que trae
+         * el formulario, y si un día se movía sin actualizar este test el alta se
+         * quedaba sin `data-vf-async` sin que nada se enterara. */
         $raiz = dirname(__DIR__, 2);
-        $vista = (string) file_get_contents($raiz . '/views/dashboard/forms/show.php')
+        $vista = (string) file_get_contents($raiz . '/views/dashboard/forms/access.php')
             . "\n" . (string) file_get_contents($raiz . '/views/dashboard/forms/_access_card.php');
 
         assertTrue(
@@ -589,10 +588,6 @@ class FormAccessTest
             str_contains($vista, 'data-vf-async="slots"'),
             'y el atributo que le dice al delegado que también va sin recarga: sin él '
                 . 'el alta es el POST nativo de siempre (correcto, pero recarga)'
-        );
-        assertTrue(
-            str_contains($vista, 'id="vfSlotAccess"'),
-            'y el cuerpo de la tarjeta tiene el hueco que devuelve el guardado de ajustes'
         );
 
         /* Sin comentarios: en dashboard.js queda escrito POR QUÉ ya no está

@@ -1,5 +1,23 @@
 # Plan — Modo de acceso «Listado de participantes» (2026-10-04)
 
+> **Nota posterior (2026-10-15):** el panel de participantes ya **no** vive en una
+> pestaña de la tarjeta «Acceso» de la ficha. Se mudó a su propia pantalla,
+> `GET /forms/{id}/access`, que se abre con el botón **«Participantes»** de la
+> ficha, y su listado se rediseñó con la UX de `/admin` (alta y edición en modal,
+> menú de fila `⋯`, paginador compartido). La pantalla se organiza en **tarjetas**
+> (cabecera de acceso / resumen / lista / importación), los modales van a una
+> columna con los botones del de edición alineados, y el formulario y el catálogo
+> se reparten en dos columnas. El **modo** y el **identificador** se siguen
+> editando en *Ajustes del formulario*. Este documento describe el diseño
+> original; el porqué del traslado está en `docs/decisiones.md` (2026-10-15).
+>
+> **Nota posterior (2026-10-16):** las pestañas «Lista» / «Importar» se
+> **retiraron**. La pantalla son **cuatro tarjetas** (cabecera / resumen / lista /
+> importación), la de importar se pliega con un `<details>` nativo que se abre
+> solo cuando hay informe, y la búsqueda de la lista ya no recarga la página
+> (fetch + `pushState`, con GET nativo como camino sin JS). El porqué está en
+> `docs/decisiones.md` (2026-10-16).
+
 **Estado de partida:** `30e4a34` · 769 tests en verde · MariaDB 11.8.6 · PHP 8.2+ sin
 Composer.
 

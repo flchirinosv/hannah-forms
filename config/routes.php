@@ -44,6 +44,10 @@ $router->get('/', [DashboardController::class, 'index'], ['auth']);
 // Form CRUD
 $router->post('/forms', [FormController::class, 'create'], ['auth', 'csrf']);
 $router->get('/forms/{id}', [FormController::class, 'show'], ['auth']);
+// Pantalla propia del acceso y del listado de participantes. Antes vivía en la
+// ficha; se movió para aligerarla, y su botón («Participantes») está en la
+// cabecera de `/forms/{id}`.
+$router->get('/forms/{id}/access', [FormController::class, 'access'], ['auth']);
 $router->post('/forms/{id}/update', [FormController::class, 'update'], ['auth', 'csrf']);
 // Ajustes operativos del formulario (acceso, agenda, cupo, avisos, webhook,
 // gracias, revisión, idioma). POST aparte de `/update` porque escribe con

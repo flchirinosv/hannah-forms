@@ -21,22 +21,22 @@ use App\Services\RosterPanel;
 use App\Services\RosterTemplate;
 
 /**
- * Fase 5 — La pestaña de participantes de la tarjeta de Acceso.
+ * Fase 5 — La pantalla de participantes de la tarjeta de Acceso.
  *
  * Esta fase es, de todas, la que más cosas puede dejar «a medias sin decir nada»,
  * porque casi ninguna de ellas es un error de PHP: un hueco que se repone con el
- * id equivocado no falla, **no hace nada**; una pestaña que el CSS esconde no
+ * id equivocado no falla, **no hace nada**; una zona que el CSS esconde no
  * falla, **no aparece**; un formulario que se queda con el `action` equivocado no
  * falla, recarga. Lo que se comprueba aquí son esas cuatro cosas:
  *
  *  1. **El panel solo existe en modo `roster`**, y la rama de la allowlist sigue
  *     siendo la de F4. El `else` de `_access_card.php` es de la allowlist, y
  *     meter el listado ahí habría producido una casilla de correo por persona.
- *  2. **Las dos zonas se pintan las dos y ninguna viene escondida.** El
- *     interruptor lo pone `dashboard.js` AÑADIENDO `hidden`, así que sin JS se
- *     ven las dos; si algún día el servidor empezara a pintar `hidden`, el
- *     segundo panel desaparecería en el navegador que menos lo puede permitir y
- *     ningún test de PHP se enteraría.
+ *  2. **Las dos zonas se pintan las dos.** «Lista» e «Importar» viven en dos
+ *     tarjetas, y el plegado de importar es un `<details>` nativo: no hay ningún
+ *     panel que dependa de JavaScript para existir. Si el servidor pintara el
+ *     listado detrás de un `<details>` o de un `hidden` que solo quita el JS, sin
+ *     JS se perdería una zona entera y ningún test de PHP se enteraría.
  *  3. **Los ids de los huecos son los que declara la vista, y ninguno está en un
  *     `<form>`** (el repintado de un id que está en el formulario mete un
  *     formulario dentro de otro, que el parser descarta).
@@ -413,9 +413,9 @@ class RosterPanelTest
         $out = self::llamar('import', ['modo' => ParticipantImporter::MODO_FUSIONAR], false);
 
         assertEquals(
-            '/forms/' . (int) self::$formId . '#participantes',
+            '/forms/' . (int) self::$formId . '/access#participantes',
             $out['halt']['url'] ?? '',
-            'sin JS es un 302 a la ficha, al ancla del panel'
+            'sin JS es un 302 a la pantalla de participantes, al ancla del panel'
         );
 
         $informe = Session::takeValue('roster_report');
@@ -485,98 +485,54 @@ class RosterPanelTest
     }
 
     // =====================================================================
-    // El interruptor de pestañas (markup y JS, sin navegador)
+    // El buscador sin recarga, el plegado de importar y el contrato de CSS
     // =====================================================================
 
-    public function testElInterruptorDePestabasLoPoneElJsYNoElServidor(): void
-    {
-        $js = (string) file_get_contents(self::JS);
-
-        assertTrue(
-            str_contains($js, "querySelectorAll('[data-vf-tabs]')"),
-            'el interruptor existe: sin él las dos zonas se verían siempre'
-        );
-        assertTrue(str_contains($js, "panel.setAttribute('hidden', '')"), 'y lo que hace es poner `hidden`');
-        assertTrue(
-            str_contains($js, "panel.removeAttribute('hidden')"),
-            'que se quita del panel elegido, y no de los otros dos al revés'
-        );
-    }
-
-    public function testLaPestabaDelArranqueNoSeGuarda(): void
-    {
-        $js = self::sinComentarios((string) file_get_contents(self::JS));
-
-        assertTrue(
-            str_contains($js, 'pintar(inicial, false)'),
-            'el `hidden` de arranque no se guarda: si se guardara, la primera visita '
-            . 'fijaría la pestaña para siempre y un cambio del valor por defecto no llegaría a nadie'
-        );
-        assertTrue(str_contains($js, "guardado(clave, elegido.id)"), 'y el que sí se guarda es el que elige alguien');
-    }
-
-    public function testLaPestabaSeRecuerdaPorPantalla(): void
-    {
-        $js = self::sinComentarios((string) file_get_contents(self::JS));
-
-        assertTrue(
-            str_contains($js, "'vf:tab:'"),
-            'la memoria es por pantalla, como la de los grupos: `vf:tab:<clave>`'
-        );
-        assertTrue(
-            !str_contains($js, "'vf:tab:' + formId") && !str_contains($js, "getItem('vf:tab:' + document"),
-            'y la clave sale del contenedor, no de una variable global'
-        );
-    }
-
     /**
-     * El repintado de la tarjeta de Acceso vuelve a inicializar las pestañas.
+     * El buscador del roster se envía por `fetch`, no con la recarga de antes.
      *
-     * Las pestañas viven DENTRO de `#vfSlotAccess` (`_roster_panel.php`), y
-     * guardar los ajustes repone ese hueco entero con `innerHTML` (lo manda
-     * `FormPanel::accessSlot()`). El HTML nuevo trae las dos zonas SIN `hidden`
-     * —a propósito, para el navegador sin JS—, así que sin reinicializarlas se
-     * ven las dos a la vez: la regresión que este test ata. `app.js` las
-     * reinicializa después de reponer los huecos y el arranque es idempotente
-     * por `data-vf-tabs-ready`.
+     * El formulario es un GET y sin JS sigue funcionando (recarga y enseña el
+     * resultado), pero con JS `dashboard.js` lo manda por `fetch` con
+     * `X-Requested-With` —la misma cabecera que el POST sin recarga— para que la
+     * misma ruta responda JSON con `rosterList` repintado, y deja la URL con
+     * `pushState` para que la búsqueda siga siendo compartible y «atrás» funcione.
      */
-    public function testElRepintadoDeLaTarjetaReinicializaLasPestabas(): void
+    public function testElBuscadorDelRosterSeEnviaSinRecargar(): void
     {
         $js = (string) file_get_contents(self::JS);
-        $app = (string) file_get_contents(__DIR__ . '/../../public/assets/js/app.js');
 
         assertTrue(
-            str_contains($js, 'window.vfInitTabs = initTabs'),
-            'el arranque de pestañas se expone para poder reejecutarlo tras un repintado'
+            str_contains($js, "querySelector('[data-vf-roster-search]')"),
+            'el buscador del roster lo recoge un handler propio'
         );
         assertTrue(
-            str_contains($js, "getAttribute('data-vf-tabs-ready') !== '1'"),
-            'y salta los contenedores ya inicializados: sin eso, cada repintado de'
-                . ' cualquier hueco acumularía un `click` por pestaña'
+            str_contains($js, "'X-Requested-With': 'XMLHttpRequest'"),
+            'y pide JSON con la misma cabecera que el POST sin recarga'
         );
         assertTrue(
-            str_contains($js, "setAttribute('data-vf-tabs-ready', '1')"),
-            'marcando el contenedor que inicializó'
-        );
-        assertTrue(
-            str_contains($app, 'window.vfInitTabs()'),
-            'app.js tiene que reinicializarlas al reponer los huecos: la tarjeta de'
-                . ' Acceso es el hueco `vfSlotAccess` y guardar ajustes la repinta'
+            str_contains($js, 'window.history.pushState'),
+            'la URL se queda con la búsqueda: compartible, «atrás» funciona y recargar no la pierde'
         );
     }
 
-    public function testElPanelEsUnaTablaConEstilo(): void
+    public function testLaTarjetaDeImportarSePliegaConCssPropio(): void
     {
         $css = self::sinComentariosDeBloque((string) file_get_contents(self::CSS));
 
         assertTrue(
-            str_contains($css, '.vf-tabs [data-vf-pane][hidden]'),
-            'el refuerzo de `hidden`: sin él, cualquier `display` de autor gana al del navegador '
-            . 'y la pestaña se queda pegada abierta'
+            str_contains($css, '.vf-import-details > summary.vf-import-summary'),
+            'el `<summary>` del plegable es un control y lo tiene que decir el CSS'
         );
         assertTrue(
-            str_contains($css, '.vf-tabs details > summary'),
-            'el `<summary>` es un control y lo tiene que decir el CSS'
+            str_contains($css, '.vf-import-details[open]'),
+            'y el chevron gira al abrir, para que se lea como algo que se despliega'
+        );
+        // Las pestañas del roster se retiraron al partir la tarjeta en dos (lista e
+        // importar): si quedara su CSS, seguiría sin fallar nada y sería un camino
+        // muerto esperando a que alguien lo creyera vivo.
+        assertTrue(
+            !str_contains($css, '.vf-tabs'),
+            'no debe quedar CSS de las pestañas retiradas'
         );
     }
 
@@ -613,20 +569,31 @@ class RosterPanelTest
     // A Fixture
     // =====================================================================
 
-    /** La tarjeta de Acceso tal como la pinta la ficha, en el modo que hay. */
+    /**
+     * La pantalla de acceso (cabecera + tablero + lista) en el modo que hay.
+     *
+     * La cabecera la pinta `_access_card.php` y el tablero y la lista
+     * `RosterPanel::panel()`, que `access.php` orquesta. El helper concatena los
+     * dos, como la pantalla real: si solo pintara el partial, los ids del roster
+     * no aparecerían y el contrato se comprobaría sobre algo que no existe.
+     */
     private static function tarjeta(): string
     {
         $formId = (int) self::$formId;
         $mode = FormAccess::mode(Form::settings($formId));
 
-        return View::partial('dashboard/forms/_access_card', [
+        $html = View::partial('dashboard/forms/_access_card', [
             'form'        => Form::find($formId),
             'accessMode'  => $mode,
             'accessList'  => [],
             'accessCount' => 0,
-            'roster'      => $mode === FormSettings::ACCESS_ROSTER ? RosterPanel::data($formId) : null,
-            'informe'     => null,
         ]);
+
+        if ($mode === FormSettings::ACCESS_ROSTER) {
+            $html .= self::panel();
+        }
+
+        return $html;
     }
 
     /** Solo el panel, para las pruebas que no necesitan la tarjeta entera. */
@@ -757,12 +724,6 @@ class RosterPanelTest
             'UPDATE forms SET settings = :s WHERE id = :id',
             ['s' => json_encode($ajustes), 'id' => (int) self::$formId]
         );
-    }
-
-    /** El JS sin comentarios: un `str_contains` sobre el archivo pasa por el comentario. */
-    private static function sinComentarios(string $js): string
-    {
-        return (string) preg_replace('#/\*.*?\*/|//[^\n]*#s', '', $js);
     }
 
     private static function sinComentariosDeBloque(string $css): string

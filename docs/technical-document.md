@@ -82,7 +82,8 @@ HTTP Response
 - `Response`: redirect, notFound, forbidden, y la parte **bimodal**: `wantsJson()` (mira `X-Requested-With`), `json()` y `html()` (mapa `id → markup`).
 - `View`: render de templates con escape.
 - `Config`: carga de parametros desde `config/config.php`.
-- `FormPanel` (servicio): los huecos del panel del formulario (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare` y `vfSlotAccess`), para que GET y el POST por fetch pinten **los mismos partials**.
+- `FormPanel` (servicio): los cuatro huecos del panel del formulario que dependen de `forms.status` (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare`), para que GET y el POST por fetch pinten **los mismos partials**.
+- `RosterPanel` (servicio): el panel del listado de participantes de `GET /forms/{id}/access` (sus seis huecos y el HTML de cada uno).
 
 ---
 
@@ -425,7 +426,7 @@ Response: text/csv attachment (respeta el filtro de fechas)
 
 ### Estado actual
 - Runner propio creado en `scripts/test.php` (sin dependencias, no usa Composer/PHPUnit). Filtros con espacio: `--filter <substring del MÉTODO>`, `--path <directorio>` (un filtro que no casa con nada ejecuta 0 tests y sale verde — comprobar el contador).
-- Suite: `tests/unit/*.php` — **765 tests en verde** en 76 archivos (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`, y `ViewStructureTest` sobre las 53 vistas). Además hay un arnés de JS sin dependencias (`tests/js/async-actions.js`, 93 casos) que **ejecuta el `app.js` real** contra un DOM mínimo: node es opcional y sin él el caso avisa y pasa. El detalle de fases vive en `docs/roadmap-encuesta.md`.
+- Suite: `tests/unit/*.php` — **1142 tests en verde** en 103 archivos (Core, Models, Controllers parcial, integración sobre BD real con datos temporales `@test.local`, smoke de TODAS las rutas con el Router real en `ControllerActionsTest`, y `ViewStructureTest` sobre las 70 vistas). Además hay un arnés de JS sin dependencias (`tests/js/async-actions.js`, 93 casos) que **ejecuta el `app.js` real** contra un DOM mínimo: node es opcional y sin él el caso avisa y pasa. El detalle de fases vive en `docs/roadmap-encuesta.md`.
 
 ### Ejecucion
 ```bash

@@ -1,12 +1,13 @@
 <?php
 /**
- * M2 — Paginador de los listados de formularios (dashboard y /admin/forms).
+ * M2 — Paginador compartido de los listados (dashboard, /admin/forms, /admin/users
+ * y el roster de `/forms/{id}/access`).
  *
  * Enlaces de verdad, no botones: la página vive en la URL, así que el botón de
- * atrás del navegador funciona y el enlace se puede copiar. Es lo mismo que
- * hace el roster de la ficha con su `?page=`, y lo contrario del paginador de
- * `analytics.js`, que sí es un fetch porque ahí el listado se reordena mientras
- * se mira.
+ * atrás del navegador funciona y el enlace se puede copiar. Lo usa el dashboard,
+ * `/admin/forms`, `/admin/users` y el roster (en su pantalla `/access`), y es lo
+ * contrario del paginador de `analytics.js`, que sí es un fetch porque ahí el
+ * listado se reordena mientras se mira.
  *
  * Los controles llevan `data-vf-page` con la página a la que llevan: es lo que
  * leen los tests para comprobar que el enlace existe sin seguirlo, y el gancho

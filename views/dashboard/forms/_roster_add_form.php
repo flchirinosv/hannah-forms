@@ -19,8 +19,9 @@ use App\Core\View;
  * Los atributos son columnas que crea la importación. Si el alta viviera en el
  * panel, importing aparecerían atributos nuevos que **su alta no tendría**, y el
  * dueño acabaría rellenando una columna que solo existe si vuelve a la
- * pestaña. Por eso el alta es un hueco (`rosterAddForm`) y la importación lo
- * repone: es el caso en que de verdad cambia lo que el formulario tiene.
+ * tarjeta de importar. Por eso el alta es un hueco (`rosterAddForm`) y la
+ * importación lo repone: es el caso en que de verdad cambia lo que el formulario
+ * tiene.
  *
  * Variables: `$roster`, `$formId`.
  *
@@ -53,18 +54,21 @@ $requerido = $identificador !== 'codigo';
     <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
     <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
 
+    <?php // Una sola columna: el alta son cuatro campos cortos y, en tres columnas,
+          // el rótulo y el campo quedaban tan estrechos que no se leía lo que se
+          // escribía. Una fila por campo y el ancho del diálogo. ?>
     <div class="row g-2">
-        <div class="col-12 col-md-4">
+        <div class="col-12">
             <label class="form-label small mb-1" for="rosterAddId"><?= $rotuloId ?></label>
             <input type="<?= $identificador === 'correo' ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
                    id="rosterAddId" class="form-control form-control-sm" maxlength="190"<?= $requerido ? ' required' : '' ?>>
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12">
             <label class="form-label small mb-1" for="rosterAddNombre">Nombre (opcional)</label>
             <input type="text" name="nombre" id="rosterAddNombre" class="form-control form-control-sm" maxlength="190">
         </div>
         <?php if ($identificador !== 'correo') { ?>
-            <div class="col-12 col-md-4">
+            <div class="col-12">
                 <label class="form-label small mb-1" for="rosterAddCorreo">Correo (opcional)</label>
                 <input type="email" name="correo" id="rosterAddCorreo" class="form-control form-control-sm" maxlength="190">
             </div>
@@ -72,7 +76,7 @@ $requerido = $identificador !== 'codigo';
 
         <?php foreach ($roster['atributos'] as $campo) {
             $clave = (string) $campo['key_name']; ?>
-            <div class="col-12 col-md-4">
+            <div class="col-12">
                 <label class="form-label small mb-1" for="rosterAddAttr<?= View::escape($clave) ?>">
                     <?= View::escape((string) $campo['label']) ?>
                 </label>

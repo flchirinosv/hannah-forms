@@ -2429,37 +2429,6 @@ body {
     .app-confirm .modal-footer .btn { flex: 1 1 8rem; }
 }
 
-/* --- Pestañas de un panel (fase 5, listado de participantes) ---------------
- * Lo único que hay aquí es el refuerzo del atributo `hidden` y el `<summary>`
- * que hace de botón.
- *
- * El interruptor de verdad lo pone `dashboard.js` AÑADIENDO `hidden`, que es lo
- * que hace que sin JavaScript se vean los dos paneles. Este `!important` no es
- * decoración: `.tab-pane`-al estilo de Bootstrap, o cualquier `display` de autor
- * sobre el panel, gana al `[hidden] { display: none }` del navegador y la
- * pestaña se «queda pegada» abierta. */
-.vf-tabs [data-vf-pane][hidden] { display: none !important; }
-
-/* El `<details>` de editar y el de añadir a uno son controles, no adornos: sin
- * ellos el `<summary>` sale con el triángulo del navegador y del mismo tamaño que
- * el texto, que es indistinguible de una frase más de la tarjeta. */
-.vf-tabs details > summary {
-    cursor: pointer;
-    list-style: none;
-    display: inline-block;
-    user-select: none;
-}
-.vf-tabs details > summary::-webkit-details-marker { display: none; }
-.vf-tabs details > summary::before {
-    content: '\f078';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    margin-right: .35rem;
-    font-size: .8em;
-}
-.vf-tabs details[open] > summary::before { content: '\f054'; }
-.vf-tabs details > summary:focus-visible { outline: 2px solid var(--vf-primary, #0d6efd); outline-offset: 2px; }
-
 /* --- Tarjeta de Acceso (rediseño 2026-10-08) -----------------------------
  * Cabecera con tile de icono y chip de modo, callout de explicación, lista de
  * la allowlist con avatar y filas del listado de participantes. Todo se apoya
@@ -2555,28 +2524,6 @@ body {
     background: var(--vf-primary-light);
 }
 
-/* Pestañas segmentadas del listado de participantes */
-.vf-tabs-nav {
-    display: inline-flex; gap: .25rem;
-    padding: .25rem;
-    margin-bottom: .85rem;
-    border: 1px solid var(--vf-border);
-    border-radius: 12px;
-    background: var(--vf-bg);
-}
-.vf-tab {
-    appearance: none; border: 0; margin: 0;
-    padding: .35rem .8rem;
-    border-radius: 9px;
-    background: transparent;
-    color: var(--vf-text-muted);
-    font-size: .82rem; font-weight: 600; line-height: 1.3;
-    cursor: pointer;
-}
-.vf-tab:hover { color: var(--vf-text); background: rgba(255,255,255,.7); }
-.vf-tab.active { background: var(--vf-surface); color: var(--vf-primary); box-shadow: 0 1px 2px rgba(15,23,42,.08); }
-.vf-tab:focus-visible { outline: 2px solid var(--vf-primary); outline-offset: 2px; }
-
 /* Números del formulario entero */
 .vf-stat-strip { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .85rem; }
 .vf-stat {
@@ -2637,6 +2584,7 @@ body {
 .vf-roster-actions { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
 .vf-roster-toolbar {
     display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    justify-content: space-between;
     margin-bottom: .5rem;
 }
 .vf-roster-empty {
@@ -2650,6 +2598,35 @@ body {
     line-height: 1.45;
 }
 .vf-roster-empty > i { color: var(--vf-primary); margin-top: .1rem; }
+
+/* Tarjeta de importar: plegable con un `<details>` NATIVO.
+ * El `<summary>` es el control (y funciona sin JavaScript); aquí se le quita el
+ * triángulo del navegador y se le pone un chevron que gira al abrir, para que se
+ * lea como una tarjeta que se despliega y no como una frase con una flecha. */
+.vf-import-details > summary.vf-import-summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex; align-items: center; flex-wrap: wrap;
+    padding: .15rem 0;
+    user-select: none;
+}
+.vf-import-details > summary.vf-import-summary::-webkit-details-marker { display: none; }
+.vf-import-details > summary.vf-import-summary::before {
+    content: '\f054';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-right: .5rem;
+    font-size: .8em;
+    color: var(--vf-text-muted);
+    transition: transform .15s ease;
+}
+.vf-import-details[open] > summary.vf-import-summary::before { transform: rotate(90deg); }
+.vf-import-details > summary.vf-import-summary:focus-visible {
+    outline: 2px solid var(--vf-primary, #0d6efd);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+.vf-import-danger { margin-top: .75rem; }
 
 @media (max-width: 575.98px) {
     .vf-stat { flex-basis: calc(50% - .2rem); }

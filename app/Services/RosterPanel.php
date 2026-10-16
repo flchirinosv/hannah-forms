@@ -8,21 +8,24 @@ use App\Core\View;
 use App\Models\FormParticipant;
 
 /**
- * Fase 5 — Los datos y los huecos de la pestaña de participantes.
+ * Fase 5 — Los datos y los huecos de la pantalla de participantes.
  *
  * ## Por qué un servicio y no el controlador
  *
  * Porque los mismos bloques se pintan desde **dos sitios distintos** y tienen que
- * salir idénticos: el GET de la ficha (`FormController::show()`) y el `html` que
+ * salir idénticos: el GET de la pantalla de participantes
+ * (`FormController::access()`) y el `html` que
  * devuelve `ParticipantController` cuando algo se ha hecho por fetch. Dos ya
  * obliga a que el segundo no tenga su copia, y además leer la BD por su cuenta
  * en cada uno significa que un cambio en la página (borrar el último de la
  * última página) pinta una lista vacía en un hueco y deja la cabecera diciendo
  * «40» en otro.
  *
- * Y hay un tercer consumidor que **no pinta nada**: `FormPanel::accessSlot()`,
- * que devuelve el `html` de la tarjeta de Acceso al guardar los ajustes. Va por
- * el mismo `data()` con la página 1 y sin búsqueda a propósito (ver allí).
+ * Y `FormController::access()` es además el que sirve la **búsqueda AJAX**: con
+ * `X-Requested-With` y modo `roster` responde solo `['rosterList' => …]`, y lo
+ * saca de aquí para que el hueco repintado sea el mismo partial que la pantalla.
+ * Sin la cabecera arranca el panel entero con `data()` (página 1 y sin búsqueda),
+ * que es el camino nativo.
  *
  * ## Los huecos son SEIS y cada uno depende de una cosa distinta
  *
@@ -55,7 +58,7 @@ use App\Models\FormParticipant;
  *
  * ## La búsqueda y la página viajan en la URL, no en el `POST`
  *
- * Una búsqueda es un GET a `/forms/{id}?q=…&page=…#participantes`: así llega
+ * Una búsqueda es un GET a `/forms/{id}/access?q=…&page=…#participantes`: así llega
  * sin JavaScript, se puede compartir y el botón «atrás» del navegador deshace
  * una búsqueda. Por eso las acciones por fetch **guardan la búsqueda, la página y
  * el orden actuales en inputs ocultos** (`rosterQ`, `rosterPage`, `rosterSort`)
@@ -225,7 +228,12 @@ final class RosterPanel
     }
 
     /**
-     * El panel entero, para la tarjeta de Acceso.
+     * El tablero, la lista y la importación, cada uno en su tarjeta, para la
+     * pantalla de acceso.
+     *
+     * Lo llama `access.php` y **no** `_access_card.php`: la cabecera de acceso no
+     * cambia con el estado de la lista ni la lista con el modo de acceso, así que
+     * empaquetarlas ataría cosas que se repintan por motivos distintos.
      *
      * `$informe` va por parámetro y no dentro de `$datos` por lo que dice el
      * bloque de arriba: `data()` se recalcula en cada visita a la ficha, y el

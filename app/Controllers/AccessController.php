@@ -458,6 +458,9 @@ class AccessController
     private function back(int $id, string $type, string $message): void
     {
         Session::flash($type, $message);
-        Response::redirect('/forms/' . $id . '#access');
+        // El alta y el quitar de la allowlist se hacen en la pantalla de
+        // participantes (la tarjeta de Acceso vive allí desde el rediseño), y el
+        // ancla `#access` es el id de esa misma tarjeta.
+        Response::redirect('/forms/' . $id . '/access#access');
     }
 }

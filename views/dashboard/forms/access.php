@@ -9,7 +9,7 @@ use App\Services\RosterPanel;
  *
  * Antes era una tarjeta al final de la ficha. Se separó porque el listado del
  * roster (fases 5–12) creció hasta no caber con dignidad dentro de la columna de
- * los ajustes: pestañas, alta, importación y, desde el rediseño, modales. La
+ * los ajustes: lista, alta, importación y, desde el rediseño, modales. La
  * cabecera tiene «← Volver al formulario» y el botón «Participantes» de la ficha
  * apunta aquí.
  *
@@ -18,21 +18,23 @@ use App\Services\RosterPanel;
  * dos: allí se pintaba dentro del hueco `vfSlotAccess` (que reponía el guardado
  * de ajustes) y aquí directamente.
  *
- * ## TRES tarjetas, no una (rediseño 2026-10-15)
+ * ## CUATRO tarjetas, no una (rediseño 2026-10-15)
  *
- * La cabecera de acceso, el tablero de números y la lista vivían apilados dentro
- * de la misma tarjeta, y en un formulario del tamaño real la suma se leía como un
- * bloque recargado. Ahora cada cosa va en su tarjeta, a todo el ancho:
+ * La cabecera de acceso, el tablero de números, la lista y la importación vivían
+ * apilados dentro de la misma tarjeta, y en un formulario del tamaño real la suma
+ * se leía como un bloque recargado. Ahora cada cosa va en su tarjeta, a todo el
+ * ancho:
  *
  *  1. `#access` — la cabecera: icono, chip del modo y el aviso de cómo se entra.
- *  2. El tablero de números y las invitaciones por correo (`RosterPanel::panel()`,
- *     que pinta `_roster_stats` + `_roster_invites` en su tarjeta).
- *  3. La lista: buscador, filas y paginador, con las pestañas Lista/Importar.
+ *  2. `#rosterBoardCard` — el tablero de números y las invitaciones por correo.
+ *  3. `#rosterListCard` — la lista: buscador, filas y paginador.
+ *  4. `#rosterImportCard` — la importación, plegada con un `<details>` nativo (con
+ *     «Vaciar la lista» siempre a la vista, fuera del colapsable).
  *
- * `RosterPanel::panel()` se llama AQUÍ, no desde `_access_card.php`: la cabecera
- * no cambia con el estado de la lista y la lista no cambia con el modo de acceso,
- * así que empaquetarlas juntas ataba dos cosas que se repintan por motivos
- * distintos.
+ * Las tres últimas las pinta `RosterPanel::panel()`, que se llama AQUÍ y no desde
+ * `_access_card.php`: la cabecera no cambia con el estado de la lista y la lista
+ * no cambia con el modo de acceso, así que empaquetarlas juntas ataba dos cosas
+ * que se repintan por motivos distintos.
  *
  * ## Los modales van AQUÍ, a nivel superior del fragmento
  *
@@ -87,10 +89,10 @@ $accessMode = (string) ($accessMode ?? 'public');
         </div>
     </div>
 
-    <?php // Tarjetas 2 y 3: el tablero y la lista del roster, cada uno en su
-          // tarjeta. `data()` como red: la vista siempre manda `$roster` en modo
-          // `roster`, pero un hueco vacío en un formulario que acaba de abrir la
-          // puerta parece roto. ?>
+    <?php // Tarjetas 2, 3 y 4: el tablero, la lista y la importación del roster,
+          // cada uno en su tarjeta (`RosterPanel::panel()`). `data()` como red: la
+          // vista siempre manda `$roster` en modo `roster`, pero un hueco vacío en
+          // un formulario que acaba de abrir la puerta parece roto. ?>
     <?php if ($accessMode === 'roster'): ?>
         <?= RosterPanel::panel(
             $roster ?? RosterPanel::data($formId),
@@ -143,6 +145,6 @@ $accessMode = (string) ($accessMode ?? 'public');
 <?php endif; ?>
 
 <?php // `dashboard.js` va con `defer` (no es crítico): en esta pantalla hace
-      // falta para las pestañas del roster, el traslado de los modales, el menú
+      // falta para la búsqueda sin recarga, el traslado de los modales, el menú
       // `⋯` de cada fila y el botón de copiar enlace de la allowlist. ?>
 <script src="<?= View::asset('js/dashboard.js') ?>" defer></script>

@@ -44,7 +44,8 @@ Longitud mínima de contraseña: **10** (`Auth::PASSWORD_MIN`), en los tres siti
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
 | POST | `/forms` | auth, csrf | Crear (body `title`, `description`; `settings` opcional). 302 → builder. Título ≤ 190. Rate limit `dash:create` por usuario |
-| GET | `/forms/{int}` | auth | Detalle del formulario + ficha (permite editar la allowlist F4) |
+| GET | `/forms/{int}` | auth | Detalle del formulario + ficha (título, campos, ajustes operativos, enlace). La tarjeta de acceso y el listado viven en `/forms/{int}/access` |
+| GET | `/forms/{int}/access` | auth | Pantalla de acceso y participantes: tarjeta de acceso (allowlist F4) + panel del listado `roster` (búsqueda, paginación y orden por `?q=&page=&sort=`). Con `X-Requested-With: XMLHttpRequest` y modo `roster` responde solo `{ok, message, html: {rosterList: …}}` (la búsqueda AJAX); sin esa cabecera sirve la pantalla entera. Mismos guards que la ficha (`canEdit`) |
 | POST | `/forms/{int}/update` | auth, csrf | Actualizar título/descripción |
 | POST | `/forms/{int}/settings` | auth, csrf | Ajustes **operativos** (acceso, agenda, cupo, avisos, webhook, mensaje final, revisión, idioma). Fusiona con `FormSettings::merge()` y solo escribe `FormSettings::DASHBOARD_BLOCKS` |
 | POST | `/forms/{int}/delete` | auth, csrf | Eliminar formulario y respuestas |
@@ -131,8 +132,8 @@ aprobado lo devuelve a la cola.
 | POST | `/forms/{int}/access/link` | auth, csrf-header | Emitir/copiar enlace de acceso para un email de la lista (JSON) |
 
 La respuesta JSON del alta lleva el HTML del partial
-`views/dashboard/forms/_access-list.php`, el mismo que pinta el GET de
-`/forms/{id}`, para que el JS sustituya el contenedor sin saber qué es una fila.
+`views/dashboard/forms/_access_list.php`, el mismo que pinta el GET de
+`/forms/{id}/access`, para que el JS sustituya el contenedor sin saber qué es una fila.
 El `form` conserva `method`/`action`, así que sin JavaScript el alta sigue
 funcionando. Los status son `200` (añadido), `419` (CSRF) y `422` (modo que no
 es `allowlist`, email inválido o duplicado); el camino sin `fetch` responde 302
@@ -300,8 +301,9 @@ una cabecera.
   sabría que el guardado falló.
 - Los huecos y de qué estado dependen: los cuatro de `forms.status`
   (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare`) los
-  devuelve **toda** acción de estado; `vfSlotAccess` (la tarjeta de Acceso) solo
-  la manda el guardado de ajustes, que es lo único que cambia el modo.
+  devuelve **toda** acción de estado. La tarjeta de Acceso **ya no es un hueco**: se
+  pinta en `GET /forms/{int}/access` y su repintado interno (alta/borrado de la
+  allowlist) viaja en el `html` de sus propias acciones.
 - Una acción sin nada que reponer devuelve `{ok, message}` **sin** `html`: el
   `select` del rol ya está en el valor nuevo.
 

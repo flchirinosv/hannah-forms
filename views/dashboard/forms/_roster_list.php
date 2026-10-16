@@ -15,11 +15,15 @@ use App\Core\View;
  * (`_access_list.php`): avatar, cuerpo y acciones, así que la pantalla del
  * «Acceso» se lee igual en los dos modos que tienen lista.
  *
- * ## El `<details>` de editar, nativo otra vez
+ * ## La edición va en el menú `⋯` de la fila, en un modal compartido
  *
- * Un modal de Bootstrap (uno por fila, o uno único que el JS rellene) no se abre
- * sin JavaScript, y sin JavaScript no se puede editar a nadie. `<details>` lo
- * abre el navegador solo.
+ * Es el mismo patrón que la tabla de usuarios de `/admin`: cada fila tiene un
+ * botón `⋯` (`[data-vf-participant]`) que abre `#rosterEditModal` con el panel de
+ * ESA fila (`#rowactions-<pid>`) movido dentro. Antes se editaba con un
+ * `<details>` por fila, que funcionaba sin JavaScript; se cambió por el modal a
+ * conciencia para tener paridad con el panel de administración: sin JavaScript la
+ * fila solo muestra el botón. El ALTA conserva su camino sin JS (el formulario se
+ * sirve en línea en el panel y `moverFormulariosInline()` lo traslada al modal).
  *
  * ## El código se enseña, y es lo que se reparte
  *
@@ -30,8 +34,9 @@ use App\Core\View;
  * ## El orden son enlaces, no cabeceras
  *
  * Con tarjetas no hay `<th>` donde poner el enlace de orden, así que van en una
- * línea de enlaces con el activo marcado (`aria-current`). Son GET a la ficha,
- * como la búsqueda: sin JavaScript, compartibles y con el «atrás» del navegador.
+ * línea de enlaces con el activo marcado (`aria-current`). Son GET a la pantalla
+ * de participantes, como la búsqueda: sin JavaScript, compartibles y con el
+ * «atrás» del navegador.
  *
  * `#rosterList` es el dueño del hueco (el panel ya no lo envuelve): el texto
  * «Nadie en la lista coincide» y el orden de `.filas` son contrato de test.
@@ -78,8 +83,16 @@ $url = static function (int $page, string $sort = '') use ($formId, $q): string 
         $params['sort'] = $sort;
     }
 
-    return '/forms/' . $formId . '?' . http_build_query($params) . '#participantes';
+    return '/forms/' . $formId . '/access?' . http_build_query($params) . '#participantes';
 };
+
+// El query string de los filtros que el paginador compartido (`_pagination.php`)
+// debe conservar al saltar de página: la búsqueda y el orden viven en la URL, y
+// un enlace de paginación sin ellos sería la página N de la lista entera.
+$qs = http_build_query(array_filter(
+    ['q' => $q, 'sort' => $sort !== 'cedula' ? $sort : ''],
+    static fn(string $v): bool => $v !== ''
+));
 
 $ordenes = [
     'identificador' => (string) $roster['identificador'] === 'codigo' ? 'Código' : $rotuloId,
@@ -94,10 +107,10 @@ $ordenes = [
             <div>
                 <?php if ($q !== '') { ?>
                     Nadie en la lista coincide con «<?= View::escape($q) ?>».
-                    <a href="/forms/<?= (int) $formId ?>#participantes">Ver la lista entera</a>.
+                    <a href="/forms/<?= (int) $formId ?>/access#participantes">Ver la lista entera</a>.
                 <?php } else { ?>
                     La lista está vacía: nadie puede responder todavía. Añade a uno con el
-                    formulario de arriba o importa un archivo desde la pestaña <em>Importar</em>.
+                    formulario de arriba o importa un archivo desde la tarjeta <em>Importar</em>.
                 <?php } ?>
             </div>
         </div>
@@ -109,9 +122,6 @@ $ordenes = [
                 <?= $total ?> coincide<?= $total === 1 ? '' : 'n' ?> con «<?= View::escape($q) ?>».
             <?php } elseif ($total > 0) { ?>
                 <?= $total ?> participante<?= $total === 1 ? '' : 's' ?>.
-            <?php } ?>
-            <?php if ($paginas > 1) { ?>
-                Página <?= $pagina ?> de <?= $paginas ?>.
             <?php } ?>
             <span class="ms-2">Orden:
                 <?php $primero = true; ?>
@@ -176,75 +186,108 @@ $ordenes = [
                         <?php } ?>
 
                         <div class="vf-roster-actions">
-                            <details class="d-inline-block">
-                                <summary class="btn btn-outline-secondary btn-sm">Editar</summary>
-                                <form method="post" action="/forms/<?= (int) $formId ?>/participants/update"
-                                      class="mt-2 p-2 border rounded bg-body"
-                                      data-vf-async="slots" data-vf-error="rosterEditError<?= $pid ?>">
-                                    <?= Csrf::field() ?>
-                                    <input type="hidden" name="participant_id" value="<?= $pid ?>">
-                                    <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
-                                    <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
-                                    <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
-                                    <div class="row g-2">
-                                        <div class="col-12 col-md-4">
-                                            <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $rotuloId ?></label>
-                                        <input type="<?= $esCorreo ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
-                                               id="rosterEditId<?= $pid ?>" class="form-control form-control-sm" maxlength="190"
-                                               required value="<?= View::escape((string) ($fila[$columnaId] ?? '')) ?>">
-                                        </div>
-                                        <div class="col-12 col-md-4">
-                                            <label class="form-label small mb-1" for="rosterEditNombre<?= $pid ?>">Nombre (opcional)</label>
-                                            <input type="text" name="nombre" id="rosterEditNombre<?= $pid ?>"
-                                                   class="form-control form-control-sm" maxlength="190"
-                                                   value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>">
-                                        </div>
-                                        <?php if (!$esCorreo) { ?>
-                                            <div class="col-12 col-md-4">
-                                                <label class="form-label small mb-1" for="rosterEditCorreo<?= $pid ?>">Correo (opcional)</label>
-                                                <input type="email" name="correo" id="rosterEditCorreo<?= $pid ?>"
-                                                       class="form-control form-control-sm" maxlength="190"
-                                                       value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>">
-                                            </div>
-                                        <?php } ?>
-                                        <?php foreach ($roster['atributos'] as $campo) {
-                                            $clave = (string) $campo['key_name']; ?>
-                                            <div class="col-12 col-md-4">
-                                                <label class="form-label small mb-1" for="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>">
-                                                    <?= View::escape((string) $campo['label']) ?>
-                                                </label>
-                                                <input type="text" name="data[<?= View::escape($clave) ?>]"
-                                                       id="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>"
-                                                       class="form-control form-control-sm" maxlength="255"
-                                                       value="<?= View::escape((string) ($fila['data'][$clave] ?? '')) ?>">
-                                            </div>
-                                        <?php } ?>
-                                    </div>
-                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">
-                                        <i class="fa-solid fa-check me-1"></i>Guardar
-                                    </button>
-                                    <p class="small mb-0 mt-1 d-none text-danger fw-semibold"
-                                       id="rosterEditError<?= $pid ?>" role="alert"></p>
-                                </form>
-                            </details>
+                            <?php // Acciones de la fila en un menú `⋯`, igual que la
+                                  // tabla de usuarios de `/admin`: un solo modal
+                                  // (#rosterEditModal) que `dashboard.js` rellena con
+                                  // el panel de ESA fila. Sin JavaScript la fila solo
+                                  // enseña el botón (no se abre nada), y se acepta a
+                                  // conciencia ese intercambio por paridad con /admin.
+                                  //
+                                  // El panel de la fila vive en un `<span hidden>`
+                                  // (`rowactions-<pid>`) y se MUEVE al modal y se
+                                  // devuelve al cerrar: los formularios, los `id` de
+                                  // los huecos y los avisos son de esa fila, y
+                                  // clonarlos sería una copia por participante. ?>
+                            <button type="button" class="btn btn-outline-secondary btn-sm app-row-menu-btn"
+                                    data-vf-participant="<?= $pid ?>"
+                                    data-vf-participant-name="<?= View::escape($identidad($fila)) ?>"
+                                    aria-label="Acciones de <?= View::escape($identidad($fila)) ?>"
+                                    aria-haspopup="true">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </button>
 
-                            <?php // Quitar a alguien NO borra sus respuestas (ver
-                                  // `FormParticipant::delete()`), y por eso el diálogo
-                                  // lo dice: quien lee el aviso tiene que saber qué va
-                                  // a perder y qué no. ?>
-                            <form method="post" action="/forms/<?= (int) $formId ?>/participants/delete"
-                                  class="d-inline-block" data-vf-async="slots"
-                                  data-confirm="¿Quitar a <?= View::escape($identidad($fila)) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
-                                  data-confirm-ok="Sí, quitar de la lista" data-confirm-tone="danger">
-                                <?= Csrf::field() ?>
-                                <input type="hidden" name="participant_id" value="<?= $pid ?>">
-                                <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
-                                <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
-                                <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="fa-solid fa-trash me-1"></i>Quitar
-                                </button>
-                            </form>
+                            <span id="rowactions-<?= $pid ?>" hidden>
+                                <div class="p-2 app-row-menu">
+                                    <?php // El botón «Guardar» vive FUERA del formulario y lo asocia
+                                          // `form="rosterEditForm<pid>"`, igual que el «Guardar» de la
+                                          // ficha (`form="formUpdate"`): así comparte fila con «Quitar»
+                                          // y los dos quedan alineados. `vfSubmitButton()` lo busca por
+                                          // ese atributo para apagarlo mientras el POST vuela.
+                                          //
+                                          // Una sola columna: con `col-md-4` el rótulo y el campo
+                                          // quedaban tan estrechos que no se leía lo que se escribía. ?>
+                                    <form method="post" action="/forms/<?= (int) $formId ?>/participants/update"
+                                          id="rosterEditForm<?= $pid ?>"
+                                          data-vf-async="slots" data-vf-error="rosterEditError<?= $pid ?>">
+                                        <?= Csrf::field() ?>
+                                        <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                        <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
+                                        <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
+                                        <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $rotuloId ?></label>
+                                                <input type="<?= $esCorreo ? 'email' : 'text' ?>" name="<?= $columnaId ?>"
+                                                       id="rosterEditId<?= $pid ?>" class="form-control form-control-sm" maxlength="190"
+                                                       required value="<?= View::escape((string) ($fila[$columnaId] ?? '')) ?>">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label small mb-1" for="rosterEditNombre<?= $pid ?>">Nombre (opcional)</label>
+                                                <input type="text" name="nombre" id="rosterEditNombre<?= $pid ?>"
+                                                       class="form-control form-control-sm" maxlength="190"
+                                                       value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>">
+                                            </div>
+                                            <?php if (!$esCorreo) { ?>
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-1" for="rosterEditCorreo<?= $pid ?>">Correo (opcional)</label>
+                                                    <input type="email" name="correo" id="rosterEditCorreo<?= $pid ?>"
+                                                           class="form-control form-control-sm" maxlength="190"
+                                                           value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>">
+                                                </div>
+                                            <?php } ?>
+                                            <?php foreach ($roster['atributos'] as $campo) {
+                                                $clave = (string) $campo['key_name']; ?>
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-1" for="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>">
+                                                        <?= View::escape((string) $campo['label']) ?>
+                                                    </label>
+                                                    <input type="text" name="data[<?= View::escape($clave) ?>]"
+                                                           id="rosterEditAttr<?= $pid ?><?= View::escape($clave) ?>"
+                                                           class="form-control form-control-sm" maxlength="255"
+                                                           value="<?= View::escape((string) ($fila['data'][$clave] ?? '')) ?>">
+                                                </div>
+                                            <?php } ?>
+                                        </div>
+                                        <p class="small mb-0 mt-1 d-none text-danger fw-semibold"
+                                           id="rosterEditError<?= $pid ?>" role="alert"></p>
+                                    </form>
+
+                                    <?php // «Quitar» a la izquierda y «Guardar» a la derecha, en la
+                                          // misma fila: el `ms-auto` los separa sin depender del ancho.
+                                          // Quitar a alguien NO borra sus respuestas (ver
+                                          // `FormParticipant::delete()`), y por eso su diálogo lo dice:
+                                          // quien lee el aviso tiene que saber qué va a perder y qué no. ?>
+                                    <div class="d-flex align-items-center gap-2 mt-3">
+                                        <form method="post" action="/forms/<?= (int) $formId ?>/participants/delete"
+                                              data-vf-async="slots"
+                                              data-confirm="¿Quitar a <?= View::escape($identidad($fila)) ?> de la lista? Su código deja de servir y sus respuestas, si ya respondió, se quedan guardadas."
+                                              data-confirm-ok="Sí, quitar de la lista" data-confirm-tone="danger">
+                                            <?= Csrf::field() ?>
+                                            <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                            <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
+                                            <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
+                                            <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fa-solid fa-trash me-1"></i>Quitar
+                                            </button>
+                                        </form>
+                                        <button type="submit" form="rosterEditForm<?= $pid ?>"
+                                                class="btn btn-outline-primary btn-sm ms-auto">
+                                            <i class="fa-solid fa-check me-1"></i>Guardar
+                                        </button>
+                                    </div>
+                                </div>
+                            </span>
                         </div>
                     </div>
 
@@ -265,23 +308,21 @@ $ordenes = [
         </ul>
     <?php } ?>
 
-    <?php if ($paginas > 1) { ?>
-        <nav aria-label="Páginas de la lista" class="d-flex justify-content-between align-items-center">
-            <?php if ($pagina > 1) { ?>
-                <a class="btn btn-outline-secondary btn-sm" href="<?= View::escape($url($pagina - 1)) ?>">
-                    <i class="fa-solid fa-chevron-left me-1"></i>Anterior
-                </a>
-            <?php } else { ?>
-                <span></span>
-            <?php } ?>
-
-            <?php if ($pagina < $paginas) { ?>
-                <a class="btn btn-outline-secondary btn-sm" href="<?= View::escape($url($pagina + 1)) ?>">
-                    Siguiente<i class="fa-solid fa-chevron-right ms-1"></i>
-                </a>
-            <?php } else { ?>
-                <span></span>
-            <?php } ?>
-        </nav>
-    <?php } ?>
+    <?php // El paginador es el MISMO partial que el listado del dashboard y el de
+          // usuarios de `/admin` (`_pagination.php`): enlaces de verdad que
+          // conservan los filtros, no botones. Antes era un «Anterior/Siguiente»
+          // propio que no decía en qué página estabas. ?>
+    <?= View::partial('dashboard/_pagination', [
+        'listado' => [
+            'items'    => $roster['filas'],
+            'total'    => $total,
+            'page'     => $pagina,
+            'pages'    => $paginas,
+            'per_page' => \App\Services\RosterPanel::POR_PAGINA,
+        ],
+        'base'   => '/forms/' . (int) $formId . '/access',
+        'qs'     => $qs === '' ? '' : '?' . $qs,
+        'sujeto' => 'participante',
+        'aria'   => 'Páginas de la lista de participantes',
+    ]) ?>
 </div>

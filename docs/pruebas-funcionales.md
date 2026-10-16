@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1139 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1143 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,12 +23,12 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**521 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**539 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
 el fill, las acciones sin recarga (T), el diálogo de confirmación con el alta de
-la lista de acceso (U), la pestaña de participantes (V), el identificador del
+la lista de acceso (U), la pantalla de participantes (V), el identificador del
 listado (W), el filtro de la analítica por atributo (X), la comparación por
 atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA),
 el listado paginado del panel (AB), la galería del modal de nuevo formulario
@@ -273,11 +273,11 @@ Para no perderte, prepara esto antes de empezar:
 | I7 | Quitar un email de la lista y usar su enlace ya activating | El enlace deja de servir en la petición siguiente | A | |
 | I8 | Abrir el formulario en una ventana privada y usar un enlace válido | El acceso depende de la sesión del navegador, no solo del enlace | M | |
 | I9 | Ver el enlace copiado y el QR de un formulario con acceso restringido | Ambos funcionan como el enlace, sin trampas | M | |
-| I10 | Ficha en modo `allowlist`, escribir un correo y pulsar *Añadir* | La fila aparece **sin recargar**, la caja queda vacía y con el foco dentro, y el aviso de lista vacía desaparece | M | |
+| I10 | Pantalla *Participantes* en modo `allowlist`, escribir un correo y pulsar *Añadir* | La fila aparece **sin recargar**, la caja queda vacía y con el foco dentro, y el aviso de lista vacía desaparece | M | |
 | I11 | En la misma caja, escribir un correo ya presente y pulsar *Añadir* | No aparece una segunda fila; el motivo sale debajo de la caja | M | |
 | I12 | Escribir un correo sin formato y pulsar *Añadir* | No se añade nada y el motivo dice que el correo no es válido (no un error de red) | M | |
 | I13 | Añadir con el teclado (Enter en la caja) | Funciona igual que con el botón, sin recargar | M | |
-| I14 | Abrir la ficha con JavaScript deshabilitado y añadir un correo | El alta funciona con el POST normal y avisa con un flash | M | |
+| I14 | Abrir la pantalla *Participantes* con JavaScript deshabilitado y añadir un correo | El alta funciona con el POST normal y avisa con un flash | M | |
 | I15 | `/admin/settings` con un `user` normal | 403: el panel entero exige `admin.access` | A | |
 | I16 | `/admin/settings` con un admin: mover el interruptor del registro | El estado cambia al instante, sin recargar, y el texto de al lado se actualiza | M | |
 | I17 | El interruptor, sin red (parar MySQL o cortar la conexión) | La casilla **vuelve** a lo que dice el servidor y sale un aviso rojo: no se queda marcada sin guardar | M | |
@@ -441,7 +441,7 @@ Para no perderte, prepara esto antes de empezar:
 
 ## R. Regresiones del último cambio (`751602c`)
 
-Estas seis comprueban fallos que existieron de verdad y que ya no están.
+Estas diez comprueban fallos que existieron de verdad y que ya no están.
 Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
 
 | # | Qué probar | Esperado | P. | Estado |
@@ -454,7 +454,8 @@ Son las de mayor rentabilidad: si alguna falla, algo se ha roto otra vez.
 | R6 | Escala, NPS y estrellas con el teclado | Un tabulador por control y anillo de foco visible (antes no eran alcanzables) | A | |
 | R7 | Constructor → «Guardar» **dos veces seguidas**, sin tocar nada entre las dos | El botón vuelve a su estado normal las dos veces. Antes el segundo clic lo dejaba en «Guardando…» apagado para siempre, sin red y sin error | A | |
 | R8 | Ficha del formulario, cabecera del top (Editar campos, Compartir, Publicar/En revisión/Cerrar, «más») | Los cuatro controles miden lo mismo (44 px de alto) y comparten radio; ninguno queda más bajo ni más cuadrado que el vecino | B | |
-| R9 | Formulario en `roster`, ficha → guardar cualquier ajuste (sin recargar) | La tarjeta de Acceso repintada **sigue con sus dos pestañas**: se ve una sola zona y se puede cambiar a «Importar»; no se apilan las dos | A | |
+| R9 | Formulario en `roster`, pantalla *Participantes* → añadir o importar sin recargar | Tras el repintado se ven las **mismas tarjetas** (tablero, lista e importación plegada); no se apilan dos copias ni se pierde el `<details>` | A | |
+| R10 | Formulario en `roster`, ficha → guardar cualquier ajuste (sin recargar) | La pantalla *Participantes* **no se toca** (ahora tiene camino propio): el guardado devuelve solo la insignia y las acciones del estado, y no un hueco `vfSlotAccess` que ya no existe | A | |
 
 ---
 
@@ -497,8 +498,8 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S29 | Constructor → vista previa del formulario, abajo del todo | El botón es el del formulario publicado: degradado morado con **«Enviar» en blanco**, no un botón blanco con el texto en negro | M | |
 | S30 | `/admin` en pantalla ancha | Cabecera, filtros y tabla a todo el ancho; *Nuevo usuario* es un botón de la cabecera y el alta se abre en un diálogo | M | |
 | S31 | `/admin` a 375 px | La tabla se apila en tarjetas (con su rótulo por celda) y **nada** desborda; el diálogo de alta se abre a una columna y los cinco campos se leen enteros | M | |
-| S32 | Ficha del formulario, en pantalla ancha | Columna ancha: Detalles, Campos y Acceso, en ese orden. Columna estrecha: Enlace para compartir y Ajustes del formulario | M | |
-| S33 | Ficha con una **larga lista de correos** | La lista se lee con holgura y no estira la columna de los ajustes, que se queda a su ancho | M | |
+| S32 | Ficha del formulario, en pantalla ancha | Columna ancha: Detalles y Campos. Columna estrecha: Enlace para compartir y Ajustes del formulario. La tarjeta de Acceso ya no está: vive en la pantalla *Participantes* | M | |
+| S33 | Pantalla *Participantes* con una **larga lista de correos** | La lista se lee con holgura y no desborda la pantalla | M | |
 | S34 | Ficha a 375 px | Las tarjetas se apilan en el orden del punto S32 y **ninguna** desborda | M | |
 | S35 | Formulario publicado a **1920 px** y después a **800 px**; luego el preview en vivo del constructor a ≥992 px | A 1920 la tarjeta ocupa **la mitad** centrada (`col-lg-6`); a 800 ocupa todo el ancho y ninguna matriz se sale con scroll horizontal. El preview del constructor se parte **igual** que el publicado: ninguna regla por id le da un ancho distinto | M | |
 | S36 | Ficha → Ajustes → Notificaciones y Webhook, en pantalla ancha (≥992 px, con la tarjeta en su columna estrecha) | Los campos no salen en columnas de ~120 px: van a media fila (email/asunto, formato/secreto) o a fila entera (mensaje, URL), y sus textos no se recortan | M | |
@@ -539,7 +540,7 @@ deja en el quinto es un fallo de la misma clase que un `</div>` de más.
 | T10 | Con el JS desactivado, pulsar dos veces «Desactivar» en `/admin` | La segunda pulsación ya no procede (la página se fue), así que no hay doble cambio | A | |
 | T11 | `/admin` → desactivar un usuario y observar la fila | No recarga. Cambian los dos: la insignia y el botón (que pasa a «Activar», con su icono y su color) | A | |
 | T12 | `/admin` → **Guardar** los cambios de una fila recién desactivada | Se guardan sobre el estado nuevo: el `<select>` de rol y el desplegable de grupos **siguen abiertos y con lo que elegiste** | M | |
-| T13 | Un formulario con acceso por lista → «Acceso restringido» → quitar un email | No recarga. Desaparece esa fila de la lista y sale un aviso; **no** aparece el aviso verde de «quitado» por otra parte | M | |
+| T13 | Un formulario con acceso por lista → pantalla *Participantes* → quitar un email | No recarga. Desaparece esa fila de la lista y sale un aviso; **no** aparece el aviso verde de «quitado» por otra parte | M | |
 | T14 | Respuestas → borrar una | No recarga. Desaparece la fila, baja el contador del encabezado y sale el aviso | A | |
 | T15 | Borrar la **última** respuesta de un formulario | Desaparece la fila, el contador llega a 0 y la página **se recarga** una vez: sale el «aún no tiene respuestas» en vez de una tabla vacía | M | |
 | T16 | Con el JS desactivado, borrar una respuesta | Recarga con su aviso verde, como antes | A | |
@@ -573,16 +574,16 @@ que se rompió.
 | U5 | Con un lector de pantalla, abre cualquiera de los diez diálogos | Anuncia el título y **la pregunta** (p. ej. «¿Eliminar formulario?»), no solo «Confirmar» | M | |
 | U6 | Publicar / devolver a borrador / activar usuario | El botón de confirmar dice qué hace («Publicar», «Devolver a borrador», «Activar») y sale en azul, no en rojo | A | |
 | U7 | Desactivar usuario / eliminar / borrar respuesta | El botón dice la acción concreta y sale en rojo | A | |
-| U8 | Ficha → «Acceso restringido» → **añadir** un email a la lista | **No recarga.** La lista se reescribe abajo y sale el aviso, igual que al quitarlo | A | |
+| U8 | Pantalla *Participantes* con acceso por lista → **añadir** un email a la lista | **No recarga.** La lista se reescribe abajo y sale el aviso, igual que al quitarlo | A | |
 | U9 | Añadir **dos** emails seguidos | Cada alta suma su fila; al terminar, el campo queda **vacío y con el foco dentro**, sin tabular | M | |
 | U10 | Añadir un email que **ya está** en la lista | El motivo sale **junto al campo** («Ese correo ya está en la lista»), no flotando arriba, y **no** sale dos veces | A | |
 | U11 | Tras el error de U10, escribir un email válido y añadirlo | Se borra el aviso anterior, la fila aparece y el contador sube | A | |
-| U12 | Acceso restringido en móvil (360 px) → añadir un email | El diálogo de confirmación cabe entero y los botones se ven los dos | M | |
+| U12 | Pantalla *Participantes* con acceso por lista, en móvil (360 px) → añadir un email | El diálogo de confirmación cabe entero y los botones se ven los dos | M | |
 | U13 | Con el **JS desactivado**, añadir un email a la lista | Recarga con su aviso verde, como siempre | A | |
-| U14 | En `/dashboard`, borra una fila y añade un email a una lista en la misma pantalla | Ambas cosas: la fila se quita y la lista se reescribe, sin que una pise a la otra | M | |
+| U14 | En la pantalla *Participantes* con allowlist, quita un correo y añade otro seguido | Ambas cosas: la fila se quita y la lista se reescribe, sin que una pise a la otra | M | |
 | U15 | Con el JS desactivado, borra un formulario | El `data-confirm` no se lee y se borra sin preguntar. Es lo que hay: el diálogo es una mejora, no una condición para no perder datos | A | |
 
-| U16 | Ficha → «Acceso restringido» → cambia el **modo** y guarda | **No recarga** y la tarjeta de debajo cambia: insignia «Solo la lista» con el alta y los correos, «Público» sin ellos | A | |
+| U16 | Ficha → «Acceso restringido» → cambia el **modo** y guarda | **No recarga** y el estado no se rompe (el guardado devuelve la insignia y las acciones que quedan). Al abrir *Participantes*, la tarjeta ya sale con el modo nuevo | A | |
 | U17 | `/admin` → cambia el **rol** de una fila | **No recarga.** El desplegable se queda en el valor nuevo, sale el aviso verde y la tabla no da un salto de posición | A | |
 | U18 | `/admin` → despliega los **grupos** de esa misma fila y guarda | **No recarga.** Las insignias del botón se reescriben con el grupo elegido | A | |
 | U19 | `/admin` → guarda el rol de una persona **justo después** de abrir sus grupos | Las dos cosas se quedan: el desplegable de grupos que estaba abierto no se cierra ni se pierde lo que se estaba editando | M | |
@@ -590,43 +591,58 @@ que se rompió.
 
 ---
 
-## V. La pestaña de participantes (fase 5, 2026-10-04)
+## V. La pantalla de participantes (fase 5, rediseñada 2026-10-15)
 
 Se llega poniendo el formulario en modo `roster` (la fase 6 añadió la `<option>`
-al desplegable; el bloque W lo mira). Es la fase donde más cosas pueden quedar «a
-medias sin decir nada» —un hueco repuesto con el id equivocado no falla, no hace
-nada—, así que lo que se mira es que **cada guardado sin recarga repinte lo que ese
-guardado cambió** y que **sin JavaScript se vea todo**.
+al desplegable; el bloque W lo mira) y luego abriendo el botón **Participantes**
+de la ficha (entre *Editar campos* y *Respuestas*), que lleva a
+`/forms/{id}/access`. Es la fase donde más cosas pueden quedar «a medias sin
+decir nada» —un hueco repuesto con el id equivocado no falla, no hace nada—, así
+que lo que se mira es que **cada guardado sin recarga repinte lo que ese guardado
+cambió** y que **sin JavaScript se vea todo**.
 
-Para llegar al panel: ficha del formulario → *Ajustes* → *Quién puede responder* →
-«Solo un listado de participantes» → guardar.
+Para llegar al modo: ficha del formulario → *Ajustes* → *Quién puede responder* →
+«Solo un listado de participantes» → guardar. El listado en sí vive en la pantalla
+**Participantes** (botón de la ficha), no en la ficha.
 
 | # | Qué probar | Esperado | P. | Estado |
 |---|---|---|---|---|
-| V1 | Formulario en modo `roster` | La tarjeta de Acceso trae la lista de participantes con dos pestañas («Lista», «Importar») | A | |
-| V2 | Las dos pestañas | Solo se ve la elegida; el estado se recuerda al volver a la ficha | M | |
-| V3 | **Con el JS desactivado**, abrir la ficha en `roster` | **Se ven las dos zonas**, una debajo de otra: el panel de importar no desaparece | A | |
-| V4 | *Añadir uno a la lista* → escribir una cédula y *Añadir* | **No recarga.** Aparece la tarjeta de la persona, suben los números y la caja queda vacía con el foco dentro | M | |
-| V5 | Escribir una cédula **ya presente** y añadir | No aparece una segunda tarjeta; el motivo sale **junto al campo**, no flotando, y no sale dos veces | A | |
+| V1 | Formulario en modo `roster` → botón *Participantes* | La pantalla trae **cuatro tarjetas**: la cabecera de acceso, el tablero (números + invitaciones), la **lista** y la **importación** (esta última plegada) | A | |
+| V2 | La tarjeta «Importar», su `<summary>` | Se pliega y despliega sin JS y con teclado (`Enter`/`Espacio`); al abrirla se ve «Subir un archivo» a la izquierda y el catálogo a la derecha | A | |
+| V3 | **Con el JS desactivado**, abrir `/forms/{id}/access` | **Nada desaparece**: la lista se ve entera y el `<details>` de importar se abre y se cierra con el ratón (es colapso nativo, no depende de JS) | A | |
+| V4 | *Añadir uno a la lista* (abre un modal) → escribir una cédula y *Añadir* | **No recarga.** Cierra el modal, aparece la fila, suben los números y la caja queda vacía con el foco dentro | M | |
+| V5 | Escribir una cédula **ya presente** y añadir | No aparece una segunda fila; el motivo sale **junto al campo**, no flotando, y no sale dos veces | A | |
 | V6 | Alta repetida sin recargar, tres seguidas | El catálogo **no** se repinta en cada alta (no se ve el parpadeo de las columnas) y los números suben | M | |
-| V7 | Cada tarjeta → *Editar* | Se abre con los valores y un campo por atributo del catálogo | M | |
+| V7 | Cada fila → menú `⋯` | Se abre `#rosterEditModal` con el panel de esa fila (un campo por atributo del catálogo) y con **ese** nombre en el título | M | |
 | V8 | Editar el nombre y guardar, con la lista ordenada por nombre | **No recarga** y la lista sale ordenada por nombre, no por cédula | A | |
-| V9 | Buscar `V-01` en la caja de búsqueda con la lista ordenada por *Nombre* | Es un GET: la URL cambia, se puede compartir y el botón «atrás» deshace la búsqueda; el resultado sale **en el mismo orden** y en la primera página | A | |
-| V10 | Con una búsqueda puesta, borrar a alguien | La tarjeta repuesta **respeta la búsqueda** (no vuelve la lista entera) | A | |
+| V9 | Buscar `V-01` en la caja de búsqueda con la lista ordenada por *Nombre* | **No recarga la página**: solo cambia la lista; la URL cambia (`?q=…`), se puede compartir y el botón «atrás» deshace la búsqueda; el resultado sale **en el mismo orden** y en la primera página | A | |
+| V10 | Con una búsqueda puesta, borrar a alguien | La lista repuesta **respeta la búsqueda** (no vuelve la lista entera) | A | |
 | V11 | Importar un `.xlsx` con una columna nueva | Se crean la persona, el atributo, los números **y el campo del atributo en el alta**, sin recargar | A | |
 | V12 | Importar un archivo con una fila sin identificador, en modo *reemplazar* | No se importa nada y el **informe sale igualmente**: dice qué fila y que no entró | A | |
-| V13 | Con el JS desactivado, importar un archivo con filas malas | Recarga y el informe se ve en la pestaña «Importar», con las filas concretas | A | |
+| V13 | Con el JS desactivado, importar un archivo con filas malas | Recarga y el informe se ve dentro de la tarjeta «Importar» (abriéndola), con las filas concretas | A | |
 | V14 | Importar un archivo que no es un `.xlsx` | Sale el aviso del motivo y **no** un informe diciendo que se guardaron 0 filas | A | |
-| V15 | Tras una importación, recargar la ficha | El informe **no vuelve a salir**: es de un solo uso | A | |
+| V15 | Tras una importación, recargar la pantalla | El informe **no vuelve a salir**: es de un solo uso | A | |
 | V16 | *Vaciar la lista* | El diálogo dice **qué** se pierde y que las respuestas se quedan; la lista se vacía y **el catálogo sigue** | A | |
-| V17 | Quitar un atributo del catálogo | Pregunta; desaparecen la columna, sus valores en las tarjetas y el campo del alta, sin recargar | M | |
+| V17 | Quitar un atributo del catálogo | Pregunta; desaparecen la columna, sus valores en las filas y el campo del alta, sin recargar | M | |
 | V18 | Quitar a alguien de la lista | El diálogo dice que su código deja de servir y que sus respuestas se quedan | A | |
-| V19 | Un formulario con 26 participantes | 25 en la página y paginación; los números de arriba son **de los 26**, no de lo filtrado | M | |
-| V20 | En móvil (360 px), la pestaña «Lista» | Los números no se desbordan y el botón de *Quitar* se ve sin scrolls interminables | M | |
+| V19 | Un formulario con 26 participantes | 25 en la página y paginación (mismo paginador que el dashboard); los números de arriba son **de los 26**, no de lo filtrado | M | |
+| V20 | En móvil (360 px), la tarjeta «Lista» | Los números no se desbordan y el botón de *Quitar* se ve sin scrolls interminables | M | |
 | V21 | Con el JS desactivado, buscar, añadir y borrar | Todo funciona con POST normal y avisos con flash | A | |
-| V22 | Un formulario que **no** es de lista | La tarjeta de Acceso es la de siempre: ni panel, ni alta de correo | A | |
-| V23 | Buscar con el panel a media pantalla (sin recargar antes) | La página vuelve al panel, no al principio de la ficha: si el resultado queda fuera de pantalla parece que la búsqueda no hizo nada | M | |
-| V24 | Un formulario de lista con alguien que ya respondió: borra su respuesta desde *Respuestas* | Los números de la tarjeta bajan (deja de contar como respondida) y esa persona **puede volver a entrar** con su código o enlace y responder otra vez; si tuviera dos respuestas, la marca solo se suelta al borrar la última | A | |
+| V22 | Un formulario que **no** es de lista → *Participantes* | La pantalla trae la tarjeta de acceso de siempre (allowlist): ni panel, ni alta de correo por persona | A | |
+| V23 | Buscar con el panel a media pantalla (sin recargar antes) | La página vuelve al panel, no al principio: si el resultado queda fuera de pantalla parece que la búsqueda no hizo nada | M | |
+| V24 | Un formulario de lista con alguien que ya respondió: borra su respuesta desde *Respuestas* | Los números bajan (deja de contar como respondida) y esa persona **puede volver a entrar** con su código o enlace y responder otra vez; si tuviera dos respuestas, la marca solo se suelta al borrar la última | A | |
+| V25 | Cerrar `#rosterEditModal` con `Esc` o tocando el fondo | El panel de la fila **vuelve a su sitio** (`#rowactions-<pid>`, oculto) y la ficha sigue como estaba | M | |
+| V26 | Abrir la pantalla con `?q=V-01&sort=nombre&page=2` | La lista sale ya filtrada, ordenada y en esa página, y el paginador **conserva** `q` y `sort` al pasar de página | A | |
+| V27 | Cargar 26+ y pasar de página | La lista nueva llega por GET; el buscador y el orden no se pierden | M | |
+| V28 | Abrir *Participantes* en un formulario de lista | Se ven **tres bloques** separados a todo el ancho: la cabecera de acceso, el **resumen** (números + invitar) y la **lista**; no una única tarjeta con todo apilado | M | |
+| V29 | En el resumen, mirar la cabecera de los modales de alta y edición | La franja superior es del color de la barra (`app-navbar`) con el icono y el título, igual que los diálogos de `/admin`; no la cabecera blanca por defecto de Bootstrap | M | |
+| V30 | Buscar y añadir a alguien | El buscador es un **campo con botón *Buscar*** en la misma fila que *Añadir uno a la lista*; el campo suelto ya no está arriba separado | M | |
+| V31 | Abrir los modales de alta y de edición con varios atributos | Los campos van en **una sola columna**, a todo el ancho del diálogo; ninguno queda estrecho ni desalineado | M | |
+| V32 | En el modal de edición, mirar los botones | *Quitar* a la izquierda y *Guardar* a la derecha, alineados en una franja al pie; con el foco dentro de un campo, `Enter` guarda y *Guardar* se apaga mientras guarda | M | |
+| V33 | Abrir la tarjeta «Importar» con muchos atributos en el catálogo | Subir un archivo queda a la **izquierda** y el catálogo a la **derecha** (en pantalla ancha); *Vaciar la lista* está **abajo, a todo el ancho**, fuera del colapsable | M | |
+| V34 | Buscar en la lista de participantes | **No se recarga la página entera**: cambia solo la lista, la URL queda con `?q=…` y el campo de búsqueda conserva lo escrito | A | |
+| V35 | Tras buscar, pulsar «atrás» del navegador | Vuelve a la lista sin búsqueda (el campo se re-sincroniza con la URL) | M | |
+| V36 | Con el JS desactivado, buscar | El formulario hace un GET normal: la página se recarga con el resultado, que es el camino de siempre | A | |
 
 ## W. Elegir con qué se identifica a cada participante (fase 6, 2026-10-04)
 
@@ -785,7 +801,8 @@ Para llegar: panel → el formulario → *Participantes*.
 
 La búsqueda, los filtros por estado y el orden del panel pasaron de ser de
 JavaScript sobre el listado entero a viajar en la URL (`?q=…&estado=…&orden=…`),
-igual que hace el listado de participantes de la ficha. Lo que se mira aquí es lo
+igual que hace el listado de participantes de su pantalla (`/forms/{id}/access`).
+Lo que se mira aquí es lo
 que la suite no ve: que se **sienta** como antes (o que el cambio se note y se
 pueda escribir en el manual), que sin JavaScript haya un camino, y que el rótulo
 de página no mienta.
@@ -877,7 +894,7 @@ C4 hace falta al menos un usuario y un grupo.
 
 ## AE. El recordatorio por correo (fase 12, 2026-10-15)
 
-El botón de recordatorio vive al lado del de invitaciones, en la misma tarjeta, y
+El botón de recordatorio vive al lado del de invitaciones, en la misma pantalla, y
 es lo que la suite no puede ver: que el correo **se entienda**, que el número que
 promete **no mienta** después de un envío a medias y que la tanda **no insista**
 sobre los mismos. La lista tiene que tener gente ya **invitada** y sin responder,
