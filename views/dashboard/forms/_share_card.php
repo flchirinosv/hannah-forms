@@ -21,7 +21,7 @@ $settings = $settings ?? [];
         <input type="text" class="form-control form-control-sm app-share-input" id="shareUrl" value="<?= View::escape($shareUrl) ?>" readonly>
         <button class="btn btn-outline-secondary btn-sm btn-copy-link" type="button" data-url="<?= View::escape($shareUrl) ?>" title="Copiar enlace"><i class="fa-solid fa-copy"></i></button>
     </div>
-    <a href="<?= View::escape($shareUrl) ?>" target="_blank" class="btn btn-outline-info btn-sm w-100"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir en nueva pestaña</a>
+    <a href="<?= View::escape($shareUrl) ?>" target="_blank" class="btn btn-outline-info app-form-cta w-100"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Abrir en nueva pestaña</a>
 
     <?php // La URL se dedujo del host de la petición y salió local: el QR solo
           // abrirá desde esta red. Ver App\Core\PublicUrl. ?>
@@ -49,6 +49,6 @@ $settings = $settings ?? [];
     <p class="text-muted small mb-3">Publica el formulario para obtener el enlace de respuesta.</p>
     <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishSidebar" data-vf-async="slots">
         <?= \App\Core\Csrf::field() ?>
-        <button type="submit" class="btn btn-success btn-sm w-100"><i class="fa-solid fa-globe me-1"></i>Publicar ahora</button>
+        <button type="submit" class="btn btn-success app-form-cta w-100"><i class="fa-solid fa-globe me-1"></i>Publicar ahora</button>
     </form>
 <?php endif; ?>

@@ -145,7 +145,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                                    class="form-control" maxlength="190"
                                    aria-label="Buscar participante"
                                    placeholder="Cédula, nombre, correo o código">
-                            <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Buscar</button>
                         </div>
                     </form>
 
@@ -167,7 +167,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                           // traslada al diálogo `#rosterAddModal` —patrón de `/admin/users`—.
                           // El botón solo lo convierte en modal con JS; sin él sigue viéndose
                           // el montaje y el botón no hace nada. ?>
-                    <button type="button" class="btn btn-outline-primary btn-sm"
+                    <button type="button" class="btn btn-outline-primary app-form-cta"
                             data-bs-toggle="modal" data-bs-target="#rosterAddModal">
                         <i class="fa-solid fa-user-plus me-1"></i>Agregar
                     </button>
@@ -253,7 +253,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                                 </div>
                             </fieldset>
 
-                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <button type="submit" class="btn btn-outline-primary app-form-cta">
                                 <i class="fa-solid fa-upload me-1"></i>Importar
                             </button>
                             <p class="small mb-0 mt-1 d-none text-danger fw-semibold" id="rosterImportError" role="alert"></p>
@@ -294,7 +294,7 @@ $rotuloColumnas .= '. Guárdalo con el mismo formato y no lo edites a mano.';
                     <input type="hidden" name="rosterQ" value="<?= View::escape((string) $roster['q']) ?>">
                     <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
                     <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
-                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <button type="submit" class="btn btn-outline-danger app-form-cta">
                         <i class="fa-solid fa-eraser me-1"></i>Vaciar la lista
                     </button>
                 </form>

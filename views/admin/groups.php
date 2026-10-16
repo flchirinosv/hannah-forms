@@ -68,8 +68,8 @@ use App\Core\View;
                             <textarea class="form-control form-control-sm" id="groupDesc" name="description" maxlength="255"
                                       rows="3" placeholder="Quiénes son y por qué existen"></textarea>
                         </div>
-                        <div class="col-12 d-grid">
-                            <button type="submit" class="btn btn-sm btn-primary app-btn-mobile-icon">
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary app-btn-primary app-btn-mobile-icon">
                                 <i class="fa-solid fa-plus me-1"></i>Crear
                             </button>
                         </div>
@@ -203,7 +203,7 @@ use App\Core\View;
                             </div>
 
                             <div class="col-12 d-flex justify-content-end">
-                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                <button type="submit" class="btn btn-outline-success app-form-cta">
                                     <i class="fa-solid fa-floppy-disk me-1"></i>Guardar grupo
                                 </button>
                             </div>

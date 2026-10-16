@@ -427,7 +427,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                               // vuelo lo quita del `d-none`. Sin él, guardar unos
                               // ajustes tardaba lo que tardara el servidor y solo
                               // se veía el botón apagado. ?>
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <button type="submit" class="btn btn-primary app-form-cta w-100">
                             <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes
                             <span class="spinner-border spinner-border-sm d-none ms-1" role="status" aria-hidden="true"></span>
                         </button>

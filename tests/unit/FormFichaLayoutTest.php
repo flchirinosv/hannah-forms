@@ -331,11 +331,20 @@ class FormFichaLayoutTest
      * con el CTA de `app-btn-primary` (44px) en el mismo `modal-footer`. Toma el
      * alto y el radio del CTA, como `.app-head-actions`, sin heredar su color ni
      * su sombra.
+     *
+     * La regla NO se acota a `.app-content`: el diálogo de confirmación
+     * (`#vfConfirm`) vive fuera de él (es hijo directo de `<body>`), así que con
+     * el selector acotado sus dos botones se quedaban en 38px. Por eso el
+     * selector es `.modal-footer .btn` a secas.
      */
     public function testElPieDeLosModalesUnificaLosBotones(): void
     {
-        $btn = self::bloque('.app-content .modal-footer .btn');
+        $btn = self::bloque('.modal-footer .btn');
         assertNotNull($btn, 'app.css unifica el alto de los botones del pie de modal');
+        assertFalse(
+            str_contains(self::css(), '.app-content .modal-footer .btn'),
+            'la regla del pie no se acota a .app-content: #vfConfirm vive fuera'
+        );
         assertSame(
             1,
             preg_match('/min-height:\s*var\(--vf-btn-cta-h\)/', (string) $btn),
@@ -346,5 +355,71 @@ class FormFichaLayoutTest
             preg_match('/border-radius:\s*12px/', (string) $btn),
             'y al mismo radio'
         );
+    }
+
+    /**
+     * El alto del CTA es el mismo dentro de una tarjeta que en la cabecera.
+     *
+     * `--vf-ctrl-h` es 32 y `--vf-btn-cta-h` es 44: los guardados de las tarjetas
+     * iban con `btn-sm` (32) mientras el CTA de la cabecera de la misma pantalla
+     * medía 44, y el formulario que el JS traslada al diálogo se veía más bajo en
+     * la tarjeta que en el modal. `.app-form-cta` da el ALTO y el radio sin tocar
+     * el color ni añadir sombra, que siguen siendo de cada variante — por eso
+     * tampoco se le puede sumar `app-btn-primary`, que la pondría por encima.
+     */
+    public function testElAltoDelCtaDeFormularioEsElMismoDentroDeUnaTarjeta(): void
+    {
+        $cta = self::bloque('.app-form-cta');
+        assertNotNull($cta, 'app.css tiene la utilidad de alto para los CTA de tarjeta');
+        assertSame(
+            1,
+            preg_match('/min-height:\s*var\(--vf-btn-cta-h\)/', (string) $cta),
+            'sube al alto del CTA (44px), no al de los controles (32px)'
+        );
+        assertSame(
+            1,
+            preg_match('/border-radius:\s*12px/', (string) $cta),
+            'y al mismo radio que el resto de acciones'
+        );
+        assertSame(
+            1,
+            preg_match('/font-weight:\s*600/', (string) $cta),
+            'y al mismo peso'
+        );
+        assertSame(
+            0,
+            preg_match('/\b(background|box-shadow|color)\s*:/', (string) $cta),
+            'no pinta color ni sombra: la pone cada variante (btn-primary, -danger…)'
+        );
+
+        // Cada vista donde el JS traslada el formulario a un diálogo: sin uno de
+        // los dos CTA, la tarjeta se queda en 32px y el modal en 44. El par
+        // vista => aguja también atiende que el botón siga siendo el mismo.
+        foreach ([
+            'admin/groups.php'                    => 'Guardar grupo',
+            'admin/roles.php'                     => 'Guardar matriz',
+            'admin/users.php'                     => 'Guardar permisos',
+            'admin/_user_toggle.php'              => 'Desactivar|Activar',
+            'dashboard/forms/_status_actions.php' => 'formUpdate',
+            'dashboard/forms/_share_card.php'     => 'Publicar ahora',
+            'dashboard/forms/show.php'            => 'Guardar ajustes',
+            'dashboard/forms/_roster_list.php'    => '</i>Quitar',
+            'dashboard/forms/_roster_panel.php'   => 'Vaciar la lista',
+            'dashboard/forms/_roster_add_form.php' => 'Añadir a la lista',
+        ] as $vista => $aguja) {
+            $html = self::plantilla($vista);
+            assertTrue(
+                // `app-btn-primary` ya mide 44 (y añade sombra y color de
+                // variante primaria); `app-form-cta` es el alto sin eso, para los
+                // botones que no son primarios (danger, outline…).
+                str_contains($html, 'app-form-cta') || str_contains($html, 'app-btn-primary'),
+                "el CTA de {$vista} sube al alto de 44px (app-form-cta o app-btn-primary)"
+            );
+            assertSame(
+                1,
+                preg_match('#' . $aguja . '#', $html),
+                "la vista {$vista} sigue teniendo su botón (aguja: {$aguja})"
+            );
+        }
     }
 }

@@ -191,9 +191,11 @@ class ContentButtonsMobileTest
             'las insignias dentro de un botón colapsado siguen legibles'
         );
 
-        // Los botones de crear de /admin son `w-100`, así que quedan fuera de
-        // la regla general; se colapsan por estar marcados con
-        // `app-btn-mobile-icon`.
+        // Los botones de crear de /admin llevan además `app-btn-mobile-icon`,
+        // que los colapsa con una regla propia. Ya no son `w-100` (van a ancho
+        // de contenido, alineados a la derecha como el resto de CTA del panel),
+        // así que ahora también los alcanzaría la regla general; el marcador se
+        // conserva para que el colapso no dependa de la alineación del botón.
         assertSame(
             1,
             preg_match(

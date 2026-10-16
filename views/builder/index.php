@@ -60,24 +60,28 @@ $fieldTypes = [
     <div class="row g-4 builder-layout">
         <!-- Lienzo -->
         <div class="col-lg-9 mx-auto">
-            <div class="card border-0 shadow-sm app-builder-canvas-wrap">
-                <div class="card-body p-4">
-                    <div class="mb-3">
+            <?php // El lienzo NO envuelve los campos en una tarjeta blanca: iba en
+                  // `card bg-transparent`, que solo añadía padding y restaba ancho a
+                  // los campos en pantalla pequeña. El encabezado editable sí es una
+                  // tarjeta, como las preguntas, o quedaría suelto sobre el fondo. ?>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="mb-0">
                         <input type="text" class="form-control form-control-lg fw-bold app-title-input" id="builderTitle" value="<?= View::escape($form['title']) ?>" placeholder="Título del formulario">
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-0 mt-3">
                         <textarea class="form-control" id="builderDescription" rows="2" placeholder="Descripción (opcional)"><?= View::escape($form['description']) ?></textarea>
                     </div>
-
-                    <div id="canvasFields" class="app-canvas d-flex flex-column gap-4"></div>
-
-                    <div id="emptyCanvas" class="text-center py-5 app-empty-canvas">
-                        <div class="app-empty-icon mb-3"><i class="fa-solid fa-file-circle-plus"></i></div>
-                        <p class="h6 fw-bold">Aún no hay preguntas</p>
-                        <p class="text-muted small">Agrega tu primera pregunta para empezar a armar la encuesta.</p>
-                        <button type="button" class="btn btn-primary app-btn-primary mt-2" id="btnEmptyAdd"><i class="fa-solid fa-plus me-1"></i>Agregar pregunta</button>
-                    </div>
                 </div>
+            </div>
+
+            <div id="canvasFields" class="app-canvas d-flex flex-column gap-4"></div>
+
+            <div id="emptyCanvas" class="text-center py-5 app-empty-canvas">
+                <div class="app-empty-icon mb-3"><i class="fa-solid fa-file-circle-plus"></i></div>
+                <p class="h6 fw-bold">Aún no hay preguntas</p>
+                <p class="text-muted small">Agrega tu primera pregunta para empezar a armar la encuesta.</p>
+                <button type="button" class="btn btn-primary app-btn-primary mt-2" id="btnEmptyAdd"><i class="fa-solid fa-plus me-1"></i>Agregar pregunta</button>
             </div>
         </div>
 

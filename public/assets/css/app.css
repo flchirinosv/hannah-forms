@@ -91,6 +91,20 @@ body {
     font-weight: 600;
 }
 
+/* `.app-form-cta` da a un botón de formulario el ALTO y el radio del CTA sin
+   tocar su color ni añadir sombra (la sombra es de `app-btn-primary`). Los
+   botones de guardar/crear de las tarjetas del panel medían 32px (`btn-sm`)
+   mientras el CTA de la cabecera y el pie de los modales medían 44: en la misma
+   pantalla convivían dos alturas para la misma clase de acción, y la tarjeta y
+   el modal al que su formulario se traslada se veían distintos. `btn-sm` queda
+   para los controles de verdad compactos (dentro de un `input-group-sm`, iconos
+   de fila). */
+.app-form-cta {
+    min-height: var(--vf-btn-cta-h);
+    border-radius: 12px;
+    font-weight: 600;
+}
+
 .app-btn-icon {
     width: var(--vf-icon-btn);
     height: var(--vf-icon-btn);
@@ -595,15 +609,6 @@ body {
     box-shadow: none;
 }
 
-.app-builder-canvas-wrap {
-    border-radius: var(--vf-radius-lg);
-    /* F1 (rediseño): la columna central se centra y se topa en ~860px como la
-       tarjeta de Google Forms. El lienzo sigue dentro de `col-lg-9`; la caja
-       ya no se estira hasta el borde del panel de configuración. */
-    max-width: 860px;
-    margin-inline: auto;
-    width: 100%;
-}
 .app-title-input {
     border: 0;
     border-bottom: 2px solid transparent;
@@ -1217,9 +1222,10 @@ body {
 /* El pie de un modal es otra fila de botones que tienen que medir lo mismo: sin
    esta regla, el «Cancelar» de 38px convivía con el CTA de `app-btn-primary`
    (44px) en el mismo pie. Toma el mismo alto y radio que `.app-head-actions`;
-   la sombra y el color siguen siendo de cada variante. Acotado a `.app-content`
-   (el panel), que es donde viven estos modales. */
-.app-content .modal-footer .btn {
+   la sombra y el color siguen siendo de cada variante. NO se acota a
+   `.app-content`: el diálogo de confirmación (`#vfConfirm`) vive fuera de él
+   —es hijo directo de `<body>`—, y acotarla dejaba sus dos botones en 38px. */
+.modal-footer .btn {
     min-height: var(--vf-btn-cta-h);
     border-radius: 12px;
 }

@@ -277,12 +277,12 @@ $ordenes = [
                                             <input type="hidden" name="rosterQ" value="<?= View::escape($q) ?>">
                                             <input type="hidden" name="rosterPage" value="<?= $pagina ?>">
                                             <input type="hidden" name="rosterSort" value="<?= View::escape($sort) ?>">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <button type="submit" class="btn btn-outline-danger app-form-cta">
                                                 <i class="fa-solid fa-trash me-1"></i>Quitar
                                             </button>
                                         </form>
                                         <button type="submit" form="rosterEditForm<?= $pid ?>"
-                                                class="btn btn-outline-primary btn-sm ms-auto">
+                                                class="btn btn-outline-primary app-form-cta ms-auto">
                                             <i class="fa-solid fa-check me-1"></i>Guardar
                                         </button>
                                     </div>

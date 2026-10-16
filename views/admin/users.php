@@ -113,7 +113,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                 </p>
                             </div>
                             <div class="col-12 d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                                <button type="submit" class="btn btn-primary app-btn-primary">
                                     <i class="fa-solid fa-user-plus me-1"></i>Crear cuenta
                                 </button>
                             </div>
@@ -361,7 +361,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
                                                 <div class="d-grid gap-2 mt-2">
-                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                    <button type="submit" class="btn btn-primary app-btn-primary">
                                                         <i class="fa-solid fa-floppy-disk me-1"></i>Guardar grupos
                                                     </button>
                                                     <?php // `role="alert"` y con `d-none`: el aviso del
@@ -405,7 +405,7 @@ $qsFiltros = $qsFiltros === [] ? '' : '?' . http_build_query($qsFiltros);
                                                     <?php endforeach; ?>
                                                 </div>
                                                 <div class="d-grid gap-2 mt-2">
-                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                    <button type="submit" class="btn btn-primary app-btn-primary">
                                                         <i class="fa-solid fa-floppy-disk me-1"></i>Guardar permisos
                                                     </button>
                                                     <p class="small mb-0 d-none text-danger fw-semibold" id="permsError<?= $uid ?>" role="alert"></p>

@@ -43,7 +43,7 @@ $accion = $vaActivar ? 'Desactivar' : 'Activar';
           // de ancho completo se lee mejor que un icono suelto, y además queda
           // fuera de la regla de «solo icono» en móvil (esa regla excluye los
           // `w-100`), así que conserva su texto en todas las franjas. ?>
-    <button type="submit" class="btn btn-sm w-100 <?= (int) $user['is_active'] === 1 ? 'btn-outline-warning' : 'btn-outline-success' ?>">
+    <button type="submit" class="btn w-100 app-form-cta <?= (int) $user['is_active'] === 1 ? 'btn-outline-warning' : 'btn-outline-success' ?>">
         <i class="fa-solid <?= (int) $user['is_active'] === 1 ? 'fa-ban' : 'fa-check' ?> me-1"></i><?= $accion ?> la cuenta
     </button>
 </form>

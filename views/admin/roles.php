@@ -74,9 +74,11 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                             <input type="text" class="form-control form-control-sm" id="roleDesc" name="description"
                                    maxlength="255" placeholder="Para qué existe este rol">
                         </div>
-                        <button type="submit" class="btn btn-sm btn-primary w-100 app-btn-mobile-icon">
-                            <i class="fa-solid fa-plus me-1"></i>Crear rol
-                        </button>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary app-btn-primary app-btn-mobile-icon">
+                                <i class="fa-solid fa-plus me-1"></i>Crear rol
+                            </button>
+                        </div>
                     </form>
                     <p class="form-text mt-2 mb-0">
                         Nace <strong>sin ningún permiso</strong>: se le marcan abajo en la matriz. Un rol recién
@@ -237,7 +239,7 @@ $sectionTitle = static fn(string $prefix): string => (string) ($sectionLabels[$p
                         <span class="small text-muted">
                             Un rol sin permisos deja a sus usuarios con lo que les dé su grupo o su rol propio.
                         </span>
-                        <button type="submit" class="btn btn-primary btn-sm">
+                        <button type="submit" class="btn btn-primary app-btn-primary">
                             <span class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                             <i class="fa-solid fa-floppy-disk me-1"></i>Guardar matriz
                         </button>

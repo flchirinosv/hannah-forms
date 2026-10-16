@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 103 archivos, 1146 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 103 archivos, 1147 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -943,13 +943,29 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   de cabecera (`.app-head-actions`, ya existía), la sub-navegación de `/admin`
   (`.app-admin-nav`: son `nav-link` de un `nav-pills`, no `.btn`, y estaban
   sueltas a la izquierda) y el pie de los modales
-  (`.app-content .modal-footer .btn`, donde un «Cancelar» de 38px convivía con el
-  CTA de 44). Las tres toman `min-height: var(--vf-btn-cta-h)` + radio 12; la
+  (`.modal-footer .btn`, donde un «Cancelar» de 38px convivía con el CTA de
+  44). Las tres toman `min-height: var(--vf-btn-cta-h)` + radio 12; la
   nav de `/admin` añade `justify-content: flex-end`, **resetado a `flex-start`
   en móvil** porque con `overflow-x: auto` un `flex-end` deja los primeros
   destinos fuera del alcance del scroll. Lo atan
   `ContentButtonsMobileTest::testLaSubNavegacionDeAdminVisteComoUnBotonDeCabecera`
   y `FormFichaLayoutTest::testElPieDeLosModalesUnificaLosBotones`.
+- **El pie del modal NO se acota a `.app-content`** (selector `.modal-footer .btn`
+  a secas, y el test lo comprueba con un `assertFalse` sobre el CSS viejo): el
+  diálogo de confirmación `#vfConfirm` es hijo directo de `<body>`, así que con el
+  selector acotado sus dos botones se quedaban en 38px al lado del resto de la app.
+- **Un botón de guardar dentro de una tarjeta mide 44, igual que el modal al que su
+  formulario se traslada.** `.app-form-cta` da `min-height: var(--vf-btn-cta-h)`
+  + radio 12 + peso 600 **sin tocar color ni añadir sombra** (los pone cada
+  variante), y es lo que usan los submits de `/admin`, del roster y de la ficha
+  que no son primarios (`btn-outline-danger`, `btn-outline-success`…); los que ya
+  eran primarios llevan `app-btn-primary`, que mide 44 de por sí. **No se suman
+  las dos** (la sombra quedaría por encima del radio) ni `btn-sm`, que es de
+  32px y se reserva para controles de verdad compactos (dentro de un
+  `input-group-sm`, iconos de fila). Lo ata
+  `FormFichaLayoutTest::testElAltoDelCtaDeFormularioEsElMismoDentroDeUnaTarjeta`.
+- **El botón de un `input-group-sm` va con `btn-sm`**: el `.btn` de 38 junto a un
+  `form-control-sm` de 32 se nota, y no da ningún error en ningún sitio.
 
 **Acciones sin recarga (bimodal)**
 

@@ -167,6 +167,20 @@ escritorio, dos columnas estables en móvil). Es la decisión de Jotform del
 plan: una paleta fija compite con el lienzo, y el botón `+` (de la barra y de
 la banda entre tarjetas) abre el mismo diálogo con el destino ya resuelto.
 
+### 3.4b La columna del lienzo no lleva tarjeta envolvente
+
+`col-lg-9 mx-auto` contiene, directos: la tarjeta del título/descripción
+(editables en línea, una tarjeta como las preguntas), `#canvasFields`
+(`.app-canvas`, la pila de tarjetas) y `#emptyCanvas`. **No hay un contenedor
+extra**: el lienzo iba dentro de `card bg-transparent > card-body p-4`, que
+añadía el padding de una tarjeta sin aportar fondo —el tinte ya lo pone
+`.app-builder-canvas-wrap`/el body—, y en pantalla pequeña restaba ese ancho a
+los campos, que es donde menos sitio hay. La clase `.app-builder-canvas-wrap`
+se retiró del CSS con ella. Título y descripción **sí** van en su propia
+tarjeta: el lienzo ya no es una superficie blanca continua, así que encima de
+la página se verían sueltos. `builder.js` no toca ningún wrapper, solo
+`#canvasFields` y `#emptyCanvas`, así que no hay nada que re-acomodar.
+
 ### 3.5 Estados lógicos (insignias y notices)
 
 - Insignia de tipo de campo: `.badge` con `text-bg-light`, en mayúsculas
@@ -440,11 +454,26 @@ El panel se envuelve en un shell de dos columnas: `.app-shell` contiene el
     `FormFichaLayoutTest::testLasCabecerasDeRespuestasAnaliticaYAdminUsanLaMismaFila`.
 - **El pie de un modal es otra fila de acciones con el mismo alto.** Un
   `.modal-footer` mezclaba un «Cancelar» de 38px (`.btn` a secas) con el CTA de
-  `app-btn-primary` (44px). `.app-content .modal-footer .btn` toma el mismo
+  `app-btn-primary` (44px). `.modal-footer .btn` toma el mismo
   `min-height`/radio que `.app-head-actions` (`--vf-btn-cta-h` + 12px), sin
-  heredar su color ni su sombra, que siguen siendo de cada variante. Acotado a
-  `.app-content`, donde viven estos modales. Lo ata
-  `FormFichaLayoutTest::testElPieDeLosModalesUnificaLosBotones`.
+  heredar su color ni su sombra, que siguen siendo de cada variante. **No se
+  acota a `.app-content`**: `#vfConfirm` es hijo directo de `<body>` (ver
+  §3.12), así que el selector acotado dejaba sus dos botones en 38px al lado del
+  resto de la app. Lo ata
+  `FormFichaLayoutTest::testElPieDeLosModalesUnificaLosBotones`, que además
+  comprueba con un `assertFalse` que la selector acotada ya no está en el CSS.
+- **Un botón dentro de una tarjeta mide 44, igual que el modal al que su
+  formulario se traslada.** Los guardados de `/admin`, del roster y de la ficha
+  iban con `btn-sm` (32px) y el mismo formulario, ya trasladado a su diálogo,
+  salía a 44. `.app-form-cta` da `min-height: var(--vf-btn-cta-h)` + radio 12 +
+  peso 600 **sin tocar el color ni añadir sombra** (la pone cada variante), de
+  modo que sirve tanto para `btn-outline-danger` como para `btn-outline-success`.
+  Quien ya era primario usa `app-btn-primary`, que mide 44 de por sí: **no se
+  suman las dos** (la sombra quedaría por encima del radio). `btn-sm` queda para
+  los controles de verdad compactos —dentro de un `input-group-sm` o iconos de
+  fila—: un `.btn` de 38 junto a un `form-control-sm` de 32 se nota y no da
+  ningún error en ningún sitio. Lo ata
+  `FormFichaLayoutTest::testElAltoDelCtaDeFormularioEsElMismoDentroDeUnaTarjeta`.
 - `.app-navbar` **no** se toca: la reutilizan las cabeceras con degradado de los
   cinco modales, así que la franja de marca y la barra móvil la reutilizan tal
   cual y la navegación usa clases propias (`.app-shell`, `.app-sidebar`,

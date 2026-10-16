@@ -85,7 +85,7 @@ use App\Core\View;
                         </p>
                     </div>
                     <div class="card-footer bg-white border-0 d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary btn-sm app-btn-primary">
+                        <button type="submit" class="btn btn-primary app-btn-primary">
                             <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
                         </button>
                     </div>

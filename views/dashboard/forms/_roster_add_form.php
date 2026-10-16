@@ -87,8 +87,10 @@ $requerido = $identificador !== 'codigo';
         <?php } ?>
     </div>
 
-    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">
-        <i class="fa-solid fa-plus me-1"></i>Añadir a la lista
-    </button>
+    <div class="d-flex justify-content-end mt-2">
+        <button type="submit" class="btn btn-outline-primary app-form-cta">
+            <i class="fa-solid fa-plus me-1"></i>Añadir a la lista
+        </button>
+    </div>
     <p class="small mb-0 mt-1 d-none text-danger fw-semibold" id="rosterAddError" role="alert"></p>
 </form>

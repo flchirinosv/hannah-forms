@@ -109,7 +109,7 @@ $modeChip = match ($accessMode) {
         <div class="input-group input-group-sm">
             <input type="email" name="email" id="accessAddEmail" class="form-control" required maxlength="190"
                    placeholder="nombre@ejemplo.com" aria-label="Correo con acceso">
-            <button type="submit" class="btn btn-outline-primary" id="accessAddBtn">
+            <button type="submit" class="btn btn-sm btn-outline-primary" id="accessAddBtn">
                 <i class="fa-solid fa-plus me-1"></i>Añadir
             </button>
         </div>
@@ -130,7 +130,7 @@ $modeChip = match ($accessMode) {
             <?php // `access-recopy` y no el `js-copy-url` de siempre: ese
                   // prepende el origen de la página, y esta URL ya viene
                   // absoluta desde PublicUrl. ?>
-            <button type="button" class="btn btn-outline-secondary"
+            <button type="button" class="btn btn-sm btn-outline-secondary"
                     data-role="access-recopy" title="Copiar otra vez"><i class="fa-solid fa-copy"></i></button>
         </div>
         <p class="small text-muted mb-0 mt-1">

@@ -27,7 +27,7 @@ $canDelete = $canDelete ?? false;
 ?>
 <div class="row g-2 mb-4">
     <div class="col">
-        <button type="submit" form="formUpdate" class="btn btn-outline-primary w-100"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+        <button type="submit" form="formUpdate" class="btn btn-outline-primary w-100 app-form-cta"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
     </div>
     <?php // F3 — Con revisión activa el dueño no tiene botón de publicar:
           // el que hay sería aprobarse a uno mismo. Se muestra el de «enviar a
@@ -36,7 +36,7 @@ $canDelete = $canDelete ?? false;
         <div class="col">
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" id="formSendReview" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-info w-100"><i class="fa-solid fa-paper-plane me-1"></i>Enviar a revisión</button>
+                <button type="submit" class="btn btn-info w-100 app-form-cta"><i class="fa-solid fa-paper-plane me-1"></i>Enviar a revisión</button>
             </form>
         </div>
     <?php endif; ?>
@@ -46,7 +46,7 @@ $canDelete = $canDelete ?? false;
                   data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador."
                   data-confirm-ok="Publicar" data-confirm-tone="primary">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
+                <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
             </form>
         </div>
         <div class="col">
@@ -54,7 +54,7 @@ $canDelete = $canDelete ?? false;
                   data-confirm="¿Devolver este formulario al dueño como borrador? No se publicará."
                   data-confirm-ok="Devolver" data-confirm-tone="primary">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-outline-warning w-100"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
+                <button type="submit" class="btn btn-outline-warning w-100 app-form-cta"><i class="fa-solid fa-rotate-left me-1"></i>Devolver</button>
             </form>
         </div>
     <?php endif; ?>
@@ -84,13 +84,13 @@ $canDelete = $canDelete ?? false;
         <?php if ($form['status'] === 'draft' && !$reviewRequired): ?>
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-globe me-1"></i>Publicar</button>
+                <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-globe me-1"></i>Publicar</button>
             </form>
         <?php endif; ?>
         <?php if ($form['status'] === 'published'): ?>
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/close" id="formClose" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-warning w-100"><i class="fa-solid fa-lock me-1"></i>Cerrar</button>
+                <button type="submit" class="btn btn-warning w-100 app-form-cta"><i class="fa-solid fa-lock me-1"></i>Cerrar</button>
             </form>
         <?php endif; ?>
         <?php if ($form['status'] === 'closed'): ?>
@@ -100,7 +100,7 @@ $canDelete = $canDelete ?? false;
                   // publicar») se quedaba con el que no era. ?>
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formReopenActions" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
-                <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-globe me-1"></i>Reabrir</button>
+                <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-globe me-1"></i>Reabrir</button>
             </form>
         <?php endif; ?>
     </div>
@@ -111,7 +111,7 @@ $canDelete = $canDelete ?? false;
               data-confirm="¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer."
               data-confirm-ok="Eliminar formulario">
             <?= \App\Core\Csrf::field() ?>
-            <button type="submit" class="btn btn-outline-danger w-100"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
+            <button type="submit" class="btn btn-outline-danger w-100 app-form-cta"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
         </form>
     </div>
     <?php endif; ?>
