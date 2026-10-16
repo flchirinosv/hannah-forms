@@ -3,31 +3,33 @@
 use App\Core\View;
 
 /**
- * El CUERPO de la tarjeta de Acceso de la ficha (`/forms/{id}`).
+ * El CUERPO de la tarjeta de Acceso de la pantalla de participantes
+ * (`/forms/{id}/access`).
  *
  * Es un partial, y no markup en la vista, por la misma razón que los cuatro
  * huecos del estado (`_status_badge`, `_review_trail`, `_status_actions`,
  * `_share_card`): lo que decide cómo se pinta es un ajuste —el modo de
- * acceso— y el guardado de ajustes va por fetch. Con el cuerpo en la vista, el
- * `POST /settings` solo podía reponer la insignia del estado y esta tarjeta se
- * quedaba diciendo «Público» con el formulario ya en «Solo la lista» (o, al
- * revés, con el formulario abierto a todo el mundo y una lista que ya no
- * protege nada). Un ajuste que se guarda bien y no se ve no da ningún error,
- * ni en el navegador ni en el log: es el peor tipo de fallo.
+ * acceso— y así se evita tener dos copias de la misma tarjeta en dos sitios.
+ * Con el cuerpo en la vista, cambiar el modo solo se veía recargando a mano.
  *
- * El hueco (`vfSlotAccess`) va en el `card-body` y **no** en la tarjeta
- * entera, porque la tarjeta lleva lo que el JS lee del DOM (`data-csrf` y
- * `data-link-endpoint`, para el enlace de acceso): si el `id` estuviera en el
- * `<div class="card">`, repintar el hueco borraría esos atributos y el botón de
- * emitir enlace se quedaría sin destino a la mitad de la sesión.
+ * El cuerpo vive en el `card-body` de la tarjeta `#access`, y NO en el
+ * `<div class="card">` entero, porque la tarjeta lleva lo que el JS lee del DOM
+ * (`data-csrf` y `data-link-endpoint`, para el enlace de acceso): si el `id`
+ * estuviera en la tarjeta, repintar el cuerpo borraría esos atributos y el
+ * botón de emitir enlace se quedaría sin destino a la mitad de la sesión.
  *
- * ## Y el cuarto modo, `roster`, no cabe en ninguno de los tres bloques
+ * ## Y el cuarto modo, `roster`, solo pinta la cabecera
  *
  * La allowlist guarda correos; el listado guarda personas con un código, atributos
  * y un estado de «respondió». Meterlo en el `else` de abajo habría producido un
  * formulario con una casilla de correo por cada persona de una lista que no usa
- * correos. Por eso `roster` tiene su propia rama y su propio partial (fase 5),
- * y el `else` sigue siendo exactamente la allowlist de F4.
+ * correos. Por eso `roster` tiene su propia rama, y el `else` sigue siendo
+ * exactamente la allowlist de F4.
+ *
+ * El LISTADO del roster (el tablero de números y la tabla de filas) ya no vive
+ * aquí: salió a sus propias tarjetas (`RosterPanel::panel()`, que orquesta
+ * `access.php`). Esta tarjeta es solo la cabecera —icono, chip del modo y el
+ * aviso de cómo se entra—, y por eso no recibe `$roster` ni `$informe`.
  *
  * ## Cabecera, chip y callout (rediseño 2026-10-08)
  *
@@ -37,15 +39,12 @@ use App\Core\View;
  * punto de color por `currentColor`, así que el modo se lee de un vistazo sin
  * depender solo del texto. El contrato de clases lo fija `AccessCardDesignTest`.
  *
- * Variables: `$form`, `$accessMode`, `$accessList`, `$accessCount`, y en modo
- * `roster` `$roster` y `$informe`.
+ * Variables: `$form`, `$accessMode`, `$accessList` y `$accessCount`.
  *
  * @var array $form
  * @var string $accessMode
  * @var array $accessList
  * @var int $accessCount
- * @var array<string,mixed>|null $roster
- * @var array<string,mixed>|null $informe
  */
 $accessMode = (string) ($accessMode ?? 'public');
 $modeLabel = match ($accessMode) {
@@ -82,20 +81,11 @@ $modeChip = match ($accessMode) {
         'codigo'    => 'con el código que le tocó',
         default     => 'con la cédula con la que figura en ella o con el código que le tocó',
     }; ?>
-    <div class="vf-callout mb-3">
+    <div class="vf-callout">
         <i class="fa-solid fa-list-check" aria-hidden="true"></i>
         <div>Solo puede responder quien esté en esta lista, <?= View::escape($entradaRoster) ?>.
         Quitar a alguien de la lista <strong>le cierra la puerta</strong>.</div>
     </div>
-
-    <?php // `RosterPanel::data()` como red: un formulario recién pasado a «Solo el
-          // listado» desde `FormPanel::accessSlot()` puede no traer `$roster`, y un
-          // hueco vacío en un formulario que acaba de abrir la puerta parece roto. ?>
-    <?= \App\Services\RosterPanel::panel(
-        $roster ?? \App\Services\RosterPanel::data((int) $form['id']),
-        $form,
-        $informe
-    ) ?>
 <?php elseif ($accessMode === 'allowlist'): ?>
     <div class="vf-callout mb-3">
         <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
