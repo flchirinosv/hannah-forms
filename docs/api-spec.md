@@ -53,7 +53,7 @@ Longitud mínima de contraseña: **10** (`Auth::PASSWORD_MIN`), en los tres siti
 | POST | `/forms/{int}/close` | auth, csrf | Cambiar estado a `closed` |
 | POST | `/forms/{int}/duplicate` | auth, csrf | Duplica formulario con campos y settings normalizados |
 | GET | `/forms/{int}/qr.svg` | auth | QR público del enlace (sale de `PublicUrl`) |
-| GET | `/forms/{int}/print` | auth | Vista imprimible |
+| GET | `/forms/{int}/print` | auth | Vista imprimible (estructura read-only). La abre el dueño (`canEdit`) y, con el permiso `forms.review`, cualquier revisor **solo si** el formulario está `in_review` (un borrador ajeno da 403). El enlace «Volver» es la ficha para el dueño y `/review` para el revisor |
 | GET | `/forms/{int}/export-structure.json` | auth | Estructura (título + campos) listos para reimportar |
 
 ### Reparto de `forms.settings` entre las dos puertas
@@ -82,9 +82,9 @@ Acceso efectivo por permisos (RBAC), no por `role_name`: editar = `forms.edit_ow
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
 | POST | `/forms/{int}/review/send` | auth, csrf | Mandar a revisión (`draft|closed` → `in_review`; rechaza `in_review`, `published` y `approved`) |
-| POST | `/forms/{int}/review/approve` | auth, csrf | Aprobar (`in_review` → `approved`, **sin publicar**). Exige permiso `forms.review`, no `canEdit`; el dueño publica después con `POST /forms/{id}/publish` |
-| POST | `/forms/{int}/review/return` | auth, csrf | Devolver a borrador (`in_review` → `draft`) |
-| GET | `/review` | auth | Bandeja de revisión (formularios en `in_review`) |
+| POST | `/forms/{int}/review/approve` | auth, csrf | Aprobar (`in_review` → `approved`, **sin publicar**). Exige permiso `forms.review`, **no** `canEdit` ni alcance global (el rol `approver` con solo `forms.review` + `dashboard.view` basta). Tras la acción sin recarga redirige a `/forms/{id}` si el actor puede editar el formulario y a `/review` si no; el dueño publica después con `POST /forms/{id}/publish` |
+| POST | `/forms/{int}/review/return` | auth, csrf | Devolver a borrador (`in_review` → `draft`). Mismo destino condicional que `approve` |
+| GET | `/review` | auth | Bandeja de revisión (formularios en `in_review`); «Ver» abre `GET /forms/{id}/print` en modo lectura |
 
 ## Builder
 

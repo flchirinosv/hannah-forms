@@ -858,7 +858,15 @@ class FormController
             Response::redirect('/login');
             return;
         }
-        if (!$this->canEdit($form, (int) $user['id'])) {
+
+        // El dueño (o quien tiene alcance global) puede imprimir su estructura.
+        // Un revisor puro, que no puede abrir la ficha editable, sí necesita ver
+        // las preguntas para decidir: se le deja esta vista READ-ONLY, y solo del
+        // formulario que está en su cola. `in_review` es justo el estado que la
+        // bandeja le enseña; un borrador ajeno no es asunto suyo.
+        $canEdit = $this->canEdit($form, (int) $user['id']);
+        $puedeRevisar = Auth::can('forms.review') && $form['status'] === 'in_review';
+        if (!$canEdit && !$puedeRevisar) {
             Response::forbidden();
             return;
         }
@@ -869,6 +877,9 @@ class FormController
             'form'     => $form,
             'user'     => $user,
             'settings' => Form::settingsFrom($form),
+            // El revisor no abre la ficha (es del dueño): su vuelta es la bandeja.
+            'volverUrl'   => $canEdit ? '/forms/' . $id : '/review',
+            'volverLabel' => $canEdit ? 'Volver al formulario' : 'Volver a la bandeja',
         ], null);
     }
 

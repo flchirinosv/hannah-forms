@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 103 archivos, 1149 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 103 archivos, 1151 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -253,6 +253,18 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   el **permiso `forms.review`**, nunca `canEdit`: por eso `ReviewController` es un
   controlador aparte de `FormController` (un `canEdit()` leído como autorización para
   aprobar es exactamente el error a evitar).
+- **El revisor trabaja desde la bandeja, no desde la ficha.** La ficha `/forms/{id}`
+  es del dueño (exige `canEdit`), y `reviewable()` **no** comprueba `canEdit`: un rol
+  que solo tenga `forms.review` + `dashboard.view` (el `approver`) tiene que poder
+  aprobar el formulario de cualquiera sin `forms.manage_all` ni `forms.edit_own`.
+  Meter `canEdit` ahí dejaba al revisor con el botón en la bandeja y un 403 en el POST.
+  Por eso tras aprobar/devolver `accept()`/`reject()` no vuelven siempre a la ficha:
+  `destino()` devuelve `/review` si `Access::canEdit()` es falso y `/forms/{id}` si no.
+  Para decidir, el revisor abre la **estructura read-only** (`GET /forms/{id}/print`),
+  que `FormController::printForm()` le permite solo cuando `status === 'in_review'`
+  (un borrador ajeno no es asunto suyo) y con vuelta a la bandeja; esa vista la
+  pinta también el dueño desde la ficha, y su enlace «Volver» es condicional. El
+  enlace del aviso por correo apunta a la bandeja (`/review`), nunca a la ficha.
 - La **0016 conserva el estado de las instalaciones que ya usaban la revisión por
   formulario**: lee el `settings` JSON de cada formulario y, si alguno la tenía
   encendida, enciende `review_required`. Sin eso, actualizar APAGARÍA en silencio la
@@ -1595,7 +1607,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 542 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 544 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

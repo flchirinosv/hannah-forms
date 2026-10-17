@@ -64,7 +64,7 @@ class ReviewController
         }
 
         Session::flash('success', $message);
-        Response::redirect('/forms/' . $id);
+        Response::redirect(self::destino($id));
     }
 
     /**
@@ -81,7 +81,26 @@ class ReviewController
         }
 
         Session::flash('error', $error);
-        Response::redirect('/forms/' . $id);
+        Response::redirect(self::destino($id));
+    }
+
+    /**
+     * A dónde vuelve el actor después de la acción sin recarga.
+     *
+     * La ficha `/forms/{id}` es del DUEÑO (exige `canEdit`), así que un revisor
+     * puro —`forms.review` + `dashboard.view`, sin alcance global— recibiría un
+     * 403 al volver ahí: el sitio del revisor es la bandeja. Quien puede editar
+     * el formulario (su dueño, o quien tiene `forms.manage_all`) vuelve a la
+     * ficha, que es lo que ya hacía.
+     */
+    private static function destino(int $id): string
+    {
+        $form = Form::find($id, false);
+        if ($form !== null && \App\Core\Access::canEdit((int) $form['user_id'])) {
+            return '/forms/' . $id;
+        }
+
+        return '/review';
     }
 
     /**
@@ -240,10 +259,15 @@ class ReviewController
     /**
      * Igual que `editable()` pero exigiendo `forms.review`.
      *
-     * `Access::canEdit` sigue estando: el revisor tiene que poder ver el
-     * formulario, y con `forms.review` sin `forms.manage_all` no lo vería en el
-     * dashboard. Se comprueba el permiso de revisión PRIMERO porque es el que
-     * decide de esta pantalla.
+     * `Access::canEdit` NO se comprueba aquí, a propósito: aprobar exige el
+     * permiso `forms.review` y nunca el de editar (es exactamente el error que
+     * este controlador aparte existe para evitar). La bandeja es global —muestra
+     * los formularios de TODA la instalación—, así que quien puede revisar
+     * revisa el de cualquiera, aunque no sea su dueño ni tenga alcance global.
+     * Meter `canEdit` aquí dejaba al rol `approver` (solo `forms.review` +
+     * `dashboard.view`) sin poder aprobar nada: el botón estaba y el POST daba
+     * 403. Quien revisa NO abre la ficha editable (esa sigue siendo del dueño):
+     * mira la estructura read-only y actúa desde la bandeja.
      */
     private function reviewable(int $id): ?array
     {
@@ -262,12 +286,8 @@ class ReviewController
             Response::redirect('/login');
             return null;
         }
-        if (!\App\Core\Access::canEdit((int) $form['user_id'])) {
-            Response::forbidden();
-            return null;
-        }
         if (!Csrf::verifyRequest()) {
-            Response::redirect('/forms/' . $id);
+            Response::redirect('/review');
             return null;
         }
 
@@ -303,7 +323,7 @@ class ReviewController
         if (!in_array($locale, I18n::supportedLocales(), true)) {
             $locale = 'es';
         }
-        $url = PublicUrl::base() . '/forms/' . (int) $form['id'];
+        $url = PublicUrl::base() . '/review';
         $owner = (string) ($form['owner_name'] ?? '');
 
         foreach ($reviewers as $reviewer) {

@@ -646,20 +646,21 @@ class AsyncFormActionsTest
 
     /**
      * Un revisor con el PERMISO `forms.review` y sin nada más. Se crea con un
-     * rol propio para no Heredar `admin.access` (que sí puede borrar
+     * rol propio para no heredar `admin.access` (que sí puede borrar
      * formularios ajenos): lo que se quiere probar es que aprobar depende del
-     * permiso de revisar.
+     * permiso de revisar y NO del alcance para editar.
      */
     private function approver(): int
     {
         $email = 'approver-' . bin2hex(random_bytes(4)) . '@test.local';
         $roleId = Role::create('revisor-' . bin2hex(random_bytes(3)), 'Revisor de test');
         assertTrue($roleId !== null, 'se pudo crear el rol de revisor');
-        // `forms.manage_all` además de `forms.review`: `ReviewController::reviewable()`
-        // pasa por `Access::canEdit()`, y un revisor que no puede tocar el
-        // formulario de otro no tiene nada que aprobar —que es el caso normal,
-        // porque el dueño no es quien aprueba.
-        Role::setPermissions((int) $roleId, ['forms.review', 'dashboard.view', 'forms.manage_all']);
+        // Solo `forms.review` + `dashboard.view`: ni `forms.manage_all` ni
+        // `forms.edit_own`. Aprobar el formulario de otro es exactamente su
+        // trabajo, y el controlador NO debe exigir `Access::canEdit()` para
+        // dejarlo pasar (si lo exigiera, este revisor no tendría nada que
+        // aprobar nunca y el botón de la bandeja daría 403).
+        Role::setPermissions((int) $roleId, ['forms.review', 'dashboard.view']);
 
         return (int) User::create('Aprobador', $email, 'clave-larga-123', (int) $roleId);
     }

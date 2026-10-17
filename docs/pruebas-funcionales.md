@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1149 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1151 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**542 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**544 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -193,6 +193,8 @@ Para no perderte, prepara esto antes de empezar:
 | E5 | Con revisión activada, editar un formulario ya aprobado | Vuelve a la cola y **se borra la aprobación anterior** | A | |
 | E6 | Aprobar un formulario propio | Se permite, y el registro de eventos lo marca como propio | M | |
 | E7 | Intentar aprobar sin permiso `forms.review` | 403. Tener `forms.edit_own` **no** sirve para aprobar | A | |
+| E7b | Aprobar con un rol que **solo** tiene `forms.review` + `dashboard.view` (sin `forms.manage_all` ni `forms.edit_own`) el formulario de otro | Se aprueba: aprobar exige el permiso de revisión, **no** el de editar. Tras aprobar vuelve a `/review` (la ficha editable le daría 403) | A | |
+| E7c | Ese mismo revisor pulsa **Ver** en su bandeja | Abre la estructura **read-only** del formulario en revisión (preguntas, tipos, opciones), con vuelta a la bandeja. La ficha editable le da 403, y un formulario en borrador ajeno tampoco se le abre | A | |
 | E8 | Abrir un formulario en revisión por su enlace | Página informativa de «en revisión» (no un 404), y enviar da 403 | M | |
 | E9 | Devolver a borrador un formulario en revisión | Vuelve a borrador y se puede editar | A | |
 | E10 | Aprobar un formulario ya publicado | Rechazado (el estado de origen no es válido) | M | |
@@ -374,7 +376,7 @@ Para no perderte, prepara esto antes de empezar:
 | N13 | Guardar un grupo **sin** mandar su nombre | El nombre se conserva; si lo mandas vacío, se queda vacío. Ausente ≠ vacío | M | |
 | N14 | Ver la matriz de roles | Refleja lo que decides en `config/permissions.php` (roles del catálogo) | M | |
 | N15 | Entrar con una cuenta con rol `approver` | Ve *Dashboard* y *Revisión*, y **no** ve «Nuevo formulario» ni *Administración*: nada de lo que ve le da un 403 | A | |
-| N16 | Con ese mismo `approver`, abrir la ficha de un formulario enviado a revisión | Puede aprobarlo o devolverlo, pero no editarlo ni borrarlo | A | |
+| N16 | Con ese mismo `approver`, abrir la bandeja de `/review` y pulsar **Ver** | Ve la **estructura read-only** del formulario en revisión (no la ficha editable, que le da 403), y puede aprobarlo o devolverlo desde la bandeja; al aprobar vuelve a `/review`, no a la ficha | A | |
 | N17 | En la tarjeta *Baja de roles* | Los cuatro del sistema salen marcados como «Sistema» y **sin** botón de borrar; los tuyos, con el número de personas que los llevan | A | |
 | N18 | Intentar borrar un rol propio que alguien lleva | No se borra y el motivo dice cuántas personas lo tienen | A | |
 | N19 | Borrar un rol propio que no lleva nadie | Se borra, avisa, y también desaparece de los grupos que lo confieran (con aviso previo al confirmar) | M | |

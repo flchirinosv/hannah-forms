@@ -645,6 +645,15 @@ sacaba el formulario al público sola: puedes publicarlo al momento o dejarlo
 esperando el día previsto (si el formulario tiene horario de apertura, ese
 horario sigue siendo el que decide cuándo se puede responder).
 
+**Quien revisa trabaja desde la bandeja**, no desde la ficha del formulario: la
+ficha editable es de su dueño. En `/review` cada formulario pendiente trae **Ver**,
+**Aprobar** y **Devolver**. **Ver** abre la **estructura en modo lectura** (las
+preguntas, sus tipos y opciones, la obligatoriedad y la lógica), suficiente para
+decidir, con un enlace para volver a la bandeja. Un revisor con el rol `approver`
+(solo `forms.review` + `dashboard.view`) no puede abrir la ficha editable ni la
+de un formulario en borrador: su sitio es la bandeja. Aprobar o devolver devuelve
+a la bandeja a quien no puede editar el formulario, y a la ficha a su dueño.
+
 Si cambias el contenido después de aprobar —en el constructor o desde la ficha—,
 el formulario vuelve a la cola de revisión y la aprobación anterior se borra:
 quien revisó aprobó otra cosa.

@@ -101,9 +101,13 @@ class FormReviewTest
         self::$formId = Form::create((int) self::$ownerId, 'Formulario con revisión');
         self::$slug = (string) Form::find((int) self::$formId, false)['slug'];
 
-        // Revisor: rol nuevo con `forms.review` + alcance global. El alcance
-        // hace falta porque el formulario es de OTRO usuario y, sin él, el
-        // revisor no podría ni verlo (`Access::canView`).
+        // Revisor: rol nuevo con `forms.review` y NADA MÁS de alcance. Aprobar
+        // exige el permiso de revisión, no `canEdit` (es el error que este
+        // controlador aparte existe para evitar), así que el revisor puro tiene
+        // que poder aprobar el formulario de OTRO usuario sin `forms.manage_all`
+        // ni `forms.edit_own`. Si este rol los tuviera, el test probaría la
+        // rama equivocada: con alcance global el guard pasa por el permiso que
+        // sobra y el fallo del revisor de verdad quedaría tapado.
         $db = Database::getInstance(Config::db());
         $db->execute(
             'INSERT INTO roles (name, description) VALUES (:n, :d)',
@@ -111,7 +115,7 @@ class FormReviewTest
         );
         self::$reviewRoleId = (int) $db->lastInsertId();
         Role::setPermissions((int) self::$reviewRoleId, [
-            'dashboard.view', 'forms.review', 'forms.manage_all', 'forms.edit_own',
+            'dashboard.view', 'forms.review',
         ]);
         self::$reviewerEmail = 'reviewer-' . bin2hex(random_bytes(4)) . '@test.local';
         self::$reviewerId = User::create('Review Reviewer', self::$reviewerEmail, 'clave-larga-123', (int) self::$reviewRoleId);
@@ -367,8 +371,13 @@ class FormReviewTest
     {
         // El revisor tiene `forms.manage_all` (puede operar el formulario de
         // otro) pero NO la exención, y el dueño tampoco está exento: la regla es
-        // «el dueño está exento», no «quien pulsa está exento».
+        // «el dueño está exento», no «quien pulsa está exento». El alcance hay
+        // que dárselo aquí porque el rol de revisor del `setUp` es puro: lo que
+        // este test mide es la EXENCIÓN, no el guard de la ficha.
         $this->activarRevision(false);
+        Role::setPermissions((int) self::$reviewRoleId, [
+            'dashboard.view', 'forms.review', 'forms.manage_all',
+        ]);
         $this->authAsReviewer();
 
         $r = $this->call('publish', new FormController(), (int) self::$formId);
@@ -455,6 +464,76 @@ class FormReviewTest
         assertSame('approved', $this->row()['status'], 'con el permiso se aprueba (queda listo para publicar)');
     }
 
+    public function testElRevisorVuelveALaBandejaYElDuenoALaFicha(): void
+    {
+        // Aprobar sin recarga redirige a algún sitio que el actor PUEDA abrir.
+        // El revisor puro no abre la ficha (es del dueño, exige canEdit), así
+        // que vuelve a la bandeja; quien puede editar ese formulario sigue
+        // volviendo a su ficha, que es lo que hacía antes.
+        $this->activarRevision(false);
+        Form::submitForReview((int) self::$formId);
+
+        $this->authAsReviewer();
+        $r = $this->call('approve', new ReviewController(), (int) self::$formId);
+        assertSame('approved', $this->row()['status'], 'el revisor puro aprueba el de otro');
+        assertSame(
+            '/review',
+            (string) ($r['halt']['url'] ?? ''),
+            'y vuelve a la BANDEJA, no a una ficha que le respondería 403'
+        );
+
+        // El dueño con el permiso de revisión aprueba su propio formulario y
+        // vuelve a SU ficha: `canEdit` es el que decide el destino.
+        Role::setPermissions((int) self::$reviewRoleId, [
+            'dashboard.view', 'forms.edit_own', 'forms.review',
+        ]);
+        Database::getInstance(Config::db())->execute(
+            'UPDATE users SET role_id = :r WHERE id = :u',
+            ['r' => (int) self::$reviewRoleId, 'u' => (int) self::$ownerId]
+        );
+        Form::submitForReview((int) self::$formId);
+        $this->authAs((int) self::$ownerId);
+        $r2 = $this->call('approve', new ReviewController(), (int) self::$formId);
+        assertSame('approved', $this->row()['status'], 'el dueño con forms.review aprueba el suyo');
+        assertSame(
+            '/forms/' . (int) self::$formId,
+            (string) ($r2['halt']['url'] ?? ''),
+            'y quien puede editar vuelve a la ficha del formulario'
+        );
+    }
+
+    public function testElRevisorAbreLaEstructuraReadOnlyDeSuColaPeroNoLaFicha(): void
+    {
+        // El revisor necesita VER las preguntas para decidir, pero la ficha
+        // editable es del dueño. La estructura imprimible es la superficie
+        // read-only que se le deja, y solo del formulario que está en su cola.
+        Form::setStatus((int) self::$formId, 'in_review');
+        $this->authAsReviewer();
+
+        $ficha = $this->getAction(new FormController(), 'show', (int) self::$formId);
+        assertSame(
+            403,
+            $ficha['halt']['code'] ?? 0,
+            'el revisor no abre la ficha editable: es del dueño y exige canEdit'
+        );
+
+        $print = $this->getAction(new FormController(), 'printForm', (int) self::$formId);
+        assertSame(0, $print['halt']['code'] ?? 0, 'pero sí abre la estructura read-only de lo que revisa');
+        assertTrue(
+            str_contains($print['html'], 'Volver a la bandeja'),
+            'y su vuelta es la bandeja: no se le ofrece un enlace a una ficha que le da 403'
+        );
+
+        // Un borrador ajeno NO es asunto del revisor: ni siquiera en read-only.
+        Form::setStatus((int) self::$formId, 'draft');
+        $printDraft = $this->getAction(new FormController(), 'printForm', (int) self::$formId);
+        assertSame(
+            403,
+            $printDraft['halt']['code'] ?? 0,
+            'un borrador ajeno no se le abre ni en read-only'
+        );
+    }
+
     public function testEnviarARevisionLoHaceQuienPuedeEditarYNoUnAjeno(): void
     {
         // Un usuario normal, sin alcance global: el formulario de otro es
@@ -525,12 +604,12 @@ class FormReviewTest
             'y no al dueño, que no puede revisar'
         );
         assertTrue(
-            str_contains($envelope['html'], 'https://forms.example.com/forms/' . (int) self::$formId),
-            'el enlace va al panel: desde /f/{slug} el revisor no podría aprobar nada'
+            str_contains($envelope['html'], 'https://forms.example.com/review'),
+            'el enlace va a la BANDEJA: desde /f/{slug} el revisor no podría aprobar nada, y la ficha del dueño le da 403'
         );
         assertTrue(str_contains($envelope['html'], 'Formulario con revisi'), 'y nombra el formulario');
         assertTrue(
-            str_contains($envelope['text'], 'https://forms.example.com/forms/' . (int) self::$formId),
+            str_contains($envelope['text'], 'https://forms.example.com/review'),
             'el texto plano lleva el mismo enlace (clientes sin HTML)'
         );
     }
@@ -582,6 +661,12 @@ class FormReviewTest
         // que escribió. Se permite (si no, ese usuario no podría publicar
         // nunca) pero el log lo dice, porque es la pregunta que se hace al
         // auditar un formulario publicado.
+        // El dueño pasa a tener el rol de revisor, que aquí necesita además
+        // `forms.edit_own`: es el dueño de su formulario y tiene que poder
+        // mandarlo a revisión. El rol puro del `setUp` no lo trae a propósito.
+        Role::setPermissions((int) self::$reviewRoleId, [
+            'dashboard.view', 'forms.edit_own', 'forms.review',
+        ]);
         $db = Database::getInstance(Config::db());
         $db->execute('UPDATE users SET role_id = :r WHERE id = :u', [
             'r' => (int) self::$reviewRoleId,
@@ -764,6 +849,30 @@ class FormReviewTest
             'exito' => Session::getFlash('success'),
             'error' => Session::getFlash('error'),
         ];
+    }
+
+    /**
+     * Reproduce un GET de navegador contra una acción del controlador y
+     * devuelve el `halt` (para leer un 403/200) más el HTML emitido.
+     */
+    private function getAction(object $controller, string $action, int $id): array
+    {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+        $_POST = [];
+        Request::setRequestBodyForTests(null);
+
+        Response::setRecordHalt(true);
+        ob_start();
+        try {
+            $controller->{$action}($id);
+        } finally {
+            $html = (string) ob_get_clean();
+        }
+        $halt = Response::lastHalt();
+        Response::setRecordHalt(false);
+
+        return ['halt' => is_array($halt) ? $halt : [], 'html' => $html];
     }
 
     /**

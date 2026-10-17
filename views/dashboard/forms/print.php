@@ -101,7 +101,7 @@ $conditionText = static function (array $f) use ($byId): string {
 <body>
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
-        <a href="/forms/<?= (int) $form['id'] ?>" class="btn btn-sm btn-light"><i class="fa-solid fa-arrow-left me-1"></i>Volver al formulario</a>
+        <a href="<?= View::escape($volverUrl ?? ('/forms/' . (int) $form['id'])) ?>" class="btn btn-sm btn-light"><i class="fa-solid fa-arrow-left me-1"></i><?= View::escape($volverLabel ?? 'Volver al formulario') ?></a>
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-sm btn-primary" data-print><i class="fa-solid fa-print me-1"></i>Imprimir / Guardar PDF</button>
         </div>
