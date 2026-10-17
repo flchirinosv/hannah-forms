@@ -56,7 +56,9 @@ CREATE TABLE IF NOT EXISTS forms (
     title       VARCHAR(190) NOT NULL,
     description TEXT DEFAULT NULL,
     slug        VARCHAR(190) NOT NULL UNIQUE,
-    status      ENUM('draft','in_review','published','closed') NOT NULL DEFAULT 'draft',
+    -- `approved` va AL FINAL: el valor guardado de un ENUM es su índice, y
+    -- meterlo en medio reescribiría el de cada fila ya guardada (migración 0019).
+    status      ENUM('draft','in_review','published','closed','approved') NOT NULL DEFAULT 'draft',
     -- F3 — traza de la revisión. NULL = nunca se pidió/approbó.
     review_requested_at DATETIME DEFAULT NULL COMMENT 'Instante UTC en que se envió a revisión',
     reviewed_at DATETIME DEFAULT NULL COMMENT 'Instante UTC de la aprobación',

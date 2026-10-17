@@ -279,7 +279,7 @@ return [
     // F3 — Aviso de revisión (opt-in de la instancia: `review_notify_email`)
     'mail.review_subject'    => 'Hay un formulario esperando revisión',
     'mail.review_title'      => 'Formulario en revisión',
-    'mail.review_body'       => '{owner} ha enviado un formulario a revisión. Puedes aprobarlo (se publica) o devolverlo al dueño como borrador.',
+    'mail.review_body'       => '{owner} ha enviado un formulario a revisión. Puedes aprobarlo (queda listo para publicar, pero lo publica su propietario) o devolverlo al dueño como borrador.',
     'mail.review_cta'        => 'Abrir la bandeja de revisión',
     'mail.review_text'       => '{owner} ha enviado a revisión el formulario «{title}». Revísalo en {url}',
     'mail.review_ignore'     => 'Si no esperabas este aviso, no tienes que hacer nada: el formulario no se publica sin tu aprobación.',

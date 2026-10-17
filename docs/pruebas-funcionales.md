@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1147 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1149 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**539 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+ \|'`;
+**542 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -187,6 +187,9 @@ Para no perderte, prepara esto antes de empezar:
 | E3 | Cerrar el formulario y abrir el enlace | Ya no se puede enviar; **las respuestas anteriores siguen ahí** | A | |
 | E4 | Con revisión activada, pulsar **Publicar** | **No se publica**: avisa de que exige revisión y devuelve a la ficha (no un 403 mudo) | A | |
 | E4b | Con revisión activada, pulsar **Enviar a revisión** | Pasa a `in_review` y aparece en `/review` | A | |
+| E4c | Con revisión activada, **aprobar** con un revisor | Queda **Aprobado**, no publicado: el enlace sigue mostrando la página informativa (no el formulario) y los envíos dan 403 | A | |
+| E4d | Como dueño, pulsar **Publicar** sobre un formulario ya aprobado | Se publica sin volver a la cola y el enlace ya sirve el formulario | A | |
+| E4e | Intentar **Enviar a revisión** un formulario ya aprobado | Rechazado: «ya está aprobado: publícalo o edítalo» | M | |
 | E5 | Con revisión activada, editar un formulario ya aprobado | Vuelve a la cola y **se borra la aprobación anterior** | A | |
 | E6 | Aprobar un formulario propio | Se permite, y el registro de eventos lo marca como propio | M | |
 | E7 | Intentar aprobar sin permiso `forms.review` | 403. Tener `forms.edit_own` **no** sirve para aprobar | A | |
@@ -534,7 +537,8 @@ deja en el quinto es un fallo de la misma clase que un `</div>` de más.
 | T4 | Ficha → «Ajustes del formulario» → cambiar el nombre y guardar | No recarga y el título nuevo se ve en el encabezado al instante; los seis grupos **no se repliegan** y el scroll no salta | M | |
 | T5 | Un formulario publicado **con revisión activa** → guardar cualquier ajuste | No recarga, y el aviso dice que volvió a la cola: la insignia pasa a «En revisión» y la aprobación anterior desaparece | A | |
 | T6 | Un formulario **aprobado** → cambiar algo en el constructor y guardar | La insignia pasa a «En revisión» y aparece la acción de aprobar (es la misma regla del builder, ahora también en la insignia) | A | |
-| T7 | Enviar a revisión → aprobar con otra cuenta | No recarga. La insignia pasa a «Publicado», sale la traza **nombrando al aprobador** y el botón es el de cerrar | A | |
+| T7 | Enviar a revisión → aprobar con otra cuenta | No recarga. La insignia pasa a «Aprobado» (no «Publicado»), sale la traza **nombrando al aprobador** y el botón que aparece es el de **publicar** | A | |
+| T7b | Aprobar y, sin recargar, pulsar «Publicar» en la misma ficha | La insignia pasa a «Publicado» y la tarjeta de compartir aparece con enlace, QR e iframe | A | |
 | T8 | Igual, pero **devuelto a borrador** | La insignia pasa a «Borrador», la traza registra que lo devolvió quién y vuelve la acción de publicar | A | |
 | T9 | Con el JS desactivado, cualquier acción de la ficha | Funciona **igual**, con su 302 y su aviso verde; nada depende del fetch | A | |
 | T10 | Con el JS desactivado, pulsar dos veces «Desactivar» en `/admin` | La segunda pulsación ya no procede (la página se fue), así que no hay doble cambio | A | |
@@ -572,7 +576,7 @@ que se rompió.
 | U3 | Con el diálogo abierto, pulsa «Cancelar» y después «Eliminar formulario» otra vez | Dos veces pregunta; confirmar es lo único que borra | A | |
 | U4 | En el diálogo abierto, pulsa `Tab` varias veces | El foco da la vuelta dentro del diálogo: no se sale a la página de detrás | A | |
 | U5 | Con un lector de pantalla, abre cualquiera de los diez diálogos | Anuncia el título y **la pregunta** (p. ej. «¿Eliminar formulario?»), no solo «Confirmar» | M | |
-| U6 | Publicar / devolver a borrador / activar usuario | El botón de confirmar dice qué hace («Publicar», «Devolver a borrador», «Activar») y sale en azul, no en rojo | A | |
+| U6 | Publicar / **Aprobar** / devolver a borrador / activar usuario | El botón de confirmar dice qué hace («Publicar», «Aprobar», «Devolver a borrador», «Activar») y sale en azul, no en rojo | A | |
 | U7 | Desactivar usuario / eliminar / borrar respuesta | El botón dice la acción concreta y sale en rojo | A | |
 | U8 | Pantalla *Participantes* con acceso por lista → **añadir** un email a la lista | **No recarga.** La lista se reescribe abajo y sale el aviso, igual que al quitarlo | A | |
 | U9 | Añadir **dos** emails seguidos | Cada alta suma su fila; al terminar, el campo queda **vacío y con el foco dentro**, sin tabular | M | |

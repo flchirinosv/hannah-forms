@@ -122,8 +122,8 @@ class Form
         return $form;
     }
 
-    /** Los cuatro estados de `forms.status`, y la lista blanca del filtro. */
-    public const STATUS = ['draft', 'in_review', 'published', 'closed'];
+    /** Los cinco estados de `forms.status`, y la lista blanca del filtro. */
+    public const STATUS = ['draft', 'in_review', 'published', 'closed', 'approved'];
 
     /** Filas por página del listado de formularios (dashboard y /admin/forms). */
     public const POR_PAGINA = 12;
@@ -204,12 +204,13 @@ class Form
                     COALESCE(SUM(f.status = 'draft'), 0) AS draft,
                     COALESCE(SUM(f.status = 'in_review'), 0) AS in_review,
                     COALESCE(SUM(f.status = 'published'), 0) AS published,
-                    COALESCE(SUM(f.status = 'closed'), 0) AS closed
+                    COALESCE(SUM(f.status = 'closed'), 0) AS closed,
+                    COALESCE(SUM(f.status = 'approved'), 0) AS approved
              FROM forms f$where",
             $params
         ) ?? [];
 
-        // COUNT por estado y no COUNT con WHERE: cinco escaneos del índice
+        // COUNT por estado y no COUNT con WHERE: seis escaneos del índice
         // `idx_forms_user_status` para sacar una fila.
         $stats = ['submissions' => 0];
         foreach (self::STATUS as $estado) {
@@ -432,6 +433,7 @@ class Form
             'in_review' => 'En revisión',
             'published' => 'Publicado',
             'closed'    => 'Cerrado',
+            'approved'  => 'Aprobado',
             default     => ucfirst($status),
         };
     }
@@ -467,14 +469,20 @@ class Form
     }
 
     /**
-     * F3 — Aprueba y publica. Deja constancia de QUIÉN y CUÁNDO, que es lo que
-     * convierte la revisión en una traza y no en un clic anónimo.
+     * F3 — Aprueba el formulario. Deja constancia de QUIÉN y CUÁNDO, que es lo
+     * que convierte la revisión en una traza y no en un clic anónimo.
+     *
+     * Deja el formulario en `approved`, NO en `published`: aprobar es «esto se
+     * puede publicar», no «esto está publicado». Publicar es el paso siguiente
+     * y lo da el dueño (`FormController::publish()`), que es quien decide
+     * CUÁNDO sale al público. Sin esta parada, una aprobación con semanas de
+     * antelación publicaba sola y el dueño no tenía forma de sujetarla.
      */
     public static function approve(int $id, int $reviewerId): void
     {
         self::db()->execute(
             "UPDATE forms
-             SET status = 'published',
+             SET status = 'approved',
                  reviewed_at = UTC_TIMESTAMP(),
                  reviewed_by = :by
              WHERE id = :id",

@@ -53,6 +53,7 @@ $filtroQs = static function (array $cambios) use ($filtros): string {
                     'published' => 'Publicados',
                     'draft'     => 'Borradores',
                     'in_review' => 'En revisión',
+                    'approved'  => 'Aprobados',
                     'closed'    => 'Cerrados',
                 ] as $clave => $texto): ?>
                     <a class="btn btn-outline-secondary<?= $filtros['estado'] === $clave ? ' active' : '' ?>"

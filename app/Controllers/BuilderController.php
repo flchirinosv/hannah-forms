@@ -339,7 +339,11 @@ class BuilderController
 
                 $requeuedForReview = false;
                 if ($reviewRequired) {
-                    if ($form['status'] === 'published') {
+                    if (in_array($form['status'], ['published', 'approved'], true)) {
+                        // Aprobar y publicar son la misma garantía («esto se
+                        // revisó»), así que los dos se pierden al cambiar el
+                        // contenido: editar un `approved` que todavía no se
+                        // publicó también vuelve a la cola.
                         $status = 'in_review';
                         $requeuedForReview = true;
                     } elseif ($status === 'published') {

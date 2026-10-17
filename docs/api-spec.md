@@ -81,8 +81,8 @@ Acceso efectivo por permisos (RBAC), no por `role_name`: editar = `forms.edit_ow
 
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
-| POST | `/forms/{int}/review/send` | auth, csrf | Mandar a revisión (`draft|published` → `in_review`) |
-| POST | `/forms/{int}/review/approve` | auth, csrf | Aprobar (`in_review` → `published`). Exige permiso `forms.review`, no `canEdit` |
+| POST | `/forms/{int}/review/send` | auth, csrf | Mandar a revisión (`draft|closed` → `in_review`; rechaza `in_review`, `published` y `approved`) |
+| POST | `/forms/{int}/review/approve` | auth, csrf | Aprobar (`in_review` → `approved`, **sin publicar**). Exige permiso `forms.review`, no `canEdit`; el dueño publica después con `POST /forms/{id}/publish` |
 | POST | `/forms/{int}/review/return` | auth, csrf | Devolver a borrador (`in_review` → `draft`) |
 | GET | `/review` | auth | Bandeja de revisión (formularios en `in_review`) |
 

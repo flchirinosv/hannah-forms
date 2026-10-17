@@ -51,7 +51,12 @@ class FillController
             return;
         }
 
-        if ($form['status'] === 'draft') {
+        if ($form['status'] === 'draft' || $form['status'] === 'approved') {
+            // F3 — Un formulario aprobado pero SIN publicar tampoco se sirve:
+            // aprobar es «esto se puede publicar», no «esto ya está». De cara al
+            // visitante da igual que sea un borrador o un aprobado: el dueño aún
+            // no lo ha sacado, y la nota del borrador («todavía no ha sido
+            // publicado por su propietario») lo dice exactamente.
             $locale = I18n::forRequest(Form::settings((int) $form['id']));
             View::render('fill/draft', ['form' => $form, 'locale' => $locale], null);
             return;
@@ -117,7 +122,9 @@ class FillController
             View::render('fill/closed', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
             return;
         }
-        if ($form['status'] === 'draft') {
+        if ($form['status'] === 'draft' || $form['status'] === 'approved') {
+            // F3 — mismo criterio que en show(): el embed tampoco sirve un
+            // formulario aprobado al que todavía le falta publicarse.
             View::render('fill/draft', ['form' => $form, 'locale' => I18n::forRequest($settings)], null);
             return;
         }

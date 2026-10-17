@@ -124,6 +124,9 @@ $relativeTs = static function (string $timestamp): string {
                     // y filtrarlo con los borradores lo escondería de quien tiene
                     // la tarea de aprobarlo.
                     'in_review' => 'En revisión',
+                    // F3 — Aprobado y sin publicar: un estado con acción pendiente
+                    // (publicar) que no es ni borrador ni publicado.
+                    'approved'  => 'Aprobados',
                     'closed'    => 'Cerrados',
                 ] as $clave => $texto): ?>
                     <a class="btn btn-outline-secondary<?= $filtros['estado'] === $clave ? ' active' : '' ?>"
@@ -201,9 +204,10 @@ $relativeTs = static function (string $timestamp): string {
                                               // solo cuando está encendida paga una consulta por
                                               // tarjeta, que es el precio de no inventar la regla. ?>
                                         <?php $needsReview = \App\Services\ReviewPolicy::requiredFor($form); ?>
-                                        <?php if ($form['status'] === 'draft' || $form['status'] === 'closed'): ?>
+                                        <?php if (in_array($form['status'], ['draft', 'closed', 'approved'], true)): ?>
                                             <?php // Un formulario con revisión no ofrece «Publicar»: el botón
-                                                  // solo produciría un error de vuelta. ?>
+                                                  // solo produciría un error de vuelta. Un `approved` sí: ya pasó
+                                                  // la revisión y publicarlo es el paso que le toca al dueño. ?>
                                             <?php if ($form['status'] === 'draft' && $needsReview): ?>
                                                 <li>
                                                     <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/send" class="m-0">
@@ -225,8 +229,8 @@ $relativeTs = static function (string $timestamp): string {
                                         <?php if ($form['status'] === 'in_review' && ($canReview ?? false)): ?>
                                             <li>
                                                 <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" class="m-0"
-                                                      data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador."
-                                                      data-confirm-ok="Publicar" data-confirm-tone="primary">
+                                                      data-confirm="¿Aprobar este formulario? Quedará listo para publicar; su propietario decidirá cuándo sale al público."
+                                                      data-confirm-ok="Aprobar" data-confirm-tone="primary">
                                                     <?= \App\Core\Csrf::field() ?>
                                                     <button type="submit" class="dropdown-item"><i class="fa-solid fa-check me-2 text-success"></i>Aprobar</button>
                                                 </form>

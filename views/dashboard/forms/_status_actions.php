@@ -43,8 +43,8 @@ $canDelete = $canDelete ?? false;
     <?php if ($form['status'] === 'in_review' && $canReview): ?>
         <div class="col">
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/review/approve" id="formApprove" data-vf-async="slots"
-                  data-confirm="¿Publicar este formulario? Aprobarlo lo deja visible para cualquiera que tenga el enlace, y ya no es un borrador."
-                  data-confirm-ok="Publicar" data-confirm-tone="primary">
+                  data-confirm="¿Aprobar este formulario? Quedará listo para publicar; su propietario decidirá cuándo sale al público."
+                  data-confirm-ok="Aprobar" data-confirm-tone="primary">
                 <?= \App\Core\Csrf::field() ?>
                 <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-check me-1"></i>Aprobar</button>
             </form>
@@ -66,11 +66,11 @@ $canDelete = $canDelete ?? false;
     <?php if ($inReview && !$canReview): ?>
         <div class="col">
             <div class="alert alert-info mb-0 py-2 px-3 h-100 d-flex align-items-center">
-                <i class="fa-solid fa-hourglass-half me-2"></i>Esperando revisión. Volverá al borrador o se publicará.
+                <i class="fa-solid fa-hourglass-half me-2"></i>Esperando revisión. Volverá al borrador o quedará aprobado.
             </div>
         </div>
     <?php endif; ?>
-    <?php $mainSlot = ($form['status'] === 'draft' && !$reviewRequired) || $form['status'] === 'published' || $form['status'] === 'closed'; ?>
+    <?php $mainSlot = ($form['status'] === 'draft' && !$reviewRequired) || $form['status'] === 'approved' || $form['status'] === 'published' || $form['status'] === 'closed'; ?>
     <?php // Esta columna solo se emite si hay una acción principal que poner en
           // ella. Antes se emitía siempre, con `col-sm-6` o `col-sm-12` según el
           // caso, y en los tres estados que no tienen botón (en revisión con
@@ -83,6 +83,17 @@ $canDelete = $canDelete ?? false;
     <div class="col">
         <?php if ($form['status'] === 'draft' && !$reviewRequired): ?>
             <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishActions" data-vf-async="slots">
+                <?= \App\Core\Csrf::field() ?>
+                <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-globe me-1"></i>Publicar</button>
+            </form>
+        <?php endif; ?>
+        <?php // F3 — Un formulario APROBADO ya pasó por revisión: publicarlo es el
+              // paso que se le dejó al dueño, sin volver a la cola. `id` propio y
+              // no el de la rama de borrador: los dos son «publicar», pero viven
+              // en el mismo fichero y el id repetido hace que el repintado
+              // busque el hueco equivocado. ?>
+        <?php if ($form['status'] === 'approved'): ?>
+            <form method="post" action="/forms/<?= (int) $form['id'] ?>/publish" id="formPublishApproved" data-vf-async="slots">
                 <?= \App\Core\Csrf::field() ?>
                 <button type="submit" class="btn btn-success w-100 app-form-cta"><i class="fa-solid fa-globe me-1"></i>Publicar</button>
             </form>

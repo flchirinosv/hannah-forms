@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 103 archivos, 1147 métodos, ~6 min;
+- Suite completa: `php scripts/test.php` → 103 archivos, 1149 métodos, ~6 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -235,10 +235,13 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 **Revisión de publicación (F3)**
 
-- `forms.status` tiene **cuatro** valores: `draft`, `in_review`, `published`,
-  `closed`. `in_review` **no** se sirve: el GET pinta `views/fill/in_review.php`
-  (página informativa, no 404, a propósito) y el POST corta con 403 como en un
-  `draft`.
+- `forms.status` tiene **cinco** valores: `draft`, `in_review`, `published`,
+  `closed` y `approved`. `approved` va **al final del ENUM** (migración **0019**):
+  insertarlo en medio habría re-mapeado el valor almacenado de las filas existentes.
+  Ni `in_review` ni `approved` se sirven: el GET pinta `views/fill/in_review.php`
+  para el primero y `views/fill/draft.php` para el aprobado (su nota, «todavía no
+  ha sido publicado por su propietario», es literal), y el POST corta con 403 como
+  en un `draft`.
 - **La exigencia de revisión es de la INSTANCIA, no opt-in por formulario**
   (migración **0016**; antes `settings.review.enabled`). La decide un administrador
   con `app_settings.review_required` (y `review_notify_email`) desde `/admin`, y
@@ -255,13 +258,26 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   encendida, enciende `review_required`. Sin eso, actualizar APAGARÍA en silencio la
   revisión de quien la tenía puesta. No toca `forms.status`. `forms.publish_without_review`
   se siembra a `admin` con la re-siembra del catálogo de esa misma migración.
-- El **estado solo lo mueven las tres acciones** de `ReviewController`
-  (`sendReview`, `approve`, `returnDraft`) y cada una comprueba su estado de
-  origen. El campo `status` del payload del builder **no publica**: con revisión
-  activa se ignora, y **editar un formulario ya aprobado lo devuelve a la cola**
-  borrando la aprobación anterior (`Form::submitForReview()` va dentro de la
-  transacción del builder). Ese gate vive en `BuilderController::saveStructure()`;
-  añadir otra vía que escriba `forms.status` es saltarse la revisión.
+- **Aprobar NO publica**: `approve` deja `forms.status = 'approved'`. Publicar es el
+  paso siguiente y lo da el **dueño** (`FormController::publish()`), que puede
+  publicar al momento o dejar el aprobado esperando su agenda. Antes de la 0019
+  aprobar publicaba en el mismo acto, así que una aprobación con semanas de
+  antelación sacaba el formulario al público sola.
+- El **estado solo lo mueven las acciones de estado** —`ReviewController`
+  (`sendReview`, `approve`, `returnDraft`) y `FormController` (`publish`, `close`)—
+  y cada una comprueba su estado de origen. `publish()` se salta el gate de
+  `ReviewPolicy::requiredFor()` **solo** cuando el formulario ya está `approved`:
+  ese pasó por revisión y publicarlo es el paso que se le dejó al dueño; desde
+  cualquier otro estado con revisión activa se rechaza con un mensaje que dice qué
+  hacer. `sendReview` desde un `approved` también se rechaza («ya está aprobado:
+  publícalo o edítalo»). El campo `status` del payload del builder **no publica**:
+  con revisión activa se ignora, y **editar un formulario `published` o `approved`
+  lo devuelve a la cola** borrando la aprobación anterior (`Form::submitForReview()`
+  va dentro de la transacción del builder). Ese gate vive en
+  `BuilderController::saveStructure()`; añadir otra vía que escriba `forms.status`
+  es saltarse la revisión. Publicar además registra
+  `SecurityLog::record('form.publish', …)`: con el flujo nuevo la aprobación ya no
+  implica publicación, así que sin esa traza publicar no dejaría rastro.
 - Aprobar un formulario propio está permitido y el log lo marca con `propio`: en
   una instalación de un solo usuario no hay a quién pedirle aprobación, y
   prohibirlo dejaría esa instalación sin poder publicar nunca.
@@ -1579,7 +1595,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 539 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 542 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

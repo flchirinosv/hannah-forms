@@ -161,6 +161,7 @@ class AsyncActionsJsTest
             'id="formApprove"' => 'aprobar',
             'id="formReturnReview"' => 'devolver a borrador',
             'id="formPublishActions"' => 'publicar (acciones)',
+            'id="formPublishApproved"' => 'publicar un formulario aprobado (acciones)',
             'id="formPublishSidebar"' => 'publicar (tarjeta de compartir)',
             'id="formClose"' => 'cerrar',
             'id="formReopenActions"' => 'reabrir',

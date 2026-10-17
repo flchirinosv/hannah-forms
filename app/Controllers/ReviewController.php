@@ -29,12 +29,16 @@ use App\Services\ReviewPolicy;
  * un controlador invite a que un `canEdit()` se lea como si autorizara a
  * aprobar.
  *
- * El flujo son tres transiciones, y cada una comprueba que el estado de origen
- * sea el suyo antes de tocar nada:
+ * El flujo son tres transiciones en este controlador, y cada una comprueba que
+ * el estado de origen sea el suyo antes de tocar nada:
  *
  *   draft     --(dueño: sendReview)-->    in_review
- *   in_review --(revisor: approve)-->     published
+ *   in_review --(revisor: approve)-->     approved
  *   in_review --(revisor: returnDraft)--> draft
+ *
+ * Aprobar deja el formulario en `approved`, no en `published`: el paso de
+ * `approved` a `published` lo da el DUEÑO con `FormController::publish()`,
+ * porque publicar es decidir CUÁNDO sale al público y eso no es revisar.
  *
  * La comprobación del estado de origen no es decorativa: sin ella, el botón
  * «Aprobar» de una tarjeta de revisión que se quedó vieja aprobaría un
@@ -47,10 +51,10 @@ class ReviewController
      *
      * Las tres acciones comparten las dos mitades porque las dos pintan las
      * mismas cosas: aprobar sin recarga tenía que reponer la insignia (ya
-     * «Publicado»), la traza de revisión (que aparece justo al aprobar), los
-     * botones (que cambian de «Aprobar/Devolver» a «Cerrar») y la tarjeta de
-     * compartir (que gana el QR que no había). Actualizar solo los botones
-     * deja las otras tres mintiendo.
+     * «Aprobado»), la traza de revisión (que aparece justo al aprobar) y los
+     * botones (que cambian de «Aprobar/Devolver» a «Publicar»), y la tarjeta
+     * de compartir (que pasa a su botón de publicar, todavía sin enlace porque
+     * no está publicado). Actualizar solo los botones deja las otras mintiendo.
      */
     private static function accept(int $id, string $message): void
     {
@@ -102,6 +106,13 @@ class ReviewController
             self::reject($id, 'Un formulario publicado no se manda a revisión: ciérralo antes.');
             return;
         }
+        if ($form['status'] === 'approved') {
+            // Un aprobado ya está revisado: mandarlo a la cola solo lo deja
+            // esperando de nuevo. Publicarlo, o editarlo (que lo devuelve solo),
+            // es lo que quiere hacer el dueño que le enseñan este botón.
+            self::reject($id, 'Este formulario ya está aprobado: publícalo o edítalo para volver a mandarlo.');
+            return;
+        }
 
         Form::submitForReview($id);
         SecurityLog::record('form.review_request', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
@@ -112,7 +123,11 @@ class ReviewController
     }
 
     /**
-     * Revisor: aprobar y publicar.
+     * Revisor: aprobar (sin publicar).
+     *
+     * Solo deja el formulario en `approved`: quién lo publica es el dueño, y
+     * cuándo, él decide. Un aprobado no se sirve al público, igual que un
+     * `in_review`, hasta que alguien pase por `FormController::publish()`.
      */
     public function approve(int $id): void
     {
@@ -134,14 +149,15 @@ class ReviewController
         // escribió el formulario. No se prohíbe (sería dejar sin salida a la
         // instalación de un solo usuario, que es el caso normal de un
         // self-hosted), pero sí queda en el log, que es donde se busca cuando
-        // alguien pregunta «¿quién publicó esto?».
+        // alguien pregunta «¿quién aprobó esto?» (publicar ya es un paso del
+        // dueño, y ahí manda el log del que pulsa «Publicar»).
         $propio = (int) ($form['user_id'] ?? 0) === (int) ($user['id'] ?? -1) ? ' propio' : '';
         SecurityLog::record(
             'form.review_approve',
             'formulario #' . $id . ' (' . (string) $form['slug'] . ')' . $propio
         );
 
-        self::accept($id, 'Formulario aprobado y publicado.');
+        self::accept($id, 'Formulario aprobado. Ya lo puede publicar su propietario cuando quiera.');
     }
 
     /**

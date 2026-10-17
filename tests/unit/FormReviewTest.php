@@ -187,7 +187,7 @@ class FormReviewTest
 
         Form::approve((int) self::$formId, (int) self::$reviewerId);
         $row = $this->row();
-        assertSame('published', $row['status'], 'aprobar publica');
+        assertSame('approved', $row['status'], 'aprobar deja el formulario aprobado, NO publicado');
         assertNotNull($row['reviewed_at'], 'se registra CUÁNDO se aprobó');
         assertSame((int) self::$reviewerId, (int) $row['reviewed_by'], 'y QUIÉN lo aprobó');
 
@@ -195,6 +195,42 @@ class FormReviewTest
         assertNotNull($trail['solicitado']);
         assertNotNull($trail['aprobado']);
         assertSame('Review Reviewer', $trail['aprobador'], 'la traza nombra al revisor');
+    }
+
+    /**
+     * Aprobar NO publica: deja el formulario en `approved`, y es el DUEÑO quien
+     * lo publica cuando quiere (o lo deja para su agenda). Antes de esto el
+     * único desenlace de una aprobación era `published`, así que una aprobación
+     * con semanas de antelación sacaba el formulario al público sola.
+     */
+    public function testTrasAprobarElDuenoPublicaCuandoQuiere(): void
+    {
+        $this->activarRevision(false);
+        $this->authAs((int) self::$ownerId);
+        $this->call('sendReview', new ReviewController(), (int) self::$formId);
+        $this->authAsReviewer();
+        $this->call('approve', new ReviewController(), (int) self::$formId);
+
+        assertSame('approved', $this->row()['status'], 'aprobar deja aprobado, sin publicar');
+
+        // Aprobado pero sin publicar: todavía NO se sirve al público.
+        $this->authAs((int) self::$ownerId);
+        assertFalse(
+            str_contains($this->renderFill(), '<form'),
+            'un aprobado sin publicar no se sirve: el enlace sigue mostrando la página informativa'
+        );
+        assertSame(403, ($this->postFill()['code'] ?? 0), 'y su POST corta con 403');
+
+        // El dueño publica cuando quiere, sin pasar otra vez por la cola.
+        $r = $this->call('publish', new FormController(), (int) self::$formId);
+        assertSame('published', $this->row()['status'], 'el dueño publica el formulario ya aprobado');
+        assertSame('', (string) $r['error'], 'y publicar un aprobado no da el error de «exige revisión»: ' . $r['error']);
+        assertTrue(str_contains($this->renderFill(), '<form'), 'y ahora sí se sirve al público');
+
+        // Publicar no borra la traza: la aprobación sigue constando.
+        $row = $this->row();
+        assertNotNull($row['reviewed_at'], 'publicar conserva CUÁNDO se aprobó');
+        assertSame((int) self::$reviewerId, (int) $row['reviewed_by'], 'y QUIÉN lo aprobó');
     }
 
     public function testDevolverDejaBorradorYSaleDeLaCola(): void
@@ -360,7 +396,7 @@ class FormReviewTest
         Form::submitForReview((int) self::$formId);
         $this->authAsReviewer();
         Form::approve((int) self::$formId, (int) self::$reviewerId);
-        assertSame('published', $this->row()['status'], 'precondición: aprobado y publicado');
+        assertSame('approved', $this->row()['status'], 'precondición: aprobado, todavía sin publicar');
 
         // El dueño edita su contenido.
         $this->authAs((int) self::$ownerId);
@@ -411,12 +447,12 @@ class FormReviewTest
         $this->authAs((int) self::$ownerId);
         $r = $this->call('approve', new ReviewController(), (int) self::$formId);
         assertSame(403, $r['halt']['code'] ?? 0, 'sin el permiso es 403');
-        assertSame('in_review', $this->row()['status'], 'y el formulario no se publica');
+        assertSame('in_review', $this->row()['status'], 'y el formulario sigue en revisión, sin aprobar');
 
         // El revisor, sí.
         $this->authAsReviewer();
         $this->call('approve', new ReviewController(), (int) self::$formId);
-        assertSame('published', $this->row()['status'], 'con el permiso se aprueba');
+        assertSame('approved', $this->row()['status'], 'con el permiso se aprueba (queda listo para publicar)');
     }
 
     public function testEnviarARevisionLoHaceQuienPuedeEditarYNoUnAjeno(): void
@@ -557,7 +593,7 @@ class FormReviewTest
         $this->call('sendReview', new ReviewController(), (int) self::$formId);
         $this->call('approve', new ReviewController(), (int) self::$formId);
 
-        assertSame('published', $this->row()['status'], 'el propio puede aprobar el suyo');
+        assertSame('approved', $this->row()['status'], 'el propio puede aprobar el suyo');
         assertTrue(
             str_contains(self::lastLogDetail('form.review_approve'), 'propio'),
             'pero el log lo marca como aprobación propia: ' . self::lastLogDetail('form.review_approve')

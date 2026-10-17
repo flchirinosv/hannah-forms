@@ -361,10 +361,12 @@ class FormController
         }
 
         // F3 — Misma regla que el builder: si el formulario exige revisión y ya
-        // está publicado, cambiar su contenido (aquí, título y descripción) lo
-        // devuelve a la cola. Cerrar la puerta en el builder y no en esta deja un
-        // «cambia el título por aquí y publícalo sin que nadie lo mire».
-        $requeued = ReviewPolicy::requiredFor($form) && $form['status'] === 'published';
+        // está publicado O aprobado, cambiar su contenido (aquí, título y
+        // descripción) lo devuelve a la cola. Cerrar la puerta en el builder y no
+        // en esta deja un «cambia el título por aquí y publícalo sin que nadie lo
+        // mire».
+        $requeued = ReviewPolicy::requiredFor($form)
+            && in_array($form['status'], ['published', 'approved'], true);
 
         Form::update(
             $id,
@@ -547,12 +549,12 @@ class FormController
         }
 
         // F3 — mismo criterio que `update()` y que el builder: cambiar la
-        // agenda, el acceso o el webhook de un formulario ya publicado lo
-        // devuelve a la cola si exige revisión. Si no lo exigiera, publicar
-        // «cerrado hasta el lunes» sin que nadie lo mire sería exactamente el
-        // agujero que la revisión existe para cerrar.
+        // agenda, el acceso o el webhook de un formulario ya publicado O
+        // aprobado lo devuelve a la cola si exige revisión. Si no lo exigiera,
+        // publicar «cerrado hasta el lunes» sin que nadie lo mire sería
+        // exactamente el agujero que la revisión existe para cerrar.
         $requeued = ReviewPolicy::requiredFor($form)
-            && $form['status'] === 'published'
+            && in_array($form['status'], ['published', 'approved'], true)
             && self::publishedChangesMatter($actuales, $fusionado);
 
         if ($requeued) {
@@ -692,11 +694,14 @@ class FormController
             return;
         }
 
-        // F3 — Si el formulario exige revisión, publicar desde aquí la saltaría
-        // entera: el botón «Publicar» que el dueño tiene delante equivaldría a
-        // aprobarse a uno mismo. Se rechaza con un mensaje que dice qué hacer en
-        // su lugar, en vez de un 403 mudo (que el dueño no sabría interpretar).
-        if (ReviewPolicy::requiredFor($form)) {
+        // F3 — Si el formulario exige revisión, publicar desde aquí lo saltaría
+        // entero: el botón «Publicar» que el dueño tiene delante equivaldría a
+        // aprobarse a uno mismo. La única excepción es que ya esté aprobado: ese
+        // formulario YA pasó por la revisión y publicarlo es exactamente el paso
+        // siguiente que se le dejó al dueño. Se rechaza con un mensaje que dice
+        // qué hacer en su lugar, en vez de un 403 mudo (que el dueño no sabría
+        // interpretar).
+        if (ReviewPolicy::requiredFor($form) && $form['status'] !== 'approved') {
             $error = 'Este formulario exige revisión: envíalo a revisión para que lo apruebe alguien con el permiso.';
             if (Response::wantsJson()) {
                 Response::json(['ok' => false, 'error' => $error], 422);
@@ -708,6 +713,10 @@ class FormController
         }
 
         Form::setStatus($id, 'published');
+        // El trazo de «quién publicó esto» es este y no la aprobación: con el
+        // nuevo flujo las dos son acciones de gente distinta en momentos
+        // distintos. Sin esta línea, publicar no dejaría rastro en el log.
+        \App\Core\SecurityLog::record('form.publish', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
         self::afterStatusChange($id, 'Formulario publicado. Ya puedes compartir el enlace.');
     }
 

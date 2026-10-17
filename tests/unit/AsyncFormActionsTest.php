@@ -99,7 +99,7 @@ class AsyncFormActionsTest
                 . 'parte de la ficha se queda con lo que tenía antes de la acción'
         );
 
-        foreach (['draft', 'in_review', 'published', 'closed'] as $estado) {
+        foreach (['draft', 'in_review', 'published', 'closed', 'approved'] as $estado) {
             $this->setStatus($estado);
             $html = FormPanel::slots((int) self::$formId);
 
@@ -107,7 +107,7 @@ class AsyncFormActionsTest
                 str_contains($html['vfSlotStatusBadge'], 'app-status-' . $estado),
                 'la insignia de un formulario «' . $estado . '» tiene que llevar su clase'
             );
-            assertTrue($html['vfSlotActions'] !== '', 'el hueco de acciones se pinta en los cuatro estados');
+            assertTrue($html['vfSlotActions'] !== '', 'el hueco de acciones se pinta en los cinco estados');
             assertTrue($html['vfSlotShare'] !== '', 'el de compartir también, aunque cambie de forma');
         }
 
@@ -167,6 +167,34 @@ class AsyncFormActionsTest
         assertTrue(
             str_contains((string) $html['vfSlotStatusBadge'], 'app-status-published'),
             'la insignia vuelve diciendo «Publicado»'
+        );
+    }
+
+    /**
+     * Un formulario aprobado y todavía sin publicar ofrece «Publicar» y NO
+     * «Cerrar»: el único paso que le queda es sacarlo al público, y es del
+     * dueño. Sin este hueco, aprobar dejaba la ficha sin ninguna acción útil.
+     */
+    public function testUnAprobadoOfrecePublicarYNoCerrar(): void
+    {
+        $this->setStatus('approved');
+        $html = FormPanel::slots((int) self::$formId);
+
+        assertTrue(
+            str_contains((string) $html['vfSlotStatusBadge'], 'app-status-approved'),
+            'la insignia vuelve diciendo «Aprobado»'
+        );
+        assertTrue(
+            str_contains((string) $html['vfSlotActions'], 'id="formPublishApproved"'),
+            'las acciones ofrecen publicar lo aprobado'
+        );
+        assertTrue(
+            !str_contains((string) $html['vfSlotActions'], 'id="formClose"'),
+            'y no cerrar: un aprobado todavía no está publicado'
+        );
+        assertTrue(
+            !str_contains((string) $html['vfSlotShare'], 'id="shareUrl"'),
+            'la tarjeta de compartir todavía no tiene enlace público'
         );
     }
 
@@ -298,13 +326,13 @@ class AsyncFormActionsTest
         assertTrue($r['json']['ok'] ?? false, 'aprobar por fetch responde ok');
         $html = (array) ($r['json']['html'] ?? []);
 
-        assertSame('published', $this->status(), 'el formulario queda publicado');
+        assertSame('approved', $this->status(), 'aprobar deja el formulario APROBADO, sin publicar');
         assertTrue(
-            str_contains((string) $html['vfSlotStatusBadge'], 'app-status-published'),
-            'la insignia dice «Publicado»'
+            str_contains((string) $html['vfSlotStatusBadge'], 'app-status-approved'),
+            'la insignia dice «Aprobado»'
         );
         // «Aprobado» con mayúscula, como lo pinta el partial, y NOMBRANDO al
-        // revisor: la traza existe para poder preguntar «¿quién publicó esto?»,
+        // revisor: la traza existe para poder preguntar «¿quién aprobó esto?»,
         // y un texto sin nombre no contesta eso.
         assertTrue(
             str_contains((string) $html['vfSlotReviewTrail'], 'Aprobado')
@@ -312,9 +340,15 @@ class AsyncFormActionsTest
             'y la traza de revisión se repone con la aprobación y su autor: sin '
                 . 'ello, el historial se queda en «mandado a revisión» tras aprobar'
         );
-        assertTrue(
+        // Aprobado pero SIN publicar: el hueco de compartir NO trae el enlace
+        // todavía, y ofrece publicar (que es lo que le queda al dueño).
+        assertFalse(
             str_contains((string) $html['vfSlotShare'], 'id="shareUrl"'),
-            'la tarjeta de compartir aparece al publicar'
+            'la tarjeta de compartir todavía no tiene enlace público'
+        );
+        assertTrue(
+            str_contains((string) $html['vfSlotShare'], 'id="formPublishSidebar"'),
+            'y ofrece «Publicar ahora»: el dueño decide cuándo sale al público'
         );
     }
 

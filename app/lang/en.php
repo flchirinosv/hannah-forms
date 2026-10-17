@@ -278,7 +278,7 @@ return [
     // F3 — review request notice (instance opt-in: `review_notify_email`)
     'mail.review_subject'    => 'A form is waiting for review',
     'mail.review_title'      => 'Form under review',
-    'mail.review_body'       => '{owner} sent a form for review. You can approve it (it gets published) or send it back to the owner as a draft.',
+    'mail.review_body'       => '{owner} sent a form for review. You can approve it (it becomes ready to publish, but its owner publishes it) or send it back to the owner as a draft.',
     'mail.review_cta'        => 'Open the review inbox',
     'mail.review_text'       => '{owner} sent the form "{title}" for review. Review it at {url}',
     'mail.review_ignore'     => 'If you were not expecting this notice you can ignore it: the form is not published without your approval.',

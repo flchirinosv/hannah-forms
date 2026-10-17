@@ -611,12 +611,13 @@ una URL vacía está bloqueada.
 
 ## 8. Publicar y compartir
 
-### 8.1 Los cuatro estados
+### 8.1 Los cinco estados
 
 | Estado | Qué ven los demás |
 |---|---|
 | `draft` Borrador | Nada: 403. Es tu espacio de trabajo. |
 | `in_review` En revisión | Una página informativa de que está en revisión (no un 404) y los envíos se rechazan con 403. |
+| `approved` Aprobado | Nada: una página informativa de que todavía no se ha publicado. Los envíos se rechazan con 403. |
 | `published` Publicado | El formulario funciona. |
 | `closed` Cerrado | Ya no se puede enviar. Las respuestas se conservan. |
 
@@ -629,10 +630,24 @@ constructor. Hay tres acciones distintas y no se sustituyen:
 | **Cerrar** | Deja de aceptar envíos. Las respuestas se conservan. |
 | **Enviar a revisión** | Manda el formulario a la bandeja de revisión. |
 
-**Con la revisión activada en la instalación, «Publicar» no publica.** Se rechaza
-con un aviso que te dice que lo envíes a revisión, en lugar de un 403 que no
-sabrías interpretar. A partir de ahí el formulario solo se mueve con las tres
-acciones de la bandeja (enviar, aprobar, devolver a borrador).
+**Con la revisión activada en la instalación, «Publicar» desde un borrador no
+publica.** Se rechaza con un aviso que te dice que lo envíes a revisión, en lugar
+de un 403 que no sabrías interpretar. El flujo completo queda así:
+
+**Enviar a revisión** (tú, desde la ficha) → **Aprobar** o **Devolver a
+borrador** (quien tenga el permiso `forms.review`, desde `/review`) → **Publicar**
+(tú, desde la ficha).
+
+**Aprobar no publica**: deja el formulario en `approved`, que es «revisado y
+listo, pero todavía sin salir». Su propietario ve entonces un botón **Publicar** y
+decide cuándo pulsarlo. Así una aprobación con días o semanas de antelación no
+sacaba el formulario al público sola: puedes publicarlo al momento o dejarlo
+esperando el día previsto (si el formulario tiene horario de apertura, ese
+horario sigue siendo el que decide cuándo se puede responder).
+
+Si cambias el contenido después de aprobar —en el constructor o desde la ficha—,
+el formulario vuelve a la cola de revisión y la aprobación anterior se borra:
+quien revisó aprobó otra cosa.
 
 La revisión es **una política de la instalación, no un ajuste de cada
 formulario**: un administrador la enciende (o la apaga) en `/admin/settings` —
@@ -968,7 +983,8 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | Síntoma | Causa probable |
 |---|---|
 | «Publicar» no publica y avisa | La revisión está activada en la instalación. Envíalo a revisión (ver §8.1) |
-| El enlace da 403 | Sigue en borrador, o está en revisión o cerrado. |
+| Lo aprobé pero el enlace no sale al público | **Aprobar no publica**: el formulario queda «Aprobado» y su dueño lo saca pulsando «Publicar» en la ficha (§8.1) |
+| El enlace da 403 | Sigue en borrador, aprobado sin publicar, o en revisión; también si está cerrado. |
 | Editar lo devolvió a la cola | Con la revisión activada en la instalación, editar un formulario aprobado borra la aprobación anterior. Es a propósito. |
 | La tabla de respuestas se queda «cargando» | Debe ser un bug de `analytics.js`. Comprobado en `751602c`. |
 | Un campo con condición sigue apareciendo al enviar | La condición se cumple: se muestra, y sus respuestas sí se guardan. |
