@@ -41,11 +41,10 @@ $fieldTypes = [
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
-            <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-pen-nib me-2 text-primary"></i>Builder — <span id="builderTitleText"><?= View::escape($form['title']) ?></span></h2>
+            <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-pen-nib me-2 text-primary"></i>Editor — <span id="builderTitleText"><?= View::escape($form['title']) ?></span></h2>
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center app-head-actions">
             <button class="btn btn-primary app-btn-primary" type="button" id="btnAddQuestion" title="Agregar pregunta al final"><i class="fa-solid fa-plus me-1"></i>Pregunta</button>
-            <span class="small align-self-center text-muted" id="saveStatus">Guardado ✓</span>
             <div class="btn-group d-none d-sm-inline-flex" role="group" aria-label="Deshacer / rehacer">
                 <button class="btn btn-outline-secondary" type="button" id="btnUndo" title="Deshacer (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
                 <button class="btn btn-outline-secondary" type="button" id="btnRedo" title="Rehacer (Ctrl+Shift+Z)"><i class="fa-solid fa-rotate-right"></i></button>
@@ -449,10 +448,11 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
      data-settings="<?= View::escape($formSettingsJson) ?>"
      data-upload-limits="<?= View::escape($uploadLimits) ?>"
      data-csrf="<?= View::escape(\App\Core\Csrf::token()) ?>"
+     data-vf-has-draft="<?= ($hasDraft ?? false) ? '1' : '0' ?>"
      data-status="<?= View::escape($form['status']) ?>"></div>
 
 <p class="text-muted small text-center mb-0 mt-3">
-    <i class="fa-solid fa-keyboard me-1"></i>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Supr</kbd> eliminar · <kbd>Esc</kbd> cerrar selección · autoguardado activo
+    <i class="fa-solid fa-keyboard me-1"></i>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Supr</kbd> eliminar · <kbd>Esc</kbd> cerrar selección · los cambios se guardan como borrador hasta que pulsas «Guardar»
 </p>
 
 <script src="<?= View::asset('js/sortable.min.js') ?>" defer></script>

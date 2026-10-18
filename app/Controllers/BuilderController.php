@@ -36,12 +36,74 @@ class BuilderController
             return;
         }
 
+        // Modelo Elementor: si hay un BORRADOR (trabajo en progreso no
+        // commiteado), el constructor se abre mostrando ÉL y no la estructura
+        // viva. Así recargar la página no pierde lo que se estaba haciendo:
+        // «Guardar» es lo que commitea el borrador a `fields` y lo limpia.
+        $hasDraft = false;
+        $draft = Form::draft((int) $form['id']);
+        if ($draft !== null) {
+            $hasDraft = true;
+            $form['fields'] = FillController::mapDraftToFields($draft);
+            $form['title'] = (string) ($draft['title'] ?? $form['title']);
+            $form['description'] = (string) ($draft['description'] ?? $form['description']);
+            $liveSettings = json_decode((string) ($form['settings'] ?? ''), true);
+            $draftSettings = is_array($draft['settings'] ?? null) ? $draft['settings'] : [];
+            $merged = array_replace_recursive(is_array($liveSettings) ? $liveSettings : [], $draftSettings);
+            $form['settings'] = json_encode($merged, JSON_UNESCAPED_UNICODE);
+        }
+
         View::render('builder/index', [
             'form' => $form,
             'fields' => $form['fields'],
             'user' => $user,
             'csrf' => Csrf::token(),
+            'hasDraft' => $hasDraft,
         ]);
+    }
+
+    /**
+     * Autosave al BORRADOR (modelo Elementor).
+     *
+     * Escribe la estructura en edición en `forms.builder_draft` SIN tocar
+     * `fields` ni el `status`: el commit real es `saveStructure()`. Guarda liviano
+     * (sin resolver lógica ni re-encolar revisión) porque se ejecuta cada pocos
+     * segundos; la validación de verdad ocurre al «Guardar».
+     */
+    public function saveDraft(int $id): void
+    {
+        $form = Form::find($id, false);
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+        if (Auth::user() === null) {
+            Response::redirect('/login');
+            return;
+        }
+        if (!$this->canEdit((int) $form['user_id'])) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyHeader()) {
+            Response::json(['ok' => false, 'error' => 'Token de seguridad inválido. Recarga la página e intenta de nuevo.'], 419);
+            return;
+        }
+
+        $body = Request::json();
+        if (Request::jsonTooLarge()) {
+            Response::json(['ok' => false, 'error' => 'La estructura excede el tamaño máximo permitido.'], 413);
+            return;
+        }
+        if (!is_array($body) || !isset($body['fields']) || !is_array($body['fields'])) {
+            Response::json(['ok' => false, 'error' => 'Estructura inválida'], 422);
+            return;
+        }
+
+        Form::saveDraft((int) $form['id'], $body);
+
+        Response::json(['ok' => true]);
+        return;
     }
 
     public function saveStructure(int $id): void
@@ -405,6 +467,12 @@ class BuilderController
             }
 
             $db->commit();
+
+            // Modelo Elementor: el commit deja de ser un borrador. Se limpia
+            // DESPUÉS del commit para que un fallo de escritura no pierda el
+            // borrador del dueño; si el clear fallara, el borrador quedaría
+            // obsoleto pero la estructura ya está guardada (mal menor).
+            Form::clearDraft((int) $form['id']);
 
             // P10/F1.1: ya es demasiado tarde para revertir. Desenlaza del disco
             // los adjuntos de los campos eliminados (rutas recogidas antes del

@@ -67,6 +67,13 @@ CREATE TABLE IF NOT EXISTS forms (
     settings    JSON DEFAULT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    -- Borrador de la estructura en edición (modelo Elementor, migración 0020).
+    -- El autosave del builder escribe AQUÍ, nunca en `fields`; «Guardar» lo
+    -- commitea a la estructura real y lo limpia. Van al final para que una
+    -- instalación limpia y una migrada coincidan en posición (el ALTER las
+    -- añade después de updated_at).
+    builder_draft LONGTEXT DEFAULT NULL COMMENT 'Payload JSON de la estructura en edición; NULL = sin cambios sin guardar',
+    builder_draft_at DATETIME DEFAULT NULL COMMENT 'Instante UTC del último autosave al borrador',
     CONSTRAINT fk_forms_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_forms_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

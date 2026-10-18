@@ -116,9 +116,19 @@ $router->get('/forms/{id}/qr.svg', [FormController::class, 'qrSvg'], ['auth']);
 // P9 — Vista imprimible y export de la estructura (formato plantilla)
 $router->get('/forms/{id}/print', [FormController::class, 'printForm'], ['auth']);
 $router->get('/forms/{id}/export-structure.json', [FormController::class, 'exportStructure'], ['auth']);
+// Vista previa real (modelo Elementor): renderiza el fill completo contra el
+// borrador (si ?draft=1 y quien puede editar) o contra la estructura viva. El
+// revisor la abre desde la bandeja; el dueño, desde el builder. El POST valida
+// pero NUNCA persiste (no crea Submission, webhooks ni rate limit).
+$router->get('/forms/{id}/preview', [FillController::class, 'preview'], ['auth']);
+$router->post('/forms/{id}/preview', [FillController::class, 'previewSubmit'], ['auth', 'post-max', 'csrf']);
 
 // Builder
 $router->get('/forms/{id}/builder', [BuilderController::class, 'show'], ['auth']);
+// Autosave al BORRADOR (modelo Elementor): escribe la estructura en edición en
+// `forms.builder_draft`, sin tocar `fields` ni re-encolar la revisión. CSRF por
+// cabecera (es un fetch JSON), igual que el guardado real.
+$router->post('/forms/{id}/builder/draft', [BuilderController::class, 'saveDraft'], ['auth', 'csrf-header']);
 $router->post('/forms/{id}/builder/save', [BuilderController::class, 'saveStructure'], ['auth', 'csrf-header']);
 
 // Front público de respuesta

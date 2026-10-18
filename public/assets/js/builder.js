@@ -221,7 +221,6 @@
         btnDelete: document.getElementById('btnDeleteField'),
         btnUndo: document.getElementById('btnUndo'),
         btnRedo: document.getElementById('btnRedo'),
-        saveStatus: document.getElementById('saveStatus'),
         paletteItems: document.querySelectorAll('.app-palette-item'),
         // F1 (rediseño): el «+» de la barra y el del lienzo vacío abren el mismo
         // modal que los «+» entre tarjetas. La paleta ya no es una columna.
@@ -1767,27 +1766,30 @@
     }
 
     function openLivePreview() {
-        const content = document.getElementById('livePreviewContent');
-        if (content) content.innerHTML = buildPreviewHtml();
-        const modalEl = document.getElementById('livePreviewModal');
-        if (modalEl && window.bootstrap) {
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal.show();
-        }
+        // Vista previa REAL (modelo Elementor): abre el formulario completo en
+        // otra pestaña, contra el BORRADOR (`?draft=1`) si lo hay. Así se prueba
+        // con el fill.js de verdad (condiciones, multi-paso, tema) sin guardar.
+        // El modal de preview que hubo antes se retira en una fase aparte.
+        const draftQ = appEl.dataset.vfHasDraft === '1' ? '?draft=1' : '';
+        window.open('/forms/' + FORM_ID + '/preview' + draftQ, '_blank');
     }
 
-    /* ---------- Save ---------- */
-    /* ---------- Estado de guardado (autosave) ---------- */
+    /* ---------- Save (modelo Elementor: borrador en servidor + commit) ---------- */
+    /* `dirty` = hay cambios sin commitear a `fields`. El autoguardado escribe el
+     * BORRADOR (`/builder/draft`, liviano y sin re-encolar revisión); «Guardar»
+     * es el commit a `fields` (y limpia el borrador en el servidor). El botón
+     * solo tiene sentido si hay algo que commitear, por eso se apaga limpio. */
     let dirty = false;
-    let saving = false;
-    let pendingSave = false;
+    let saving = false;      // un commit («Guardar») en vuelo
+    let draftSaving = false; // un autoguardado de borrador en vuelo
     let lastSavedJson = null;
     let autoSaveTimer = null;
 
-    function setStatus(text, cls) {
-        if (!el.saveStatus) return;
-        el.saveStatus.textContent = text;
-        el.saveStatus.className = 'small align-self-center ms-2 ' + (cls || 'text-muted');
+    // El botón «Guardar» se apaga cuando no hay nada que commitear. Es la
+    // sustitución del texto «Sin guardar…/Guardado ✓»: el estado se lee en el
+    // propio botón, no en una etiqueta al lado.
+    function refreshSaveBtn() {
+        if (el.saveBtn) el.saveBtn.disabled = !dirty;
     }
 
     /**
@@ -1833,25 +1835,42 @@
 
     function markDirty() {
         dirty = true;
-        pendingSave = true;
-        setStatus('Sin guardar…', 'text-warning');
+        refreshSaveBtn();
         clearTimeout(autoSaveTimer);
         autoSaveTimer = setTimeout(() => { autoSaveTimer = null; autoSave(); }, 2000);
     }
 
+    // Autoguardado al BORRADOR (no commitea): es liviano, no re-encola la
+    // revisión y sirve para que recargar el constructor no pierda el trabajo.
     async function autoSave() {
-        if (!dirty || saving) return;
-        await saveStructure({ silent: true });
-        if (!dirty) setStatus('Guardado automáticamente', 'text-success');
-        else setStatus('Esperando guardado…', 'text-warning');
+        if (!dirty || draftSaving || saving) return;
+        draftSaving = true;
+        try {
+            await saveDraft();
+        } finally {
+            draftSaving = false;
+        }
+    }
+
+    async function saveDraft() {
+        const payloadJson = JSON.stringify(buildPayload());
+        try {
+            await fetch('/forms/' + FORM_ID + '/builder/draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+                body: payloadJson,
+            });
+        } catch (e) {
+            // Best-effort: el «Guardar» de verdad vuelve a intentarlo y
+            // surfaceará cualquier error real. No se avisa por un fallo de red
+            // en un autoguardado silencioso.
+        }
     }
 
     async function saveStructure(opts) {
         opts = opts || {};
-        // M1: serializar guardados — si hay uno en vuelo, se deja pendiente
-        // y se reaparece al terminar con la última versión.
+        // Serializar guardados: si ya hay uno en vuelo, no lanzar otro.
         if (saving) {
-            pendingSave = true;
             return;
         }
         saving = true;
@@ -1865,7 +1884,7 @@
          * próximo atajo repita el fallo; lo vigila
          * `BuilderSaveButtonTest::testNingunaSalidaSeSaltaLaReposicionDelBoton`. */
         const pintarBoton = function (guardando) {
-            if (opts.silent || !el.saveBtn) {
+            if (!el.saveBtn) {
                 return;
             }
             if (guardando) {
@@ -1881,17 +1900,15 @@
             }
         };
         pintarBoton(true);
-        setStatus('Guardando…', 'text-secondary');
 
         const payload = buildPayload();
         const payloadJson = JSON.stringify(payload);
 
-        // M8: omitir el guardado si la estructura no cambió desde el último éxito.
+        // M8: omitir el commit si la estructura no cambió desde el último éxito
+        // (por ejemplo un Ctrl+S sin tocar nada). El botón ya está apagado
+        // cuando no hay cambios, pero el atajo sigue evitando un POST inútil.
         if (payloadJson === lastSavedJson) {
             dirty = false;
-            pendingSave = false;
-            setStatus('Guardado ✓', 'text-success');
-            if (!opts.silent) showToast('Sin cambios por guardar', 'success');
             pintarBoton(false);
             saving = false;
             return;
@@ -1907,30 +1924,22 @@
             if (data.ok) {
                 lastSavedJson = payloadJson;
                 dirty = false;
-                pendingSave = false;
                 el.titleText.textContent = payload.title;
-                setStatus('Guardado ✓', 'text-success');
-                if (!opts.silent) showToast('Estructura guardada correctamente', 'success');
+                showToast('Estructura guardada correctamente', 'success');
             } else {
                 dirty = true;
-                pendingSave = true;
-                setStatus('Error al guardar', 'text-danger');
-                if (!opts.silent) showToast(data.error || 'Error al guardar', 'danger');
+                showToast(data.error || 'Error al guardar', 'danger');
             }
         } catch (e) {
             dirty = true;
-            pendingSave = true;
-            setStatus('Error de conexión', 'text-danger');
-            if (!opts.silent) showToast('Error de conexión al guardar', 'danger');
+            showToast('Error de conexión al guardar', 'danger');
         } finally {
             pintarBoton(false);
             saving = false;
-            // M1: si hubo cambios mientras se guardaba, relanzar el autosave
-            if (pendingSave) {
-                clearTimeout(autoSaveTimer);
-                autoSaveTimer = setTimeout(() => { autoSaveTimer = null; autoSave(); }, 800);
-            }
         }
+        // El estado final del botón lo decide `dirty` (commiteado o no), no el
+        // simple restore de pintarBoton: tras un guardado limpio se apaga.
+        refreshSaveBtn();
     }
 
     function showToast(msg, type, opts) {
@@ -2471,8 +2480,12 @@
         // F2: #settingsForm vive desde el arranque dentro del drawer; no hay
         // reubicaciones que capturar.
         bindFieldSettingsModal();
+        // Estado inicial del botón «Guardar»: habilitado solo si el constructor
+        // se abrió sobre un BORRADOR sin commitear (trabajo de una sesión
+        // anterior). Sin borrador no hay nada que commitear y arranca apagado.
+        dirty = appEl.dataset.vfHasDraft === '1';
+        refreshSaveBtn();
         renderFieldCanvas();
-        setStatus('Listo', 'text-muted');
     }
 
     init();

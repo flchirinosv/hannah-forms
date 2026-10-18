@@ -46,7 +46,7 @@ use App\Core\View;
                             <span class="text-muted">· <?= View::escape($p['owner_email']) ?></span>
                         </p>
                         <div class="d-flex gap-2">
-                            <a href="/forms/<?= (int) $p['id'] ?>/print" class="btn btn-sm btn-outline-secondary flex-fill"><i class="fa-solid fa-eye me-1"></i>Ver</a>
+                            <a href="/forms/<?= (int) $p['id'] ?>/preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary flex-fill"><i class="fa-solid fa-eye me-1"></i>Ver</a>
                             <form method="post" action="/forms/<?= (int) $p['id'] ?>/review/approve" class="m-0 flex-fill"
                                   data-confirm="¿Aprobar este formulario? Quedará listo para publicar; su propietario decidirá cuándo sale al público."
                                   data-confirm-ok="Aprobar" data-confirm-tone="primary">

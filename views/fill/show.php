@@ -2,6 +2,10 @@
 use App\Core\View;
 $old = isset($old) ? $old : [];
 $settings = $settings ?? [];
+// Vista previa (modelo Elementor): cuando el controlador manda `$previewAction`,
+// el form postea a esa ruta (que valida pero no persiste) en vez de a /f/{slug}.
+$previewAction = $previewAction ?? null;
+$previewBanner = $previewAction !== null;
 $fieldTypes = ['text', 'textarea', 'email', 'number', 'date', 'select', 'radio', 'checkbox', 'scale', 'url', 'tel', 'time', 'datetime-local', 'range', 'section', 'matrix', 'nps', 'star', 'ranking', 'file'];
 
 // Q6 — i18n del fill: override del request (?lang= / campo oculto lang en el
@@ -437,6 +441,13 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
         </div>
     <?php endif; ?>
 
+    <?php if ($previewBanner): ?>
+        <div class="alert alert-info border-0 shadow-sm app-fill-alert flip-in" role="status">
+            <h4 class="h6 fw-bold mb-1"><i class="fa-solid fa-eye me-1"></i>Vista previa</h4>
+            <p class="mb-0 small">Así se verá el formulario. Puedes probarlo, pero <strong>no se guardará ninguna respuesta</strong>.</p>
+        </div>
+    <?php endif; ?>
+
     <?php // P10 — multipart solo si el formulario tiene campos de archivo. ?>
     <?php $hasFileField = false; foreach ($fields as $fld) { if (($fld['type'] ?? '') === 'file') { $hasFileField = true; break; } } ?>
     <?php // F4 — El token de acceso viaja también en el action del formulario, no
@@ -447,7 +458,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
           // direcciones, en el historial y en el Referer que el navegador no envía
           // desde un action: no amplia la exposición, evita un formulario
           // irrellenable. ?>
-    <form method="post" action="/f/<?= View::escape($form['slug']) ?><?= !empty($accessToken) ? '?t=' . rawurlencode((string) $accessToken) : '' ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>"<?= !empty($settings['advance']['auto']) ? ' data-vf-auto-advance="1"' : '' ?> data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
+    <form method="post" action="<?= View::escape($previewAction ?? ('/f/' . $form['slug'] . (!empty($accessToken) ? '?t=' . rawurlencode((string) $accessToken) : ''))) ?>" id="vfForm" data-slug="<?= View::escape($form['slug']) ?>"<?= !empty($settings['advance']['auto']) ? ' data-vf-auto-advance="1"' : '' ?> data-vf-i18n="<?= View::escape($vfI18nJson) ?>" class="d-flex flex-column" novalidate<?= $hasFileField ? ' enctype="multipart/form-data"' : '' ?>>
         <?= \App\Core\Csrf::field() ?>
 
         <?php // Q6 — El idioma renderizado viaja en el POST para que el re-render

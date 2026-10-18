@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Clock;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Core\Access;
 use App\Core\I18n;
 use App\Core\RateLimiter;
 use App\Core\Request;
@@ -15,6 +17,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Answer;
+use App\Models\Field;
 use App\Models\Form;
 use App\Models\FormAccess;
 use App\Models\FormParticipant;
@@ -150,6 +153,235 @@ class FillController
         // P8 — Barajar también en el embed (mismo comportamiento que show).
         $form['fields'] = self::randomizeFields($form['fields'], $settings);
         $this->renderFill($form, $settings, [], true, $accessToken);
+    }
+
+    /**
+     * Vista previa REAL (modelo Elementor) — GET.
+     *
+     * Renderiza el `fill.js` completo (condiciones, multi-paso, tema, validación
+     * en cliente) sin persistir nada. La usa el dueño desde el builder (con
+     * `?draft=1` para ver sus cambios aún no guardados) y el revisor desde la
+     * bandeja (sin `?draft=1`: siempre ve la estructura viva, que es la que se
+     * sometió a revisión). Los gates de fill (cerrado/borrador/revisión/acceso/
+     * disponibilidad/Turnstile) NO aplican: aquí lo que se prueba es el formulario
+     * tal cual saldría, no si está abierto al público.
+     */
+    public function preview(int $id): void
+    {
+        $form = Form::find($id, false);
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+        $user = Auth::user();
+        if ($user === null) {
+            Response::redirect('/login');
+            return;
+        }
+
+        $canEdit = Access::canEdit((int) $form['user_id']);
+        $puedeRevisar = Auth::can('forms.review') && $form['status'] === 'in_review';
+        if (!$canEdit && !$puedeRevisar) {
+            Response::forbidden();
+            return;
+        }
+
+        $wantDraft = isset($_GET['draft']) && $_GET['draft'] === '1';
+        // El borrador es del DUEÑO: un revisor no tiene nada que ver ahí.
+        if ($wantDraft && !$canEdit) {
+            Response::forbidden();
+            return;
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        $draft = $wantDraft ? Form::draft((int) $form['id']) : null;
+        if ($draft !== null) {
+            $form['fields'] = self::mapDraftToFields($draft);
+            // El tema/ajustes del borrador pisan los live: el dueño acaba de
+            // moverlos en el builder y la preview tiene que reflejarlo.
+            $draftSettings = is_array($draft['settings'] ?? null) ? $draft['settings'] : [];
+            $settings = FormSettings::normalize(array_replace_recursive($settings, $draftSettings));
+        } else {
+            $form['fields'] = Field::byForm((int) $form['id']);
+        }
+
+        $this->renderPreviewFill($form, $settings, '/forms/' . $id . '/preview');
+    }
+
+    /**
+     * Vista previa REAL — POST (el visitante de prueba pulsa «Enviar»).
+     *
+     * Corre la MISMA validación que el fill de verdad (server + cliente) y
+     * re-renderiza con los errores tal cual haría el submit real, pero NUNCA
+     * persiste: no crea `Submission`, no dispara webhooks ni `Notifier`, no cuenta
+     * rate limit, no aplica Turnstile ni honeypot. Es la mitad que hace que la
+     * preview se pueda probar sin ensuciar la BD.
+     */
+    public function previewSubmit(int $id): void
+    {
+        $form = Form::find($id, false);
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+        $user = Auth::user();
+        if ($user === null) {
+            Response::redirect('/login');
+            return;
+        }
+
+        $canEdit = Access::canEdit((int) $form['user_id']);
+        $puedeRevisar = Auth::can('forms.review') && $form['status'] === 'in_review';
+        if (!$canEdit && !$puedeRevisar) {
+            Response::forbidden();
+            return;
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        // El POST de la preview vive del mismo borrador que el GET: el form
+        // apunta a `/forms/{id}/preview` (sin query), así que aquí se decide por
+        // el borrador si existe y quien puede editar (mismo criterio que el GET).
+        $draft = $canEdit ? Form::draft((int) $form['id']) : null;
+        if ($draft !== null) {
+            $form['fields'] = self::mapDraftToFields($draft);
+            $draftSettings = is_array($draft['settings'] ?? null) ? $draft['settings'] : [];
+            $settings = FormSettings::normalize(array_replace_recursive($settings, $draftSettings));
+        } else {
+            $form['fields'] = Field::byForm((int) $form['id']);
+        }
+
+        $locale = I18n::forRequest($settings);
+        // MISMA validación que el fill de verdad (núcleo compartido), pero sin
+        // persistir: los archivos que se hubieran subido a disco se revierten
+        // siempre, porque una preview no debe dejar binarios huérfanos.
+        $vr = $this->runValidation($form['fields'], $locale);
+        Uploader::rollback($vr['storedFiles']);
+        if ($vr['errors'] !== []) {
+            $this->renderPreviewFill($form, $settings, '/forms/' . $id . '/preview', Request::all(), $vr['errors']);
+            return;
+        }
+
+        // Todo válido: no hay nada que guardar. Se re-renderiza limpio con la
+        // confirmación de que se probó bien, para que el «visitante» vea el
+        // resultado del submit sin que la BD se entere.
+        $this->renderPreviewFill($form, $settings, '/forms/' . $id . '/preview', [], []);
+    }
+
+    /**
+     * Traduce el payload del builder (borrador) a los campos que entiende el
+     * fill. El payload referencia por `_uid` (tanto `parent_id` como las reglas
+     * de `logic.field_id`), y el fill trabaja con ids numéricos: se asignan ids
+     * sintéticos 1..N en orden de lectura y se reescriben todas las referencias.
+     *
+     * Es PÚBLICA y la reutiliza `BuilderController::show()` para abrir el
+     * constructor mostrando el borrador (la misma forma BD que `data-fields`).
+     */
+    public static function mapDraftToFields(array $payload): array
+    {
+        $items = is_array($payload['fields'] ?? null) ? $payload['fields'] : [];
+
+        // Mapa _uid → id sintético (y también id real → sintético, por si una
+        // regla referenciaba un campo existente por su número en vez de su _uid).
+        $refToId = [];
+        $synth = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $uid = (string) ($item['_uid'] ?? '');
+            $id = ++$synth;
+            if ($uid !== '') {
+                $refToId[$uid] = $id;
+            }
+            $realId = $item['id'] ?? null;
+            if ($realId !== null && $realId !== '') {
+                $refToId[(string) $realId] = $id;
+            }
+        }
+
+        $fields = [];
+        $pos = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $uid = (string) ($item['_uid'] ?? '');
+            $id = $refToId[$uid] ?? null;
+            if ($id === null) {
+                continue;
+            }
+
+            $parentUid = $item['parent_id'] ?? null;
+            $parentId = ($parentUid !== null && $parentUid !== '')
+                ? ($refToId[(string) $parentUid] ?? null)
+                : null;
+
+            $logic = null;
+            if (is_array($item['logic'] ?? null)) {
+                $rules = [];
+                foreach ((array) ($item['logic']['rules'] ?? []) as $rule) {
+                    if (!is_array($rule)) {
+                        continue;
+                    }
+                    $ref = (string) ($rule['field_id'] ?? '');
+                    $refId = $refToId[$ref] ?? null;
+                    if ($refId === null) {
+                        continue;
+                    }
+                    $rules[] = [
+                        'field_id' => $refId,
+                        'op'       => (string) ($rule['op'] ?? ''),
+                        'value'    => (string) ($rule['value'] ?? ''),
+                    ];
+                }
+                if ($rules !== []) {
+                    $logic = [
+                        'operator' => ($item['logic']['operator'] ?? 'all') === 'any' ? 'any' : 'all',
+                        'rules'    => $rules,
+                    ];
+                }
+            }
+
+            $fields[] = [
+                'id'          => $id,
+                'type'        => (string) ($item['type'] ?? 'text'),
+                'label'       => (string) ($item['label'] ?? ''),
+                'placeholder' => (string) ($item['placeholder'] ?? ''),
+                'help_text'   => (string) ($item['help_text'] ?? ''),
+                'is_required' => (bool) ($item['is_required'] ?? false),
+                'is_pii'      => (int) ($item['is_pii'] ?? 0) === 1 ? 1 : 0,
+                'show_header' => (bool) ($item['show_header'] ?? true),
+                'options'     => is_array($item['options'] ?? null) ? $item['options'] : [],
+                'validations' => is_array($item['validations'] ?? null) ? $item['validations'] : [],
+                'position'    => ++$pos,
+                'parent_id'   => $parentId,
+                'logic'       => $logic,
+            ];
+        }
+        return $fields;
+    }
+
+    /**
+     * Render del fill en modo preview: mismo `fill/show`, con el `action` del
+     * form apuntando a la ruta de preview y sin Turnstile (aquí no se sirve al
+     * público, no hay nada que frenar).
+     */
+    private function renderPreviewFill(array $form, array $settings, string $previewAction, array $old = [], array $errors = []): void
+    {
+        $this->emitFillCsp($settings, false);
+
+        View::render('fill/show', [
+            'form'      => $form,
+            'fields'    => $form['fields'],
+            'csrf'      => Csrf::token(),
+            'settings'  => $settings,
+            'old'       => $old,
+            'turnstile' => ['enabled' => false],
+            'hidden'    => self::initialVisibility($form['fields'], $old),
+            'accessToken' => null,
+            'previewAction' => $previewAction,
+            'errors'    => $errors,
+        ], null);
     }
 
     /**
@@ -670,119 +902,23 @@ class FillController
         return $ts === false ? 0 : $ts;
     }
 
-    public function submit(string $slug): void
+    /**
+     * FASE 1 — Validación sin persistir (núcleo compartido por `submit()` y la
+     * preview).
+     *
+     * Recorre los campos en ORDEN TOPOLÓGICO, resuelve omisión de páginas y
+     * visibilidad, y devuelve los errores junto con los valores ya validados.
+     * NO toca la BD; lo único que escribe es `Uploader` para los campos de
+     * archivo (binarios a disco), y sus metas se devuelven en `storedFiles` para
+     * que el llamante haga `rollback` si no persiste (preview) o si el resto del
+     * envío resulta inválido.
+     *
+     * @return array{errors: array, validated: array, answers: array,
+     *   storedFiles: array, order: array, byId: array, plan: array,
+     *   visible: array, skippedPages: array}
+     */
+    private function runValidation(array $fields, string $locale): array
     {
-        $form = Form::findBySlug($slug);
-
-        if ($form === null) {
-            Response::notFound();
-            return;
-        }
-
-        $settings = Form::settings((int) $form['id']);
-        $locale = I18n::forRequest($settings);
-
-        if ($form['status'] !== 'published') {
-            Response::abort(403, I18n::t('err.not_accepting', $locale));
-            return;
-        }
-
-        // F4 — Contrapartida del gate del GET, y aquí, en el controlador: quitar
-        // el `action` del formulario o el botón del cliente no es una puerta. Un
-        // POST directo saltándose el GET es justo lo que hay que impedir, y por
-        // eso el corte va antes que el `post-max` y que el CSRF: a un formulario
-        // restringido no se le contesta nada hasta saber si tiene acceso.
-        $accessToken = null;
-        $participantId = null;
-        if (FormAccess::isRestricted($settings)) {
-            [$granted, $accessToken, $participantId] = self::resolveAccess($form, $settings);
-            if (!$granted) {
-                Response::abort(403, I18n::t('access.denied', $locale));
-                return;
-            }
-        }
-
-        // P10 — Si el POST excede post_max_size, PHP vacía $_POST/$_FILES: el
-        // chequeo de CSRF fallaría con un 419 confuso. Se reporta 413 claro.
-        if (self::postOverflowed()) {
-            Response::abort(413, I18n::t('err.upload_too_big_global', $locale, [
-                'max' => Uploader::maxSizeMb(),
-            ]));
-            return;
-        }
-
-        if (!Csrf::verifyRequest()) {
-            Response::abort(419, 'Token de seguridad inválido. Recarga la página.');
-            return;
-        }
-
-        // P6 — Re-chequear disponibilidad (calendario/cupo) en el servidor,
-        // aunque el GET /f/{slug} ya la haya mostrado (el GET pudo quedar viejo).
-        $state = self::scheduleState($settings);
-        if ($state === 'closed') {
-            Response::abort(403, I18n::t('err.closed', $locale));
-            return;
-        }
-        if ($state === 'not_open') {
-            Response::abort(403, I18n::t('err.not_open', $locale));
-            return;
-        }
-        if (self::quotaExceeded($form)) {
-            Response::abort(403, I18n::t('err.quota', $locale));
-            return;
-        }
-
-        // P7 — Honeypot: si el campo trampa viene rellenado, es un bot. Se finge
-        // el flujo normal (PRG a gracias) sin persistir, validar ni notificar.
-        if (self::honeypotTriggered($settings)) {
-            $this->redirectToThanks($form, $settings);
-            return;
-        }
-
-        // B2 — Verificación bot server-side (Turnstile). Si el form lo pide pero
-        // la instancia no tiene claves, es un formulario mal configurado: se
-        // corta como si no aceptara respuestas (el GET ya lo bloquea igual).
-        if (!empty($settings['anti_bot']['enabled'])) {
-            if (!Turnstile::isConfigured()) {
-                Response::abort(403, I18n::t('err.not_accepting', $locale));
-                return;
-            }
-            // El widget inyecta su token en `cf-turnstile-response` (el nombre
-            // es de Cloudflare). El token es de UN SOLO uso: si la verificación
-            // falla se re-renderiza el form con el error y el visitante reintenta.
-            $token = trim((string) Request::post('cf-turnstile-response', ''));
-            if ($token === '' || !Turnstile::verify($token, Request::ip())) {
-                $this->renderFillErrors($form, $settings, [I18n::t('err.turnstile', $locale)], $accessToken);
-                return;
-            }
-        }
-
-        // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos por
-        // defecto. El número es configurable (`FILL_SUBMIT_PER_10MIN`) porque un
-        // censo se responde desde una IP compartida y el límite que frena a un
-        // automatismo es el mismo que deja fuera a la persona número 11.
-        $scope = 'submit:' . (int) $form['id'];
-        $ip = Request::ip();
-        $maxEnvios = max(1, (int) Config::get('app.limits.fill_submit_per_10min', 10));
-        if (!RateLimiter::isAllowed($scope, $ip, $maxEnvios, 600)) {
-            \App\Core\SecurityLog::record('rate_limit.fill', 'bloqueo por IP al enviar /f/' . (string) $form['slug']);
-            Response::abort(429, I18n::t('err.too_many', $locale));
-            return;
-        }
-        // Contar este envío dentro de la ventana
-        RateLimiter::recordHit($scope, $ip, 600);
-
-        // FASE 1 — Validación sin persistir: recolectar los datos ya validados.
-        // (A10) La submission NO se crea hasta que todos los campos son válidos;
-        // así se evitan registros huérfanos al descartar respuestas inválidas.
-        //
-        // Lógica condicional: los campos se evalúan en ORDEN TOPOLÓGICO
-        // (dependencias de secciones y reglas), de modo que una condición puede
-        // referirse a cualquier pregunta (anterior o posterior). Un campo que no
-        // cumple su condición se considera OCULTO: no se valida ni se persiste,
-        // y sus respuestas no cuentan como fuente (valor nulo). El cliente solo
-        // oculta visualmente; aquí se decide de forma autoritativa.
-        $fields = $form['fields'];
         $plan = self::pagePlan($fields);
 
         // P8 — Salta-página: cada pregunta depende del campo «page» que abre su
@@ -922,6 +1058,129 @@ class FillController
             // (los checkbox son arrays en la evaluación, no el JSON stringificado).
             $answers[$fieldId] = $value;
         }
+
+        return [
+            'errors'       => $errors,
+            'validated'    => $validated,
+            'answers'      => $answers,
+            'storedFiles'  => $storedFiles,
+            'order'        => $order,
+            'byId'         => $byId,
+            'plan'         => $plan,
+            'visible'      => $visible,
+            'skippedPages' => $skippedPages,
+        ];
+    }
+
+    public function submit(string $slug): void
+    {
+        $form = Form::findBySlug($slug);
+
+        if ($form === null) {
+            Response::notFound();
+            return;
+        }
+
+        $settings = Form::settings((int) $form['id']);
+        $locale = I18n::forRequest($settings);
+
+        if ($form['status'] !== 'published') {
+            Response::abort(403, I18n::t('err.not_accepting', $locale));
+            return;
+        }
+
+        // F4 — Contrapartida del gate del GET, y aquí, en el controlador: quitar
+        // el `action` del formulario o el botón del cliente no es una puerta. Un
+        // POST directo saltándose el GET es justo lo que hay que impedir, y por
+        // eso el corte va antes que el `post-max` y que el CSRF: a un formulario
+        // restringido no se le contesta nada hasta saber si tiene acceso.
+        $accessToken = null;
+        $participantId = null;
+        if (FormAccess::isRestricted($settings)) {
+            [$granted, $accessToken, $participantId] = self::resolveAccess($form, $settings);
+            if (!$granted) {
+                Response::abort(403, I18n::t('access.denied', $locale));
+                return;
+            }
+        }
+
+        // P10 — Si el POST excede post_max_size, PHP vacía $_POST/$_FILES: el
+        // chequeo de CSRF fallaría con un 419 confuso. Se reporta 413 claro.
+        if (self::postOverflowed()) {
+            Response::abort(413, I18n::t('err.upload_too_big_global', $locale, [
+                'max' => Uploader::maxSizeMb(),
+            ]));
+            return;
+        }
+
+        if (!Csrf::verifyRequest()) {
+            Response::abort(419, 'Token de seguridad inválido. Recarga la página.');
+            return;
+        }
+
+        // P6 — Re-chequear disponibilidad (calendario/cupo) en el servidor,
+        // aunque el GET /f/{slug} ya la haya mostrado (el GET pudo quedar viejo).
+        $state = self::scheduleState($settings);
+        if ($state === 'closed') {
+            Response::abort(403, I18n::t('err.closed', $locale));
+            return;
+        }
+        if ($state === 'not_open') {
+            Response::abort(403, I18n::t('err.not_open', $locale));
+            return;
+        }
+        if (self::quotaExceeded($form)) {
+            Response::abort(403, I18n::t('err.quota', $locale));
+            return;
+        }
+
+        // P7 — Honeypot: si el campo trampa viene rellenado, es un bot. Se finge
+        // el flujo normal (PRG a gracias) sin persistir, validar ni notificar.
+        if (self::honeypotTriggered($settings)) {
+            $this->redirectToThanks($form, $settings);
+            return;
+        }
+
+        // B2 — Verificación bot server-side (Turnstile). Si el form lo pide pero
+        // la instancia no tiene claves, es un formulario mal configurado: se
+        // corta como si no aceptara respuestas (el GET ya lo bloquea igual).
+        if (!empty($settings['anti_bot']['enabled'])) {
+            if (!Turnstile::isConfigured()) {
+                Response::abort(403, I18n::t('err.not_accepting', $locale));
+                return;
+            }
+            // El widget inyecta su token en `cf-turnstile-response` (el nombre
+            // es de Cloudflare). El token es de UN SOLO uso: si la verificación
+            // falla se re-renderiza el form con el error y el visitante reintenta.
+            $token = trim((string) Request::post('cf-turnstile-response', ''));
+            if ($token === '' || !Turnstile::verify($token, Request::ip())) {
+                $this->renderFillErrors($form, $settings, [I18n::t('err.turnstile', $locale)], $accessToken);
+                return;
+            }
+        }
+
+        // Rate limiting: máx. 10 envíos por IP y formulario cada 10 minutos por
+        // defecto. El número es configurable (`FILL_SUBMIT_PER_10MIN`) porque un
+        // censo se responde desde una IP compartida y el límite que frena a un
+        // automatismo es el mismo que deja fuera a la persona número 11.
+        $scope = 'submit:' . (int) $form['id'];
+        $ip = Request::ip();
+        $maxEnvios = max(1, (int) Config::get('app.limits.fill_submit_per_10min', 10));
+        if (!RateLimiter::isAllowed($scope, $ip, $maxEnvios, 600)) {
+            \App\Core\SecurityLog::record('rate_limit.fill', 'bloqueo por IP al enviar /f/' . (string) $form['slug']);
+            Response::abort(429, I18n::t('err.too_many', $locale));
+            return;
+        }
+        // Contar este envío dentro de la ventana
+        RateLimiter::recordHit($scope, $ip, 600);
+
+        // FASE 1 — Validación sin persistir (núcleo compartido con la preview).
+        // (A10) La submission NO se crea hasta que todos los campos son válidos;
+        // así se evitan registros huérfanos al descartar respuestas inválidas.
+        $vr = $this->runValidation($form['fields'], $locale);
+        $errors = $vr['errors'];
+        $validated = $vr['validated'];
+        $storedFiles = $vr['storedFiles'];
 
         if (!empty($errors)) {
             // P10: los archivos ya subidos en este intento no deben quedar

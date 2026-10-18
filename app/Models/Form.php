@@ -616,4 +616,43 @@ class Form
         );
         self::bumpDashboardCache();
     }
+
+    // ---- Borrador de la estructura del builder (modelo Elementor, migración 0020) ----
+
+    /**
+     * Guarda el payload del builder como BORRADOR (lo que el autosave escribe).
+     *
+     * No toca `fields` (la estructura viva) ni el `status`: escribir ahí era lo
+     * que hacía que un autosave re-encolara la revisión en cada tic. El commit
+     * real es `BuilderController::saveStructure`, que además limpia el borrador.
+     */
+    public static function saveDraft(int $id, array $payload): void
+    {
+        self::db()->execute(
+            'UPDATE forms SET builder_draft = :draft, builder_draft_at = UTC_TIMESTAMP() WHERE id = :id',
+            ['id' => $id, 'draft' => json_encode($payload, JSON_UNESCAPED_UNICODE)]
+        );
+    }
+
+    /** El borrador decodificado, o `null` si no hay (NULL o JSON inválido). */
+    public static function draft(int $id): ?array
+    {
+        $row = self::db()->fetch('SELECT builder_draft FROM forms WHERE id = :id', ['id' => $id]);
+        if ($row === null || $row['builder_draft'] === null || $row['builder_draft'] === '') {
+            return null;
+        }
+
+        $decoded = json_decode((string) $row['builder_draft'], true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /** Limpia el borrador (tras un commit o un envío a revisión). */
+    public static function clearDraft(int $id): void
+    {
+        self::db()->execute(
+            'UPDATE forms SET builder_draft = NULL, builder_draft_at = NULL WHERE id = :id',
+            ['id' => $id]
+        );
+    }
 }
