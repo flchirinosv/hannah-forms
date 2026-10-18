@@ -134,6 +134,11 @@ class ReviewController
         }
 
         Form::submitForReview($id);
+        // El borrador del builder se limpia al mandarlo a revisión: el revisor
+        // solo ve la estructura VIVA (`fields`), y un borrador huérfano haría
+        // que el dueño, al volver al constructor, siguiera viendo cambios que
+        // ya no representan lo que se sometió.
+        Form::clearDraft($id);
         SecurityLog::record('form.review_request', 'formulario #' . $id . ' (' . (string) $form['slug'] . ')');
 
         $this->notifyReviewers($form);

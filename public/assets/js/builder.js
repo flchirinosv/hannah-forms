@@ -1863,7 +1863,9 @@
         } catch (e) {
             // Best-effort: el «Guardar» de verdad vuelve a intentarlo y
             // surfaceará cualquier error real. No se avisa por un fallo de red
-            // en un autoguardado silencioso.
+            // en un autoguardado silencioso; el `console.warn` deja rastro
+            // en dev para poder diagnosticar sin abrir las herramientas.
+            console.warn('[vf] autoguardado de borrador fallido', e);
         }
     }
 

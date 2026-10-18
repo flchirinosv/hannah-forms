@@ -90,8 +90,11 @@ Acceso efectivo por permisos (RBAC), no por `role_name`: editar = `forms.edit_ow
 
 | Método | Ruta | Middleware | Descripción |
 |--------|------|------------|-------------|
-| GET | `/forms/{int}/builder` | auth | Editor visual (drag & drop, secciones, lógica, settings) |
-| POST | `/forms/{int}/builder/save` | auth, csrf-header | Guardar estructura completa (JSON). **413 si excede `MAX_JSON_BYTES`** (2 MiB default) |
+| GET | `/forms/{int}/builder` | auth | Editor visual (drag & drop, secciones, lógica, settings). Si hay borrador (`forms.builder_draft`), el lienzo se abre con él |
+| POST | `/forms/{int}/builder/save` | auth, csrf-header | Guardar estructura completa (JSON). **413 si excede `MAX_JSON_BYTES`** (2 MiB default). Tras confirmar limpia el borrador |
+| POST | `/forms/{int}/builder/draft` | auth, csrf-header | Autosave del borrador (JSON, misma forma que `save`). Best-effort: no commitea `fields` ni mueve `status`; solo escribe `builder_draft`/`builder_draft_at` |
+| GET | `/forms/{int}/preview` | auth | Vista previa real (renderiza `fill.js` completo sin persistir). Dueño (`canEdit`) o revisor (`forms.review` + `in_review`). `?draft=1` exige `canEdit` y sirve el borrador del dueño |
+| POST | `/forms/{int}/preview` | auth, post-max, csrf | Submit de la prueba: corre la MISMA validación que el fill real y re-renderiza con errores, pero **nunca persiste** (sin `Submission`, sin webhooks, sin rate limit, sin Turnstile; los archivos se revierten siempre) |
 
 Body JSON:
 ```json

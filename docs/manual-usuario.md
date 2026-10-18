@@ -361,9 +361,11 @@ fijas; las pantallas de ajustes salen cuando las pides.
   (con las pestañas **Contenido** / **Lógica**) y, por separado, los de todo el
   formulario. Se abren con el engranaje de una tarjeta o con **Configuración**
   de la barra, y se cierran con su «x», con `Esc` o tocando fuera.
-- **Vista previa**: el botón **Vista previa** abre el formulario tal como
-  quedará publicado, a pantalla completa; se repinta en vivo al editar. Para
-  verlo en una pestaña aparte, usa **Abrir**.
+- **Vista previa**: el botón **Vista previa** abre el formulario en **otra
+  pestaña**, tal como saldrá publicado (con el `fill.js` de verdad: condiciones,
+  pasos, tema y validación). Si acabas de editar en el constructor, la pestaña
+  muestra **tus cambios sin guardar** (el borrador). Puedes probarlo, pero
+  **no se guarda ninguna respuesta**: es una prueba, no un envío real.
 
 El botón **Guardar** (barra superior) persiste la estructura: campos, orden,
 opciones y los ajustes del cajón **Configuración** (tema, quiz, orden de las
@@ -379,10 +381,15 @@ hace ese ajuste y un ejemplo; en el móvil, tócalo. Los textos que aparecen sol
 al escribir (por ejemplo, si la tipografía no es válida) son **estado**, no
 explicación: esos se ven siempre, sin pasar el ratón por ningún lado.
 
-**Guardar es explícito.** El constructor no guarda solo: hasta que pulsas
-**Guardar**, el servidor sigue con la estructura anterior. Cierra el navegador
-con cambios sin guardar y **se pierden sin aviso** (no hay aviso de salida).
-Guarda a menudo, y en forma larga antes de hacer otra cosa.
+**Guardar es explícito, pero hay un respaldo.** El botón **Guardar** es lo que
+deja los cambios públicos: hasta que lo pulsas, el formulario sigue con la
+estructura anterior. Ahora bien, cada pocos segundos el constructor guarda
+solo un **borrador** en el servidor: si cierras el navegador o se cae la
+conexión, al volver al constructor **recuperas lo que llevabas**. Ese borrador
+no afecta al formulario publicado (sigue sirviendo la versión anterior) y se
+borra al pulsar **Guardar** o al mandar el formulario a revisión. El botón
+**Guardar** está apagado mientras no haya cambios: si no se mueve, no hay nada
+que guardar.
 
 ### 6.1 Tipos de campo
 
@@ -1027,6 +1034,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | `/forms/{id}` | Ficha: enlace, QR, embed, ajustes, y los botones *Editar campos*, *Participantes* y *Respuestas*. |
 | `/forms/{id}/access` | Pantalla de **Participantes**: la tarjeta de acceso (allowlist) y el listado de la lista, con buscador, paginación y edición. |
 | `/forms/{id}/builder` | Constructor. |
+| `/forms/{id}/preview` | Vista previa real en otra pestaña (dueño o revisor; no persiste nada). |
 | `/responses` | Respuestas de todos tus formularios. |
 | `/analytics` | Analítica agregada. |
 | `/review` | Bandeja de revisión (si tienes `forms.review`). |
