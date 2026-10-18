@@ -13,6 +13,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Models\Field;
 use App\Models\Form;
+use App\Services\BuilderDraftMapper;
 use App\Services\LogicEvaluator;
 use App\Services\ReviewPolicy;
 
@@ -44,7 +45,7 @@ class BuilderController
         $draft = Form::draft((int) $form['id']);
         if ($draft !== null) {
             $hasDraft = true;
-            $form['fields'] = FillController::mapDraftToFields($draft);
+            $form['fields'] = BuilderDraftMapper::toFillFields($draft);
             $form['title'] = (string) ($draft['title'] ?? $form['title']);
             $form['description'] = (string) ($draft['description'] ?? $form['description']);
             $liveSettings = json_decode((string) ($form['settings'] ?? ''), true);
