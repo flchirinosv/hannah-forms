@@ -501,8 +501,8 @@ pintar.
 
 La regla es qué cambia el ajuste: los de la ficha cambian **a quién llega el
 formulario y cuándo** (y ahí se ven las consecuencias: si la lista de correos
-está vacía, a quién le llega el aviso, si el formulario vuelve a la cola de
-revisión), y los del constructor cambian **cómo se rellena**.
+está vacía, a quién le llega el aviso, si la revisión deja el formulario en
+borrador), y los del constructor cambian **cómo se rellena**.
 
 Grupos y valores por defecto:
 
@@ -662,8 +662,9 @@ de un formulario en borrador: su sitio es la bandeja. Aprobar o devolver devuelv
 a la bandeja a quien no puede editar el formulario, y a la ficha a su dueño.
 
 Si cambias el contenido después de aprobar —en el constructor o desde la ficha—,
-el formulario vuelve a la cola de revisión y la aprobación anterior se borra:
-quien revisó aprobó otra cosa.
+el formulario pasa a **borrador** y la aprobación anterior se borra: quien revisó
+aprobó otra cosa. No va solo a la cola: tú decides cuándo volver a enviarlo a
+revisión con **Enviar a revisión**.
 
 La revisión es **una política de la instalación, no un ajuste de cada
 formulario**: un administrador la enciende (o la apaga) en `/admin/settings` —
@@ -1001,7 +1002,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | «Publicar» no publica y avisa | La revisión está activada en la instalación. Envíalo a revisión (ver §8.1) |
 | Lo aprobé pero el enlace no sale al público | **Aprobar no publica**: el formulario queda «Aprobado» y su dueño lo saca pulsando «Publicar» en la ficha (§8.1) |
 | El enlace da 403 | Sigue en borrador, aprobado sin publicar, o en revisión; también si está cerrado. |
-| Editar lo devolvió a la cola | Con la revisión activada en la instalación, editar un formulario aprobado borra la aprobación anterior. Es a propósito. |
+| Editar lo dejó en borrador | Con la revisión activada en la instalación, editar un formulario publicado o aprobado lo deja en borrador y borra la aprobación anterior. Es a propósito: tú decides cuándo volver a enviarlo a revisión. |
 | La tabla de respuestas se queda «cargando» | Debe ser un bug de `analytics.js`. Comprobado en `751602c`. |
 | Un campo con condición sigue apareciendo al enviar | La condición se cumple: se muestra, y sus respuestas sí se guardan. |
 | Los correos no llegan | Sin SMTP configurado. Revisa `MAIL_*` y que el remitente esté autorizado. |

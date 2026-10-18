@@ -1776,7 +1776,7 @@
 
     /* ---------- Save (modelo Elementor: borrador en servidor + commit) ---------- */
     /* `dirty` = hay cambios sin commitear a `fields`. El autoguardado escribe el
-     * BORRADOR (`/builder/draft`, liviano y sin re-encolar revisión); «Guardar»
+     * BORRADOR (`/builder/draft`, liviano y sin tocar la revisión); «Guardar»
      * es el commit a `fields` (y limpia el borrador en el servidor). El botón
      * solo tiene sentido si hay algo que commitear, por eso se apaga limpio. */
     let dirty = false;
@@ -1840,8 +1840,8 @@
         autoSaveTimer = setTimeout(() => { autoSaveTimer = null; autoSave(); }, 2000);
     }
 
-    // Autoguardado al BORRADOR (no commitea): es liviano, no re-encola la
-    // revisión y sirve para que recargar el constructor no pierda el trabajo.
+    // Autoguardado al BORRADOR (no commitea): es liviano, no toca la revisión
+    // y sirve para que recargar el constructor no pierda el trabajo.
     async function autoSave() {
         if (!dirty || draftSaving || saving) return;
         draftSaving = true;

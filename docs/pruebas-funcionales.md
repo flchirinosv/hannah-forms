@@ -190,7 +190,7 @@ Para no perderte, prepara esto antes de empezar:
 | E4c | Con revisión activada, **aprobar** con un revisor | Queda **Aprobado**, no publicado: el enlace sigue mostrando la página informativa (no el formulario) y los envíos dan 403 | A | |
 | E4d | Como dueño, pulsar **Publicar** sobre un formulario ya aprobado | Se publica sin volver a la cola y el enlace ya sirve el formulario | A | |
 | E4e | Intentar **Enviar a revisión** un formulario ya aprobado | Rechazado: «ya está aprobado: publícalo o edítalo» | M | |
-| E5 | Con revisión activada, editar un formulario ya aprobado | Vuelve a la cola y **se borra la aprobación anterior** | A | |
+| E5 | Con revisión activada, editar un formulario ya aprobado | Queda en **borrador** y **se borra la aprobación anterior**: aparece «Enviar a revisión» y la bandeja ya no lo lista hasta que se envíe | A | |
 | E6 | Aprobar un formulario propio | Se permite, y el registro de eventos lo marca como propio | M | |
 | E7 | Intentar aprobar sin permiso `forms.review` | 403. Tener `forms.edit_own` **no** sirve para aprobar | A | |
 | E7b | Aprobar con un rol que **solo** tiene `forms.review` + `dashboard.view` (sin `forms.manage_all` ni `forms.edit_own`) el formulario de otro | Se aprueba: aprobar exige el permiso de revisión, **no** el de editar. Tras aprobar vuelve a `/review` (la ficha editable le daría 403) | A | |
@@ -537,8 +537,8 @@ deja en el quinto es un fallo de la misma clase que un `</div>` de más.
 | T2 | El mismo formulario → «Cerrar» (con confirmación) | Antes de salir: pregunta. Después, sin recarga, «Cerrado» en la insignia **y** desaparece la tarjeta de compartir (ya no hay enlace que repartir) | A | |
 | T3 | Publicar y cerrar dos veces seguidas en la misma pantalla | El estado que se ve es el que **queda**: nunca se ven a la vez «Publicado» y el QR, ni «Cerrado» con el botón de publicar | A | |
 | T4 | Ficha → «Ajustes del formulario» → cambiar el nombre y guardar | No recarga y el título nuevo se ve en el encabezado al instante; los seis grupos **no se repliegan** y el scroll no salta | M | |
-| T5 | Un formulario publicado **con revisión activa** → guardar cualquier ajuste | No recarga, y el aviso dice que volvió a la cola: la insignia pasa a «En revisión» y la aprobación anterior desaparece | A | |
-| T6 | Un formulario **aprobado** → cambiar algo en el constructor y guardar | La insignia pasa a «En revisión» y aparece la acción de aprobar (es la misma regla del builder, ahora también en la insignia) | A | |
+| T5 | Un formulario publicado **con revisión activa** → guardar cualquier ajuste | No recarga, y el aviso dice que quedó en borrador: la insignia pasa a «Borrador» y la aprobación anterior desaparece | A | |
+| T6 | Un formulario **aprobado** → cambiar algo en el constructor y guardar | La insignia pasa a «Borrador» y aparece la acción de «Enviar a revisión» (es la misma regla del builder, ahora también en la insignia) | A | |
 | T7 | Enviar a revisión → aprobar con otra cuenta | No recarga. La insignia pasa a «Aprobado» (no «Publicado»), sale la traza **nombrando al aprobador** y el botón que aparece es el de **publicar** | A | |
 | T7b | Aprobar y, sin recargar, pulsar «Publicar» en la misma ficha | La insignia pasa a «Publicado» y la tarjeta de compartir aparece con enlace, QR e iframe | A | |
 | T8 | Igual, pero **devuelto a borrador** | La insignia pasa a «Borrador», la traza registra que lo devolvió quién y vuelve la acción de publicar | A | |

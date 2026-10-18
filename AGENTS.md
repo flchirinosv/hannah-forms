@@ -282,14 +282,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   ese pasó por revisión y publicarlo es el paso que se le dejó al dueño; desde
   cualquier otro estado con revisión activa se rechaza con un mensaje que dice qué
   hacer. `sendReview` desde un `approved` también se rechaza («ya está aprobado:
-  publícalo o edítalo»). El campo `status` del payload del builder **no publica**:
-  con revisión activa se ignora, y **editar un formulario `published` o `approved`
-  lo devuelve a la cola** borrando la aprobación anterior (`Form::submitForReview()`
-  va dentro de la transacción del builder). Ese gate vive en
-  `BuilderController::saveStructure()`; añadir otra vía que escriba `forms.status`
-  es saltarse la revisión. Publicar además registra
-  `SecurityLog::record('form.publish', …)`: con el flujo nuevo la aprobación ya no
-  implica publicación, así que sin esa traza publicar no dejaría rastro.
+   publícalo o edítalo»). El campo `status` del payload del builder **no publica**:
+   con revisión activa se ignora, y **editar un formulario `published` o `approved`
+   lo deja en `draft`** (borrando la aprobación y la fecha de petición con
+   `Form::returnToDraft()`, dentro de la transacción del builder): la cola no se
+   llena sola, **el dueño decide cuándo enviarlo a revisión** con «Enviar a
+   revisión». Ese gate vive en
+   `BuilderController::saveStructure()`; añadir otra vía que escriba `forms.status`
+   es saltarse la revisión. Publicar además registra
+   `SecurityLog::record('form.publish', …)`: con el flujo nuevo la aprobación ya no
+   implica publicación, así que sin esa traza publicar no dejaría rastro.
 - Aprobar un formulario propio está permitido y el log lo marca con `propio`: en
   una instalación de un solo usuario no hay a quién pedirle aprobación, y
   prohibirlo dejaría esa instalación sin poder publicar nunca.
@@ -1012,10 +1014,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `app/Services/FormPanel.php::slots()`, y GET los pinta en línea: los dos
   caminos usan los **mismos partials**, y por eso no pueden separarse.
 - **Guardar ajustes puede cambiar el estado**: un publicado con revisión activa
-  vuelve a la cola y pierde la aprobación (`Form::submitForReview()`, la misma
-  regla del builder), así que el JSON de `updateSettings()` devuelve **la
-  insignia del estado que queda**. Si devolviera solo «Ajustes guardados», el
-  panel dejaría de mentir por poco.
+  queda en borrador y pierde la aprobación (`Form::returnToDraft()`, la misma
+  regla del builder y de `update()`), así que el JSON de `updateSettings()`
+  devuelve **la insignia del estado que queda**. Si devolviera solo «Ajustes
+  guardados», el panel dejaría de mentir por poco.
 - **Un hueco va con lo que depende de SU estado, no con lo que se repinta de
   más**: `slots()` son los cuatro de `forms.status` y se devuelven en todas las
   acciones de estado. La tarjeta de Acceso **ya no es un hueco de la ficha**: tiene

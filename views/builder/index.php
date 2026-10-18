@@ -393,7 +393,8 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                       // webhook, mensaje final e idioma. Se editan en la
                       // ficha del formulario (`/forms/{id}`), que es donde se ven
                       // sus consecuencias (a quién llega el aviso, si la lista está
-                      // vacía, si el formulario vuelve a la cola). El constructor se
+                      // vacía, si con revisión activa el formulario queda en
+                      // borrador). El constructor se
                       // queda con lo que cambia el RELLENO, que es otra cosa. ?>
             </div>
             <div class="modal-footer border-0">

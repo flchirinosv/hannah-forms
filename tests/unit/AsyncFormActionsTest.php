@@ -39,11 +39,10 @@ use App\Services\FormPanel;
  * los huecos: los cuatro bloques que se reponen están pintados según
  * `forms.status`, y hay acciones cuyo efecto sobre el estado NO es el que
  * dice su nombre. Guardar unos ajustes en un formulario publicado con revisión
- * activa lo devuelve a la cola (`Form::submitForReview()` dentro de la
- * transacción del builder), así que un guardado de ajustes que devolviera solo
- * «Ajustes guardados» dejaría la insignia diciendo «Publicado» mientras el
- * formulario ya no lo está. Por eso el test del guardado mira la insignia que
- * vuelve, no el mensaje.
+ * activa lo deja en borrador (y borra la aprobación), así que un guardado de
+ * ajustes que devolviera solo «Ajustes guardados» dejaría la insignia diciendo
+ * «Publicado» mientras el formulario ya no lo está. Por eso el test del
+ * guardado mira la insignia que vuelve, no el mensaje.
  */
 class AsyncFormActionsTest
 {
@@ -240,9 +239,9 @@ class AsyncFormActionsTest
 
     /**
      * El caso invisible: guardar ajustes NO es «no tocar el estado». Con
-     * revisión activa, guardar sobre un formulario aprobado lo devuelve a la
-     * cola y borra la aprobación anterior, así que el hueco de la insignia
-     * tiene que decir «En revisión» aunque la operación se llamara «guardar
+     * revisión activa, guardar sobre un formulario aprobado lo deja en
+     * borrador y borra la aprobación anterior, así que el hueco de la insignia
+     * tiene que decir «Borrador» aunque la operación se llamara «guardar
      * ajustes».
      */
     public function testGuardarAjustesTraeLaInsigniaDelEstadoQueQueda(): void
@@ -268,26 +267,28 @@ class AsyncFormActionsTest
         assertTrue($r['json']['ok'] ?? false, 'guardar ajustes por fetch responde ok');
         $html = (array) ($r['json']['html'] ?? []);
 
-        assertSame('in_review', $this->status(), 'el guardado lo devuelve a la cola de revisión');
+        assertSame('draft', $this->status(), 'el guardado deja el formulario en borrador');
         assertTrue(
-            // La clase CSS lleva el guion bajo tal cual (`app-status-in_review`,
-            // es la que le pone el color) y el TEXTO sale de
+            // La clase CSS lleva el guion bajo tal cual (`app-status-draft`),
+            // es la que le pone el color, y el TEXTO sale de
             // `Form::statusLabel()`: dos cosas distintas, y por eso se comprueban
-            // las dos. Con `ucfirst` el texto era «In_review».
-            str_contains((string) $html['vfSlotStatusBadge'], 'app-status-in_review')
-                && str_contains((string) $html['vfSlotStatusBadge'], 'En revisión'),
-            'la insignia repuesta dice «En revisión»: sin esto el panel anuncia '
-                . '«Publicado» de un formulario que ya está en la cola'
+            // las dos.
+            str_contains((string) $html['vfSlotStatusBadge'], 'app-status-draft')
+                && str_contains((string) $html['vfSlotStatusBadge'], 'Borrador'),
+            'la insignia repuesta dice «Borrador»: sin esto el panel anuncia '
+                . '«Publicado» de un formulario que ya no lo está'
         );
-        // Que sean las acciones DE LA COLA. En `in_review`, «Aprobar» y
-        // «Devolver» son del permiso `forms.review` (este usuario es un `user`),
-        // así que lo que se puede comprobar sin ese permiso es que ya NO
-        // aparezca el botón de publicar: con revisión activa, publicar sería
-        // aprobarse a uno mismo.
+        // Con el nuevo comportamiento, queda en `draft`: el dueño ve «Enviar a
+        // revisión» cuando corresponde, o «Publicar» si no exige revisión. Aquí
+        // sí exige revisión y es el dueño (sin permiso de review), así que
+        // aparece «Enviar a revisión», no publicar/cerrar.
+        assertTrue(
+            str_contains((string) $html['vfSlotActions'], 'formSendReview') || str_contains((string) $html['vfSlotActions'], 'Enviar a revisión'),
+            'las acciones ofrecen «Enviar a revisión» para un borrador con revisión activa'
+        );
         assertTrue(
             !str_contains((string) $html['vfSlotActions'], 'id="formPublishActions"'),
-            'y las acciones ya no ofrecen publicar: un formulario en revisión se '
-                . 'publica aprobándolo, no con el botón del dueño'
+            'y no ofrecen publicar directamente'
         );
         assertTrue(
             !str_contains((string) $html['vfSlotActions'], 'id="formClose"'),

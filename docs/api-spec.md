@@ -121,7 +121,8 @@ Respuesta: `200 {"ok": true}`; `419` token header inválido; `413` sobre límite
 `422` estructura inválida (tipos no permitidos, sección mal anidada, ciclo de lógica,
 etiquetas > 190 / help > 255, título > 190); `500` error interno. Con revisión activa,
 `status` se ignora (solo `ReviewController` mueve el estado) y guardar un formulario
-aprobado lo devuelve a la cola.
+`published` o `approved` lo deja en `draft` (borrando la aprobación): la cola no
+se llena sola, el dueño lo envía a revisión con su botón.
 
 ## Acceso por email (F4)
 

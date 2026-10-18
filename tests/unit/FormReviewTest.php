@@ -35,9 +35,10 @@ use App\Services\ReviewPolicy;
  *    aceptara `status: published`, la revisión sería un adorno.
  *  - Que aprobar exija el PERMISO y no «ser el dueño»: son dos cosas distintas
  *    y confundirlas es el error clásico de estos sistemas.
- *  - Que editar un formulario ya publicado y aprobado lo devuelva a la cola: si
- *    no, la aprobación pasa a ser «se aprobó una vez» y el contenido que se
- *    publica después no lo miró nadie.
+ *  - Que editar un formulario ya publicado y aprobado lo deje en BORRADOR,
+ *    borrando la aprobación: si no, la aprobación pasa a ser «se aprobó una
+ *    vez» y el contenido que se publica después no lo miró nadie. En borrador
+ *    el dueño decide cuándo volver a enviarlo a revisión.
  *  - Que el aviso por correo sea opt-in y que apunte al panel, no al enlace
  *    público (desde `/f/{slug}` el revisor no podría hacer nada).
  *  - Que la política sea de la INSTANCIA y la exención del DUEÑO: con la
@@ -263,7 +264,7 @@ class FormReviewTest
         Form::submitForReview((int) self::$formId);
 
         $row = $this->row();
-        assertSame('in_review', $row['status'], 'vuelve a la cola');
+        assertSame('in_review', $row['status'], 'vuelve a la cola: enviar a revisión sigue siendo explícito');
         assertNull($row['reviewed_at'], 'la aprobación anterior se borra: era de otro contenido');
         assertNull($row['reviewed_by'], 'y con ella el nombre del aprobador');
     }
@@ -399,7 +400,7 @@ class FormReviewTest
         assertSame('draft', $this->row()['status'], 'pero el estado no cambia: el campo `status` del builder no publica');
     }
 
-    public function testEditarUnFormularioAprobadoLoDevuelveACola(): void
+    public function testEditarUnFormularioAprobadoLoDejaEnBorrador(): void
     {
         $this->activarRevision(false);
         Form::submitForReview((int) self::$formId);
@@ -413,13 +414,13 @@ class FormReviewTest
         assertTrue($r['ok'], 'el guardado va bien');
 
         $row = $this->row();
-        assertSame('in_review', $row['status'], 'cambiar el contenido invalida la aprobación');
+        assertSame('draft', $row['status'], 'cambiar el contenido deja el formulario en borrador');
         assertNull($row['reviewed_at'], 'y la aprobación anterior se borra');
         assertNull($row['reviewed_by'], 'incluido el nombre de quien aprobó');
-        assertNotNull($row['review_requested_at'], 'vuelve a la cola con fecha propia');
+        assertNull($row['review_requested_at'], 'no está en la cola hasta que se envíe a revisión');
     }
 
-    public function testRenombrarUnFormularioAprobadoTambienLoDevuelveACola(): void
+    public function testRenombrarUnFormularioAprobadoTambienLoDejaEnBorrador(): void
     {
         // La misma regla que el builder, pero por la otra puerta de edición.
         // Si aquí no se aplicara, bastaría con cambiar el título desde la ficha
@@ -433,7 +434,7 @@ class FormReviewTest
         $r = $this->postUpdate('Título nuevo');
 
         $row = $this->row();
-        assertSame('in_review', $row['status'], 'editar el título también invalida la aprobación');
+        assertSame('draft', $row['status'], 'editar el título deja el formulario en borrador');
         assertNull($row['reviewed_at'], 'y borra la aprobación anterior');
         assertTrue(str_contains($r['exito'], 'revisi'), 'el mensaje le explica por qué: ' . $r['exito']);
     }

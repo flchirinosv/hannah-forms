@@ -388,10 +388,11 @@ class BuilderController
                 // F3 — El builder NO es una puerta de publicación. Sin esto, el
                 // gate de `FormController::publish()` era evitable: el dueño
                 // guardaba la estructura con `status: "published"` y se
-                // saltaba la revisión entera. Además, si el formulario ya estaba
-                // publicado y el dueño edita su contenido, la aprobación deja de
-                // corresponder a lo aprobado, así que vuelve a la cola en vez de
-                // quedarse publicado con cambios que nadie miró.
+                // saltaba la revisión entera. Y si el formulario ya estaba
+                // publicado o aprobado, la edición deja su contenido sin mirar
+                // por nadie: con revisión activa el guardado lo deja en
+                // BORRADOR (no en la cola) y el dueño decide cuándo enviarlo
+                // a revisión con su botón explícito.
                 //
                 // La política es de la INSTANCIA y de la pertenencia del dueño,
                 // no de un ajuste del formulario: por eso ya no depende de los
@@ -400,15 +401,14 @@ class BuilderController
                 // a ella en este mismo guardado.
                 $reviewRequired = ReviewPolicy::requiredFor($form);
 
-                $requeuedForReview = false;
+                $demotedToDraft = false;
                 if ($reviewRequired) {
                     if (in_array($form['status'], ['published', 'approved'], true)) {
-                        // Aprobar y publicar son la misma garantía («esto se
-                        // revisó»), así que los dos se pierden al cambiar el
-                        // contenido: editar un `approved` que todavía no se
-                        // publicó también vuelve a la cola.
-                        $status = 'in_review';
-                        $requeuedForReview = true;
+                        // Con revisión activa, cualquier edición deja el formulario
+                        // en `draft` para que el dueño decida explícitamente cuándo
+                        // enviarlo a revisión.
+                        $status = 'draft';
+                        $demotedToDraft = true;
                     } elseif ($status === 'published') {
                         // Ignorar el `published` pedido: publicar sin revisión es
                         // `/forms/{id}/publish` (que da un mensaje explicando el
@@ -426,10 +426,12 @@ class BuilderController
 
                 // `Form::update()` solo toca la columna `status`, así que sin
                 // esto la aprobación anterior seguiría puesta sobre un contenido
-                // distinto del aprobado. Va DENTRO de la transacción: si el resto
-                // del guardado falla, no queda una fila a medio camino.
-                if ($requeuedForReview) {
-                    Form::submitForReview((int) $form['id']);
+                // distinto del aprobado (y su `review_requested_at`, sobre un
+                // formulario que ya no está en la cola). Va DENTRO de la
+                // transacción: si el resto del guardado falla, no queda una
+                // fila a medio camino.
+                if ($demotedToDraft) {
+                    Form::returnToDraft((int) $form['id']);
                 }
             }
 

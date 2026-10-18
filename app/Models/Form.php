@@ -494,12 +494,16 @@ class Form
     /**
      * F3 — Devuelve el formulario a `draft` sin publicarlo.
      *
-     * `review_requested_at` se borra: el formulario sale así de la cola de
-     * «esperando revisión» del panel, que es lo que espera quien lo devuelve.
-     * La fecha del último intento no se archiva en ninguna otra parte porque no
-     * hay historial de revisiones en F3: el log de seguridad es el que guarda
-     * el rastro, y este método no lo escribe (el controlador, que es quien sabe
-     * si el cambio tiene sentido).
+     * Lo usan el «Devolver» del revisor (`ReviewController::returnDraft`) y el
+     * guardado de las tres puertas de edición con revisión activa
+     * (`BuilderController::saveStructure`, `FormController::update`,
+     * `updateSettings`): en las dos, `draft` significa «fuera de la cola y sin
+     * aprobación» — `review_requested_at` se borra, y también `reviewed_at`/
+     * `reviewed_by`, porque una aprobación sobre contenido editado es de otra
+     * cosa. La fecha del último intento no se archiva en ninguna otra parte
+     * porque no hay historial de revisiones en F3: el log de seguridad es el
+     * que guarda el rastro, y este método no lo escribe (el controlador, que
+     * es quien sabe si el cambio tiene sentido).
      */
     public static function returnToDraft(int $id): void
     {

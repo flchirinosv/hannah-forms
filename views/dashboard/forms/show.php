@@ -153,7 +153,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                     <?php // `data-vf-async="slots"`: el guardado va por fetch y
                           // devuelve los huecos de la ficha, que también cambian:
                           // guardar la agenda o el acceso de un formulario
-                          // publicado con revisión lo devuelve a la cola. Sin
+                          // publicado con revisión lo deja en borrador. Sin
                           // esto, guardar un ajuste y que la insignia dijera
                           // «Publicado» era una recarga de distancia.
                           // `data-vf-shortcut` habilita Ctrl/Cmd+S con el foco

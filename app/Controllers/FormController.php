@@ -360,25 +360,26 @@ class FormController
             return;
         }
 
-        // F3 — Misma regla que el builder: si el formulario exige revisión y ya
-        // está publicado O aprobado, cambiar su contenido (aquí, título y
-        // descripción) lo devuelve a la cola. Cerrar la puerta en el builder y no
-        // en esta deja un «cambia el título por aquí y publícalo sin que nadie lo
-        // mire».
-        $requeued = ReviewPolicy::requiredFor($form)
+        // F3 — Con revisión activa, cualquier edición deja el formulario en
+        // `draft` para que el dueño decida explícitamente cuándo enviarlo a
+        // revisión.
+        $needsReviewEdit = ReviewPolicy::requiredFor($form)
             && in_array($form['status'], ['published', 'approved'], true);
 
         Form::update(
             $id,
             $title,
             $description,
-            $requeued ? 'in_review' : $form['status']
+            $needsReviewEdit ? 'draft' : $form['status']
         );
-        if ($requeued) {
-            Form::submitForReview($id);
+        if ($needsReviewEdit) {
+            // La traza de aprobación y la fecha de petición no deben sobrevivir
+            // a un contenido que nadie miró ni a un formulario que ya no está
+            // en la cola: es lo mismo que hacía `submitForReview()` antes.
+            Form::returnToDraft($id);
         }
-        $message = $requeued
-            ? 'Formulario actualizado. Como exige revisión, ha vuelto a la cola.'
+        $message = $needsReviewEdit
+            ? 'Formulario actualizado. Como exige revisión, quedó en borrador.'
             : 'Formulario actualizado.';
 
         if ($json) {
@@ -548,21 +549,19 @@ class FormController
             Form::saveSettings($id, $fusionado);
         }
 
-        // F3 — mismo criterio que `update()` y que el builder: cambiar la
-        // agenda, el acceso o el webhook de un formulario ya publicado O
-        // aprobado lo devuelve a la cola si exige revisión. Si no lo exigiera,
-        // publicar «cerrado hasta el lunes» sin que nadie lo mire sería
-        // exactamente el agujero que la revisión existe para cerrar.
-        $requeued = ReviewPolicy::requiredFor($form)
+        // F3 — mismo criterio: con revisión activa, cualquier edición deja el
+        // formulario en `draft` para que el dueño decida explícitamente cuándo
+        // enviarlo a revisión.
+        $needsReviewEdit = ReviewPolicy::requiredFor($form)
             && in_array($form['status'], ['published', 'approved'], true)
             && self::publishedChangesMatter($actuales, $fusionado);
 
-        if ($requeued) {
-            Form::submitForReview($id);
+        if ($needsReviewEdit) {
+            Form::returnToDraft($id);
         }
 
-        $message = $requeued
-            ? 'Ajustes guardados. Como exige revisión, el formulario ha vuelto a la cola.'
+        $message = $needsReviewEdit
+            ? 'Ajustes guardados. Como exige revisión, el formulario quedó en borrador.'
             : 'Ajustes guardados.';
 
         if ($json) {
