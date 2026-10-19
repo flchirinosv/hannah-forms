@@ -461,7 +461,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
      data-vf-has-draft="<?= ($hasDraft ?? false) ? '1' : '0' ?>"
      data-status="<?= View::escape($form['status']) ?>"></div>
 
-<p class="text-muted small text-center mb-0 mt-3">
+<p class="text-muted small text-center mb-0 mt-5 d-none d-md-block">
     <i class="fa-solid fa-keyboard me-1"></i>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicar · <kbd>Supr</kbd> eliminar · <kbd>Esc</kbd> cerrar selección · los cambios se guardan como borrador hasta que pulsas «Guardar»
 </p>
 
