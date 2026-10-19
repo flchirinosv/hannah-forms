@@ -8,7 +8,8 @@
  *   $submissions      items de la página (Submission::byFormFilteredPaginated)
  *   $answers          answers por submission id (Submission::withAnswersByIds)
  *   $answerableFields campos respuesta en orden
- *   $offset           índice base para la columna «#» (server-side offset)
+ *   $offset           primer índice de la página (1 en la primera, ver abajo)
+ *   $formId           id del formulario, para el enlace «Ver» de la fila, opcional
  *   $piiTypes         field_id => tipo de los campos marcados (F1), opcional
  *   $atributos        columnas del catálogo del listado (fase 7), opcional
  *   $attrsByPid       participant_id => (key_name => valor), opcional
@@ -21,6 +22,7 @@ if (empty($submissions)) {
     return;
 }
 $idx = (int) ($offset ?? 1);
+$formId = (int) ($formId ?? 0);
 $piiTypes = is_array($piiTypes ?? null) ? $piiTypes : [];
 $atributos = is_array($atributos ?? null) ? $atributos : [];
 $attrsByPid = is_array($attrsByPid ?? null) ? $attrsByPid : [];
@@ -83,5 +85,14 @@ foreach ($submissions as $submission) {
         echo '  </td>';
     }
     echo '  <td class="small text-muted" data-label="Fecha">' . View::datetime($submission['finished_at']) . '</td>';
+    // W1 — El drill-down que el listado de respuestas ya tenía. Se enlaza
+    // SIEMPRE: la PII no se resuelve aquí, la resuelve el destino con sus
+    // propios guards y `Pii::canView()`, y un enlace con el mismo contenido
+    // que la fila no filtra nada. Sin `$formId` (los tests que pintan este
+    // partial a mano) no se pinta, para no emitir una ruta a medio construir.
+    if ($formId > 0) {
+        $ver = '/forms/' . $formId . '/responses/' . (int) $submission['id'];
+        echo '  <td data-label="Ver"><a href="' . View::escape($ver) . '" class="btn btn-sm btn-outline-secondary" title="Ver la respuesta completa"><i class="fa-solid fa-eye me-1"></i>Ver</a></td>';
+    }
     echo '</tr>';
 }

@@ -324,6 +324,8 @@ Para no perderte, prepara esto antes de empezar:
 | K9 | Exportar la estructura del formulario | JSON con campos y ajustes, utilizable para reprocesar | M | |
 | K10 | Exportar 121 veces en una hora | A partir de la 121.ª avisa del límite (120/hora por usuario) | B | |
 | K11 | CSV con acentos y eñes | Se abre bien en una hoja de cálculo (UTF-8) | M | |
+| K12 | En la tabla de detalle de la analítica, pulsar **Ver** en una fila (W1, 2026-10-19) | Abre esa respuesta en `/forms/{id}/responses/{sid}`; en móvil la celda lleva su rótulo | A | |
+| K13 | Mirar la columna **#** de esa misma tabla, primera y segunda página (W1, 2026-10-19) | La primera fila es **#1** (no #0) y la página 2 empieza en #16, igual que el listado de respuestas | A | |
 
 ---
 

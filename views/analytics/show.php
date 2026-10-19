@@ -373,6 +373,7 @@ $qsAnalytics = http_build_query(array_filter([
                                             <th class="small text-muted"><?= View::escape($field['label']) ?></th>
                                         <?php endforeach; ?>
                                         <th class="small text-muted">Fecha</th>
+                                        <th class="small text-muted">Ver</th>
                                     </tr>
                                 </thead>
                                 <tbody id="analyticsRows" data-form="<?= (int) $form['id'] ?>" data-from="<?= View::escape($from) ?>" data-to="<?= View::escape($to) ?>" data-atr-key="<?= View::escape((string) ($atr['key'] ?? '')) ?>" data-atr-value="<?= View::escape((string) ($atr['value'] ?? '')) ?>">
@@ -380,7 +381,8 @@ $qsAnalytics = http_build_query(array_filter([
                                         'submissions'      => $submissions,
                                         'answers'          => $answers,
                                         'answerableFields' => $answerableFields,
-                                        'offset'           => (int) ($detail['per_page'] ?? 15) * (int) (($detail['page'] ?? 1) - 1),
+                                        'offset'           => (int) ($detail['per_page'] ?? 15) * (int) (($detail['page'] ?? 1) - 1) + 1,
+                                        'formId'           => (int) $form['id'],
                                         'piiTypes'         => $piiTypes ?? [],
                                         'atributos'        => $atributos ?? [],
                                         'attrsByPid'       => $attrsByPid ?? [],

@@ -219,7 +219,12 @@ class AnalyticsController
             'submissions'      => $detail['items'],
             'answers'          => $answers,
             'answerableFields' => $campos,
-            'offset'           => 15 * ((int) $detail['page'] - 1),
+            // W1 — El offset es el PRIMER número de la página, no la cantidad de
+            // filas anteriores. Con `per_page*(page-1)` la página 1 llegaba con 0
+            // y la primera fila se numeraba `#0`: un índice que no cuadra con nada
+            // de lo que la persona está contando.
+            'offset'           => 15 * ((int) $detail['page'] - 1) + 1,
+            'formId'           => $formId,
             'atributos'        => $atr === null ? [] : FormParticipant::catalogFor($formId),
             'attrsByPid'       => FormParticipant::atributosDe(array_map(
                 static fn(array $s): int => (int) ($s['participant_id'] ?? 0),

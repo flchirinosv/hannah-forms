@@ -130,7 +130,62 @@ class SubmissionPaginationTest
         assertSame(403, $halt['status'] ?? null);
     }
 
+    /**
+     * W1 — El detalle de la analítica es el mismo drill-down que el listado de
+     * respuestas: cada fila se puede abrir. Sin esto, el «número + fecha» que
+     * enseña la tabla es una foto sin salida, y el dueño tiene que ir al
+     * listado a buscar la misma respuesta a mano.
+     */
+    public function testCadaFilaDelDetalleSePuedeAbrir(): void
+    {
+        $html = self::rowsDe(1);
+        $items = Submission::byFormFilteredPaginated((int) self::$formId, '', '', 1, 15)['items'];
+        $sid = (int) ($items[0]['id'] ?? 0);
+
+        assertTrue($sid > 0, 'el fixture tiene respuestas');
+        assertTrue(
+            str_contains($html, '/forms/' . (int) self::$formId . '/responses/' . $sid),
+            'la fila lleva el enlace al detalle: ' . $html
+        );
+        assertTrue(str_contains($html, 'data-label="Ver"'), 'y su celda tiene rótulo para el móvil');
+    }
+
+    /**
+     * W1 — El índice de la columna «#» es el PRIMER número de la página.
+     * Antes era `per_page*(page-1)` (= 0 en la primera), así que la primera
+     * fila salía `#0` y la segunda página empezaba en 15: un contador que no
+     * coincide con el de «n respuestas» ni con el del listado.
+     */
+    public function testLaColumnaDeFilasEmpiezaEnUnoYNoEnCero(): void
+    {
+        $pagina1 = self::rowsDe(1);
+        assertTrue(str_contains($pagina1, 'data-label="#">1<'), 'la primera fila es la 1');
+        assertTrue(
+            !str_contains($pagina1, 'data-label="#">0<'),
+            'ninguna fila puede numerarse 0: ' . $pagina1
+        );
+
+        $pagina2 = self::rowsDe(2);
+        assertTrue(
+            str_contains($pagina2, 'data-label="#">16<'),
+            'la página 2 continúa donde quedó la 1 (16), no reinicia en 0'
+        );
+    }
+
     /* ---------- Helpers ---------- */
+
+    /** El HTML de las filas de la página dada, como lo devuelve `rows()`. */
+    private static function rowsDe(int $pagina): string
+    {
+        $_GET['page'] = (string) $pagina;
+        self::authAs((int) self::$userId);
+        Response::setRecordHalt(true);
+        ob_start();
+        (new AnalyticsController())->rows((int) self::$formId);
+        $json = json_decode((string) ob_get_clean(), true);
+
+        return (string) ($json['html'] ?? '');
+    }
 
     private static function authAs(int $userId): void
     {
