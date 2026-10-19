@@ -1118,8 +1118,11 @@
         renderLogicRules(f);
 
         const ruleCount = (f.logic && f.logic.rules) ? f.logic.rules.length : 0;
+        // El combinador Y/O aparece DESPUÉS de la primera condición: es lo que
+        // da la lectura «condición 1 y/o condición 2 y/o …». Con una sola regla
+        // no decide nada todavía, pero enseña cómo se encadenan las siguientes.
         const combWrap = document.getElementById('logicCombinerWrap');
-        if (combWrap) combWrap.classList.toggle('d-none', ruleCount < 2);
+        if (combWrap) combWrap.classList.toggle('d-none', ruleCount < 1);
 
         // Warning por referencia a un campo posterior.
         let fwd = false;

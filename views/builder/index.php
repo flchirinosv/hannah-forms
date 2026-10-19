@@ -215,13 +215,13 @@ $fieldTypes = [
                     </div>
                     </div>
                     <div class="tab-pane fade" id="tabLogic" role="tabpanel">
-                        <div class="card border-0 shadow-sm mb-3">
+                        <div class="card border-0 shadow-sm mb-3" id="logicWrap">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center gap-1 mb-1">
                                     <i class="fa-solid fa-code-branch text-primary"></i>
                                     <label class="form-label small fw-semibold mb-0">Mostrar si...</label>
                                 </div>
-                                <p class="text-muted mb-0" style="font-size:.72rem">Este campo aparecerá solo si se cumplen las condiciones.</p>
+                                <p class="text-muted mb-0" id="logicHowThis" style="font-size:.72rem">Este campo aparecerá solo si se cumplen las condiciones de abajo (seg&uacute;n las respuestas de otra pregunta).</p>
                                 <div class="alert alert-info py-2 px-3 small mb-0 mt-2 d-none" id="logicInheritedNote" role="status"></div>
                                 <div class="text-muted small mb-0 mt-2 d-none" id="logicEmptyHint"></div>
                             </div>
@@ -259,6 +259,7 @@ $fieldTypes = [
                         <div class="alert alert-warning py-2 px-3 small mb-0 mt-2 d-none" id="logicForwardWarn" role="alert">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>La condición hace referencia a una pregunta que aparece más abajo. Puede que aún no esté respondida cuando se evalúe.
                         </div>
+                    </div>
                     </div>
                     <div class="d-flex flex-column gap-2 mt-3">
                         <p class="text-muted small mb-0"><i class="fa-solid fa-circle-info me-1"></i>Los cambios se aplican y guardan automáticamente mientras escribes.</p>
