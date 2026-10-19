@@ -147,8 +147,16 @@ $qsAnalytics = http_build_query(array_filter([
 
         <?php foreach ($fieldStats as $stat): ?>
             <?php $f = $stat['field']; ?>
-            <?php if ($f['type'] === 'text' || $f['type'] === 'textarea' || $f['type'] === 'email' || $f['type'] === 'date'): ?>
-                <!-- No gráfica para texto libre -->
+            <?php if (in_array($f['type'], \App\Services\FieldAggregator::TIPOS_ABIERTOS, true)): ?>
+                <?php /* W2 — Texto libre, email, url, teléfono, hora, fecha y
+                       adjuntos. La rama vieja era un comentario y cinco tipos
+                       ni siquiera llegaban aquí: se caían fuera de TODAS las
+                       ramas y la pregunta desaparecía de la pantalla sin que
+                       nada fallara. Ahora la tarjeta lista las últimas
+                       respuestas, cada una abrible a su ficha. Va en su
+                       partial para que el markup sea comprobable: dentro de
+                       `show.php` solo se puede leer como texto. */ ?>
+                <?= View::partial('analytics/_open', ['f' => $f, 'stat' => $stat, 'form' => $form]) ?>
             <?php elseif ($f['type'] === 'number' || $f['type'] === 'scale' || $f['type'] === 'range' || $f['type'] === 'nps' || $f['type'] === 'star'): ?>
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm h-100">

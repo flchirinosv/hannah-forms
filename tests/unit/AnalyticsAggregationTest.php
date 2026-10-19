@@ -460,6 +460,183 @@ class AnalyticsAggregationTest
     }
 
     /**
+     * W2 — Las últimas respuestas de texto libre llegan por campo, con el techo
+     * PUESTO EN SQL y POR CADA PREGUNTA.
+     *
+     * Un `LIMIT 5` a secas en la consulta sería el fallo silencioso clásico:
+     * con dos preguntas abiertas, cinco filas se las comería la primera y la
+     * segunda aparecería vacía en pantalla sin que hubiera error. Aquí se
+     * siembran `ABIERTAS_MAX + 3` en DOS campos distintos y los dos tienen que
+     * venir llenos.
+     */
+    public function testElTechoDeLasRespuestasRecientesEsPorCampoNoGlobal(): void
+    {
+        $this->seed();
+        $formId = (int) self::$formId;
+
+        $segundo = Field::create($formId, 'textarea', 'Otra opinión');
+        self::$fieldIds['textarea'] = $segundo;
+
+        $sembrar = function (int $campo, string $prefijo): void {
+            for ($i = 1; $i <= FieldAggregator::ABIERTAS_MAX + 3; $i++) {
+                $sid = Submission::create((int) self::$formId);
+                self::$submissionIds[] = $sid;
+                \App\Models\Answer::create($sid, $campo, $prefijo . ' ' . $i);
+            }
+        };
+        $sembrar((int) self::$fieldIds['text'], 'primera');
+        $sembrar($segundo, 'segunda');
+
+        $stats = $this->agregar();
+        $ultimo = FieldAggregator::ABIERTAS_MAX + 3;
+
+        foreach ([(int) self::$fieldIds['text'] => 'primera', $segundo => 'segunda'] as $campo => $prefijo) {
+            $recientes = $stats[$campo]['abiertas'] ?? [];
+            assertEquals(
+                FieldAggregator::ABIERTAS_MAX,
+                count($recientes),
+                "el campo '$campo' tiene su PROPIO techo, no parte el de los demás"
+            );
+            // La más reciente primero, y dentro del techo solo las suyas.
+            assertEquals(
+                $prefijo . ' ' . $ultimo,
+                $recientes[0]['value'],
+                "lo último de '$campo' va en la primera posición"
+            );
+            foreach ($recientes as $item) {
+                assertTrue(
+                    str_starts_with((string) $item['value'], $prefijo),
+                    'una respuesta de OTRO campo no se cuela en esta lista'
+                );
+                assertArrayHasKey('at', $item, 'cada fila lleva su fecha');
+                assertArrayHasKey('sid', $item, 'y su submission, para el enlace');
+            }
+        }
+    }
+
+    /**
+     * W2 — `from`/`to` recortan también las respuestas recientes: si no, una
+     * analítica filtrada a un mes enseñaría en la tarjeta lo que se escribió
+     * en cualquier momento del formulario, junto a un contador que sí está
+     * filtrado. Las dos cifras dirían cosas distintas en la misma tarjeta.
+     */
+    public function testLasRespuestasRecientesRespetanElFiltroDeFechas(): void
+    {
+        $this->seed();
+        $formId = (int) self::$formId;
+        $texto = (int) self::$fieldIds['text'];
+
+        // Una fila en la franja que separa dos días en Caracas (ver
+        // testElFiltroRecortaPorDiaLocalNoPorDiaUtc).
+        $db = \App\Core\Database::getInstance(\App\Core\Config::db());
+        $sid = Submission::create($formId);
+        self::$submissionIds[] = $sid;
+        $db->execute('UPDATE submissions SET finished_at = ? WHERE id = ?', ['2026-03-10 02:00:00', $sid]);
+        \App\Models\Answer::create($sid, $texto, 'del día nueve');
+
+        $form = Form::find($formId);
+        $campos = array_values(array_filter($form['fields'], static fn($f) => ($f['type'] ?? '') !== 'section'));
+        $ids = array_map(static fn($f) => (int) $f['id'], $campos);
+
+        $valores = static function (array $stats) use ($texto): array {
+            return array_column($stats[$texto]['abiertas'] ?? [], 'value');
+        };
+
+        $nueve = FieldAggregator::forForm($formId, $campos, $ids, 0, '2026-03-09', '2026-03-09');
+        $diez  = FieldAggregator::forForm($formId, $campos, $ids, 0, '2026-03-10', '2026-03-10');
+
+        assertTrue(
+            in_array('del día nueve', $valores($nueve), true),
+            'las 02:00 UTC del día 10 son las 22:00 del día 9 en Caracas: está en el 9'
+        );
+        assertFalse(
+            in_array('del día nueve', $valores($diez), true),
+            'y NO está en el día 10'
+        );
+        assertEquals([], $valores($diez), 'un día sin respuestas deja la lista vacía');
+
+        // Un rango de marzo no trae las de "ahora" (se sembraron hoy).
+        $marzo = FieldAggregator::forForm($formId, $campos, $ids, 0, '2026-03-01', '2026-03-31');
+        assertFalse(
+            in_array('ok', $valores($marzo), true),
+            'el rango acota: lo de hoy no entra en una analítica de marzo'
+        );
+    }
+
+    /**
+     * W2 — `responses.pii` protege también este listado: un párrafo de opinión
+     * puede ser la cosa más personal del formulario (una denuncia, un caso
+     * clínico), y esta tarjeta es una ventana nueva sobre el mismo dato.
+     *
+     * El enmascarado ocurre en `FieldAggregator` (antes de que la vista vea
+     * nada), igual que con los gráficos: si se hiciera en la vista, cualquier
+     * otra superficie que reutilice `abiertas` se quedaría sin cubrir.
+     */
+    public function testLasRespuestasRecientesSeEnmascaranSinPermisoPii(): void
+    {
+        $this->seed();
+        $formId = (int) self::$formId;
+
+        $correo = Field::create($formId, 'email', 'Correo de contacto', '', '', false, [], [], 0, null, null, true);
+        $sid = Submission::create($formId);
+        self::$submissionIds[] = $sid;
+        \App\Models\Answer::create($sid, $correo, 'persona@ejemplo.com');
+
+        $form = Form::find($formId);
+        $campos = array_values(array_filter($form['fields'], static fn($f) => ($f['type'] ?? '') !== 'section'));
+        $ids = array_map(static fn($f) => (int) $f['id'], $campos);
+        $tipos = [$correo => 'email'];
+
+        // Sin permiso: el valor sale enmascarado.
+        $sinPermiso = FieldAggregator::forForm($formId, $campos, $ids, 0, '', '', $tipos);
+        $valor = $sinPermiso[$correo]['abiertas'][0]['value'] ?? '';
+        assertEquals(
+            \App\Services\Pii::maskValue('persona@ejemplo.com', 'email'),
+            $valor,
+            'el correo sale enmascarado igual que en el resto de la analítica'
+        );
+        assertFalse(
+            str_contains($valor, 'persona@'),
+            'la dirección no aparece ni a trozos'
+        );
+
+        // Con permiso (lista vacía = puede verlos): en claro.
+        $conPermiso = FieldAggregator::forForm($formId, $campos, $ids, 0, '', '', []);
+        assertEquals(
+            'persona@ejemplo.com',
+            $conPermiso[$correo]['abiertas'][0]['value'] ?? '',
+            'con responses.pii el valor sale tal cual'
+        );
+    }
+
+    /**
+     * W2 — Solo los tipos con respuesta de texto abierta traen la lista.
+     *
+     * Una clave `abiertas` en un campo con agregado propio (select, matriz,
+     * NPS…) no se usaría hoy, pero sí mañana: alguien la leería creyendo que es
+     * la fuente de verdad de esa tarjeta, y esa pregunta ya tiene la suya.
+     * Además los tipos sin rama (`section`) ni siquiera llegan al agregado.
+     */
+    public function testSoloLosTiposAbiertosTraenRespuestasRecientes(): void
+    {
+        $this->seed();
+        $stats = $this->agregar();
+        $f = self::$fieldIds;
+
+        assertTrue(
+            array_key_exists('abiertas', $stats[(int) $f['text']]),
+            'el campo de texto libre sí trae sus últimas respuestas'
+        );
+
+        foreach (['select', 'radio', 'checkbox', 'number', 'nps', 'matrix', 'ranking'] as $tipo) {
+            assertFalse(
+                array_key_exists('abiertas', $stats[(int) $f[$tipo]]),
+                "un campo de tipo '$tipo' no debe llevar la lista de texto abierto"
+            );
+        }
+    }
+
+    /**
      * `validDay()` tiene que rechazar fechas imposibles y aceptar las reales.
      * `createFromFormat('Y-m-d', '2026-02-31')` devuelve un objeto (31 de
      * marzo) en vez de fallar, así que un filtro con esa fecha se convertiría

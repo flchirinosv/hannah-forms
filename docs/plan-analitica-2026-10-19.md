@@ -77,8 +77,8 @@ Los datos de los gráficos salen embebidos como atributo `data-chart` en
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| **W1** | Drill-down: enlace «Ver» por fila + arreglo del `#` (off-by-one) | ⬜ |
-| **W2** | Preguntas abiertas: tarjeta con las últimas respuestas enlazadas | ⬜ |
+| **W1** | Drill-down: enlace «Ver» por fila + arreglo del `#` (off-by-one) | ✅ `0b8be12` |
+| **W2** | Preguntas abiertas: tarjeta con las últimas respuestas enlazadas | ✅ hecha |
 | **W3** | Gráficos: histograma, barras horizontales, matriz con totales, ranking con barra + **selector «Vista»** | ⬜ |
 | **W4** | Cabecera, filtros con etiqueta, índice de preguntas, estados vacíos, KPI participantes | ⬜ |
 
@@ -110,11 +110,11 @@ Los datos de los gráficos salen embebidos como atributo `data-chart` en
 
 ### W1.3 Tests
 
-- `RosterAnalyticsFilterTest`: el `html` de `rows()` y del partial lleva el
-  enlace a `/forms/{id}/responses/{sid}`.
-- `SubmissionPaginationTest::testRowsDevuelveHtmlYPaginadorJson`: assert del
-  enlace.
-- Test nuevo del `#` (página 1 = 1..15; página 2 = 16..).
+- `SubmissionPaginationTest::testCadaFilaDelDetalleSePuedeAbrir` (enlace +
+  rótulo móvil) y `testLaColumnaDeFilasEmpiezaEnUnoYNoEnCero` (página 1 = 1..15,
+  nunca `#0`; página 2 empieza en 16), con helper `rowsDe(int $pagina)`.
+- Comprobaciones manuales **K12** y **K13** en el bloque K de
+  `docs/pruebas-funcionales.md`.
 
 ---
 
@@ -127,30 +127,48 @@ ninguna rama).
 ### W2.1 Backend (una consulta fija)
 
 - `Answer::latestByFieldsInForm($formId, $ids, $from, $to, $atr, $limite)`:
-  `ROW_NUMBER() OVER (PARTITION BY a.field_id ORDER BY a.id DESC) AS rn` +
-  `WHERE rn <= :limite`, sobre `whereFormulario()`/`marcadoresDeCampos()`
-  (patrón de `valueCountsInForm:39,84`). Devuelve
-  `[fieldId => [{value, finished_at, submission_id}]]`.
-- `FieldAggregator`: constante `TIPOS_ABIERTOS` (misma idea que
-  `esComparable():255`) y clave nueva **`'abiertas'` en `$stat`** (nunca dentro
+  subconsulta con `ROW_NUMBER() OVER (PARTITION BY a.field_id ORDER BY a.id
+  DESC) AS rn` + `WHERE t.rn <= :limite` **en el nivel exterior**, sobre
+  `whereFormulario()`/`marcadoresDeCampos()` (patrón de `valueCountsInForm`).
+  El `a.value <> ''` va dentro. Devuelve
+  `[fieldId => [{value, at, sid}]]` (el `sid` es `submissions.id`, que es lo
+  que luego enlaza la vista).
+- `FieldAggregator`: constante **`TIPOS_ABIERTOS`** (los nueve: `text`,
+  `textarea`, `email`, `url`, `tel`, `time`, `datetime-local`, `date`, `file`)
+  y `ABIERTAS_MAX = 5`; clave nueva **`'abiertas'` en `$stat`** (nunca dentro
   de `values`).
-- Enmascarar con `$piiTypes` (criterio de `enmascararValores:340-366`); para
-  `file`, `Uploader::displayValue()`.
-- `AnalyticsController::show()`: **una sola** llamada.
+- **La consulta se emite dentro de `forForm()` y solo si `$fieldIds` contiene
+  campos abiertos**, así que `AnalyticsController::show()` no cambia: es la
+  tercera consulta fija, condicional, y el número sigue siendo constante.
+- Enmascarar con `$piiTypes` vía `enmascararAbiertas()` → `Pii::maskValue()`
+  (para `file` el resultado es `[oculto]`, igual que en el resto).
 
 ### W2.2 Vista
 
-- Rama nueva en `show.php` (sustituye el comentario de la 150-151): tarjeta
-  `col-md-6` con `{non_empty} respuestas` + lista de las últimas N, valor con
-  `app-truncate-2` (ya existe, `app.css:1177`) + `title` completo, hora con
-  `View::datetime`, y enlace «Ver respuesta». `file`: solo el contador. Sin
-  respuestas: «Sin respuestas todavía.»
+- Rama nueva en `show.php` (sustituye el comentario de la 150-151) que llama a
+  **`View::partial('analytics/_open', ['f','stat','form'])`**: el markup va en
+  su propio fichero para que sea comprobable (dentro de `show.php` solo se lee
+  como texto fuente).
+- Tarjeta `col-md-6` anclada en `id="campo-{id}"`: `{non_empty} respuestas` +
+  lista de las últimas N, valor con `app-truncate-2` (ya existe) + `title`
+  completo, hora con `View::datetime`, y enlace **«Ver»** a
+  `/forms/{id}/responses/{sid}` con icono de flecha. `file` se traduce con
+  `Uploader::displayValue()`. Sin respuestas: «Sin respuestas todavía.».
+- CSS propio `.vf-open-answers` en `app.css` (separadores, `li:last-child`
+  sin borde, fecha a `.72rem`).
 
 ### W2.3 Tests
 
-- Agregación: respeta `from`/`to`/atributo; `abiertas` llega enmascarado sin
-  `responses.pii`.
-- Markup: la tarjeta pinta valor + enlace.
+- `AnalyticsAggregationTest`: `testElTechoDeLasRespuestasRecientesEsPorCampoNoGlobal`
+  (dos campos abiertos con `ABIERTAS_MAX + 3` cada uno, ambos llenos: fallaría
+  con un `LIMIT` global), `testLasRespuestasRecientesRespetanElFiltroDeFechas`
+  (día local + rango vacío), `testLasRespuestasRecientesSeEnmascaranSinPermisoPii`
+  y `testSoloLosTiposAbiertosTraenRespuestasRecientes`.
+- Markup: fichero nuevo **`tests/unit/AnalyticsOpenAnswersTest.php`** (7
+  métodos, sin BD): estado vacío, enlace por `sid` y su orden, escapado en
+  cuerpo y `title`, traducción de adjunto, la rama de `show.php`, los nueve
+  tipos de `TIPOS_ABIERTOS`, y contador ≠ techo.
+- Comprobaciones manuales **K14–K17**.
 
 ---
 

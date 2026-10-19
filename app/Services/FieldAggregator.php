@@ -47,7 +47,7 @@ final class FieldAggregator
      *                           entrara solo en los valores, los «no vacíos» y los
      *                           promedios saldrían del formulario entero mientras los
      *                           gráficos salían del subconjunto.
-     * @return array<int, array{field: array, values: mixed, count: int, non_empty: int, nps?: array}>
+     * @return array<int, array{field: array, values: mixed, count: int, non_empty: int, nps?: array, abiertas?: array}>
      */
     public static function forForm(
         int $formId,
@@ -69,6 +69,24 @@ final class FieldAggregator
         // (que van en `data-chart`) llevarían el dato.
         if ($piiTypes !== []) {
             $values = self::enmascararValores($values, $piiTypes);
+        }
+
+        // W2 — La tercera consulta del servicio, y solo si hay campos abiertos:
+        // lo que la vista enseña debajo de «texto libre» no sale del agregado
+        // (que agrupa por valor y ahí un párrafo es una fila única sin contexto).
+        $abiertas = [];
+        $idsAbiertos = [];
+        foreach ($fields as $field) {
+            $type = (string) ($field['type'] ?? '');
+            if ($type !== 'section' && in_array($type, self::TIPOS_ABIERTOS, true)) {
+                $idsAbiertos[] = (int) $field['id'];
+            }
+        }
+        if ($idsAbiertos !== []) {
+            $abiertas = Answer::latestByFieldsInForm($formId, $idsAbiertos, $from, $to, $atr, self::ABIERTAS_MAX);
+            if ($piiTypes !== []) {
+                $abiertas = self::enmascararAbiertas($abiertas, $piiTypes);
+            }
         }
 
         $stats = [];
@@ -93,11 +111,35 @@ final class FieldAggregator
                 $stat['nps'] = self::nps($rows);
             }
 
+            if (in_array($type, self::TIPOS_ABIERTOS, true)) {
+                $stat['abiertas'] = $abiertas[$fieldId] ?? [];
+            }
+
             $stats[$fieldId] = $stat;
         }
 
         return $stats;
     }
+
+    /**
+     * W2 — Los tipos que la analítica enseñaba como «No gráfica para texto
+     * libre» (y cinco que ni siquiera eso: caían fuera de TODAS las ramas de la
+     * vista y desaparecían sin más).
+     *
+     * `file` entra aquí porque su valor es texto legible para la vista (JSON de
+     * adjuntos, que ella traduce con `Uploader::displayValue()`), y un listado
+     * de archivos entregados también es una respuesta que se puede mirar.
+     *
+     * No incluye `section`/`page` (no guardan respuestas) ni ningún tipo con
+     * agregado propio: `values` ya le dice a la vista qué pintar y una tarjeta
+     * de más taparía la que sí informa.
+     */
+    public const TIPOS_ABIERTOS = [
+        'text', 'textarea', 'email', 'url', 'tel', 'time', 'datetime-local', 'date', 'file',
+    ];
+
+    /** Cuántas respuestas recientes por campo caben en su tarjeta. */
+    public const ABIERTAS_MAX = 5;
 
     /**
      * Fase 8: los TEchos de la comparación por atributo.
@@ -363,6 +405,34 @@ final class FieldAggregator
         }
 
         return $values;
+    }
+
+    /**
+     * W2 — El enmascarado de las respuestas recientes de texto libre.
+     *
+     * El mismo criterio que `enmascararValores()`: **antes** de que la vista lo
+     * pinte y sin permiso ningún valor crudo sale de aquí. Un párrafo de opinión
+     * puede ser la cosa más personal del formulario (una denuncia, un caso
+     * clínico), que es exactamente lo que `is_pii` existe para proteger.
+     *
+     * Aquí NO hay que fundir iguales: cada fila es una respuesta distinta con su
+     * fecha y su enlace, y 5 `[oculto]` son 5 personas distintas.
+     *
+     * @return array<int, array<int, array{value: string, at: string, sid: int}>>
+     */
+    private static function enmascararAbiertas(array $abiertas, array $piiTypes): array
+    {
+        foreach ($piiTypes as $fieldId => $type) {
+            $fid = (int) $fieldId;
+            if (!isset($abiertas[$fid])) {
+                continue;
+            }
+            foreach ($abiertas[$fid] as $i => $item) {
+                $abiertas[$fid][$i]['value'] = Pii::maskValue((string) $item['value'], (string) $type);
+            }
+        }
+
+        return $abiertas;
     }
 
     /**

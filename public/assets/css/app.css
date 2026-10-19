@@ -994,6 +994,28 @@ body {
 .number-chart-box { height: 200px; }
 .choice-chart-box { height: 220px; }
 
+/* W2 — Las últimas respuestas de texto libre. Cada una en su bloque, con el
+   valor recortado a dos líneas (el título completo se ve al pasar el ratón),
+   la fecha pequeña y su enlace «Ver» a la derecha, que es el mismo drill-down
+   que la tabla de abajo. La última se queda sin línea: un borde de cierre al
+   final de la tarjeta parece un elemento más. */
+.vf-open-answers li {
+    padding-bottom: .6rem;
+    margin-bottom: .6rem;
+    border-bottom: 1px solid var(--vf-border);
+}
+.vf-open-answers li:last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+}
+.vf-open-answers .vf-open-when {
+    font-size: .72rem;
+}
+.vf-open-answers a i {
+    font-size: .7rem;
+}
+
 .app-sub-count {
     display: inline-flex; align-items: center;
     background: #f1f5f9;

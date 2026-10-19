@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 107 archivos, 1173 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 108 archivos, 1186 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -51,8 +51,8 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   controlador. `public/index.php` es el único PHP que ve el web server.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
-  `Services` (18), `lang/{es,en}.php`.
-  `views/` = 70 plantillas y partials con `View` (veinticinco con prefijo `_`, sin ruta
+  `Services` (19), `lang/{es,en}.php`.
+  `views/` = 71 plantillas y partials con `View` (veintiséis con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **62 de los 107 archivos tocan la BD real** (los que llaman
+- **62 de los 108 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -670,6 +670,37 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   con `from`/`to` y se olvidaba del filtro de atributo (fase 7), que solo se nota al
   abrir el archivo; lo vigila
   `RosterAnalyticsGroupTest::testLosDosEnlacesDeCsvLlevanElFiltroDeAtributo`.
+
+**Preguntas abiertas de la analítica (W2)**
+
+- **`FieldAggregator::TIPOS_ABIERTOS` es la ÚNICA fuente** de qué tipos llevan
+  tarjeta de texto libre (`show.php` hace `in_array(...)`): `text`, `textarea`,
+  `email`, `url`, `tel`, `time`, `datetime-local`, `date` y `file`. Antes los
+  cuatro primeros se descartaban con un comentario y los otros cinco **no caían
+  en ninguna rama** del `if/elseif`: la pregunta no se pintaba y no había error
+  en PHP, ni en el navegador, ni en el log. `section`/`page` no guardan
+  respuestas y no entran; los demás tipos tienen su rama con agregado propio.
+  Lo ata `AnalyticsOpenAnswersTest::testLaListaDeTiposAbiertosCubreALosNueve`.
+- El listado es de las **últimas** respuestas, no de las más frecuentes: en un
+  campo libre cada valor es único, así que la agregación daría un párrafo con
+  `c = 1` y sin fecha. `Answer::latestByFieldsInForm()` usa
+  `ROW_NUMBER() OVER (PARTITION BY a.field_id …)` y
+  `WHERE t.rn <= :limite` **en el nivel exterior**: el techo es **por campo**.
+  Un `LIMIT` global a secas deja la segunda pregunta abierta vacía sin que nada
+  falle.
+- Es la **tercera consulta fija** de `forForm()` y se emite **solo si hay
+  campos abiertos**; `from`/`to`/`atr` viajan igual que en las otras dos. Si no,
+  la tarjeta enseña respuestas de fuera del rango junto a un contador que sí
+  está filtrado: dos cifras distintas en la misma tarjeta.
+- **El enmascarado ocurre en `FieldAggregator`, antes de que la vista vea
+  nada** (`enmascararAbiertas()` → `Pii::maskValue()`, con la misma `$piiTypes`
+  que decide el resto de la pantalla). Aquí **no** se funden iguales como en
+  `enmascararValores()`: cada fila es una persona distinta con su fecha.
+- La tarjeta vive en `views/analytics/_open.php` (partial, para que su markup
+  sea comprobable), el valor se pinta **dos veces** (cuerpo y `title`) con
+  `View::escape()` (`ENT_QUOTES`), y el enlace lleva el `sid` de la consulta,
+  nunca el índice de la fila. El contador sale de `non_empty`, no de
+  `ABIERTAS_MAX`: 400 respuestas dicen 400 aunque solo se listen 5.
 
 **Quién respondió (fase 9)**
 
@@ -1648,7 +1679,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 549 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 555 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica
@@ -1661,6 +1692,9 @@ probando la rama equivocada).
   panel, R, S, T, U, AA y AE son la
   lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
+- `docs/plan-analitica-2026-10-19.md`: plan de rediseño de la pantalla de
+  analítica (W1–W4 con su selector de gráfico efímero); su tabla de estados se
+  actualiza al cerrar cada fase.
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
 - `docs/technical-document.md`: arquitectura y modelo de datos (23 tablas, con

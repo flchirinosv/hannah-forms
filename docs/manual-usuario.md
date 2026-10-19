@@ -707,11 +707,18 @@ Series por día, distribución por respuesta y desglose por campo. Si el
 formulario tiene preguntas marcadas como personales, la analítica también las
 enmascara.
 
-La tabla de respuestas se recarga por AJAX al cambiar de página o de filtro. Si
-alguna vez se queda «cargando» para siempre y no puedes abrir ninguna
-respuesta, es un fallo de `analytics.js`: la clase `vf-loading` se quedaba
-puesta porque solo se quitaba cuando la petición **fallaba**. Corregido en el
-commit `751602c`; hay una prueba que lo vigila (R1).
+Las preguntas de respuesta abierta (texto, texto largo, email, URL, teléfono,
+hora, fecha, fecha-hora y archivo adjunto) no tienen gráfico: muestran una
+tarjeta con el total de respuestas y **las cinco más recientes**, cada una con su
+fecha y un enlace **Ver** a esa respuesta concreta. El contador es el total real,
+no las cinco que se listan. Un adjunto se muestra como «nombre (tamaño)».
+
+La tabla de respuestas numera sus filas desde **#1** en la primera página y cada
+una lleva también su **Ver** al detalle de la respuesta. Se recarga por AJAX al
+cambiar de página o de filtro. Si alguna vez se queda «cargando» para siempre y
+no puedes abrir ninguna respuesta, es un fallo de `analytics.js`: la clase
+`vf-loading` se quedaba puesta porque solo se quitaba cuando la petición
+**fallaba**. Corregido en el commit `751602c`; hay una prueba que lo vigila (R1).
 
 ### 9.3 Exportar
 

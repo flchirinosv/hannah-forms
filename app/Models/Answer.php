@@ -106,6 +106,71 @@ class Answer
     }
 
     /**
+     * W2 — Las últimas respuestas NO vacías de varios campos, en UNA consulta.
+     *
+     * La analítica no tenía salida para los campos de texto libre: `show.php`
+     * pintaba un comentario «No gráfica para texto libre» y no volvía a tocarlos,
+     * de modo que un formulario cuyas preguntas abiertas eran el objeto del
+     * estudio (opiniones, comentarios, descripciones) enseñaba solo un contador
+     * y nada más. Aquí se trae la lista corta que sí se puede leer.
+     *
+     * El techo es **por campo**, no global: con `ROW_NUMBER() OVER (PARTITION BY
+     * a.field_id …)` y `WHERE rn <= :limite` cada pregunta llega con sus `N`
+     * últimas. Un `LIMIT` global sería un error silencioso —con 10 preguntas
+     * abiertas y un límite de 5, cinco campos se quedarían sin nada—.
+     *
+     * Es la **tercera** consulta de `FieldAggregator::forForm()` y se emite solo
+     * si el formulario tiene campos abiertos: el número sigue siendo fijo.
+     *
+     * @param int[] $ids
+     * @return array<int, array<int, array{value: string, at: string, sid: int}>>
+     *         `[fieldId => [['value', 'at', 'sid'], …]]`, la más reciente primero.
+     */
+    public static function latestByFieldsInForm(
+        int $formId,
+        array $ids,
+        string $from = '',
+        string $to = '',
+        ?array $atr = null,
+        int $limite = 5
+    ): array {
+        $ids = self::normalizarIds($ids);
+        if ($ids === [] || $limite < 1) {
+            return [];
+        }
+
+        [$where, $params] = self::whereFormulario($formId, $from, $to, $atr);
+        $ph = self::marcadoresDeCampos($ids, 'ult', $params);
+        $params['limite'] = $limite;
+
+        $rows = self::db()->fetchAll(
+            "SELECT field_id, value, submission_id, finished_at
+             FROM (
+                 SELECT a.field_id, a.value, s.id AS submission_id, s.finished_at,
+                        ROW_NUMBER() OVER (PARTITION BY a.field_id ORDER BY a.id DESC) AS rn
+                 FROM answers a
+                 JOIN submissions s ON s.id = a.submission_id
+                 $where
+                   AND a.field_id IN ($ph)
+                   AND a.value IS NOT NULL AND a.value <> ''
+             ) t
+             WHERE t.rn <= :limite
+             ORDER BY t.field_id, t.rn",
+            $params
+        );
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['field_id']][] = [
+                'value' => (string) $row['value'],
+                'at'    => (string) $row['finished_at'],
+                'sid'   => (int) $row['submission_id'],
+            ];
+        }
+        return $out;
+    }
+
+    /**
      * Ids enteros, únicos y positivos. Cierra el `IN ()` vacío (que es error de
      * sintaxis en MariaDB) y evita loteos por debajo de 1.
      *
