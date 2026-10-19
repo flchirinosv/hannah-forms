@@ -1119,7 +1119,7 @@
 
         const ruleCount = (f.logic && f.logic.rules) ? f.logic.rules.length : 0;
         const combWrap = document.getElementById('logicCombinerWrap');
-        if (combWrap) combWrap.classList.toggle('d-none', ruleCount <= 1);
+        if (combWrap) combWrap.classList.toggle('d-none', ruleCount < 2);
 
         // Warning por referencia a un campo posterior.
         let fwd = false;
