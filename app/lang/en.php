@@ -20,6 +20,8 @@ return [
     'ui.corrige_errores' => 'Please fix the following errors:',
     'ui.select_option'   => '-- Select an option --',
     'ui.ranking_hint'    => 'Rank the options from 1 (most important) to {max}.',
+    'ui.rank_up'         => 'Move up',
+    'ui.rank_down'       => 'Move down',
     'ui.file_hint'         => 'Attach up to {count} file(s), {size} MB each. Accepted: {types}.',
     'ui.file_types_all'    => 'the ones allowed by the server',
     'ui.nada_probable'   => 'Not at all likely',

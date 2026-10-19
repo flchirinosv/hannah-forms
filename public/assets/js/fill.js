@@ -824,6 +824,7 @@
                     input.value = vals[rowEl.dataset.vfRank] || '';
                 }
             });
+            syncRankingOrder(card.querySelector('[data-vf-ranking]'));
             return;
         }
 
@@ -831,6 +832,9 @@
             card.querySelectorAll('input[type=radio]').forEach((i) => {
                 i.checked = String(i.value) === String(value);
             });
+            if (type === 'star') {
+                paintStars(card.querySelector('.star-selector'));
+            }
             return;
         }
 
@@ -844,6 +848,88 @@
         if (el) {
             el.value = value;
         }
+    }
+
+    /* ---------- estrellas y ranking: ayudas de interacción ---------- */
+
+    /* Estrellas: pinta 1..N. Sin `upTo` se usa el radio marcado; con un número
+     * (el hover) se previsualiza hasta esa estrella. `is-lit` es solo color: el
+     * valor sigue siendo un único radio 1..max y la validación no cambia. */
+    function paintStars(selector, upTo) {
+        if (!selector) {
+            return;
+        }
+        const checked = selector.querySelector('input[type=radio]:checked');
+        const limit = typeof upTo === 'number' ? upTo : (checked ? Number(checked.value) : 0);
+        selector.querySelectorAll('.star-option').forEach((opt) => {
+            const input = opt.querySelector('input[type=radio]');
+            const icon = opt.querySelector('.star-btn');
+            if (input && icon) {
+                icon.classList.toggle('is-lit', Number(input.value) <= limit);
+            }
+        });
+    }
+
+    function rankInput(row) {
+        return row.querySelector('input[type=number]');
+    }
+
+    /* Orden visual a partir de los valores restaurados (borrador o valor viejo
+     * del servidor): las filas se colocan por su posición y el badge pasa a
+     * mostrar el puesto. No reescribe los valores. */
+    function syncRankingOrder(wrap) {
+        if (!wrap) {
+            return;
+        }
+        const rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-vf-rank]'));
+        rows.sort((a, b) => {
+            const av = parseFloat(rankInput(a) && rankInput(a).value);
+            const bv = parseFloat(rankInput(b) && rankInput(b).value);
+            return (isNaN(av) ? Number.MAX_SAFE_INTEGER : av) - (isNaN(bv) ? Number.MAX_SAFE_INTEGER : bv);
+        });
+        rows.forEach((row) => wrap.appendChild(row));
+        rows.forEach((row, i) => {
+            const pos = row.querySelector('.vf-ranking-pos');
+            if (pos) {
+                pos.textContent = String(i + 1);
+            }
+        });
+    }
+
+    /* Tras mover una fila, el orden visual ES la respuesta: cada input toma su
+     * posición 1..N. Los `name` son de la opción original, así que el mapa que
+     * espera el servidor (opción => orden) queda intacto. */
+    function renumberRanking(wrap) {
+        const rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-vf-rank]'));
+        rows.forEach((row, i) => {
+            const input = rankInput(row);
+            if (input) {
+                input.value = String(i + 1);
+            }
+            const pos = row.querySelector('.vf-ranking-pos');
+            if (pos) {
+                pos.textContent = String(i + 1);
+            }
+        });
+    }
+
+    function moveRanking(btn, wrap) {
+        const row = btn.closest('[data-vf-rank]');
+        if (!row) {
+            return;
+        }
+        const rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-vf-rank]'));
+        const idx = rows.indexOf(row);
+        const target = btn.dataset.vfRankMove === 'up' ? idx - 1 : idx + 1;
+        if (idx < 0 || target < 0 || target >= rows.length) {
+            return;
+        }
+        if (btn.dataset.vfRankMove === 'up') {
+            wrap.insertBefore(row, rows[target]);
+        } else {
+            wrap.insertBefore(rows[target], row);
+        }
+        renumberRanking(wrap);
     }
 
     /* ---------- validación ---------- */
@@ -1361,6 +1447,60 @@
 
         form.addEventListener('submit', onSubmit);
 
+        // Estrellas: al elegir la N se pintan 1..N (rating clásico) y al pasar
+        // el ratón se previsualiza hasta la estrella bajo el cursor; al salir se
+        // vuelve a la marcada.
+        form.addEventListener('change', (e) => {
+            const sel = e.target.closest('.star-selector');
+            if (sel && e.target.type === 'radio') {
+                paintStars(sel);
+            }
+        });
+        form.addEventListener('mouseover', (e) => {
+            const opt = e.target.closest('.star-selector .star-option');
+            if (opt) {
+                paintStars(opt.closest('.star-selector'), Number(opt.querySelector('input').value));
+            }
+        });
+        form.addEventListener('mouseout', (e) => {
+            const opt = e.target.closest('.star-selector .star-option');
+            if (!opt) {
+                return;
+            }
+            const sel = opt.closest('.star-selector');
+            if (e.relatedTarget && sel.contains(e.relatedTarget)) {
+                return;
+            }
+            paintStars(sel);
+        });
+
+        // Ranking: los botones de mover reordenan la fila y renumeran 1..N por
+        // orden visual. Sin JavaScript se responde escribiendo los números.
+        form.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-vf-rank-move]');
+            if (!btn) {
+                return;
+            }
+            const wrap = btn.closest('[data-vf-ranking]');
+            if (!wrap) {
+                return;
+            }
+            e.preventDefault();
+            moveRanking(btn, wrap);
+            const card = wrap.closest('.vf-field-card');
+            if (card) {
+                renderState(card, validateField(card));
+            }
+            // Un reordenado es una respuesta cerrada, como elegir una opción:
+            // se avisa con `change` para que el avance automático lo considere.
+            const row = btn.closest('[data-vf-rank]');
+            const input = row ? rankInput(row) : null;
+            if (input) {
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            afterChange();
+        });
+
         // F5 — avance automático. Delegado en el form y en `change` (no en
         // `input`) a propósito: `change` es el evento de «hecho con este campo»,
         // tanto al elegir una opción como al salir de un campo de texto, y es el
@@ -1409,6 +1549,10 @@
         restoreDraft();
         // Aplicar condiciones tras cualquier restauración (con o sin errores).
         evaluateConditions();
+        // Estrellas y ranking: pintar el estado que quedó en el DOM (valor viejo
+        // del servidor o borrador ya aplicado por setFieldValue).
+        form.querySelectorAll('.star-selector').forEach((sel) => paintStars(sel));
+        form.querySelectorAll('[data-vf-ranking]').forEach((wrap) => syncRankingOrder(wrap));
         // F5 — el avance automático se habilita AL FINAL del arranque, con el
         // borrador ya aplicado y las condiciones ya resueltas. Antes, un paso
         // que el borrador dejaba completo podía disparar el salto sin que nadie

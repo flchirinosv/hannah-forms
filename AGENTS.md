@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 103 archivos, 1151 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 107 archivos, 1172 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **61 de los 103 archivos tocan la BD real** (los que llaman
+- **62 de los 107 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1564,6 +1564,19 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   (`rank`/`vis.length`): al omitirse un paso, el bloque y su pie tienen que
   decir lo mismo. `data-vf-skipped` se comprueba **por valor** (`=== '1'`), no
   por presencia.
+- **Estrellas y ranking se responden con el ratón, y sin JS el contrato no
+  cambia.** Las estrellas siguen siendo un `radio` 1..max y su valor es el mismo:
+  `paintStars()` solo colorea las anteriores (`is-lit`, con preview al hover), un
+  relleno cosmético. El ranking gana botones ▲▼ que **mueven la fila y renumeran
+  1..N por orden visual**, de modo que el orden **pasa a ser la respuesta**; pero
+  los `name` siguen atados a la opción original (`field[i]`), así que el mapa
+  opción=>orden que espera el servidor (`normalizeFieldValue`) no se toca —por eso
+  `moveRanking()` no puede escribir `name`—. `setFieldValue()` vuelve a ordenar las
+  filas al restaurar el borrador (`syncRankingOrder`), o lo restaurado se leería en
+  el orden original. Sin JS se sigue respondiendo escribiendo los números. Las
+  claves `ui.rank_up`/`ui.rank_down` viven en `es.php` y `en.php`, no en el
+  `FALLBACK_I18N` (las pinta la vista, no `fill.js`). Lo atan
+  `FillInteractionTest` y `tests/js/fill-ranking.js`.
 - Al añadir una clave de i18n hay que tocar **tres** sitios: `app/lang/es.php`,
   `app/lang/en.php` (paridad, la verifica `I18nTest`) y `FALLBACK_I18N` de
   `fill.js` (subconjunto de `es.php`, sin auto-referencias).
@@ -1627,7 +1640,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 544 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 547 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

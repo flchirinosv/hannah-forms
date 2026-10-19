@@ -172,6 +172,10 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
                                     <label class="small fw-semibold flex-grow-1 mb-0" for="f<?= (int) $field['id'] ?>_r<?= $i ?>"><?= View::escape($opt) ?></label>
                                     <input type="number" class="form-control form-control-sm vf-ranking-input" id="f<?= (int) $field['id'] ?>_r<?= $i ?>"
                                         name="<?= View::escape($fieldKey) ?>[<?= $i ?>]" min="1" max="<?= count($rankItems) ?>" placeholder="1..<?= count($rankItems) ?>">
+                                    <div class="vf-rank-move d-flex gap-1">
+                                        <button type="button" class="vf-rank-btn" data-vf-rank-move="up" aria-label="<?= View::escape($t('ui.rank_up')) ?>"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i></button>
+                                        <button type="button" class="vf-rank-btn" data-vf-rank-move="down" aria-label="<?= View::escape($t('ui.rank_down')) ?>"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+                                    </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>

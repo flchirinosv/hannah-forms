@@ -2097,6 +2097,10 @@ body {
 .star-option input:focus-visible + .star-btn { outline: 2px solid var(--vf-primary); outline-offset: 3px; border-radius: 8px; }
 .star-option:hover .star-btn { transform: translateY(-2px); }
 .star-option:hover .star-btn, .star-option input:checked + .star-btn { color: #fbbf24; }
+/* La selección rellena las estrellas anteriores (rating clásico). La pinta
+   `fill.js` con `is-lit`; la regla anterior de `:checked` sigue siendo la
+   fuente sin JavaScript. */
+.star-selector .star-btn.is-lit { color: #fbbf24; }
 
 .vf-matrix-table-wrap { border: 1px solid var(--vf-border); border-radius: 12px; }
 /* La miniatura de la matriz usa la misma celda que el fill, pero sin radio
@@ -2135,6 +2139,12 @@ body {
 
 .vf-ranking-input { max-width: 84px; }
 .vf-ranking-pos { min-width: 28px; }
+.vf-rank-btn { display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0; border: 1px solid var(--vf-border);
+    border-radius: 8px; background: #fff; color: #475569; cursor: pointer;
+    transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.vf-rank-btn:hover { background: #f1f5f9; color: var(--vf-primary); border-color: var(--vf-primary); }
+.vf-rank-btn:focus-visible { outline: 2px solid var(--vf-primary); outline-offset: 2px; }
 
 /* P10 — Campo de archivo */
 .vf-file-input { padding: .45rem .6rem; cursor: pointer; }

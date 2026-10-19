@@ -21,6 +21,8 @@ return [
     'ui.corrige_errores' => 'Corrige los siguientes errores:',
     'ui.select_option'   => '-- Selecciona una opción --',
     'ui.ranking_hint'    => 'Ordena las opciones de 1 (más importante) a {max}.',
+    'ui.rank_up'         => 'Mover arriba',
+    'ui.rank_down'       => 'Mover abajo',
     'ui.file_hint'         => 'Adjunta hasta {count} archivo(s), máximo {size} MB cada uno. Formatos: {types}.',
     'ui.file_types_all'    => 'los permitidos por el servidor',
     'ui.nada_probable'   => 'Nada probable',
