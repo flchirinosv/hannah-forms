@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**548 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**549 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -523,6 +523,7 @@ una constante de maquetación que nadie sabe por qué está puesta.
 | S45 | «Vista previa» con la ventana baja (o en un móvil) | Se comporta como el modal de nuevo formulario: el diálogo cabe entero (la cabecera «Vista previa» no se corta por arriba) y **scrollea su cuerpo**, no el fondo oscurecido; al final se alcanza el botón «Enviar» | M | |
 | S46 | Panel (`/dashboard`, `/admin`, un modal de ajustes) y pantallas de acceso (login/registro) | Los `input` y `select` se ven como los de Bootstrap (radio y alto estándar) con el foco en índigo; el buscador y su selector de orden vuelven a su tamaño `-sm` y quedan a la misma altura | M | |
 | S47 | Un `input-group` con icono (login y buscador del panel) | El icono y el campo comparten un **único** borde de 1px (el de Bootstrap); ya no se ve la unión sin costura de antes. En el buscador, el foco lo dibuja el contenedor, no el campo | M | |
+| S48 | El detalle de una respuesta (`/forms/{id}/responses/{sid}`) | Comparte el ancho de contenido del listado del que sale (`.container px-lg-4`, sin el `max-width: 860px` que lo hacía más estrecho) y su cabecera es la común: migas «Volver a respuestas» y título a la izquierda, y a la derecha un «Borrar» a la altura del resto (44px) que pregunta antes de borrar y, al confirmar, vuelve al listado | M | |
 
 
 ---

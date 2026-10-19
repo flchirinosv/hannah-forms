@@ -952,12 +952,16 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   ancestro**, que es un diagnóstico distinto del de «es demasiado alto y se sale por
   arriba». La medición de `show.bs.modal` en `builder.js` (rectángulo, `top`,
   viewport, ancho) está para eso, y así un 0×0 manda a mirar la vista.
-- **Las cuatro vistas de un formulario comparten el ancho de contenido**
-  (`.container px-lg-4`): ficha, builder, participantes y respuestas. El builder
-  iba en `container-fluid` (ancho completo), así que su lienzo era más ancho que
-  el resto y la misma pantalla «se movía» al entrar y salir del constructor; el
-  dashboard y la analítica siguen a ancho completo a propósito. Lo ata
-  `FormFichaLayoutTest::testLasCuatroVistasDeFormularioCompartenElAnchoDeContenido`.
+- **Las vistas de un formulario comparten el ancho de contenido**
+  (`.container px-lg-4`): ficha, builder, participantes, respuestas **y el detalle
+  de una respuesta**. El builder iba en `container-fluid` (ancho completo), así
+  que su lienzo era más ancho que el resto y la misma pantalla «se movía» al
+  entrar y salir del constructor; el detalle de una respuesta tenía un
+  `max-width: 860px` en línea que lo dejaba más estrecho que el listado del que
+  salía. El dashboard y la analítica siguen a ancho completo a propósito. Y el
+  detalle usa la **cabecera común** (`.app-page-head` + `.app-head-actions`), con
+  su «Borrar» en la fila de 44px reusando la ruta delete del listado. Lo ata
+  `FormFichaLayoutTest::testLasVistasDeFormularioCompartenElAnchoDeContenido`.
 - **Los campos del panel se distinguen de la tarjeta blanca y sus labels van en
   negrita**: acotado a `.app-content`, `.form-control`/`.form-select`/
   `.input-group-text` toman el off-white `#fbfcfe` (el mismo valor que el fill usa
@@ -1644,7 +1648,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 548 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 549 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

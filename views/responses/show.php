@@ -13,10 +13,24 @@ $files = is_array($files ?? null) ? $files : [];
 $participante = $participante ?? null;
 $quien = $participante === null ? null : FormParticipant::identidadDe($participante, (string) ($identificador ?? 'cedula'));
 ?>
-<div class="container px-lg-4" style="max-width: 860px;">
-    <div class="mb-4">
-        <a href="/forms/<?= (int) $form['id'] ?>/responses" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver a respuestas</a>
-        <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-inbox me-2 text-primary"></i>Respuesta #<?= $sid ?> — <?= View::escape($form['title']) ?></h2>
+<div class="container px-lg-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 app-page-head">
+        <div>
+            <a href="/forms/<?= (int) $form['id'] ?>/responses" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver a respuestas</a>
+            <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-inbox me-2 text-primary"></i>Respuesta #<?= $sid ?> — <?= View::escape($form['title']) ?></h2>
+        </div>
+        <div class="d-flex flex-wrap gap-2 app-head-actions">
+            <?php // Borrar la respuesta vuelve al listado (envío nativo: el
+                  // controlador redirige; con JS el `data-confirm` abre #vfConfirm).
+                  // Sin el modificador de botón compacto: la fila de cabecera
+                  // viste sus botones a la altura del CTA (44px). ?>
+            <form method="post" action="/forms/<?= (int) $form['id'] ?>/responses/<?= $sid ?>/delete"
+                  data-confirm="¿Eliminar esta respuesta? Esta acción no se puede deshacer."
+                  data-confirm-ok="Borrar" class="m-0">
+                <?= \App\Core\Csrf::field() ?>
+                <button type="submit" class="btn btn-outline-danger"><i class="fa-solid fa-trash me-1"></i>Borrar</button>
+            </form>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm mb-4">

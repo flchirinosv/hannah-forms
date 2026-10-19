@@ -204,6 +204,32 @@ class FormFichaLayoutTest
             'respuestas: los botones de cabecera no llevan btn-sm (32px junto a los 44 del resto)'
         );
 
+        // El detalle de una respuesta comparte la misma cabecera: migas y título
+        // dentro de `.app-page-head`, y sus acciones (borrar) en su fila de 44px.
+        $detalle = self::plantilla('responses/show.php');
+        assertTrue(
+            str_contains($detalle, 'app-page-head'),
+            'el detalle de respuesta: su cabecera marca la fila con app-page-head'
+        );
+        $desdeDet = strpos($detalle, 'app-head-actions');
+        assertTrue($desdeDet !== false, 'el detalle de respuesta: la cabecera marca su fila con app-head-actions');
+        $filaDet = substr($detalle, (int) $desdeDet);
+        // La fila solo contiene el formulario de borrado, así que su primer
+        // `</div>` la cierra (el <form> no trae divs dentro).
+        $finDet = strpos($filaDet, '</div>');
+        assertTrue($finDet !== false, 'el detalle de respuesta: la fila de acciones cierra su contenedor');
+        $filaDet = substr($filaDet, 0, (int) $finDet);
+        assertFalse(
+            str_contains($filaDet, 'btn-sm'),
+            'el detalle de respuesta: el botón de cabecera no lleva btn-sm'
+        );
+        assertTrue(
+            str_contains($filaDet, '/responses/') && str_contains($filaDet, 'data-confirm=')
+                && str_contains($filaDet, 'data-confirm-ok='),
+            'el detalle de respuesta: la fila tiene el borrado con su confirmación (data-confirm y '
+                . 'data-confirm-ok), reusando la ruta delete del listado'
+        );
+
         // Desde Fase 1, /admin comparte cabecera: cada pantalla incluye
         // `admin/_page_head`, que es quien emite `.app-head-actions`. Copiada en
         // cada vista, arreglar el reparto en una dejaba a las otras fuera.
@@ -267,22 +293,25 @@ class FormFichaLayoutTest
     }
 
     /**
-     * Las cuatro vistas de un formulario comparten el ancho de contenido.
+     * Las vistas de un formulario comparten el ancho de contenido.
      *
      * Ficha, participantes y respuestas ya usaban `.container px-lg-4`; el
      * builder iba en `container-fluid` (ancho completo), así que su lienzo era
      * más ancho que el resto y la misma pantalla «se movía» al entrar y salir del
-     * constructor. El dashboard y la analítica siguen a ancho completo a
-     * propósito (no son de un formulario y la analítica quiere sitio para las
-     * gráficas), así que el test mira exactamente estas cuatro.
+     * constructor. El detalle de una respuesta tenía un `max-width: 860px` en
+     * línea que lo dejaba más estrecho que el listado del que salía. El dashboard
+     * y la analítica siguen a ancho completo a propósito (no son de un formulario
+     * y la analítica quiere sitio para las gráficas), así que el test mira
+     * exactamente las cinco superficies de un formulario.
      */
-    public function testLasCuatroVistasDeFormularioCompartenElAnchoDeContenido(): void
+    public function testLasVistasDeFormularioCompartenElAnchoDeContenido(): void
     {
         foreach ([
             'dashboard/forms/show.php',
             'builder/index.php',
             'dashboard/forms/access.php',
             'responses/index.php',
+            'responses/show.php',
         ] as $rel) {
             $html = self::plantilla($rel);
             assertTrue(
