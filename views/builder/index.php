@@ -229,7 +229,10 @@ $fieldTypes = [
                         <div class="mb-3">
                             <div class="small fw-semibold mb-1">Condiciones</div>
                             <div id="logicRulesList" class="d-flex flex-column gap-1"></div>
-                            <div class="d-none mt-2" id="logicCombinerWrap">
+                        </div>
+                        <div class="mb-3">
+                            <div class="small fw-semibold mb-2">Agregar condición</div>
+                            <div class="d-none mb-2" id="logicCombinerWrap">
                                 <div class="form-check form-check-inline mb-0 me-2">
                                     <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAll" value="all" checked>
                                     <label class="form-check-label small" for="logicOpAll">Todas (Y)</label>
@@ -239,17 +242,12 @@ $fieldTypes = [
                                     <label class="form-check-label small" for="logicOpAny">Cualquiera (O)</label>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="small fw-semibold mb-2">Agregar condición</div>
                             <div class="card border-0 bg-light">
                                 <div class="card-body p-2">
                                     <div class="d-flex gap-2 flex-wrap">
                                         <select class="form-select form-select-sm flex-grow-1" id="logicField" aria-label="Campo consultado"></select>
                                         <select class="form-select form-select-sm" id="logicOp" aria-label="Operador" style="max-width:140px"></select>
-                                    </div>
-                                    <div class="mt-2">
-                                        <input type="text" class="form-control form-control-sm" id="logicValue" list="logicDatalist" placeholder="Valor (si aplica)">
+                                        <input type="text" class="form-control form-control-sm" id="logicValue" list="logicDatalist" placeholder="Valor" style="max-width:180px">
                                         <datalist id="logicDatalist"></datalist>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" id="btnAddLogic"><i class="fa-solid fa-plus me-1"></i>Agregar condición</button>
