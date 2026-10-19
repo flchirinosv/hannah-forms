@@ -1507,12 +1507,30 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   el selector la esperaba como ancestro, así que nunca se aplicó: se veía como
   un modal por defecto de 500px con una sola esquina redondeada). El título del
   panel de campo es fijo (`Configuración del elemento`), no la etiqueta de la
-  pregunta. La única vista previa es `#livePreviewModal` (el botón
-  **Vista previa**, `#btnLivePreview`); el preview embebido que pintaba debajo
-  del lienzo se retiró (quedaba fuera de la vista y parecía roto). Esa
-  superficie no lleva `width` por su id
+  pregunta. El botón **Vista previa** (`#btnLivePreview`) abre el formulario en
+  **otra pestaña** (`/forms/{id}/preview?draft=1`); el modal `#livePreviewModal`
+  sigue en la vista pero ya no lo abre nadie (su retiro va en una fase aparte),
+  y el preview embebido que pintaba debajo del lienzo se retiró (quedaba fuera
+  de la vista y parecía roto). Esa superficie no lleva `width` por su id
   (`FillLayoutTest::testNadieReabreElAnchoDelPreviewDelConstructor` la ata al
   ancho del publicado). Spec de UI: `docs/design.md` (§3.9, §3.10, §4.2).
+- **La vista previa lee el BORRADOR siempre, y se vacía al abrir**:
+  `openLivePreview()` pone `?draft=1` **sin condición** —el servidor cae a la
+  estructura viva si no hay borrador— y después llama a `vaciarBorrador(win)`.
+  La query no depende de `data-vf-has-draft`: ese dato lo sabe el HTML **al
+  cargar**, así que un borrador que el autosave creaba después no se reflejaba
+  en la vista previa hasta recargar el *builder*, y la URL de la pestaña no la
+  ganaba sola al recargarla. `vaciarBorrador()` cancela el debounce de 2 s,
+  espera una escritura en vuelo (`draftPromise`), decide comparando
+  `buildPayload()` contra `lastDraftJson` (lo que el servidor tiene; solo
+  avanza con un `{ok:true}` real) y **recarga la pestaña abierta** si escribió:
+  abrir la ventana va primero a propósito, porque dentro de un `await` el
+  bloqueador de ventanas puede tumbar la apertura. El mismo vaciado corre en
+  `visibilitychange` (builder oculto, **sin** pestaña): es el instante en que
+  el usuario se va a la vista previa a pulsar F5, y lo último tiene que estar
+  ya en la BD. Un `saving` en vuelo lo descarta (el commit limpia el borrador
+  y actualiza la marca; escribir ahora lo recrearía). Lo ata
+  `BuilderPreviewFreshnessTest`.
 
 **fill.js / i18n**
 
