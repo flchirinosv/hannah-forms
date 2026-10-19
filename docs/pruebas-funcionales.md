@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**547 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**548 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -233,6 +233,7 @@ Para no perderte, prepara esto antes de empezar:
 | F21 | Elegir la 3.ª de 5 estrellas, y luego pasar el ratón por la 5.ª y salir | Se encienden 1..3; con el ratón encima se previsualizan 1..5 y al salir vuelve a 1..3; el valor enviado es «3» | A | |
 | F22 | Responder un ranking con los botones ▲▼ (mover una fila arriba y otra abajo) | Las filas se reordenan y los números se renumeran 1..N solos; se envía sin teclear ningún número y el orden guardado es el que se ve | A | |
 | F23 | Un ranking con la ventana recargada con un borrador ya ordenado | Las filas reaparecen en el orden de las posiciones guardadas, no en el orden original de las opciones | M | |
+| F24 | Desactivar JavaScript y abrir un formulario con ranking | Queda el campo numérico editable (no las flechas) y se responde escribiendo 1..N: el ranking sigue siendo respondible sin JS | M | |
 
 ---
 

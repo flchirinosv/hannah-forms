@@ -117,6 +117,34 @@ class FillInteractionTest
         );
     }
 
+    public function testElNumeroSeOcultaConJsYQuedaComoSinJs(): void
+    {
+        $js = (string) file_get_contents($this->path(self::JS));
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', (string) file_get_contents($this->path(self::CSS)));
+        $view = (string) file_get_contents($this->path(self::VIEW));
+
+        assertTrue(
+            str_contains($js, "classList.add('vf-ranking--js')"),
+            'fill.js tiene que marcar el ranking como realzado con JS: sin esa clase el número '
+                . 'no se oculta y el campo sigue editable'
+        );
+        assertTrue(
+            str_contains($css, '.vf-ranking--js .vf-ranking-input'),
+            'app.css tiene que ocultar el input numérico bajo la clase de realce: es el contrato '
+                . 'con fill.js (el input se queda en el DOM porque lo lee el servidor)'
+        );
+        assertTrue(
+            str_contains($css, '.vf-ranking--js .vf-rank-move') && str_contains($css, '.vf-rank-move {'),
+            'las flechas van ocultas por defecto y las revela la clase de realce: sin JS no hay '
+                . 'botones muertos, y con JS el orden se controla con ellos'
+        );
+        assertFalse(
+            str_contains($view, 'class="vf-rank-move d-flex'),
+            'el contenedor de las flechas no puede llevar `d-flex` (Bootstrap lo marca `!important`): '
+                . 'anularía el `display: none` del estado sin JS'
+        );
+    }
+
     /* ---------- ayudas ---------- */
 
     private function nodeAvailable(): bool

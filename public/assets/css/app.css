@@ -2139,6 +2139,12 @@ body {
 
 .vf-ranking-input { max-width: 84px; }
 .vf-ranking-pos { min-width: 28px; }
+/* Realce progresivo: sin JS mandan los números (los botones no existirían), y
+   con JS los esconde `fill.js` (clase `vf-ranking--js`) para dejar sitio a las
+   flechas. El input sigue en el DOM porque es lo que lee el servidor. */
+.vf-rank-move { display: none; }
+.vf-ranking--js .vf-rank-move { display: flex; gap: .25rem; }
+.vf-ranking--js .vf-ranking-input { display: none; }
 .vf-rank-btn { display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; padding: 0; border: 1px solid var(--vf-border);
     border-radius: 8px; background: #fff; color: #475569; cursor: pointer;

@@ -881,6 +881,10 @@
         if (!wrap) {
             return;
         }
+        // Con JS el input numérico se oculta y aparecen los botones: el orden se
+        // controla con ellos. Sin JS la clase no se pone y queda el campo número,
+        // que es la única forma de responder. Ver `app.css`.
+        wrap.classList.add('vf-ranking--js');
         const rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-vf-rank]'));
         rows.sort((a, b) => {
             const av = parseFloat(rankInput(a) && rankInput(a).value);

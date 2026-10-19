@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 107 archivos, 1172 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 107 archivos, 1173 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -1571,10 +1571,14 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   1..N por orden visual**, de modo que el orden **pasa a ser la respuesta**; pero
   los `name` siguen atados a la opción original (`field[i]`), así que el mapa
   opción=>orden que espera el servidor (`normalizeFieldValue`) no se toca —por eso
-  `moveRanking()` no puede escribir `name`—. `setFieldValue()` vuelve a ordenar las
+  `moveRanking()` no puede escribir `name`—. **Con JS el input numérico se oculta**
+  (clase `vf-ranking--js` que pone `syncRankingOrder()`) y mandan las flechas; **sin
+  JS la clase no se pone y queda el campo número**, que es la única forma de
+  responder y lo que lee el servidor: el input sigue en el DOM y no se elimina.
+  `setFieldValue()` vuelve a ordenar las
   filas al restaurar el borrador (`syncRankingOrder`), o lo restaurado se leería en
-  el orden original. Sin JS se sigue respondiendo escribiendo los números. Las
-  claves `ui.rank_up`/`ui.rank_down` viven en `es.php` y `en.php`, no en el
+  el orden original. Las claves `ui.rank_up`/`ui.rank_down` viven en `es.php` y
+  `en.php`, no en el
   `FALLBACK_I18N` (las pinta la vista, no `fill.js`). Lo atan
   `FillInteractionTest` y `tests/js/fill-ranking.js`.
 - Al añadir una clave de i18n hay que tocar **tres** sitios: `app/lang/es.php`,
@@ -1640,7 +1644,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 547 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 548 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

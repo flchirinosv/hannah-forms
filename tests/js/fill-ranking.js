@@ -92,7 +92,7 @@ function makeRow(label) {
 
 /** El contenedor [data-vf-ranking]: mantiene el orden real de sus filas. */
 function makeWrap(labels) {
-    const wrap = { children: labels.map(makeRow) };
+    const wrap = { children: labels.map(makeRow), classList: classList([]) };
     wrap.querySelectorAll = (sel) => (sel === '[data-vf-rank]' ? wrap.children.slice() : []);
     wrap.appendChild = (node) => {
         const i = wrap.children.indexOf(node);
@@ -226,6 +226,7 @@ console.log('Ranking: el orden restaurado se sincroniza sin reescribir valores')
     is('las filas se colocan por su posición', order(wrap), 'B,C,A');
     is('los valores se conservan (los reescribe solo mover)', ranks(wrap), '1,2,3');
     is('el badge muestra el puesto', wrap.children.map((r) => r.pos.textContent).join(','), '1,2,3');
+    is('marca el contenedor como realzado con JS (oculta el número)', wrap.classList.contains('vf-ranking--js') ? '1' : '0', '1');
 }
 {
     const wrap = makeWrap(['A', 'B', 'C']);
