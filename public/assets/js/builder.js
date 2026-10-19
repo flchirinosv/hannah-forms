@@ -1117,6 +1117,10 @@
 
         renderLogicRules(f);
 
+        const ruleCount = (f.logic && f.logic.rules) ? f.logic.rules.length : 0;
+        const combWrap = document.getElementById('logicCombinerWrap');
+        if (combWrap) combWrap.classList.toggle('d-none', ruleCount <= 1);
+
         // Warning por referencia a un campo posterior.
         let fwd = false;
         if (f.logic && f.logic.rules) {
@@ -1767,11 +1771,60 @@
 
     function openLivePreview() {
         // Vista previa REAL (modelo Elementor): abre el formulario completo en
-        // otra pestaña, contra el BORRADOR (`?draft=1`) si lo hay. Así se prueba
-        // con el fill.js de verdad (condiciones, multi-paso, tema) sin guardar.
-        // El modal de preview que hubo antes se retira en una fase aparte.
-        const draftQ = appEl.dataset.vfHasDraft === '1' ? '?draft=1' : '';
-        window.open('/forms/' + FORM_ID + '/preview' + draftQ, '_blank');
+        // otra pestaña, contra el BORRADOR. La query `?draft=1` va SIEMPRE: si
+        // no hay borrador el servidor cae a la estructura viva, así que no
+        // cuesta nada distinguir aquí, y con ella la pestaña relee el borrador
+        // en CADA recarga (F5). La condición vieja sobre `data-vf-has-draft`
+        // solo la sabía el HTML al cargar: un borrador que el autosave creaba
+        // después no se reflejaba en la vista previa hasta recargar el BUILDER
+        // —que es cuando el servidor vuelve a marcar el atributo—, ni aunque
+        // se recargara la propia pestaña, porque su URL no llevaba la query.
+        //
+        // `window.open` va ANTES de vaciar: dentro de un await el bloqueador
+        // de ventanas puede tumbar la apertura. Si quedaban cambios sin
+        // autoguardar (los 2 s del debounce), `vaciarBorrador()` los vuelca y
+        // recarga la pestaña abierta, para que lo que se vea sea lo de AHORA
+        // y no lo de hace un instante.
+        const win = window.open('/forms/' + FORM_ID + '/preview?draft=1', '_blank');
+        vaciarBorrador(win);
+    }
+
+    /**
+     * Vuelca al servidor lo que aún no llegó al borrador (debounce de 2 s del
+     * autosave o una escritura en vuelo) y, si hay una pestaña de vista previa
+     * abierta (`win`), la recarga para que lo muestre.
+     *
+     * También se llama al perder el foco el builder (`visibilitychange`, sin
+     * pestaña): quien se va a la vista previa a pulsar F5 necesita que lo
+     * último ya esté en la BD, no dentro de 2 segundos. Compara el payload
+     * actual con `lastDraftJson` (lo que el servidor tiene) en vez de fiarse de
+     * `dirty`, que sigue en true después de un autoguardado exitoso y además
+     * no se entera de cambios que no pasaron por `markDirty()`.
+     */
+    async function vaciarBorrador(win) {
+        try {
+            if (saving) {
+                // Un «Guardar» en vuelo: al terminar actualiza la marca y limpia
+                // el borrador del servidor; escribir ahora lo recrearía con el
+                // contenido que el commit acaba de prometer.
+                return;
+            }
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = null;
+            }
+            // Una escritura en vuelo: que termine antes de decidir si hace
+            // falta otra (su payload puede ser ya el actual).
+            let escribio = Boolean(await draftPromise);
+            if (JSON.stringify(buildPayload()) !== lastDraftJson) {
+                escribio = (await saveDraft()) || escribio;
+            }
+            if (escribio && win && !win.closed) {
+                win.location.reload();
+            }
+        } catch (e) {
+            console.warn('[vf] no se pudo vaciar el borrador para la vista previa', e);
+        }
     }
 
     /* ---------- Save (modelo Elementor: borrador en servidor + commit) ---------- */
@@ -1782,7 +1835,12 @@
     let dirty = false;
     let saving = false;      // un commit («Guardar») en vuelo
     let draftSaving = false; // un autoguardado de borrador en vuelo
+    let draftPromise = null; // la promesa de esa escritura, para poder esperarla
     let lastSavedJson = null;
+    // Último payload que el SERVIDOR tiene como borrador: es lo que compara
+    // `vaciarBorrador()` para saber si hay algo que vaciar. Solo se actualiza
+    // con un {ok:true}, así que un fallo deja la marca vieja y se reintenta.
+    let lastDraftJson = null;
     let autoSaveTimer = null;
 
     // El botón «Guardar» se apaga cuando no hay nada que commitear. Es la
@@ -1843,29 +1901,40 @@
     // Autoguardado al BORRADOR (no commitea): es liviano, no toca la revisión
     // y sirve para que recargar el constructor no pierda el trabajo.
     async function autoSave() {
-        if (!dirty || draftSaving || saving) return;
+        if (!dirty || draftSaving || saving) return false;
         draftSaving = true;
-        try {
-            await saveDraft();
-        } finally {
+        draftPromise = saveDraft().finally(() => {
             draftSaving = false;
-        }
+            draftPromise = null;
+        });
+        return draftPromise;
     }
 
     async function saveDraft() {
         const payloadJson = JSON.stringify(buildPayload());
         try {
-            await fetch('/forms/' + FORM_ID + '/builder/draft', {
+            const res = await fetch('/forms/' + FORM_ID + '/builder/draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
                 body: payloadJson,
             });
+            const data = await res.json();
+            if (data && data.ok) {
+                lastDraftJson = payloadJson;
+                return true;
+            }
+            // Solo cuenta un {ok:true} de verdad: un redirect a login (sesión
+            // caída) o un 419/422 no dejan el borrador al día, y con la marca
+            // sin mover el próximo vaciado vuelve a intentarlo.
+            console.warn('[vf] el servidor no aceptó el borrador', data);
+            return false;
         } catch (e) {
             // Best-effort: el «Guardar» de verdad vuelve a intentarlo y
             // surfaceará cualquier error real. No se avisa por un fallo de red
             // en un autoguardado silencioso; el `console.warn` deja rastro
             // en dev para poder diagnosticar sin abrir las herramientas.
             console.warn('[vf] autoguardado de borrador fallido', e);
+            return false;
         }
     }
 
@@ -1925,6 +1994,10 @@
             const data = await res.json();
             if (data.ok) {
                 lastSavedJson = payloadJson;
+                // El commit limpia el borrador del servidor, así que lo que el
+                // lector de la vista previa va a encontrar (si no hay borrador,
+                // la estructura viva) es ESTE payload: no queda nada que vaciar.
+                lastDraftJson = payloadJson;
                 dirty = false;
                 el.titleText.textContent = payload.title;
                 showToast('Estructura guardada correctamente', 'success');
@@ -2139,6 +2212,14 @@
 
         el.saveBtn.addEventListener('click', saveStructure);
         el.livePreviewBtn.addEventListener('click', openLivePreview);
+
+        // La vista previa se recarga a mano (F5) y su URL ya lleva `?draft=1`;
+        // para que ese F5 vea lo último hace falta que lo último esté EN la BD.
+        // Al perder el foco (el usuario se va a esa pestaña) se vacía lo
+        // pendiente sin esperar a los 2 s del debounce.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') vaciarBorrador(null);
+        });
         el.btnDelete.addEventListener('click', deleteSelected);
         el.btnUndo.addEventListener('click', undo);
         el.btnRedo.addEventListener('click', redo);
@@ -2486,6 +2567,11 @@
         // se abrió sobre un BORRADOR sin commitear (trabajo de una sesión
         // anterior). Sin borrador no hay nada que commitear y arranca apagado.
         dirty = appEl.dataset.vfHasDraft === '1';
+        // Marca de «lo que el servidor tiene» para `vaciarBorrador()`: al
+        // arrancar la memoria es una copia de lo que hay allá (el borrador si
+        // lo había, la estructura viva si no), así que el primer vaciado no
+        // reescribe nada y solo manda lo que se edite a partir de aquí.
+        lastDraftJson = JSON.stringify(buildPayload());
         refreshSaveBtn();
         renderFieldCanvas();
     }
@@ -2493,5 +2579,5 @@
     init();
 
     // Marca de versión para depurar caché en consola (F12).
-    console.log('[builder] v2026-10-11c (ajustes como modal centrado, título fijo del panel, toggle Obligatoria corregido)');
+    console.log('[builder] v2026-10-18a (vista previa siempre contra el borrador, vaciado al abrir y al perder el foco)');
 })();

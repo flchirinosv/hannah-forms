@@ -108,7 +108,7 @@ $fieldTypes = [
                             <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabContent" type="button" role="tab" aria-selected="true">Contenido</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabLogic" type="button" role="tab" aria-selected="false">Lógica</button>
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabLogic" type="button" role="tab" aria-selected="false">Mostrar si...</button>
                         </li>
                     </ul>
                     <div class="tab-content">
@@ -218,13 +218,27 @@ $fieldTypes = [
                     <div class="app-logic-wrap mb-3" id="logicWrap">
                         <div class="d-flex align-items-center gap-1 mb-1">
                             <i class="fa-solid fa-code-branch text-primary"></i>
-                            <label class="form-label small fw-semibold mb-0">Mostrar condicionalmente</label>
+                            <label class="form-label small fw-semibold mb-0">Mostrar si...</label>
                         </div>
                         <p class="text-muted mb-2" id="logicHowThis" style="font-size:.72rem">Este campo aparecerá solo si se cumplen las condiciones de abajo (según las respuestas de otra pregunta).</p>
                         <div class="alert alert-info py-2 px-3 small mb-2 d-none" id="logicInheritedNote" role="status"></div>
                         <div class="text-muted small mb-2 d-none" id="logicEmptyHint"></div>
-                        <div id="logicRulesList" class="d-flex flex-column gap-1 mb-2"></div>
+                        <div class="mb-2">
+                            <div class="small fw-semibold mb-1">Condiciones</div>
+                            <div id="logicRulesList" class="d-flex flex-column gap-1 mb-2"></div>
+                            <div class="d-none" id="logicCombinerWrap">
+                                <div class="form-check form-check-inline mb-0 me-2">
+                                    <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAll" value="all" checked>
+                                    <label class="form-check-label small" for="logicOpAll">Todas (Y)</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAny" value="any">
+                                    <label class="form-check-label small" for="logicOpAny">Cualquiera (O)</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="d-flex flex-column gap-2">
+                            <div class="small fw-semibold">Agregar condición</div>
                             <select class="form-select form-select-sm" id="logicField" aria-label="Campo consultado"></select>
                             <div class="d-flex gap-2">
                                 <select class="form-select form-select-sm flex-shrink-0" id="logicOp" aria-label="Operador" style="max-width:150px"></select>
@@ -232,17 +246,6 @@ $fieldTypes = [
                                 <datalist id="logicDatalist"></datalist>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLogic"><i class="fa-solid fa-plus me-1"></i>Agregar condición</button>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 mt-2">
-                            <span class="small text-muted">Deben cumplirse</span>
-                            <div class="form-check form-check-inline mb-0">
-                                <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAll" value="all" checked>
-                                <label class="form-check-label small" for="logicOpAll">Todas (y)</label>
-                            </div>
-                            <div class="form-check form-check-inline mb-0">
-                                <input class="form-check-input" type="radio" name="logicOperator" id="logicOpAny" value="any">
-                                <label class="form-check-label small" for="logicOpAny">Cualquiera (o)</label>
-                            </div>
                         </div>
                         <div class="alert alert-warning py-2 px-3 small mb-0 mt-2 d-none" id="logicForwardWarn" role="alert">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>La condición hace referencia a una pregunta que aparece más abajo. Puede que aún no esté respondida cuando se evalúe.
