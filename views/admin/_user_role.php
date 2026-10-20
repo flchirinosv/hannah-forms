@@ -16,4 +16,4 @@ use App\Core\View;
  */
 $roleName = (string) ($roleName ?? '—');
 ?>
-<span class="badge text-bg-primary-subtle text-primary-emphasis"><?= View::escape($roleName) ?></span>
+<span class="badge bg-primary-subtle text-primary-emphasis"><?= View::escape($roleName) ?></span>

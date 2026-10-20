@@ -275,9 +275,9 @@ $qsAnalytics = http_build_query(array_filter([
                              </div>
                              <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
                                  <div class="d-flex flex-wrap gap-2 mt-3 small">
-                                     <span class="badge text-bg-danger-subtle border border-danger-subtle">Detractores (0-6): <?= (int) $stat['nps']['detractors'] ?></span>
-                                     <span class="badge text-bg-secondary-subtle border border-secondary-subtle">Pasivos (7-8): <?= (int) $stat['nps']['passives'] ?></span>
-                                     <span class="badge text-bg-success-subtle border border-success-subtle">Promotores (9-10): <?= (int) $stat['nps']['promoters'] ?></span>
+                                     <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Detractores (0-6): <?= (int) $stat['nps']['detractors'] ?></span>
+                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Pasivos (7-8): <?= (int) $stat['nps']['passives'] ?></span>
+                                     <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Promotores (9-10): <?= (int) $stat['nps']['promoters'] ?></span>
                                  </div>
                              <?php endif; ?>
                              <div class="number-chart-box mt-3" data-vf-chart-box><canvas class="number-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>

@@ -18,6 +18,7 @@ CSV + textos `Descargar CSV`/`Comparar por`.
 | G3 | El texto del índice de preguntas se desborda | ✅ hecha |
 | G4 | La tabla de detalle de respuestas se ve muy ancha | ✅ hecha |
 | G5 | Campos compuestos (matriz, checkbox, ranking) sin estilo legible | ✅ hecha |
+| G6 | El «Resumen» de una tarjeta NPS parece vacío (insignias blancas sobre blanco) | ✅ hecha |
 
 **Cierre.** Las cinco corregidas. Ficheros: `public/assets/js/analytics.js`
 (`soltarCanvas`/`crear`/reintento de `pintar`), `views/analytics/show.php`
@@ -106,6 +107,33 @@ respetando el **enmascarado PII antes** de reinterpretar el JSON:
   ranking, orden por el número y `#n · ítem`.
 - Escalares (`select/radio/scale/star/number/nps`): sin cambios.
 - Se conservan `data-label`, el `>—<` del vacío y el HTML escapado en servidor.
+
+---
+
+## G6 · El «Resumen» de un NPS parece vacío
+
+**Síntoma que quedó tras G1.** Al alternar una tarjeta **NPS** o **Número** a
+«Resumen», el histograma desaparece (correcto) pero el resumen **no se veía**: el
+autor lo describió como «el gráfico se queda en blanco». La causa **no** era el
+repintado (G1): era de **contraste**.
+
+**Causa raíz.** Las insignias Detractores/Pasivos/Promotores usaban
+`text-bg-danger-subtle` / `text-bg-secondary-subtle` / `text-bg-success-subtle`.
+Esa pareja **no existe** en el Bootstrap 5.3.3 vendorizado (solo existe
+`text-bg-<color>` sólido), así que la clase no pintaba nada: el `.badge` se
+quedaba con su `color:#fff` sobre fondo transparente → **texto blanco sobre
+blanco**. En un NPS el resumen son las mini-stats + esas insignias, así que sin
+insignias legibles parecía vacío.
+
+**Arreglo** (`views/analytics/show.php`): pareja correcta
+`bg-<color>-subtle` + `text-<color>-emphasis` (el `border-<color>-subtle` sí
+existía y se conserva). El mismo error de clase estaba en
+`views/admin/_user_role.php` (`text-bg-primary-subtle`).
+
+**Test.** `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`
+renderiza un formulario NPS + Número, comprueba que el resumen pinta mini-stats e
+insignias, y `grep`a el CSS de Bootstrap para verificar que cada clase que se usa
+**existe**. Comprobación manual K33.
 
 ---
 

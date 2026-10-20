@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 110 archivos, 1209 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 110 archivos, 1210 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -765,7 +765,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   del fill en la misma transacción y sin la marca el contador diría cero
   (`AnalyticsLayoutTest::testLaTasaDeRespuestaApareceSoloEnUnFormularioDeListado`).
 
-**Presentación de la analítica (G1–G5)**
+**Presentación de la analítica (G1–G6)**
 
 - **El repintado de un gráfico NO puede tragarse el error** (`analytics.js`):
   `pintar()` creaba un `Chart` sobre un canvas con una instancia viva, Chart.js
@@ -805,6 +805,19 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   imprime sin volver a escapar (el resto sí se escapa). Lo ata
   `AnalyticsChartsTest::testLasRespuestasCompuestasSePintanConChips` y
   `testElMarcadorPiiNoSeReformateaComoJson`.
+- **El resumen de una tarjeta numérica ES contenido, no el hueco que deja el
+  lienzo**: la vista «Resumen» oculta el canvas y deja a la vista las mini-stats y,
+  en NPS, las insignias Detractores/Pasivos/Promotores. Si esas insignias no se
+  ven, el resumen de un NPS **parece vacío** y el síntoma se confunde con «el
+  gráfico desapareció». La trampa es de clase, no de datos: `text-bg-danger-subtle`
+  (y `-secondary-`/`-success-`) **NO existe** en el Bootstrap 5.3 vendorizado, así
+  que la clase no pinta nada, el `.badge` se queda con su `color:#fff` sobre fondo
+  transparente y el texto sale blanco sobre blanco. La pareja correcta es
+  `bg-<color>-subtle` + `text-<color>-emphasis` (el borde `border-<color>-subtle`
+  sí existe). Lo ata
+  `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`, que
+  además `grep`a el CSS de Bootstrap para comprobar que la clase que se usa existe
+  de verdad. El mismo error de clase estaba en `views/admin/_user_role.php`.
 
 **Quién respondió (fase 9)**
 
@@ -1783,7 +1796,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 570 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 571 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

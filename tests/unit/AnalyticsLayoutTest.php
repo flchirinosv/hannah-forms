@@ -182,6 +182,55 @@ class AnalyticsLayoutTest
     }
 
     // ---------------------------------------------------------------
+    // G6 — El resumen de una tarjeta numérica tiene que verse
+    // ---------------------------------------------------------------
+
+    /**
+     * La vista «Resumen» de una tarjeta numérica oculta el lienzo y deja a la
+     * vista las mini-stats y, en NPS, las insignias Detractores/Pasivos/
+     * Promotores. El resaltado sutil de esas insignias usa la pareja correcta de
+     * Bootstrap (`bg-<color>-subtle` + `text-<color>-emphasis`).
+     *
+     * La trampa que se comió el color: `text-bg-danger-subtle` (y sus hermanas)
+     * NO existe en el Bootstrap vendorizado, así que la clase no pinta nada y el
+     * `.badge` se queda con su `color: #fff` encima de un fondo transparente: el
+     * texto se leía blanco sobre blanco y la tarjeta en «Resumen» parecía vacía.
+     * Un `grep` del CSS de Bootstrap es lo único que lo delata, así que el test
+     * lo comprueba contra el propio fichero.
+     */
+    public function testElResumenNumericoSeVeYLasInsigniasNpsTienenColor(): void
+    {
+        $formId = self::formulario();
+        $nps = (int) Field::create($formId, 'nps', 'Recomendaría', position: 0);
+        $num = (int) Field::create($formId, 'number', 'Asistentes', position: 1);
+        foreach ([['nps' => '10', 'num' => '10'], ['nps' => '3', 'num' => '30'], ['nps' => '8', 'num' => '20']] as $vals) {
+            $sid = Submission::create($formId);
+            Answer::create($sid, $nps, $vals['nps']);
+            Answer::create($sid, $num, $vals['num']);
+        }
+
+        $html = self::render($formId);
+
+        // El resumen existe: las mini-stats y las tres insignias del NPS.
+        assertTrue(str_contains($html, 'app-mini-stat'), 'el resumen pinta las mini-stats');
+        foreach (['Promedio', 'Mínimo', 'Máximo'] as $rotulo) {
+            assertTrue(str_contains($html, $rotulo), "el resumen dice «{$rotulo}»");
+        }
+        foreach (['Detractores (0-6)', 'Pasivos (7-8)', 'Promotores (9-10)'] as $rotulo) {
+            assertTrue(str_contains($html, $rotulo), "la insignia «{$rotulo}» está en el resumen");
+        }
+
+        // Las clases de resaltado sutil tienen que existir de verdad en el CSS.
+        $bootstrap = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/bootstrap.min.css');
+        foreach (['bg-danger-subtle', 'bg-secondary-subtle', 'bg-success-subtle', 'text-danger-emphasis', 'text-secondary-emphasis', 'text-success-emphasis'] as $clase) {
+            assertTrue(str_contains($bootstrap, '.' . $clase), "Bootstrap define .{$clase}");
+        }
+        assertFalse(str_contains($html, 'text-bg-danger-subtle'), 'no se usa la clase inexistente text-bg-danger-subtle');
+        assertFalse(str_contains($html, 'text-bg-secondary-subtle'), 'no se usa la clase inexistente text-bg-secondary-subtle');
+        assertFalse(str_contains($html, 'text-bg-success-subtle'), 'no se usa la clase inexistente text-bg-success-subtle');
+    }
+
+    // ---------------------------------------------------------------
     // W4.4 — Estados vacíos
     // ---------------------------------------------------------------
 

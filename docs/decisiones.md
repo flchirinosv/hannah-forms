@@ -1747,9 +1747,9 @@ comprobaciones manuales K23–K27 del bloque K de `docs/pruebas-funcionales.md`.
 
 Suite completa: 110 archivos / **1202 métodos** en verde.
 
-## La presentación de la analítica: repintado, cabecera, índice, tabla y compuestos (2026-10-19, G1–G5)
+## La presentación de la analítica: repintado, cabecera, índice, tabla y compuestos (2026-10-19, G1–G6)
 
-Cinco correcciones reportadas por el autor al revisar en el navegador la pantalla
+Seis correcciones reportadas por el autor al revisar en el navegador la pantalla
 de analítica de W1–W4 (plan y estado en
 `docs/plan-analitica-ux-2026-10-19.md`). Ninguna toca el modelo de datos ni las
 consultas.
@@ -1792,11 +1792,27 @@ consultas.
   va antes** de mirar el `[`/`{` inicial (`[oculto]` empieza por `[`), y solo se
   reformatea un JSON **válido** (`array_is_list` para el checkbox); un valor que
   solo parece JSON se deja intacto y un texto suelto se escapa.
+- **G6 — el «Resumen» de un NPS parecía vacío, y no era el repintado.** Tras
+  arreglar G1 el autor seguía viendo que, al alternar una tarjeta NPS/Número a
+  «Resumen», el histograma desaparecía y «no se veía» el resumen. Reproducido en
+  Chromium headless con la vista real, el lienzo **sí** se recuperaba: lo que
+  fallaba era el **contraste**. Las insignias Detractores/Pasivos/Promotores
+  usaban `text-bg-<color>-subtle`, una pareja que **no existe** en el Bootstrap
+  5.3.3 vendorizado: la clase no pintaba nada y el `.badge` quedaba con su
+  `color:#fff` sobre fondo transparente —texto blanco sobre blanco—. Como el
+  resumen de un NPS son las mini-stats más esas insignias, sin insignias legibles
+  la tarjeta parecía vacía y el síntoma se confundía con G1. La pareja correcta es
+  `bg-<color>-subtle` + `text-<color>-emphasis` (el `border-<color>-subtle` sí
+  existía). El mismo error estaba en `views/admin/_user_role.php`
+  (`text-bg-primary-subtle`). Lo ata
+  `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`, que
+  además `grep`a el CSS de Bootstrap para comprobar que cada clase usada existe.
 
-Tests: 7 métodos nuevos (6 en `AnalyticsChartsTest` —el arnés con node, el
+Tests: 8 métodos nuevos (6 en `AnalyticsChartsTest` —el arnés con node, el
 contrato sin node, los chips, el marcador PII y los tres de cabecera/índice/
-tabla— contando los que ya había, y el arnés `tests/js/analytics-charts.js` con
-11 comprobaciones); comprobaciones manuales K28–K32 del bloque K de
+tabla— contando los que ya había, el arnés `tests/js/analytics-charts.js` con
+11 comprobaciones, y `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`);
+comprobaciones manuales K28–K33 del bloque K de
 `docs/pruebas-funcionales.md`.
 
-Suite completa: 110 archivos / **1209 métodos** en verde.
+Suite completa: 110 archivos / **1210 métodos** en verde.
