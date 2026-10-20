@@ -1,9 +1,11 @@
 # Plan — Rediseño de la analítica de respuestas
 
 **Fecha:** 2026-10-19
-**Estado:** en curso (W1 → W4). Este documento es el **punto de restauración del
+**Estado:** cerrado (W1 → W4 ✅). Este documento es el **punto de restauración del
 contexto**: si la sesión se pierde, aquí está el plan entero con sus decisiones,
-sus fricciones y los tests que atan cada cosa.
+sus fricciones y los tests que atan cada cosa. Las correcciones de presentación
+posteriores (G1–G6) tienen su propio plan,
+`docs/plan-analitica-ux-2026-10-19.md`, también cerrado.
 **Objetivo:** que la pantalla `/forms/{id}/analytics` explique lo que hay que
 analizar (UX), tenga las preguntas visibles que hoy son invisibles
 (flexibilidad) y diga lo que dice con menos ruido (simplicidad).

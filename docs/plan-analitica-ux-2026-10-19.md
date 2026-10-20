@@ -20,14 +20,21 @@ CSV + textos `Descargar CSV`/`Comparar por`.
 | G5 | Campos compuestos (matriz, checkbox, ranking) sin estilo legible | ✅ hecha |
 | G6 | El «Resumen» de una tarjeta NPS parece vacío (insignias blancas sobre blanco) | ✅ hecha |
 
-**Cierre.** Las cinco corregidas. Ficheros: `public/assets/js/analytics.js`
+**Cierre.** Las seis corregidas (G6 con su «bis»). Ficheros: `public/assets/js/analytics.js`
 (`soltarCanvas`/`crear`/reintento de `pintar`), `views/analytics/show.php`
 (`vf-card-head`/`vf-card-title`/`vf-card-actions` en las tres tarjetas
-conmutables + la matriz), `views/analytics/_rows.php` (chips de checkbox/matriz/
-ranking), `public/assets/css/app.css` (cabecera, índice `min-width:0`, tabla de
+conmutables + la matriz), `views/analytics/_rows.php` (delega los chips en
+`View::answerValue()`, la misma copia que pinta el detalle de una respuesta),
+`public/assets/css/app.css` (cabecera, índice `min-width:0`, tabla de
 detalle con sticky+cebra+compacta y reset móvil, `.vf-chip*`), y
 `tests/js/analytics-charts.js` (arnés nuevo) + `tests/unit/AnalyticsChartsTest.php`
-(5 métodos nuevos).
+(5 métodos nuevos). **G5 se extendió** al detalle de una respuesta
+(`views/responses/show.php`, commit `6a00f6f`): su fallback `Answer::displayValue()`
+pintaba un checkbox como «a; b», una matriz como «Fila: valor; …» y un ranking como
+«Opción: 3», así que el dueño veía el mismo valor de dos maneras según entrara por
+la analítica o por el detalle; ahora los dos canales usan `View::answerValue()`.
+Sus tests son `ResponsesTest::testElDetallePintaChipsComoLaAnalitica` y
+`testAnswerValueSoloReformateaCompuestosValidos`, y la comprobación manual K34.
 
 ---
 
@@ -107,6 +114,14 @@ respetando el **enmascarado PII antes** de reinterpretar el JSON:
   ranking, orden por el número y `#n · ítem`.
 - Escalares (`select/radio/scale/star/number/nps`): sin cambios.
 - Se conservan `data-label`, el `>—<` del vacío y el HTML escapado en servidor.
+
+**Extensión (commit `6a00f6f`).** El render se extrajo a **`View::answerValue()`**
+(una sola copia), que devuelve HTML ya escapado o `null` si no es un compuesto; lo
+usan `_rows.php` **y** `views/responses/show.php`. Antes el detalle pintaba el
+compuesto con `Answer::displayValue()` («a; b» / «fila: valor; …»), así que el
+mismo valor se veía de dos maneras según la pantalla. Un adjunto no pasa por chips
+(su JSON guarda la ruta interna) y el PII se resuelve antes, así que `[oculto]`
+cae al lado `null`.
 
 ---
 

@@ -41,7 +41,7 @@ honeypot { enabled }
 locale   { code }                           // 'es' | 'en' (i18n reducido)
 ```
 
-## Fases (implementación en curso)
+## Fases (P1–P10 completadas; Tier 3 en backlog)
 
 | # | Fase | Esfuerzo | Estado |
 |---|------|----------|--------|
@@ -69,7 +69,7 @@ locale   { code }                           // 'es' | 'en' (i18n reducido)
 
 **P3 (implementado):** gestión de respuestas (`ResponsesController` + `views/responses/{index,show}.php`).
 - Listado `/forms/{id}/responses` con **paginación server-side** (remedio de M2 del audit): `Submission::byFormPaginated` con `LIMIT/OFFSET` (page clamp a la última, `per_page` fijo 15), enlaces numéricos con elipsis.
-- Detalle `/forms/{id}/responses/{sid}` con metadata (fecha, IP, user-agent) y respuestas decodificadas (`Answer::displayValue`: arrays `a; b`, objetos `clave: valor`).
+- Detalle `/forms/{id}/responses/{sid}` con metadata (fecha, IP, user-agent) y respuestas decodificadas (`Answer::displayValue`: arrays `a; b`, objetos `clave: valor`). *Actualización (G5, 2026-10-19):* los valores **compuestos** (checkbox/matriz/ranking) ya se pintan con chips vía `View::answerValue()`, el mismo render que la tabla de la analítica; `displayValue()` queda como fallback de texto plano.
 - Borrado por POST con `csrf` y `data-confirm`; las answers caen por FK ON DELETE CASCADE.
 - Export JSON `/forms/{id}/export.json` (attachment, respeta `from/to` como el CSV — lección M5): `Submission::exportPayload` decodifica compositos a arrays/objetos; metadata de la submission incluida.
 - Entrada: botón **Respuestas** en `views/dashboard/forms/show.php`. Tests: `tests/unit/ResponsesTest.php` (11 tests).

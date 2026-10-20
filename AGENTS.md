@@ -1828,11 +1828,12 @@ probando la rama equivocada).
   lista mínima.
 - `docs/decisiones.md`: por qué se cambió cada cosa (archivo histórico).
 - `docs/plan-analitica-2026-10-19.md`: plan de rediseño de la pantalla de
-  analítica (W1–W4 con su selector de gráfico efímero); su tabla de estados se
-  actualiza al cerrar cada fase.
+  analítica (W1–W4 con su selector de gráfico efímero); cerrado, y su tabla de
+  estados se actualizó al cerrar cada fase.
 - `docs/plan-analitica-ux-2026-10-19.md`: correcciones de presentación de la
-  analítica (G1–G5: repintado de gráficos, cabecera, índice, tabla de detalle y
-  respuestas compuestas); su tabla de estados se actualiza al cerrar cada una.
+  analítica (G1–G6: repintado de gráficos, cabecera, índice, tabla de detalle,
+  respuestas compuestas y el «Resumen» del NPS); cerrado, con su tabla de estados
+  al día.
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
 - `docs/technical-document.md`: arquitectura y modelo de datos (23 tablas, con

@@ -699,7 +699,10 @@ ruta de embed responde 403.
 
 Listado con filtros (fechas, estado) y detalle de cada envío. Desde el detalle
 puedes **eliminar** una respuesta. **No se pueden editar**: una respuesta es un
-registro de lo que alguien envió, no un borrador.
+registro de lo que alguien envió, no un borrador. Las respuestas compuestas
+(selección múltiple, matriz, ranking) se leen con los **mismos chips** que la
+tabla de la analítica, así que un mismo valor no se ve distinto según por dónde
+entres.
 
 ### 9.2 Analítica
 
