@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1186 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1195 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**555 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**560 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -330,6 +330,11 @@ Para no perderte, prepara esto antes de empezar:
 | K15 | Con un filtro de fechas activo, mirar esa misma tarjeta (W2, 2026-10-19) | La lista y el contador recortan igual que los gráficos de al lado: nada de fuera del rango | A | |
 | K16 | Con un campo de texto marcado como dato personal, sin `responses.pii` (W2, 2026-10-19) | El valor sale enmascarado en la tarjeta; con el permiso, en claro | A | |
 | K17 | Mirar en analítica los tipos que antes no aparecían: URL, teléfono, hora, fecha y **archivo adjunto** (W2, 2026-10-19) | Los cinco tienen su tarjeta (antes se caían de todas las ramas y la pregunta no se pintaba); el adjunto muestra «nombre (tamaño)», no su JSON | A | |
+| K18 | En analítica, mirar una pregunta **numérica** con respuestas (W3, 2026-10-19) | Su tarjeta abre con el **histograma** por defecto, con el eje ordenado de menor a mayor; la suma de las barras coincide con las respuestas que cuenta el resumen | A | |
+| K19 | En un **NPS**, mirar su histograma (W3, 2026-10-19) | Enseña la escala **0..10 entera**, con las notas que nadie dio a cero; las de 0–6 salen rojas, las de 7–8 ámbar y las de 9–10 verdes | A | |
+| K20 | En una pregunta de opciones, cambiar la vista a **Anillo** y a **Tabla**, y volver a **Barras** (W3, 2026-10-19) | Cada botón repinta la misma tarjeta sin apilar un gráfico encima de otro ni dejar el canvas vacío; «Barras» es horizontal y su etiqueta lleva conteo y porcentaje | A | |
+| K21 | En una **matriz**, mirar el pie de la tabla (W3, 2026-10-19) | Hay una fila **Total** con la suma de cada columna y el total general; el sombreado de cada fila no impide leer los números | A | |
+| K22 | En un **ranking**, alternar **Tabla** y **Barras** (W3, 2026-10-19) | La tabla (por defecto) trae posición, promedio y conteo; las barras ordenan por promedio, con el conteo en el tooltip | A | |
 
 ---
 

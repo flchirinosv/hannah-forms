@@ -993,6 +993,8 @@ body {
 .chart-box { height: 260px; }
 .number-chart-box { height: 200px; }
 .choice-chart-box { height: 220px; }
+.ranking-chart-box { height: 220px; }
+.vf-view-switch .btn { padding-left: .45rem; padding-right: .45rem; }
 
 /* W2 — Las últimas respuestas de texto libre. Cada una en su bloque, con el
    valor recortado a dos líneas (el título completo se ve al pasar el ratón),

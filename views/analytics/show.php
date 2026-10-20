@@ -14,6 +14,10 @@ $chartData = [
             'id'     => (int) $stat['field']['id'],
             'type'   => $stat['field']['type'],
             'values' => $stat['values'],
+            // W3 — El histograma numérico sale del agregado ya hecho (misma
+            // consulta): el servidor no vuelve a preguntar y el navegador no
+            // recalcula desde las respuestas, que no las tiene.
+            'dist'   => $stat['dist'] ?? [],
         ];
     }, $fieldStats)),
     'colors' => ['#6366f1', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#64748b'],
@@ -157,24 +161,39 @@ $qsAnalytics = http_build_query(array_filter([
                        partial para que el markup sea comprobable: dentro de
                        `show.php` solo se puede leer como texto. */ ?>
                 <?= View::partial('analytics/_open', ['f' => $f, 'stat' => $stat, 'form' => $form]) ?>
-            <?php elseif ($f['type'] === 'number' || $f['type'] === 'scale' || $f['type'] === 'range' || $f['type'] === 'nps' || $f['type'] === 'star'): ?>
+            <?php elseif (in_array($f['type'], \App\Services\FieldAggregator::TIPOS_NUMERICOS, true)): ?>
+                <?php
+                // W3 — Todas las tarjetas numéricas comparten familia de vista:
+                // histograma (por defecto) o resumen (oculta el lienzo y deja
+                // las mini-stats y el score NPS, que ya pinta el servidor).
+                $familiaNumerica = \App\Services\FieldAggregator::familiaDe($f['type']) ?? 'numeric';
+                $hayNumerico = $stat['values'] && $stat['values']['avg_value'] !== null;
+                ?>
                 <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100">
+                    <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="<?= View::escape($familiaNumerica) ?>">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                                 <div>
                                     <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
                                     <span class="text-muted small">Respuesta numérica</span>
                                 </div>
-                                <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
-                                    <?php $nps = $stat['nps']; ?>
-                                    <div class="text-end">
-                                        <div class="h4 fw-bold mb-0 <?= ($nps['nps'] ?? 0) >= 50 ? 'text-success' : (($nps['nps'] ?? 0) >= 0 ? 'text-warning' : 'text-danger') ?>"><?= $nps['nps'] === null ? '—' : View::escape((string) $nps['nps']) ?></div>
-                                        <span class="small text-muted">NPS</span>
-                                    </div>
-                                <?php endif; ?>
+                                <div class="d-flex align-items-center gap-2">
+                                    <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
+                                        <?php $nps = $stat['nps']; ?>
+                                        <div class="text-end">
+                                            <div class="h4 fw-bold mb-0 <?= ($nps['nps'] ?? 0) >= 50 ? 'text-success' : (($nps['nps'] ?? 0) >= 0 ? 'text-warning' : 'text-danger') ?>"><?= $nps['nps'] === null ? '—' : View::escape((string) $nps['nps']) ?></div>
+                                            <span class="small text-muted">NPS</span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($hayNumerico): ?>
+                                        <?= View::partial('analytics/_views', [
+                                            'views'  => \App\Services\FieldAggregator::VISTAS[$familiaNumerica],
+                                            'active' => 'histogram',
+                                        ]) ?>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                            <?php if ($stat['values'] && $stat['values']['avg_value'] !== null): ?>
+                            <?php if ($hayNumerico): ?>
                              <div class="row g-2 mt-3 text-center">
                                  <div class="col-4"><div class="app-mini-stat bg-primary-subtle text-primary"><div class="h5 m-0 fw-bold"><?= number_format((float) $stat['values']['avg_value'], 2) ?></div><div class="small">Promedio</div></div></div>
                                  <div class="col-4"><div class="app-mini-stat bg-success-subtle text-success"><div class="h5 m-0 fw-bold"><?= View::escape($stat['values']['min_value']) ?></div><div class="small">Mínimo</div></div></div>
@@ -187,7 +206,7 @@ $qsAnalytics = http_build_query(array_filter([
                                      <span class="badge text-bg-success-subtle border border-success-subtle">Promotores (9-10): <?= (int) $stat['nps']['promoters'] ?></span>
                                  </div>
                              <?php endif; ?>
-                             <div class="number-chart-box mt-3"><canvas class="number-chart" data-field="<?= (int) $f['id'] ?>"></canvas></div>
+                             <div class="number-chart-box mt-3" data-vf-chart-box><canvas class="number-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>
                             <?php else: ?>
                                 <p class="text-muted small mt-3">Sin respuestas numéricas válidas.</p>
                             <?php endif; ?>
@@ -218,12 +237,37 @@ $qsAnalytics = http_build_query(array_filter([
                                             <tr>
                                                 <th scope="row" class="small fw-normal text-start"><?= View::escape($row) ?></th>
                                                 <?php foreach ($mv['cols'] as $col): ?>
-                                                    <td class="text-center"><?= (int) ($rc[$col] ?? 0) ?></td>
+                                                    <?php
+                                                    // W3 — Un mapa de calor por fila: cada celda se
+                                                    // tiñe según su peso en el total de esa fila, de
+                                                    // modo que se ve de un golpe qué columna domina.
+                                                    // El número sigue siendo el dato; el color solo
+                                                    // acompaña (nunca es la única señal).
+                                                    $celda = (int) ($rc[$col] ?? 0);
+                                                    $filaTotal = (int) ($rc['_total'] ?? 0);
+                                                    $intensidad = $filaTotal > 0 ? $celda / $filaTotal : 0;
+                                                    ?>
+                                                    <td class="text-center"<?= $intensidad > 0 ? ' style="background: rgba(99,102,241,' . number_format(0.05 + 0.25 * $intensidad, 2, '.', '') . ')"' : '' ?>><?= $celda ?></td>
                                                 <?php endforeach; ?>
                                                 <td class="text-center fw-semibold"><?= (int) ($rc['_total'] ?? 0) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
+                                    <?php // W3 — Los totales por columna ya se calculaban en el
+                                          // agregado (`colCounts`) y no los pintaba nadie: la tabla
+                                          // enseñaba las filas y obligaba a sumar a mano. El total
+                                          // general es la suma de las celdas (coincide con la suma
+                                          // de los totales de fila), no `$mv['total']`, que es el
+                                          // número de respuestas. ?>
+                                    <tfoot>
+                                        <tr class="border-top">
+                                            <th scope="row" class="small fw-semibold text-start">Total</th>
+                                            <?php foreach ($mv['cols'] as $col): ?>
+                                                <td class="text-center fw-semibold"><?= (int) ($mv['colCounts'][$col] ?? 0) ?></td>
+                                            <?php endforeach; ?>
+                                            <td class="text-center fw-semibold"><?= (int) array_sum($mv['colCounts']) ?></td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
@@ -232,11 +276,23 @@ $qsAnalytics = http_build_query(array_filter([
             <?php elseif ($f['type'] === 'ranking' && !empty($stat['values'])): ?>
                 <?php $rv = $stat['values']; ?>
                 <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100">
+                    <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="ranking">
                         <div class="card-body">
-                            <h4 class="h6 fw-bold mb-1"><?= View::escape($f['label']) ?></h4>
-                            <span class="text-muted small">Ranking (promedio de orden)</span>
-                            <div class="table-responsive mt-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div>
+                                    <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
+                                    <span class="text-muted small">Ranking (promedio de orden)</span>
+                                </div>
+                                <?php // W3 — La tabla es la vista por defecto (es el dato
+                                      // exacto); las barras de posición media son la lectura
+                                      // de un golpe. La lista blanca no ofrece doughnut: un
+                                      // promedio de orden no es una parte de un todo. ?>
+                                <?= View::partial('analytics/_views', [
+                                    'views'  => \App\Services\FieldAggregator::VISTAS['ranking'],
+                                    'active' => 'table',
+                                ]) ?>
+                            </div>
+                            <div class="table-responsive mt-3" data-vf-ranking-table>
                                 <table class="table table-sm align-middle mb-0 app-stat-ranking">
                                     <thead>
                                         <tr>
@@ -256,16 +312,30 @@ $qsAnalytics = http_build_query(array_filter([
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="ranking-chart-box mt-3 d-none" data-vf-chart-box><canvas class="ranking-chart" data-field="<?= (int) $f['id'] ?>"></canvas></div>
                         </div>
                     </div>
                 </div>
             <?php elseif (in_array($f['type'], ['select', 'radio', 'checkbox'], true) && !empty($stat['values'])): ?>
                 <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100">
+                    <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="choice">
                         <div class="card-body">
-                            <h4 class="h6 fw-bold mb-1"><?= View::escape($f['label']) ?></h4>
-                            <span class="text-muted small"><?= $stat['non_empty'] ?> respuestas</span>
-                            <div class="choice-chart-box mt-3"><canvas class="choice-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div>
+                                    <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
+                                    <span class="text-muted small"><?= $stat['non_empty'] ?> respuestas</span>
+                                </div>
+                                <?php // W3 — Barras por defecto: las opciones de un select no
+                                      // son porciones de un todo (alguien puede no responder) y
+                                      // el anillo se vuelve ilegible con muchas. El anillo se
+                                      // ofrece como lectura alternativa, no como default. ?>
+                                <?= View::partial('analytics/_views', [
+                                    'views'  => \App\Services\FieldAggregator::VISTAS['choice'],
+                                    'active' => 'bars',
+                                ]) ?>
+                            </div>
+                            <div class="choice-chart-box mt-3" data-vf-chart-box><canvas class="choice-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>
+                            <div class="vf-choice-table d-none mt-3"></div>
                         </div>
                     </div>
                 </div>

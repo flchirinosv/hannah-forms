@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 108 archivos, 1186 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 109 archivos, 1195 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -52,7 +52,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (19), `lang/{es,en}.php`.
-  `views/` = 71 plantillas y partials con `View` (veintiséis con prefijo `_`, sin ruta
+  `views/` = 72 plantillas y partials con `View` (veintisiete con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **62 de los 108 archivos tocan la BD real** (los que llaman
+- **62 de los 109 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -701,6 +701,36 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `View::escape()` (`ENT_QUOTES`), y el enlace lleva el `sid` de la consulta,
   nunca el índice de la fila. El contador sale de `non_empty`, no de
   `ABIERTAS_MAX`: 400 respuestas dicen 400 aunque solo se listen 5.
+
+**Las vistas de la analítica (W3)**
+
+- **`FieldAggregator::VISTAS` es la lista blanca de vistas por familia y
+  `familiaDe()` la única traducción tipo→familia** (`choice`: barras/anillo/tabla;
+  `numeric` y `nps`: histograma/resumen; `ranking`: tabla/barras). `matrix` no
+  tiene familia (una sola representación), los abiertos tampoco (lista) y
+  `section`/`page` no guardan respuestas. Añadir una vista = añadir la clave a esa
+  lista y su rama en `_views.php`/`analytics.js`; ofrecer una fuera de ella
+  (anillo de 10 000 números, histograma de categorías) es una combinación que
+  miente sobre lo que enseña.
+- **`dist` se construye desde las filas agrupadas de `numerico()`, sin consulta
+  nueva**, así que el histograma y el promedio no pueden discrepar de
+  `answer_count` por construcción. Va ordenado por **valor**, no por frecuencia
+  (que es como devuelve `valueCountsInForm()`), excluye lo no numérico con la
+  misma regex y el NPS rellena 0..10 con ceros para no comprimir el eje. Un
+  `number` con más de `DIST_MAX = 30` valores distintos se agrupa en
+  `DIST_BINS = 20` barras y **no pierde respuestas** (la suma se conserva).
+- **La fila «Total» de la matriz es `colCounts` y el total general es
+  `array_sum(colCounts)`, no el total de respuestas de la cabecera**: una fila sin
+  contestar deja menos celdas que `respuestas × columnas`.
+- **El conmutador es efímero** (`data-vf-view` + `aria-pressed`): no va a la URL
+  ni a la BD, no hay migración, ajuste ni clave de i18n, y se pierde al recargar.
+  El servidor pinta solo las vistas de la familia y marca una activa; el JS
+  **destruye el `Chart` anterior** (`Map` por canvas) antes de repintar, o cambiar
+  de vista apila instancias sobre el mismo lienzo. Los datos siguen en
+  `data-chart`, nunca en un `<script>`.
+- **La barra «Promedio/Mínimo/Máximo» se retiró**: repetía las mini-stats y
+  ocupaba el sitio del histograma; el promedio sigue en el resumen y en la tabla
+  del ranking.
 
 **Quién respondió (fase 9)**
 
@@ -1679,7 +1709,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 555 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 560 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

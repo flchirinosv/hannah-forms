@@ -713,6 +713,18 @@ tarjeta con el total de respuestas y **las cinco más recientes**, cada una con 
 fecha y un enlace **Ver** a esa respuesta concreta. El contador es el total real,
 no las cinco que se listan. Un adjunto se muestra como «nombre (tamaño)».
 
+Las preguntas numéricas (número, escala, rango, NPS y estrellas) llevan un
+**histograma** con el eje ordenado de menor a mayor; un número con muchos valores
+distintos se agrupa en veinte barras y el NPS enseña siempre la escala 0..10
+completa, con colores por tramo (0–6 rojo, 7–8 ámbar, 9–10 verde). La matriz
+cierra su tabla con una fila **Total** por columna, y el ranking ofrece tabla
+(posición, promedio y conteo) o barras horizontales del promedio.
+
+Cada tarjeta con gráfico trae un conmutador **Vista**: barras, anillo o tabla en
+las de opciones; histograma o resumen en las numéricas; tabla o barras en el
+ranking. Es una elección de lectura: se pierde al recargar y no cambia el
+formulario.
+
 La tabla de respuestas numera sus filas desde **#1** en la primera página y cada
 una lleva también su **Ver** al detalle de la respuesta. Se recarga por AJAX al
 cambiar de página o de filtro. Si alguna vez se queda «cargando» para siempre y

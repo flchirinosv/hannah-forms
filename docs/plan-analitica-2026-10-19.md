@@ -79,7 +79,7 @@ Los datos de los gráficos salen embebidos como atributo `data-chart` en
 |---|---|---|
 | **W1** | Drill-down: enlace «Ver» por fila + arreglo del `#` (off-by-one) | ✅ `0b8be12` |
 | **W2** | Preguntas abiertas: tarjeta con las últimas respuestas enlazadas | ✅ hecha |
-| **W3** | Gráficos: histograma, barras horizontales, matriz con totales, ranking con barra + **selector «Vista»** | ⬜ |
+| **W3** | Gráficos: histograma, barras horizontales, matriz con totales, ranking con barra + **selector «Vista»** | ✅ hecha |
 | **W4** | Cabecera, filtros con etiqueta, índice de preguntas, estados vacíos, KPI participantes | ⬜ |
 
 ---
@@ -225,11 +225,17 @@ calcula en `FieldAggregator:561` y nadie lo pinta); el ranking es solo tabla.
   mienten (doughnut sobre 10 000 números distintos, línea sobre categóricas).
 - El estado **no sobrevive** a recargar ni al cambiar el filtro de fechas.
 
-### W3.6 Tests
+### W3.6 Tests (construido)
 
-- `AnalyticsAggregationTest`: asserts de `dist` (suma de `c` == `answer_count`,
-  orden asc) sin tocar `values`.
-- Markup de la matriz con fila «Total» y del selector por familia.
+- `AnalyticsAggregationTest`: `testElHistogramaNumericoSumaElTotalYVaOrdenado`
+  (suma de `c` == `answer_count`, orden asc), `testElHistogramaDelNpsCubreLaEscalaCeroADiez`
+  (11 entradas con ceros) y `testUnNumeroMuyDispersoSeAgrupaEnBarras` (45 valores
+  ⇒ `DIST_BINS`, suma 45). Sin tocar `values`.
+- `tests/unit/AnalyticsChartsTest.php` (6 métodos, sin BD): listas blancas
+  exactas de `VISTAS`, familias y tipos cubiertos en los dos sentidos, una sola
+  vista activa en el conmutador, `<tfoot>` con `colCounts` y total general,
+  familias/lienzos en el markup de `show.php`, y el JS que destruye antes de
+  repintar y ya no pinta la barra redundante.
 
 ---
 

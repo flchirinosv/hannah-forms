@@ -637,6 +637,85 @@ class AnalyticsAggregationTest
     }
 
     /**
+     * W3 — El histograma sale de la MISMA consulta agrupada que el promedio,
+     * así que tiene que sumar exactamente las respuestas que el promedio
+     * cuenta: ni las «N/A» de más ni las válidas de menos.
+     *
+     * Y ordenado ascendente: `valueCountsInForm()` ordena por frecuencia, y
+     * dibujar un eje numérico en ese orden lo baraja (7, 10, 9, 20…).
+     */
+    public function testElHistogramaNumericoSumaElTotalYVaOrdenado(): void
+    {
+        $this->seed();
+        $stat = $this->agregar()[(int) self::$fieldIds['number']];
+        $dist = $stat['dist'];
+
+        assertTrue($dist !== [], 'un campo numérico con respuestas tiene histograma');
+
+        $suma = 0;
+        $valores = [];
+        foreach ($dist as $fila) {
+            $suma += (int) $fila['c'];
+            $valores[] = (float) $fila['value'];
+        }
+
+        assertEquals(
+            (int) $stat['values']['answer_count'],
+            $suma,
+            'la suma del histograma es el answer_count del promedio, no el total de respuestas'
+        );
+
+        $ordenados = $valores;
+        sort($ordenados, SORT_NUMERIC);
+        assertEquals($ordenados, $valores, 'el eje del histograma va ascendente, no por frecuencia');
+    }
+
+    /**
+     * El histograma del NPS completa la escala 0..10: un valor ausente tiene
+     * que enseñarse como hueco, no desaparecer (comprimiría el eje y mentiría
+     * sobre la forma de la distribución).
+     */
+    public function testElHistogramaDelNpsCubreLaEscalaCeroADiez(): void
+    {
+        $this->seed();
+        $stat = $this->agregar()[(int) self::$fieldIds['nps']];
+
+        assertEquals(11, count($stat['dist']), 'la escala 0..10 entera, con ceros incluidos');
+        assertEquals(
+            range(0, 10),
+            array_map(static fn($fila) => (int) $fila['value'], $stat['dist']),
+            'las etiquetas son 0,1,…,10'
+        );
+        assertEquals(
+            (int) $stat['nps']['answer_count'],
+            array_sum(array_column($stat['dist'], 'c')),
+            'y no se pierde ninguna respuesta por el camino'
+        );
+    }
+
+    /**
+     * W3 — Un `number` con más de `DIST_MAX` valores distintos se agrupa: 400
+     * edades en 400 barras no es un histograma. El total de respuestas se
+     * conserva y las barras no pasan de `DIST_BINS`.
+     */
+    public function testUnNumeroMuyDispersoSeAgrupaEnBarras(): void
+    {
+        $campo = Field::create((int) self::$formId, 'number', 'Escala ancha');
+        for ($i = 1; $i <= 45; $i++) {
+            $sid = Submission::create((int) self::$formId);
+            self::$submissionIds[] = $sid;
+            \App\Models\Answer::create($sid, (int) $campo, (string) $i);
+        }
+
+        $fila = Field::find((int) $campo);
+        $stats = FieldAggregator::forForm((int) self::$formId, [$fila], [(int) $campo], 45);
+        $dist = $stats[(int) $campo]['dist'];
+
+        assertEquals(FieldAggregator::DIST_BINS, count($dist), 'el techo de barras es DIST_BINS');
+        assertEquals(45, array_sum(array_column($dist, 'c')), 'agrupar no pierde respuestas');
+    }
+
+    /**
      * `validDay()` tiene que rechazar fechas imposibles y aceptar las reales.
      * `createFromFormat('Y-m-d', '2026-02-31')` devuelve un objeto (31 de
      * marzo) en vez de fallar, así que un filtro con esa fecha se convertiría

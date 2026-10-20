@@ -111,6 +111,10 @@ final class FieldAggregator
                 $stat['nps'] = self::nps($rows);
             }
 
+            if (in_array($type, self::TIPOS_NUMERICOS, true)) {
+                $stat['dist'] = self::distribucion($rows, $type);
+            }
+
             if (in_array($type, self::TIPOS_ABIERTOS, true)) {
                 $stat['abiertas'] = $abiertas[$fieldId] ?? [];
             }
@@ -140,6 +144,48 @@ final class FieldAggregator
 
     /** Cuántas respuestas recientes por campo caben en su tarjeta. */
     public const ABIERTAS_MAX = 5;
+
+    /**
+     * Los tipos que comparten el agregado numérico (promedio/mín/máx) y, desde
+     * W3, el histograma `dist`.
+     */
+    public const TIPOS_NUMERICOS = ['number', 'scale', 'range', 'nps', 'star'];
+
+    /** A partir de cuántos valores distintos el histograma de `number` se agrupa. */
+    public const DIST_MAX = 30;
+
+    /** En cuántas barras se agrupa un histograma demasiado ancho. */
+    public const DIST_BINS = 20;
+
+    /**
+     * W3 — La vista por defecto y las vistas permitidas de cada familia de
+     * tarjeta. Es una **lista blanca**, no un selector libre: un doughnut sobre
+     * 10 000 números distintos o una línea sobre categóricas dicen cosas falsas.
+     *
+     * `summary` no pinta nada nuevo: oculta el lienzo y deja a la vista las
+     * mini-stats (promedio/mín/máx) y el score NPS, que ya están escritos por
+     * el servidor. `table` es la tabla de posiciones del ranking o la de
+     * conteos del campo de opciones. `matrix` no aparece porque tiene una sola
+     * representación (la tabla con su fila de totales).
+     */
+    public const VISTAS = [
+        'choice'  => ['bars', 'doughnut', 'table'],
+        'numeric' => ['histogram', 'summary'],
+        'nps'     => ['histogram', 'summary'],
+        'ranking' => ['table', 'bars'],
+    ];
+
+    /** La familia de vista de un tipo con tarjeta propia, o `null` si no tiene. */
+    public static function familiaDe(string $type): ?string
+    {
+        return match ($type) {
+            'select', 'radio', 'checkbox'              => 'choice',
+            'number', 'scale', 'range', 'star'         => 'numeric',
+            'nps'                                      => 'nps',
+            'ranking'                                  => 'ranking',
+            default                                    => null,
+        };
+    }
 
     /**
      * Fase 8: los TEchos de la comparación por atributo.
@@ -443,11 +489,13 @@ final class FieldAggregator
      */
     private static function valuesForType(string $type, array $rows, array $field): mixed
     {
+        if (in_array($type, self::TIPOS_NUMERICOS, true)) {
+            return self::numerico($rows);
+        }
+
         return match ($type) {
             'select', 'radio'       => self::conteoSimple($rows),
             'checkbox'              => self::conteoCheckbox($rows),
-            'number', 'scale',
-            'range', 'nps', 'star'  => self::numerico($rows),
             'matrix'                => self::matriz($rows, self::matrixRows($field), self::matrixCols($field)),
             'ranking'               => self::ranking($rows, self::plainOptions($field)),
             default                 => [],
@@ -541,6 +589,92 @@ final class FieldAggregator
             'min_value'    => $min,
             'max_value'    => $max,
         ];
+    }
+
+    /**
+     * W3 — El histograma de un campo numérico, construido desde `$rows` (la
+     * misma consulta agrupada que alimenta el promedio): **sin consulta extra**
+     * y con el mismo filtro de "es numérico" que `numerico()`, o el histograma
+     * sumaría las respuestas "N/A" que el promedio descarta.
+     *
+     * `value` es numérico y `c` el número de respuestas (ya multiplicado por la
+     * `c` de la fila agrupada). Se ordena ascendente porque es un eje numérico:
+     * el orden de la consulta es por frecuencia y dibujaría el histograma
+     * barajado.
+     *
+     * `nps` completa la escala 0..10 con ceros: un NPS sin ningún 2 tiene que
+     * enseñar el hueco, no comprimir el eje.
+     *
+     * Un `number` con más de `DIST_MAX` valores distintos se agrupa en
+     * `DIST_BINS` barras: 400 edades en 400 barras no es un histograma.
+     */
+    private static function distribucion(array $rows, string $type): array
+    {
+        $counts = [];
+        foreach ($rows as $row) {
+            $valor = trim((string) $row['value']);
+            if (!preg_match('/^-?[0-9]+(\.[0-9]+)?$/', $valor)) {
+                continue;
+            }
+            $n = (float) $valor;
+            if ($type === 'nps' && ($n < 0 || $n > 10 || $n !== floor($n))) {
+                continue;
+            }
+            $clave = (string) $n;
+            $counts[$clave] = ($counts[$clave] ?? 0) + (int) $row['c'];
+        }
+
+        if ($type === 'nps') {
+            for ($i = 0; $i <= 10; $i++) {
+                $counts[(string) $i] = $counts[(string) $i] ?? 0;
+            }
+        }
+
+        uksort($counts, static fn($a, $b): int => (float) $a <=> (float) $b);
+
+        $dist = [];
+        foreach ($counts as $valor => $c) {
+            $dist[] = ['value' => (float) $valor, 'c' => $c];
+        }
+
+        if ($type === 'number' && count($dist) > self::DIST_MAX) {
+            return self::agruparDistribucion($dist);
+        }
+
+        return $dist;
+    }
+
+    /**
+     * Funde un histograma demasiado ancho en `DIST_BINS` tramos de igual ancho.
+     * La etiqueta es el extremo inferior del tramo y la suma de `c` se conserva,
+     * que es lo que comprueba el test.
+     *
+     * @param array<int, array{value: float, c: int}> $dist ya ordenada
+     * @return array<int, array{value: float, c: int}>
+     */
+    private static function agruparDistribucion(array $dist): array
+    {
+        $min = $dist[0]['value'];
+        $max = $dist[count($dist) - 1]['value'];
+        $ancho = ($max - $min) / self::DIST_BINS;
+        if ($ancho <= 0) {
+            return $dist;
+        }
+
+        $bins = [];
+        foreach ($dist as $row) {
+            $i = (int) floor(($row['value'] - $min) / $ancho);
+            if ($i >= self::DIST_BINS) {
+                $i = self::DIST_BINS - 1;
+            }
+            if (!isset($bins[$i])) {
+                $bins[$i] = ['value' => round($min + $i * $ancho, 2), 'c' => 0];
+            }
+            $bins[$i]['c'] += $row['c'];
+        }
+
+        ksort($bins);
+        return array_values($bins);
     }
 
     /**
