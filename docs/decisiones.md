@@ -1807,6 +1807,19 @@ consultas.
   (`text-bg-primary-subtle`). Lo ata
   `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`, que
   además `grep`a el CSS de Bootstrap para comprobar que cada clase usada existe.
+- **G6 (bis) — «Resumen» no era una vista, era el histograma sin gráfico.** Con
+  las insignias ya legibles, el autor seguía sin ver el resumen. Medido en
+  Chromium headless sobre la vista real: las mini-stats Promedio/Mínimo/Máximo y
+  las insignias se pintaban **siempre**, tanto en Histograma como en Resumen, y
+  `aplicarVista()` solo hacía `d-none` sobre el lienzo. Así que «Resumen» no
+  aportaba nada distinto de quitar el gráfico —el mismo bloque de texto en las dos
+  vistas— y se leía como una vista rota. Ahora las mini-stats y las insignias van
+  dentro de un bloque `data-vf-summary-box` que `aplicarVista()` **enseña solo en
+  Resumen** (y oculta en Histograma): las dos representaciones son mutuamente
+  excluyentes. Sin JS el bloque se ve y el lienzo está vacío, el mismo compromiso
+  que el resto del conmutador. Lo ata el propio
+  `testElResumenNumericoSeVeYLasInsigniasNpsTienenColor` (el bloque existe y el JS
+  lo localiza y lo conmuta) y el contrato de vista de `AnalyticsChartsTest`.
 
 Tests: 8 métodos nuevos (6 en `AnalyticsChartsTest` —el arnés con node, el
 contrato sin node, los chips, el marcador PII y los tres de cabecera/índice/

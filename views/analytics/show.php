@@ -267,19 +267,21 @@ $qsAnalytics = http_build_query(array_filter([
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <?php if ($hayNumerico): ?>
-                             <div class="row g-2 mt-3 text-center">
-                                 <div class="col-4"><div class="app-mini-stat bg-primary-subtle text-primary"><div class="h5 m-0 fw-bold"><?= number_format((float) $stat['values']['avg_value'], 2) ?></div><div class="small">Promedio</div></div></div>
-                                 <div class="col-4"><div class="app-mini-stat bg-success-subtle text-success"><div class="h5 m-0 fw-bold"><?= View::escape($stat['values']['min_value']) ?></div><div class="small">Mínimo</div></div></div>
-                                 <div class="col-4"><div class="app-mini-stat bg-warning-subtle text-warning"><div class="h5 m-0 fw-bold"><?= View::escape($stat['values']['max_value']) ?></div><div class="small">Máximo</div></div></div>
-                             </div>
-                             <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
-                                 <div class="d-flex flex-wrap gap-2 mt-3 small">
-                                     <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Detractores (0-6): <?= (int) $stat['nps']['detractors'] ?></span>
-                                     <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Pasivos (7-8): <?= (int) $stat['nps']['passives'] ?></span>
-                                     <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Promotores (9-10): <?= (int) $stat['nps']['promoters'] ?></span>
+                             <?php if ($hayNumerico): ?>
+                             <div data-vf-summary-box>
+                                 <div class="row g-2 mt-3 text-center">
+                                     <div class="col-4"><div class="app-mini-stat bg-primary-subtle text-primary"><div class="h5 m-0 fw-bold"><?= number_format((float) $stat['values']['avg_value'], 2) ?></div><div class="small">Promedio</div></div></div>
+                                     <div class="col-4"><div class="app-mini-stat bg-success-subtle text-success"><div class="h5 m-0 fw-bold"><?= View::escape($stat['values']['min_value']) ?></div><div class="small">Mínimo</div></div></div>
+                                     <div class="col-4"><div class="app-mini-stat bg-warning-subtle text-warning"><div class="h5 m-0 fw-bold"><?= View::escape($stat['values']['max_value']) ?></div><div class="small">Máximo</div></div></div>
                                  </div>
-                             <?php endif; ?>
+                                 <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
+                                     <div class="d-flex flex-wrap gap-2 mt-3 small">
+                                         <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Detractores (0-6): <?= (int) $stat['nps']['detractors'] ?></span>
+                                         <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Pasivos (7-8): <?= (int) $stat['nps']['passives'] ?></span>
+                                         <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Promotores (9-10): <?= (int) $stat['nps']['promoters'] ?></span>
+                                     </div>
+                                 <?php endif; ?>
+                             </div>
                              <div class="number-chart-box mt-3" data-vf-chart-box><canvas class="number-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>
                             <?php else: ?>
                                 <p class="text-muted small mt-3">Sin respuestas numéricas válidas.</p>

@@ -351,8 +351,13 @@
         }
 
         // numeric y nps: «Resumen» no pinta un lienzo nuevo, deja a la vista
-        // las mini-stats y el score que ya escribió el servidor.
+        // las mini-stats y los badges que ya escribió el servidor. Ese bloque
+        // (`data-vf-summary-box`) solo se enseña en Resumen: en Histograma
+        // duplicaría en texto lo que el gráfico ya representa, y dejarlo
+        // siempre visible hacía que Resumen no aportara nada distinto.
         var esResumen = view === 'summary';
+        var resumen = card.querySelector('[data-vf-summary-box]');
+        if (resumen) resumen.classList.toggle('d-none', !esResumen);
         if (caja) caja.classList.toggle('d-none', esResumen);
         if (!esResumen && field && canvas) {
             renderHistogram(field, canvas, field.type === 'nps');

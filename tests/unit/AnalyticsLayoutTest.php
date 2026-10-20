@@ -228,6 +228,15 @@ class AnalyticsLayoutTest
         assertFalse(str_contains($html, 'text-bg-danger-subtle'), 'no se usa la clase inexistente text-bg-danger-subtle');
         assertFalse(str_contains($html, 'text-bg-secondary-subtle'), 'no se usa la clase inexistente text-bg-secondary-subtle');
         assertFalse(str_contains($html, 'text-bg-success-subtle'), 'no se usa la clase inexistente text-bg-success-subtle');
+
+        // Y el resumen es una VISTA, no lo que ya se veía en el histograma: las
+        // mini-stats y las insignias van dentro de `data-vf-summary-box`, que el
+        // JS enseña solo en Resumen. Sin ese envoltorio, Resumen no aportaba
+        // nada distinto de quitar el gráfico y parecía roto.
+        assertTrue(str_contains($html, 'data-vf-summary-box'), 'las mini-stats van en su bloque de resumen');
+        $js = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/analytics.js');
+        assertTrue(str_contains($js, "querySelector('[data-vf-summary-box]')"), 'aplicarVista localiza el bloque de resumen');
+        assertTrue(str_contains($js, "resumen.classList.toggle('d-none', !esResumen)"), 'aplicarVista lo enseña solo en Resumen');
     }
 
     // ---------------------------------------------------------------

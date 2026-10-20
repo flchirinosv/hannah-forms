@@ -144,6 +144,7 @@ class AnalyticsChartsTest
         );
 
         assertTrue(str_contains($fuente, 'data-vf-chart-box'), 'el JS necesita la caja que oculta «Resumen»');
+        assertTrue(str_contains($fuente, 'data-vf-summary-box'), 'el resumen es su propio bloque, no lo que ya pinta el histograma');
         assertTrue(str_contains($fuente, 'class="ranking-chart"'), 'el ranking tiene lienzo para las barras');
         assertTrue(str_contains($fuente, 'vf-choice-table'), 'las opciones tienen tabla alternativa');
         assertTrue(

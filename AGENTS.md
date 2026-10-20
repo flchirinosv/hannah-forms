@@ -805,19 +805,26 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   imprime sin volver a escapar (el resto sí se escapa). Lo ata
   `AnalyticsChartsTest::testLasRespuestasCompuestasSePintanConChips` y
   `testElMarcadorPiiNoSeReformateaComoJson`.
-- **El resumen de una tarjeta numérica ES contenido, no el hueco que deja el
-  lienzo**: la vista «Resumen» oculta el canvas y deja a la vista las mini-stats y,
-  en NPS, las insignias Detractores/Pasivos/Promotores. Si esas insignias no se
-  ven, el resumen de un NPS **parece vacío** y el síntoma se confunde con «el
-  gráfico desapareció». La trampa es de clase, no de datos: `text-bg-danger-subtle`
-  (y `-secondary-`/`-success-`) **NO existe** en el Bootstrap 5.3 vendorizado, así
-  que la clase no pinta nada, el `.badge` se queda con su `color:#fff` sobre fondo
+- **El resumen de una tarjeta numérica ES una vista, no el hueco que deja el
+  lienzo**: «Resumen» y «Histograma» son **representaciones mutuamente
+  excluyentes** del mismo dato. Las mini-stats (Promedio/Mínimo/Máximo) y, en NPS,
+  las insignias Detractores/Pasivos/Promotores van dentro de
+  `data-vf-summary-box`, y `aplicarVista()` lo enseña **solo** en Resumen (oculta
+  el bloque y el lienzo en el otro sentido). Si el bloque estuviera siempre
+  visible, Resumen no aportaría nada distinto de quitar el gráfico —el usuario ve
+  las mismas mini-stats en las dos vistas— y **parece roto**: es el síntoma «el
+  resumen no se ve», distinto del de las insignias invisibles.
+- **Y si esas insignias no se ven, el resumen de un NPS también parece vacío.**
+  La trampa es de clase, no de datos: `text-bg-danger-subtle` (y
+  `-secondary-`/`-success-`) **NO existe** en el Bootstrap 5.3 vendorizado, así que
+  la clase no pinta nada, el `.badge` se queda con su `color:#fff` sobre fondo
   transparente y el texto sale blanco sobre blanco. La pareja correcta es
   `bg-<color>-subtle` + `text-<color>-emphasis` (el borde `border-<color>-subtle`
   sí existe). Lo ata
   `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`, que
   además `grep`a el CSS de Bootstrap para comprobar que la clase que se usa existe
-  de verdad. El mismo error de clase estaba en `views/admin/_user_role.php`.
+  de verdad y que las mini-stats e insignias viven dentro de `data-vf-summary-box`.
+  El mismo error de clase estaba en `views/admin/_user_role.php`.
 
 **Quién respondió (fase 9)**
 

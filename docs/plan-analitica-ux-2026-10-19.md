@@ -135,6 +135,13 @@ renderiza un formulario NPS + Número, comprueba que el resumen pinta mini-stats
 insignias, y `grep`a el CSS de Bootstrap para verificar que cada clase que se usa
 **existe**. Comprobación manual K33.
 
+**G6 (bis) — «Resumen» tiene que ser una vista, no el histograma sin gráfico.** Con
+las insignias ya legibles seguía pareciendo vacío: medido en Chromium headless, las
+mini-stats y las insignias se pintaban **siempre** (Histograma y Resumen), así que
+Resumen solo quitaba el lienzo y no aportaba nada distinto. Ahora van dentro de
+`data-vf-summary-box`, que `aplicarVista()` enseña **solo** en Resumen; Histograma y
+Resumen pasan a ser representaciones mutuamente excluyentes.
+
 ---
 
 ## Proceso
