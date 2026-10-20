@@ -11,9 +11,11 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\FormAccess;
 use App\Models\FormParticipant;
 use App\Models\Submission;
 use App\Services\FieldAggregator;
+use App\Services\FormSettings;
 use App\Services\Pii;
 
 class AnalyticsController
@@ -136,6 +138,18 @@ class AnalyticsController
         // Progreso diario (migrado a Models)
         $daily = Submission::dailyStats($formId, (string) $from, (string) $to, $atr);
 
+        // W4 — Tasa de respuesta del listado. Solo tiene sentido en un formulario
+        // cuyo acceso es una lista (`roster`), que es el único que tiene padrón.
+        // Es GLOBAL y no respeta `from`/`to`: `responded_at` no se filtra por
+        // fecha, así que «18 de 40» es del padrón entero y la etiqueta lo dice.
+        $participacion = null;
+        if (FormAccess::mode(Form::settingsFrom($form)) === FormSettings::ACCESS_ROSTER) {
+            $participacion = [
+                'respondidos' => FormParticipant::respondedCountForForm($formId),
+                'total'       => FormParticipant::countForForm($formId),
+            ];
+        }
+
         // Respuestas de la tabla (N+1 resuelto: una sola consulta; y SOLO de
         // la página actual, no de todas las submissions del formulario).
         $submissionIds = array_column($submissions, 'id');
@@ -164,6 +178,10 @@ class AnalyticsController
             // agrupar: un formulario sin listado, sin atributo elegido, con un
             // valor filtrado, o cuyas preguntas no son comparables.
             'agrupacion'  => $agrupacion,
+            // W4 — tasa de respuesta del listado, o `null` si no es de tipo
+            // roster. La calcula el controlador (no la vista) porque una lista
+            // no siempre existe y la tarjeta se decide por ese valor.
+            'participacion' => $participacion,
             'attrsByPid'  => FormParticipant::atributosDe(array_map(
                 static fn(array $s): int => (int) ($s['participant_id'] ?? 0),
                 $submissions

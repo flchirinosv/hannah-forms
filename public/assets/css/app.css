@@ -996,6 +996,12 @@ body {
 .ranking-chart-box { height: 220px; }
 .vf-view-switch .btn { padding-left: .45rem; padding-right: .45rem; }
 
+/* W4 — Índice de preguntas. La columna se queda pegada al hacer scroll para no
+   perderla al bajar por una analítica larga; las tarjetas destino reciben un
+   margen de scroll para que el navbar no las tape al saltar por ancla. */
+.app-analytics-index { position: sticky; top: 1rem; }
+.vf-analytics-field { scroll-margin-top: 5rem; }
+
 /* W2 — Las últimas respuestas de texto libre. Cada una en su bloque, con el
    valor recortado a dos líneas (el título completo se ve al pasar el ratón),
    la fecha pequeña y su enlace «Ver» a la derecha, que es el mismo drill-down

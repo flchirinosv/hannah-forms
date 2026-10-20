@@ -707,6 +707,19 @@ Series por día, distribución por respuesta y desglose por campo. Si el
 formulario tiene preguntas marcadas como personales, la analítica también las
 enmascara.
 
+La cabecera tiene su título y el botón **Exportar CSV** a la derecha; los
+filtros (rango de fechas y, en un formulario de listado, por atributo) van en su
+propia fila debajo. Con más de tres preguntas aparece un **índice**: una columna
+«Preguntas» en escritorio con enlaces que saltan a cada tarjeta y un desplegable
+«Ir a una pregunta» en móvil.
+
+Un formulario recién publicado, sin respuestas, muestra una tarjeta «Sin
+respuestas todavía» con un botón para ir a compartirlo —no un panel de ceros—;
+un filtro que no casa con nada lo dice en el detalle («Sin respuestas para este
+filtro»), que es distinto de no tener ninguna. Un formulario cuyo acceso es una
+**lista** añade una tarjeta «Tasa de respuesta» con «N de M (P%)» del padrón
+entero: ese número no sigue el filtro de fechas, y la tarjeta lo deja claro.
+
 Las preguntas de respuesta abierta (texto, texto largo, email, URL, teléfono,
 hora, fecha, fecha-hora y archivo adjunto) no tienen gráfico: muestran una
 tarjeta con el total de respuestas y **las cinco más recientes**, cada una con su

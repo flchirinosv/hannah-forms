@@ -1698,3 +1698,51 @@ Tests: `AnalyticsAggregationTest::testElTechoDeLasRespuestasRecientesEsPorCampoN
 Tests: en `AnalyticsAggregationTest`, `testElHistogramaNumericoSumaElTotalYVaOrdenado` (suma == `answer_count`, orden ascendente), `testElHistogramaDelNpsCubreLaEscalaCeroADiez` (11 entradas con ceros) y `testUnNumeroMuyDispersoSeAgrupaEnBarras` (45 valores ⇒ 20 barras y 45 respuestas); fichero nuevo `tests/unit/AnalyticsChartsTest.php` (6 métodos: listas blancas exactas, familias y tipos cubiertos en los dos sentidos, una sola vista activa, fila Total de la matriz, familias/lienzos en el markup y el JS que destruye antes de repintar y ya no pinta la barra redundante); comprobaciones manuales K18–K22 del bloque K de `docs/pruebas-funcionales.md`.
 
 Suite completa: 109 archivos / **1195 métodos** en verde.
+
+## La cabecera, los filtros, el índice y los estados vacíos de la analítica (2026-10-19, W4)
+
+Cuarta y última pieza de la auditoría de la pantalla de analítica (plan en
+`docs/plan-analitica-2026-10-19.md`). Es la fase menos vistosa y por eso la que
+más fácil se queda a medias sin que nada falle: un `<label>` que falta solo se
+nota con lector de pantalla y un estado vacío que no existe es una pantalla de
+ceros.
+
+- **(a) La barra de filtros deja la fila de acciones.** Compartía fila con
+  `.app-head-actions` (donde vive «Exportar CSV») y con poco ancho la empujaba;
+  ahora va en su **propia fila** debajo, con la cabecera común `.app-page-head`
+  arriba. Lo ata `AnalyticsLayoutTest::testLaCabeceraEsLaComunYLosFiltrosTienenSuFila`,
+  que exige que `analytics-filters` venga **después** de `app-head-actions` en el
+  fuente.
+- **(b) Los dos campos de fecha llevan `<label class="visually-hidden">`** con
+  `for` al `id` real (`analyticsFrom`/`analyticsTo`). Sin él, un lector de
+  pantalla anuncia «campo de fecha» dos veces sin distinguir desde de hasta.
+- **(c) Índice de preguntas con más de tres campos.** Dos superficies: columna
+  `col-lg-3` con anclas `href="#campo-{id}"` (funciona **sin JS**) y, en móvil,
+  un `<select id="analyticsIndexSelect">` que `initQuestionIndex()` resuelve con
+  `scrollIntoView`. Cada tarjeta es un destino con `id="campo-{id}"`; sin ese id
+  las anclas no llevan a ninguna parte. Con una sola pregunta no se pinta.
+- **(d) Dos vacíos, no uno.** `$total === 0 && $from === '' && $to === '' &&
+  $atr === null` es «este formulario aún no tiene respuestas» y se corta con una
+  tarjeta y un CTA («Ir a compartir»), nunca un panel de ceros. Un filtro que no
+  casa deja el formulario **con** respuestas y solo el detalle dice «Sin
+  respuestas para este filtro». El literal del primer estado es «Este formulario
+  aún no ha recibido ninguna respuesta» y no «Sin respuestas todavía»: esa
+  segunda cadena **colisiona** con el texto de `_open.php` para una tarjeta
+  abierta vacía, así que un test que la busque casa en los dos casos (pasó al
+  escribir el test, y por eso el assert mira la frase larga).
+- **(e) La tarjeta «Tasa de respuesta» solo en modo `roster`.** Es el único modo
+  con padrón del que sacar el denominador:
+  `FormAccess::mode(Form::settingsFrom($form)) === FormSettings::ACCESS_ROSTER`
+  decide y `$participacion = ['respondidos','total']` sale de
+  `FormParticipant::respondedCountForForm()`/`countForForm()`. El número **no
+  sigue el filtro de fechas** —es del padrón, no de lo filtrado— y la tarjeta lo
+  deja claro. Un test que cree participantes y submissions a mano **tiene que
+  llamar a `FormParticipant::marcarRespondido()`**: en la app eso lo hace el POST
+  del fill en la misma transacción y sin la marca el contador diría cero.
+
+Tests: `tests/unit/AnalyticsLayoutTest.php` (7 métodos con BD: cabecera, labels
+de fecha, índice + destinos, estado vacío, filtro sin resultados, nombre
+accesible del selector de atributo y tasa de respuesta solo en roster);
+comprobaciones manuales K23–K27 del bloque K de `docs/pruebas-funcionales.md`.
+
+Suite completa: 110 archivos / **1202 métodos** en verde.

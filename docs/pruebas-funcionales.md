@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1195 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1202 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**560 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**565 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -335,6 +335,11 @@ Para no perderte, prepara esto antes de empezar:
 | K20 | En una pregunta de opciones, cambiar la vista a **Anillo** y a **Tabla**, y volver a **Barras** (W3, 2026-10-19) | Cada botón repinta la misma tarjeta sin apilar un gráfico encima de otro ni dejar el canvas vacío; «Barras» es horizontal y su etiqueta lleva conteo y porcentaje | A | |
 | K21 | En una **matriz**, mirar el pie de la tabla (W3, 2026-10-19) | Hay una fila **Total** con la suma de cada columna y el total general; el sombreado de cada fila no impide leer los números | A | |
 | K22 | En un **ranking**, alternar **Tabla** y **Barras** (W3, 2026-10-19) | La tabla (por defecto) trae posición, promedio y conteo; las barras ordenan por promedio, con el conteo en el tooltip | A | |
+| K23 | En la analítica, mirar la cabecera y la barra de filtros (W4, 2026-10-19) | La cabecera es la común (título + «Exportar CSV» a la derecha) y los filtros van en su propia fila debajo; con poco ancho nada se solapa | A | |
+| K24 | Recorrer los campos de fecha con lector de pantalla o `Tab` (W4, 2026-10-19) | Cada uno se anuncia como «Desde» y «Hasta», no dos «campo de fecha» iguales | M | |
+| K25 | En un formulario con más de tres preguntas, usar el índice (W4, 2026-10-19) | En escritorio hay una columna «Preguntas» con enlaces que saltan a cada tarjeta (sin JS); en móvil hay un desplegable «Ir a una pregunta» que hace el salto | A | |
+| K26 | Un formulario sin respuestas y luego un filtro sin resultados (W4, 2026-10-19) | Sin respuestas hay tarjeta «Sin respuestas todavía» con botón «Ir a compartir», no un panel de ceros; con un filtro que no casa, el detalle dice «Sin respuestas para este filtro» | A | |
+| K27 | Un formulario en modo **listado** (W4, 2026-10-19) | Aparece una tarjeta «Tasa de respuesta» con «N de M (P%)» del padrón entero (no sigue el filtro de fechas); en un formulario normal no aparece | A | |
 
 ---
 

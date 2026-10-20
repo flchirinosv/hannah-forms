@@ -45,8 +45,13 @@
     }
     if (!D || typeof D !== 'object') {
         console.warn('[VanillaForms] CHART_DATA no encontrado');
-        return;
+        // W4 — Sin datos no hay gráficos que pintar, pero el bloque NO puede
+        // terminar aquí: el índice de preguntas de abajo (initIndex) tiene que
+        // seguir registrándose. Un `return` en el borde de una IIFE se resolvería
+        // con ASI dentro de una línea que empieza por `(` en el consumidor.
+        D = null;
     }
+    if (D !== null) {
 
     var daily = (D.daily && D.daily.labels && D.daily.labels.length)
         ? D.daily
@@ -397,6 +402,8 @@
         setTimeout(initCharts, 100);
     }
 
+    }
+
     // -------------------------------------------------------------
     // P1 (2026-09-28) — Tabla de detalle con paginación server-side.
     // La página 1 llega renderizada del servidor; los botones del pager piden
@@ -466,5 +473,28 @@
         document.addEventListener('DOMContentLoaded', initDetailPager);
     } else {
         initDetailPager();
+    }
+
+    /* ---------- W4 · Índice de preguntas en móvil ----------
+     * En escritorio el índice es una lista de anclas `<a href="#campo-N">` (sin
+     * JS). En móvil esa columna no cabe, así que el desplegable lleva a la
+     * tarjeta con `scrollIntoView`. Sin JS queda el `<select>` sin efecto, pero
+     * ninguno de los dos rompe la navegación normal. */
+    function initQuestionIndex() {
+        var select = document.getElementById('analyticsIndexSelect');
+        if (!select) return;
+        select.addEventListener('change', function () {
+            var target = select.value ? document.getElementById(select.value) : null;
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            select.value = '';
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initQuestionIndex);
+    } else {
+        initQuestionIndex();
     }
 })();

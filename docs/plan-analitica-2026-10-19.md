@@ -80,7 +80,7 @@ Los datos de los gráficos salen embebidos como atributo `data-chart` en
 | **W1** | Drill-down: enlace «Ver» por fila + arreglo del `#` (off-by-one) | ✅ `0b8be12` |
 | **W2** | Preguntas abiertas: tarjeta con las últimas respuestas enlazadas | ✅ hecha |
 | **W3** | Gráficos: histograma, barras horizontales, matriz con totales, ranking con barra + **selector «Vista»** | ✅ hecha |
-| **W4** | Cabecera, filtros con etiqueta, índice de preguntas, estados vacíos, KPI participantes | ⬜ |
+| **W4** | Cabecera, filtros con etiqueta, índice de preguntas, estados vacíos, KPI participantes | ✅ hecha |
 
 ---
 

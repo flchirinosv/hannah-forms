@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 109 archivos, 1195 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 110 archivos, 1202 métodos, ~7 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **62 de los 109 archivos tocan la BD real** (los que llaman
+- **63 de los 110 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -731,6 +731,39 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **La barra «Promedio/Mínimo/Máximo» se retiró**: repetía las mini-stats y
   ocupaba el sitio del histograma; el promedio sigue en el resumen y en la tabla
   del ranking.
+
+**La cabecera y los estados de la analítica (W4)**
+
+- **La barra de filtros va en su PROPIA fila**, fuera de `.app-head-actions`: en
+  la misma fila, con poco ancho, empujaba el botón de exportar. La cabecera usa
+  la común (`.app-page-head`) y el test mira que `analytics-filters` venga
+  **después** de `app-head-actions` en el fuente.
+- **Los dos campos de fecha llevan su `<label class="visually-hidden">`** con
+  `for` al `id` real (`analyticsFrom`/`analyticsTo`): sin él, un lector de
+  pantalla anuncia «campo de fecha» dos veces sin distinguir desde de hasta.
+- **El índice de preguntas aparece solo con más de tres campos** y son dos
+  superficies: la columna `col-lg-3` (anclas `href="#campo-{id}"`, funciona sin
+  JS) y el `<select id="analyticsIndexSelect">` de móvil (`d-lg-none`), que
+  `initQuestionIndex()` resuelve con `scrollIntoView`. Cada tarjeta es un destino
+  con `id="campo-{id}"`; sin ese id las anclas no llevan a ninguna parte.
+- **Hay DOS vacíos y no son el mismo**: `$total === 0 && $from === '' && $to === ''
+  && $atr === null` es «este formulario no tiene respuestas» (tarjeta con CTA «Ir
+  a compartir», nunca un panel de ceros), y un filtro que no casa deja el
+  formulario **con** respuestas y solo el detalle dice «Sin respuestas para este
+  filtro». El literal del primer estado es «Este formulario aún no ha recibido
+  ninguna respuesta»: «Sin respuestas todavía» **colisiona** con el texto del
+  partial `_open.php` para una tarjeta abierta vacía, así que un test que busque
+  esa cadena casa en los dos casos.
+- **La tarjeta «Tasa de respuesta» solo existe en modo `roster`** (es el único con
+  padrón del que sacar el denominador): `AnalyticsController::show()` compara
+  `FormAccess::mode(Form::settingsFrom($form)) === FormSettings::ACCESS_ROSTER` y
+  pasa `$participacion = ['respondidos','total']` con
+  `FormParticipant::respondedCountForForm()`/`countForForm()`. Sale «N de M (P%)»
+  y **no sigue el filtro de fechas**: es del padrón, no de lo filtrado. Un test
+  que cree participantes y submissions a mano **tiene que llamar a
+  `FormParticipant::marcarRespondido()`**, porque en la app eso lo hace el POST
+  del fill en la misma transacción y sin la marca el contador diría cero
+  (`AnalyticsLayoutTest::testLaTasaDeRespuestaApareceSoloEnUnFormularioDeListado`).
 
 **Quién respondió (fase 9)**
 
@@ -1709,7 +1742,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 560 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 565 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

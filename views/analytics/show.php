@@ -37,81 +37,85 @@ $qsAnalytics = http_build_query(array_filter([
 ], static fn(string $v): bool => $v !== ''));
 ?>
 <div class="container-fluid px-lg-4" id="analyticsApp" data-chart="<?= View::escape($chartDataJson) ?>">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
-        <div class="me-lg-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3 app-page-head">
+        <div>
             <a href="/forms/<?= (int) $form['id'] ?>" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left me-1"></i>Volver</a>
             <h2 class="h4 fw-bold mb-0 mt-2"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Analítica — <?= View::escape($form['title']) ?></h2>
         </div>
-        <div class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center app-head-actions">
-            <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap gap-2 align-items-center">
-                <div class="btn-group" role="group" aria-label="Presets de rango">
-                    <button type="button" class="btn btn-outline-secondary" data-preset="7" title="Últimos 7 días">7d</button>
-                    <button type="button" class="btn btn-outline-secondary" data-preset="30" title="Últimos 30 días">30d</button>
-                    <button type="button" class="btn btn-outline-secondary" data-preset="90" title="Últimos 90 días">90d</button>
-                    <button type="button" class="btn btn-outline-secondary" data-preset="month" title="Este mes">Mes</button>
-                </div>
-                <input type="date" class="form-control" name="from" value="<?= View::escape($from) ?>">
-                <span class="text-muted small d-none d-sm-inline">a</span>
-                <input type="date" class="form-control" name="to" value="<?= View::escape($to) ?>">
-                <?php // Fase 7 — El filtro por atributo va DENTRO del mismo formulario
-                      // GET de las fechas y no en otro: son la misma pregunta («qué
-                      // respuestas estoy mirando») y el botón dice «Filtrar» una
-                      // sola vez. Los dos desplegables se rellenan por el servidor
-                      // (`$atributos` y `$atrValues`) para que el atributo elegido
-                      // salga con SU lista de valores, y solo hay un `atr_value` en
-                      // la URL: un solo valor filtrado a la vez.
-                      //
-                      // Y sin filtro no se pinta nada, ni un desplegable vacío: un
-                      // formulario que no es de listado no tiene atributos y un
-                      // «— Attributes —» que no filtra nada parece un filtro roto. ?>
-                <?php if (!empty($catalogo)): ?>
-                    <?php $atrActual = (string) ($atrClave['key_name'] ?? ''); ?>
-                    <select class="form-select" name="atr_key" aria-label="Atributo del listado">
-                        <?php if ($atrActual === ''): ?>
-                            <option value="">Todo el listado</option>
-                        <?php endif; ?>
-                        <?php foreach ($catalogo as $atributo): ?>
-                            <option value="<?= View::escape($atributo['key_name']) ?>"<?= $atrActual === $atributo['key_name'] ? ' selected' : '' ?>><?= View::escape($atributo['label']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php // El desplegable de VALORES sale con la clave elegida aunque
-                          // todavía no haya valor, que es como se llega al filtro:
-                          // se elige el atributo, se guarda, y aquí aparece el
-                          // segundo. Con `atr_value` vacío el servidor no filtra
-                          // (un filtro por nada no es un filtro) y `atr_value=''`
-                          // vuelve en la URL, que es la primera opción del
-                          // desplegable. ?>
-                    <?php if ($atrClave !== null): ?>
-                        <select class="form-select" name="atr_value" aria-label="Valor del atributo">
-                            <?php $valorActual = (string) ($atr['value'] ?? ''); ?>
-                            <option value="">Todos los valores</option>
-                            <?php foreach ($atrValues as $valor): ?>
-                                <option value="<?= View::escape($valor) ?>"<?= $valorActual === $valor ? ' selected' : '' ?>><?= View::escape($valor) ?></option>
-                            <?php endforeach; ?>
-                            <?php // Un valor que ya no está en la lista se queda
-                                  // marcado en vez de desaparecer: es lo que se
-                                  // está mirando (aunque salga vacío) y si no
-                                  // estuviera, el desplegable mentiría sobre lo
-                                  // que hay en pantalla. ?>
-                            <?php if ($valorActual !== '' && !in_array($valorActual, $atrValues, true)): ?>
-                                <option value="<?= View::escape($valorActual) ?>" selected><?= View::escape($valorActual) ?></option>
-                            <?php endif; ?>
-                        </select>
-                    <?php endif; ?>
-                <?php endif; ?>
-                <button type="submit" class="btn btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>Filtrar</button>
-                <?php if ($from !== '' || $to !== '' || $atrClave !== null): ?>
-                    <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-link text-danger"><i class="fa-solid fa-xmark me-1"></i>Limpiar</a>
-                <?php endif; ?>
-            </form>
-            <?php // El CSV sale con lo que hay en pantalla. Los dos query strings se
-                  // componen aquí y en un solo sitio (`$qsAnalytics`), porque el
-                  // botón y el `data-*` del fetcher tienen que llevar EXACTAMENTE lo
-                  // mismo: si el botón se olvidara del filtro, el archivo traería
-                  // respuestas que la pantalla está ocultando. ?>
+        <div class="d-flex flex-wrap gap-2 app-head-actions">
             <a href="/forms/<?= (int) $form['id'] ?>/export.csv<?= $qsAnalytics !== '' ? '?' . $qsAnalytics : '' ?>" class="btn btn-success"><i class="fa-solid fa-file-csv me-1"></i>Exportar CSV</a>
         </div>
     </div>
+
+    <?php /* W4 — La barra de filtros va en su PROPIA fila y no dentro de
+           `.app-head-actions`: comparte fila con las acciones y con un ancho
+           estrecho empujaba el botón de exportar. Los `input[type=date]` llevan
+           además su `<label>` oculto, que hoy no tienen: sin él, un lector de
+           pantalla anuncia «campo de fecha» dos veces sin distinguir «desde» de
+           «hasta». */ ?>
+    <form method="get" action="/forms/<?= (int) $form['id'] ?>/analytics" class="analytics-filters d-flex flex-wrap gap-2 align-items-center mb-4">
+        <div class="btn-group" role="group" aria-label="Presets de rango">
+            <button type="button" class="btn btn-outline-secondary" data-preset="7" title="Últimos 7 días">7d</button>
+            <button type="button" class="btn btn-outline-secondary" data-preset="30" title="Últimos 30 días">30d</button>
+            <button type="button" class="btn btn-outline-secondary" data-preset="90" title="Últimos 90 días">90d</button>
+            <button type="button" class="btn btn-outline-secondary" data-preset="month" title="Este mes">Mes</button>
+        </div>
+        <label class="visually-hidden" for="analyticsFrom">Desde</label>
+        <input type="date" class="form-control" id="analyticsFrom" name="from" value="<?= View::escape($from) ?>">
+        <span class="text-muted small d-none d-sm-inline">a</span>
+        <label class="visually-hidden" for="analyticsTo">Hasta</label>
+        <input type="date" class="form-control" id="analyticsTo" name="to" value="<?= View::escape($to) ?>">
+        <?php // Fase 7 — El filtro por atributo va DENTRO del mismo formulario
+              // GET de las fechas y no en otro: son la misma pregunta («qué
+              // respuestas estoy mirando») y el botón dice «Filtrar» una
+              // sola vez. Los dos desplegables se rellenan por el servidor
+              // (`$atributos` y `$atrValues`) para que el atributo elegido
+              // salga con SU lista de valores, y solo hay un `atr_value` en
+              // la URL: un solo valor filtrado a la vez.
+              //
+              // Y sin filtro no se pinta nada, ni un desplegable vacío: un
+              // formulario que no es de listado no tiene atributos y un
+              // «— Attributes —» que no filtra nada parece un filtro roto. ?>
+        <?php if (!empty($catalogo)): ?>
+            <?php $atrActual = (string) ($atrClave['key_name'] ?? ''); ?>
+            <select class="form-select" name="atr_key" aria-label="Atributo del listado">
+                <?php if ($atrActual === ''): ?>
+                    <option value="">Todo el listado</option>
+                <?php endif; ?>
+                <?php foreach ($catalogo as $atributo): ?>
+                    <option value="<?= View::escape($atributo['key_name']) ?>"<?= $atrActual === $atributo['key_name'] ? ' selected' : '' ?>><?= View::escape($atributo['label']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <?php // El desplegable de VALORES sale con la clave elegida aunque
+                  // todavía no haya valor, que es como se llega al filtro:
+                  // se elige el atributo, se guarda, y aquí aparece el
+                  // segundo. Con `atr_value` vacío el servidor no filtra
+                  // (un filtro por nada no es un filtro) y `atr_value=''`
+                  // vuelve en la URL, que es la primera opción del
+                  // desplegable. ?>
+            <?php if ($atrClave !== null): ?>
+                <select class="form-select" name="atr_value" aria-label="Valor del atributo">
+                    <?php $valorActual = (string) ($atr['value'] ?? ''); ?>
+                    <option value="">Todos los valores</option>
+                    <?php foreach ($atrValues as $valor): ?>
+                        <option value="<?= View::escape($valor) ?>"<?= $valorActual === $valor ? ' selected' : '' ?>><?= View::escape($valor) ?></option>
+                    <?php endforeach; ?>
+                    <?php // Un valor que ya no está en la lista se queda
+                          // marcado en vez de desaparecer: es lo que se
+                          // está mirando (aunque salga vacío) y si no
+                          // estuviera, el desplegable mentiría sobre lo
+                          // que hay en pantalla. ?>
+                    <?php if ($valorActual !== '' && !in_array($valorActual, $atrValues, true)): ?>
+                        <option value="<?= View::escape($valorActual) ?>" selected><?= View::escape($valorActual) ?></option>
+                    <?php endif; ?>
+                </select>
+            <?php endif; ?>
+        <?php endif; ?>
+        <button type="submit" class="btn btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>Filtrar</button>
+        <?php if ($from !== '' || $to !== '' || $atrClave !== null): ?>
+            <a href="/forms/<?= (int) $form['id'] ?>/analytics" class="btn btn-link text-danger"><i class="fa-solid fa-xmark me-1"></i>Limpiar</a>
+        <?php endif; ?>
+    </form>
 
     <?php
     $answerableFields = array_values(array_filter($form['fields'], static fn($f) => ($f['type'] ?? '') !== 'section'));
@@ -120,10 +124,24 @@ $qsAnalytics = http_build_query(array_filter([
         ['label' => 'Última respuesta', 'value' => !empty($submissions) ? View::datetime($submissions[0]['finished_at']) : '—', 'icon' => 'fa-clock', 'color' => 'info'],
         ['label' => 'Preguntas', 'value' => count($answerableFields), 'icon' => 'fa-question', 'color' => 'warning'],
     ];
+    // W4 — Tasa de respuesta del listado. Solo en un formulario de tipo
+    // `roster`: es el único con padrón del que sacar el denominador. Es global
+    // (no respeta `from`/`to`) y la etiqueta lo dice, porque el `responded_at`
+    // no se filtra por fecha y un «18 de 40» junto a un «12 respuestas» del
+    // filtro sería una contradicción sin explicación.
+    if (!empty($participacion) && $participacion['total'] > 0) {
+        $pctPatron = (int) round(100 * $participacion['respondidos'] / $participacion['total']);
+        $cards[] = [
+            'label' => 'Tasa de respuesta',
+            'value' => $participacion['respondidos'] . ' de ' . $participacion['total'] . ' (' . $pctPatron . '%)',
+            'icon'  => 'fa-users',
+            'color' => 'success',
+        ];
+    }
     ?>
     <div class="row g-3 mb-4">
         <?php foreach ($cards as $card): ?>
-        <div class="col-sm-4">
+        <div class="<?= count($cards) > 3 ? 'col-sm-6 col-xxl-3' : 'col-sm-4' ?>">
             <div class="card border-0 shadow-sm app-stat-card">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="app-stat-icon bg-<?= $card['color'] ?>-subtle text-<?= $card['color'] ?>"><i class="fa-solid <?= $card['icon'] ?>"></i></div>
@@ -137,7 +155,60 @@ $qsAnalytics = http_build_query(array_filter([
         <?php endforeach; ?>
     </div>
 
+    <?php /* W4 — Un formulario publicado pero sin respuestas no es «un panel con
+           todo a cero»: es un momento con una acción clara (compartirlo) y una
+           forma de ver que está vivo. Se corta aquí y no se pintan tarjetas
+           vacías que parecen una señal de que algo se rompió. */ ?>
+    <?php if ($total === 0 && $from === '' && $to === '' && $atr === null): ?>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fa-solid fa-chart-column fa-2x text-muted mb-3 d-block"></i>
+                <h3 class="h5 fw-bold mb-1">Sin respuestas todavía</h3>
+                <p class="text-muted mb-4">Este formulario aún no ha recibido ninguna respuesta. Compártelo para empezar a recogerlas.</p>
+                <a href="/forms/<?= (int) $form['id'] ?>" class="btn app-btn-primary"><i class="fa-solid fa-share-nodes me-1"></i>Ir a compartir</a>
+            </div>
+        </div>
+    <?php else: ?>
+
+    <?php
+    // W4 — Índice de preguntas. Solo en escritorio (la columna sticky no cabe
+    // en móvil); en el desplegable de móvil el `scrollIntoView` lo hace
+    // `analytics.js`. Las anclas `<a href="#campo-N">` funcionan SIN JS: son
+    // navegación de documento de toda la vida.
+    $indiceCampos = array_values(array_filter($fieldStats, static fn($s) => !in_array($s['field']['type'], ['section'], true)));
+    ?>
     <div class="row g-4">
+        <?php if (count($indiceCampos) > 3): ?>
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="card border-0 shadow-sm app-analytics-index">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-3">Preguntas</h3>
+                    <nav class="nav flex-column gap-1">
+                        <?php foreach ($indiceCampos as $s): ?>
+                            <a class="nav-link px-0 py-1 small text-truncate" href="#campo-<?= (int) $s['field']['id'] ?>" title="<?= View::escape($s['field']['label']) ?>"><?= View::escape($s['field']['label']) ?></a>
+                        <?php endforeach; ?>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="<?= count($indiceCampos) > 3 ? 'col-lg-9' : 'col-12' ?>">
+            <?php if (count($indiceCampos) > 3): ?>
+                <?php // W4 — En móvil la columna del índice no cabe; el desplegable
+                      // hace el mismo salto con `scrollIntoView` y su etiqueta es
+                      // visible (no oculta): es la única pista de que existe. ?>
+                <div class="d-lg-none mb-3">
+                    <label class="form-label small text-muted mb-1" for="analyticsIndexSelect">Ir a una pregunta</label>
+                    <select class="form-select" id="analyticsIndexSelect">
+                        <option value="">Elegir pregunta…</option>
+                        <?php foreach ($indiceCampos as $s): ?>
+                            <option value="campo-<?= (int) $s['field']['id'] ?>"><?= View::escape($s['field']['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
+            <div class="row g-4">
         <?php if (!empty($dailyCounts)): ?>
         <div class="col-12">
             <div class="card border-0 shadow-sm">
@@ -151,6 +222,9 @@ $qsAnalytics = http_build_query(array_filter([
 
         <?php foreach ($fieldStats as $stat): ?>
             <?php $f = $stat['field']; ?>
+            <?php /* W4 — Cada tarjeta es un destino del índice. El ancla no
+                   depende del JS y el `scroll-margin-top` la deja libre del
+                   navbar al saltar. */ ?>
             <?php if (in_array($f['type'], \App\Services\FieldAggregator::TIPOS_ABIERTOS, true)): ?>
                 <?php /* W2 — Texto libre, email, url, teléfono, hora, fecha y
                        adjuntos. La rama vieja era un comentario y cinco tipos
@@ -169,7 +243,7 @@ $qsAnalytics = http_build_query(array_filter([
                 $familiaNumerica = \App\Services\FieldAggregator::familiaDe($f['type']) ?? 'numeric';
                 $hayNumerico = $stat['values'] && $stat['values']['avg_value'] !== null;
                 ?>
-                <div class="col-md-6">
+                <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="<?= View::escape($familiaNumerica) ?>">
                         <div class="card-body">
                             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -215,7 +289,7 @@ $qsAnalytics = http_build_query(array_filter([
                 </div>
             <?php elseif ($f['type'] === 'matrix' && !empty($stat['values']['matrix'])): ?>
                 <?php $mv = $stat['values']; ?>
-                <div class="col-md-6">
+                <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
                             <h4 class="h6 fw-bold mb-1"><?= View::escape($f['label']) ?></h4>
@@ -275,7 +349,7 @@ $qsAnalytics = http_build_query(array_filter([
                 </div>
             <?php elseif ($f['type'] === 'ranking' && !empty($stat['values'])): ?>
                 <?php $rv = $stat['values']; ?>
-                <div class="col-md-6">
+                <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="ranking">
                         <div class="card-body">
                             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -317,7 +391,7 @@ $qsAnalytics = http_build_query(array_filter([
                     </div>
                 </div>
             <?php elseif (in_array($f['type'], ['select', 'radio', 'checkbox'], true) && !empty($stat['values'])): ?>
-                <div class="col-md-6">
+                <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="choice">
                         <div class="card-body">
                             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -341,6 +415,9 @@ $qsAnalytics = http_build_query(array_filter([
                 </div>
             <?php endif; ?>
         <?php endforeach; ?>
+
+            </div><?php // cierra .row.g-4 de las tarjetas por pregunta ?>
+        </div><?php // cierra la columna (col-lg-9 / col-12) ?>
 
         <?php /* Fase 8 — Comparar por atributo. Va antes del detalle porque es
                una lectura de la MISMA tabla de abajo en otra forma (por columnas):
@@ -478,7 +555,8 @@ $qsAnalytics = http_build_query(array_filter([
                 </div>
             </div>
         </div>
-    </div>
+    </div><?php // cierra .row.g-4 exterior ?>
+    <?php endif; // total === 0 + sin filtro ?>
 </div>
 
 <script src="<?= View::asset('js/chart.umd.min.js') ?>" defer></script>
