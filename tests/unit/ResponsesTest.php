@@ -136,6 +136,57 @@ class ResponsesTest
         assertEquals('{esto no es json', Answer::displayValue('{esto no es json'));
     }
 
+    /**
+     * El detalle de una respuesta pinta los compuestos con los MISMOS chips que
+     * la tabla de detalle de la analítica: la representación vive una sola vez
+     * en `View::answerValue()`, compartida por `analytics/_rows` y
+     * `responses/show`. Un texto suelto sigue escapándose por el camino de
+     * siempre (`Answer::displayValue`).
+     */
+    public function testElDetallePintaChipsComoLaAnalitica(): void
+    {
+        $this->seedSubmissions(1);
+        $data = Submission::findWithAnswers((int) self::$submissionIds[0]);
+        assertNotNull($data);
+
+        $html = \App\Core\View::partial('responses/show', [
+            'form'         => Form::find((int) self::$formId),
+            'submission'   => $data['submission'],
+            'answers'      => $data['answers'],
+            'files'        => [],
+            'participante' => null,
+            'identificador' => 'cedula',
+            'pii_masked'   => false,
+        ]);
+
+        assertTrue(str_contains($html, 'vf-answer-chips'), 'el checkbox del detalle lista chips');
+        assertTrue(str_contains($html, 'vf-answer-matrix'), 'la matriz del detalle va fila→valor');
+        assertTrue(str_contains($html, 'vf-chip-key">Presentacion'), 'la fila de la matriz se nombra');
+        // El texto plano no se convirtió en chips ni perdió su escape.
+        assertTrue(str_contains($html, 'hola 1'), 'el texto suelto sigue siendo texto');
+    }
+
+    /**
+     * `View::answerValue()` es la única puerta: devuelve HTML ya escapado para
+     * un compuesto VÁLIDO y `null` para lo que no lo es (el llamante pinta
+     * entonces el texto). El marcador PII `[oculto]` empieza por `[` pero no es
+     * JSON, así que cae al lado `null` y no se reinterpreta como lista.
+     */
+    public function testAnswerValueSoloReformateaCompuestosValidos(): void
+    {
+        assertNull(\App\Core\View::answerValue('texto suelto'), 'un texto no es compuesto');
+        assertNull(\App\Core\View::answerValue('[oculto]'), 'el marcador PII no es una lista');
+        assertNull(\App\Core\View::answerValue('{esto no es json'), 'JSON inválido no se reformatea');
+        assertSame('', \App\Core\View::answerValue('[]'), 'una lista vacía no pinta chips');
+
+        $chips = \App\Core\View::answerValue('["a & b","<x>"]');
+        assertTrue(str_contains($chips, 'a &amp; b'), 'el chip escapa su valor');
+        assertTrue(str_contains($chips, '&lt;x&gt;'), 'el chip escapa también los ángulos');
+
+        $ranking = \App\Core\View::answerValue('{"B":"1","A":"2"}', 'ranking');
+        assertTrue(strpos($ranking, 'vf-chip-pos">1') < strpos($ranking, 'vf-chip-pos">2'), 'el ranking se ordena por el puesto');
+    }
+
     public function testExportPayloadEstructuraYDecodifica(): void
     {
         $this->seedSubmissions(2);

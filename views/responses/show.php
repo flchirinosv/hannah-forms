@@ -91,7 +91,18 @@ $quien = $participante === null ? null : FormParticipant::identidadDe($participa
                 }
                 $any = true;
                 $val = $answers[(int) $field['id']] ?? '';
-                $display = is_string($val) ? Answer::displayValue($val) : '';
+                $val = is_string($val) ? $val : '';
+                // El mismo render de chips que la tabla de respuestas de la
+                // analítica (`View::answerValue`): checkbox como chips, matriz
+                // como `clave → valor`, ranking ordenado por el puesto. Si no es
+                // un compuesto, `displayValue()` da el texto legible de siempre.
+                // Un adjunto NO pasa por chips: su JSON guarda la ruta interna y
+                // `displayValue()` (o el bloque de `$files`) lo traduce a
+                // «nombre (tamaño)». Sin este guard, un adjunto huérfano de
+                // `$files` se leería como una matriz con la ruta dentro.
+                $esAdjunto = \App\Services\Uploader::isAttachmentJson($val);
+                $chips = $esAdjunto ? null : View::answerValue($val, (string) ($field['type'] ?? ''));
+                $display = $chips === null ? Answer::displayValue($val) : '';
                 $files = $files[(int) $field['id']] ?? [];
             ?>
                 <div class="d-flex flex-column flex-sm-row align-items-sm-start py-3 border-bottom">
@@ -121,6 +132,8 @@ $quien = $participante === null ? null : FormParticipant::identidadDe($participa
                                     </a>
                                 </div>
                             <?php endforeach; ?>
+                        <?php elseif ($chips !== null): ?>
+                            <?= $chips !== '' ? $chips : '<span class="text-muted">—</span>' ?>
                         <?php elseif ($display !== ''): ?>
                             <?= View::escape($display) ?>
                         <?php else: ?>

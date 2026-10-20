@@ -1791,7 +1791,14 @@ consultas.
   (1..N), no por el orden del JSON. La trampa se mantiene: el **enmascarado PII
   va antes** de mirar el `[`/`{` inicial (`[oculto]` empieza por `[`), y solo se
   reformatea un JSON **válido** (`array_is_list` para el checkbox); un valor que
-  solo parece JSON se deja intacto y un texto suelto se escapa.
+  solo parece JSON se deja intacto y un texto suelto se escapa. El render vive
+  ahora en **`View::answerValue()`**, una sola copia para las dos pantallas que
+  muestran un compuesto: la tabla de la analítica **y** el detalle de una
+  respuesta (`views/responses/show.php`). Antes el detalle lo pintaba con
+  `Answer::displayValue()` («a; b» / «fila: valor; …») y el dueño veía el mismo
+  valor de dos maneras distintas según por dónde entrara. `answerValue()`
+  devuelve HTML ya escapado o `null` (el llamante pinta el texto); el PII se
+  resuelve **antes**, así que el marcador `[oculto]` cae al lado `null`.
 - **G6 — el «Resumen» de un NPS parecía vacío, y no era el repintado.** Tras
   arreglar G1 el autor seguía viendo que, al alternar una tarjeta NPS/Número a
   «Resumen», el histograma desaparecía y «no se veía» el resumen. Reproducido en
@@ -1826,6 +1833,8 @@ contrato sin node, los chips, el marcador PII y los tres de cabecera/índice/
 tabla— contando los que ya había, el arnés `tests/js/analytics-charts.js` con
 11 comprobaciones, y `AnalyticsLayoutTest::testElResumenNumericoSeVeYLasInsigniasNpsTienenColor`);
 comprobaciones manuales K28–K33 del bloque K de
-`docs/pruebas-funcionales.md`.
+`docs/pruebas-funcionales.md`. La extensión al detalle de una respuesta suma
+`ResponsesTest::testElDetallePintaChipsComoLaAnalitica` y
+`testAnswerValueSoloReformateaCompuestosValidos` (comprobación manual K34).
 
-Suite completa: 110 archivos / **1210 métodos** en verde.
+Suite completa: 110 archivos / **1212 métodos** en verde.

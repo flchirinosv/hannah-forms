@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1210 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1212 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**571 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**572 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -346,6 +346,7 @@ Para no perderte, prepara esto antes de empezar:
 | K31 | En la tabla de detalle, desplazar en horizontal con muchas columnas (G4, 2026-10-19) | La columna **#** y la cabecera se quedan fijas; las filas alternan su fondo y se siguen leyendo; en móvil la tabla son tarjetas con su rótulo | A | |
 | K32 | Con respuestas de **selección múltiple**, **matriz** y **ranking**, mirar la tabla de detalle (G5, 2026-10-19) | La selección múltiple muestra un chip por valor; la matriz una fila «fila → valor»; el ranking la lista ordenada por el puesto (1, 2, 3…); sin permiso de PII, un valor personal sale como `[oculto]` | A | |
 | K33 | En una tarjeta **NPS**, pulsar **Resumen**: alternar Histograma ↔ Resumen (G6, 2026-10-19) | Al pasar a Resumen, el histograma se va y **aparecen** las mini-stats Promedio/Mínimo/Máximo y las insignias Detractores/Pasivos/Promotores con su texto legible (fondo tenue y letra oscura), no blanco sobre blanco; al volver a Histograma, esas tarjetas de texto se van y reaparece el gráfico | A | |
+| K34 | Abrir **Detalle** de una respuesta con respuestas de selección múltiple, matriz y ranking (G5, 2026-10-19) | El detalle pinta esos valores con los **mismos chips** que la tabla de la analítica: checkbox con un chip por valor, matriz como `fila → valor` y ranking ordenado por el puesto (1, 2, 3…); un texto suelto sigue siendo texto y un valor enmascarado sale `[oculto]` sin reinterpretarse | A | |
 
 ---
 

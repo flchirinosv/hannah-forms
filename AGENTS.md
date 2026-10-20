@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 110 archivos, 1210 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 110 archivos, 1212 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -805,6 +805,17 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   imprime sin volver a escapar (el resto sí se escapa). Lo ata
   `AnalyticsChartsTest::testLasRespuestasCompuestasSePintanConChips` y
   `testElMarcadorPiiNoSeReformateaComoJson`.
+- **El render de esos chips vive UNA vez, en `View::answerValue()`**: no en cada
+  vista. Lo usan la tabla de la analítica (`views/analytics/_rows.php`) **y** el
+  detalle de una respuesta (`views/responses/show.php`), que antes pintaba el
+  mismo valor con `Answer::displayValue()` («a; b» / «fila: valor; …») y por eso
+  el dueño veía el compuesto de dos maneras distintas según la pantalla.
+  `answerValue()` devuelve **HTML ya escapado** o `null` cuando el valor no es un
+  compuesto (entonces la vista pinta el texto de siempre). El PII se resuelve
+  **antes** de llamarlo, así que `[oculto]` cae al lado `null` y no se
+  reinterpreta. Lo ata
+  `ResponsesTest::testElDetallePintaChipsComoLaAnalitica` y
+  `testAnswerValueSoloReformateaCompuestosValidos`.
 - **El resumen de una tarjeta numérica ES una vista, no el hueco que deja el
   lienzo**: «Resumen» y «Histograma» son **representaciones mutuamente
   excluyentes** del mismo dato. Las mini-stats (Promedio/Mínimo/Máximo) y, en NPS,
@@ -1803,7 +1814,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 571 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 572 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica

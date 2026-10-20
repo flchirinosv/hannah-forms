@@ -61,44 +61,18 @@ foreach ($submissions as $submission) {
         }
 
         // `$renderedHtml` es el HTML ya escapado de los chips (checkbox, matriz,
-        // ranking); `$val` sigue siendo el texto plano para todo lo demás. Se
-        // mantiene la regla de siempre: un JSON VÁLIDO y no vacío se reformatea,
-        // `[]`/`{}` queda vacío y un valor que solo EMPIEZA por `[`/`{` sin ser
-        // JSON (el marcador `[oculto]`, que se enmascara arriba) se deja intacto.
+        // ranking); `$val` sigue siendo el texto plano para todo lo demás. El
+        // render vive en `View::answerValue()`, compartido con el detalle de una
+        // respuesta (`views/responses/show.php`) para que el mismo valor se vea
+        // igual en las dos pantallas y la regla tenga una sola copia. La regla
+        // de siempre: un JSON VÁLIDO y no vacío se reformatea, `[]`/`{}` queda
+        // vacío y un valor que solo EMPIEZA por `[`/`{` sin ser JSON (el marcador
+        // `[oculto]`, ya enmascarado arriba) se deja intacto.
         $renderedHtml = null;
         if ($esAdjunto) {
             $val = Uploader::displayValue($val);
-        } elseif (is_string($val) && str_starts_with($val, '[')) {
-            // Lista (checkbox): un chip por valor elegido. Antes salía una sola
-            // línea «a; b; c», que en una tabla ancha no se lee.
-            $decoded = json_decode($val, true);
-            if (is_array($decoded) && array_is_list($decoded)) {
-                $chips = '';
-                foreach ($decoded as $item) {
-                    $chips .= '<span class="vf-chip">' . View::escape((string) $item) . '</span>';
-                }
-                $renderedHtml = $chips !== '' ? '<span class="vf-answer-chips">' . $chips . '</span>' : '';
-            }
-        } elseif (is_string($val) && str_starts_with($val, '{')) {
-            // Mapa (matriz/ranking): etiqueta => valor. En ranking el valor es la
-            // posición (1..N), así que se ordena por ella y se pinta el puesto.
-            $decoded = json_decode($val, true);
-            if (is_array($decoded)) {
-                $filas = '';
-                if ((string) $field['type'] === 'ranking') {
-                    uasort($decoded, static fn($a, $b) => (int) $a <=> (int) $b);
-                    foreach ($decoded as $item => $pos) {
-                        $filas .= '<span class="vf-chip-ranking"><span class="vf-chip-pos">' . View::escape((string) $pos) . '</span><span class="vf-chip-key">' . View::escape((string) $item) . '</span></span>';
-                    }
-                    $clase = 'vf-answer-ranking';
-                } else {
-                    foreach ($decoded as $k => $v) {
-                        $filas .= '<span class="vf-chip-matrix"><span class="vf-chip-key">' . View::escape((string) $k) . '</span><span class="vf-chip-val">' . View::escape((string) $v) . '</span></span>';
-                    }
-                    $clase = 'vf-answer-matrix';
-                }
-                $renderedHtml = $filas !== '' ? '<span class="' . $clase . '">' . $filas . '</span>' : '';
-            }
+        } elseif (is_string($val)) {
+            $renderedHtml = View::answerValue($val, (string) ($field['type'] ?? ''));
         }
         if ($renderedHtml !== null) {
             echo $renderedHtml !== '' ? $renderedHtml : '<span class="text-muted">—</span>';

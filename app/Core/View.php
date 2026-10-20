@@ -238,4 +238,65 @@ class View
 
         return $ts === false ? '0' : (string) $ts;
     }
+
+    /**
+     * Valor de una respuesta compuesta como HTML de chips, o `null` si el valor
+     * no es un compuesto reconocible (el llamante pinta entonces el texto).
+     *
+     * Es la MISMA representación en la tabla de respuestas de la analítica
+     * (`views/analytics/_rows.php`) y en el detalle de una respuesta
+     * (`views/responses/show.php`): el dueño ve el mismo chip en los dos sitios,
+     * y hay una sola copia de la regla.
+     *
+     * Devuelve **HTML ya escapado** (los chips llevan `View::escape()`), así que
+     * el llamante lo imprime tal cual, sin volver a escapar.
+     *
+     * La regla del PII vive fuera: se llama con el valor **después** de
+     * enmascarar, y `[oculto]` no es JSON válido, así que cae al texto y no se
+     * reinterpreta como lista. Un valor que solo EMPIEZA por `[`/`{` sin ser
+     * JSON también queda intacto.
+     *
+     * - Lista (checkbox): un chip por valor elegido (antes salía «a; b; c»).
+     * - Mapa (matriz): `clave → valor` por fila.
+     * - Mapa (ranking): ordenado por la posición (1..N) que es el valor.
+     */
+    public static function answerValue(string $value, string $fieldType = ''): ?string
+    {
+        if ($value !== '' && $value[0] === '[') {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded) && array_is_list($decoded)) {
+                $chips = '';
+                foreach ($decoded as $item) {
+                    $chips .= '<span class="vf-chip">' . self::escape((string) $item) . '</span>';
+                }
+                return $chips === '' ? '' : '<span class="vf-answer-chips">' . $chips . '</span>';
+            }
+            return null;
+        }
+
+        if ($value !== '' && $value[0] === '{') {
+            $decoded = json_decode($value, true);
+            if (!is_array($decoded)) {
+                return null;
+            }
+            $filas = '';
+            if ($fieldType === 'ranking') {
+                uasort($decoded, static fn($a, $b) => (int) $a <=> (int) $b);
+                foreach ($decoded as $item => $pos) {
+                    $filas .= '<span class="vf-chip-ranking"><span class="vf-chip-pos">' . self::escape((string) $pos)
+                        . '</span><span class="vf-chip-key">' . self::escape((string) $item) . '</span></span>';
+                }
+                $clase = 'vf-answer-ranking';
+            } else {
+                foreach ($decoded as $k => $v) {
+                    $filas .= '<span class="vf-chip-matrix"><span class="vf-chip-key">' . self::escape((string) $k)
+                        . '</span><span class="vf-chip-val">' . self::escape((string) $v) . '</span></span>';
+                }
+                $clase = 'vf-answer-matrix';
+            }
+            return $filas === '' ? '' : '<span class="' . $clase . '">' . $filas . '</span>';
+        }
+
+        return null;
+    }
 }
