@@ -952,29 +952,62 @@ body {
 @keyframes vf-spin {
     to { transform: rotate(360deg); }
 }
+/* G4 — La tabla de detalle tiene una columna por pregunta y se va de ancho. Se
+   pulió sin cambiar su estructura: la primera columna (#) y la cabecera se
+   quedan fijas al desplazar, hay cebra y las celdas son más compactas. El fondo
+   de las fijas es sólido (no transparente) o el texto de debajo se ve a través.
+   La regla móvil de más abajo (tabla→tarjetas con `data-label`) no se toca. */
 .app-detail-table {
     width: 100%;
-    border-collapse: collapse;
+    min-width: max-content;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 .app-detail-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     background: #f8fafc;
     white-space: nowrap;
-    padding: .75rem 1rem;
+    padding: .5rem .75rem;
     border-bottom: 2px solid var(--vf-border);
     font-size: .8rem;
     text-transform: uppercase;
     letter-spacing: .03em;
 }
 .app-detail-table td {
-    padding: .75rem 1rem;
+    padding: .5rem .75rem;
     border-bottom: 1px solid var(--vf-border);
     vertical-align: middle;
 }
+.app-detail-table tbody tr:nth-child(even) {
+    background: #fbfcfe;
+}
 .app-detail-table tbody tr:hover {
-    background: #f8fafc;
+    background: #f1f5f9;
 }
 .app-detail-table tbody tr:last-child td {
     border-bottom: none;
+}
+/* La primera columna (#) se queda fija a la izquierda: al desplazar en
+   horizontal se sigue sabiendo de qué fila es cada celda. */
+.app-detail-table th:first-child,
+.app-detail-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #fff;
+    box-shadow: 1px 0 0 var(--vf-border);
+}
+.app-detail-table th:first-child {
+    z-index: 3;
+    background: #f8fafc;
+}
+.app-detail-table tbody tr:nth-child(even) td:first-child {
+    background: #fbfcfe;
+}
+.app-detail-table tbody tr:hover td:first-child {
+    background: #f1f5f9;
 }
 .app-answer-cell {
     max-width: 320px;
@@ -1001,6 +1034,92 @@ body {
    margen de scroll para que el navbar no las tape al saltar por ancla. */
 .app-analytics-index { position: sticky; top: 1rem; }
 .vf-analytics-field { scroll-margin-top: 5rem; }
+
+/* G2 — Cabecera de tarjeta de analítica. El título ocupa su espacio y puede
+   partirse en varias líneas; el bloque de acciones (NPS + conmutador de vista)
+   queda anclado arriba a la derecha y NO baja de línea aunque la etiqueta sea
+   larga. `min-width: 0` en el título es lo que deja que encoja en vez de
+   empujar a los botones a una fila nueva. */
+.vf-card-head > .vf-card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.vf-card-head > .vf-card-actions {
+    flex: 0 0 auto;
+}
+
+/* G3 — Índice de preguntas. Los `<a>` son items de un `nav.flex-column` y su
+   `min-width` por defecto (`auto`) impide encogerlos por debajo del texto
+   (`nowrap` de `text-truncate`), así que se desbordaban de la columna. */
+.app-analytics-index .nav { min-width: 0; }
+.app-analytics-index .nav-link {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* G5 — Respuestas compuestas (checkbox, matriz, ranking) en la tabla de detalle.
+   Antes salían como un JSON semicolonado de una sola línea; ahora cada valor
+   elegido es un chip y las listas se leen de un golpe. */
+.vf-answer-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+}
+.vf-chip {
+    display: inline-block;
+    max-width: 100%;
+    padding: .1rem .5rem;
+    border-radius: 999px;
+    background: var(--vf-surface-2, #eef2ff);
+    color: var(--vf-primary, #4f46e5);
+    border: 1px solid rgba(79, 70, 229, .18);
+    font-size: .78rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.vf-chip-matrix,
+.vf-chip-ranking {
+    display: flex;
+    gap: .35rem;
+    align-items: baseline;
+    background: transparent;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    color: inherit;
+    font-size: .82rem;
+}
+.vf-chip-matrix .vf-chip-key,
+.vf-chip-ranking .vf-chip-key {
+    color: var(--vf-text-muted, #64748b);
+}
+.vf-chip-matrix .vf-chip-val {
+    color: var(--vf-text, #1e293b);
+    font-weight: 600;
+}
+.vf-chip-ranking .vf-chip-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    background: var(--vf-surface-2, #eef2ff);
+    color: var(--vf-primary, #4f46e5);
+    font-size: .72rem;
+    font-weight: 700;
+}
+.vf-answer-matrix,
+.vf-answer-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+}
 
 /* W2 — Las últimas respuestas de texto libre. Cada una en su bloque, con el
    valor recortado a dos líneas (el título completo se ve al pasar el ratón),

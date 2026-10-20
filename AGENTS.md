@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 110 archivos, 1202 métodos, ~7 min;
+- Suite completa: `php scripts/test.php` → 110 archivos, 1209 métodos, ~8 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -764,6 +764,47 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
   `FormParticipant::marcarRespondido()`**, porque en la app eso lo hace el POST
   del fill en la misma transacción y sin la marca el contador diría cero
   (`AnalyticsLayoutTest::testLaTasaDeRespuestaApareceSoloEnUnFormularioDeListado`).
+
+**Presentación de la analítica (G1–G5)**
+
+- **El repintado de un gráfico NO puede tragarse el error** (`analytics.js`):
+  `pintar()` creaba un `Chart` sobre un canvas con una instancia viva, Chart.js
+  lanzaba «Canvas is already in use» y el `catch` solo escribía en consola, así
+  que el lienzo quedaba **en blanco sin señal visible** al cambiar de vista. La
+  red de seguridad es `soltarCanvas()`, que usa `Chart.getChart(canvas)` (el
+  registro interno de Chart.js) y no solo el `Map` `chartsPorCanvas`: una
+  instancia huérfana —creada por otra vía o cuyo `destroy()` falló— también se
+  suelta. `pintar()` reintenta UNA vez tras un segundo `soltarCanvas`, y el
+  `console.error` es el fallo **definitivo**, no el primero. Lo ata el arnés
+  `tests/js/analytics-charts.js` (extrae las funciones REALES y las corre contra
+  un `Chart` falso que imita el guard): un test que solo leyera el código no
+  distingue «suelta el canvas» de «suelta el canvas que está en el Map».
+- **La cabecera de una tarjeta conmutable no lleva `flex-wrap`** (`vf-card-head`):
+  con `flex-wrap` y una etiqueta larga, el conmutador de vista bajaba a una fila
+  nueva. El título va en `.vf-card-title` (con `min-width:0`, que es lo que le
+  permite encoger en vez de empujar) y las acciones en `.vf-card-actions`
+  (`flex:0 0 auto`). Un `min-width:0` que falte deja el mismo síntoma.
+- **El índice de preguntas necesita `min-width:0` en sus items**: son `<a
+  class="nav-link text-truncate">` dentro de un `nav.flex-column`, y un flex item
+  de columna tiene `min-width:auto`, así que no encoje por debajo de su texto
+  (`nowrap`) y **se desbordaba** de la columna `col-lg-3`. El `title` con el texto
+  completo se conserva.
+- **La tabla de detalle es ANCHA por diseño (una columna por pregunta)**: se pulió
+  sin cambiar su estructura. `#` y la cabecera van `sticky` (con fondo sólido, o
+  el texto de debajo se transparenta), hay cebra y las celdas son compactas. En
+  la media query móvil se **anulan** el `sticky` y el `min-width` (allí la tabla
+  es una lista de tarjetas con `data-label`); olvidarlo deja la columna `#` pegada
+  sobre tarjetas apiladas.
+- **`_rows.php` reformatea un JSON VÁLIDO y no toca el marcador PII**: el
+  enmascarado va **antes** de mirar el `[`/`{` inicial, y `[oculto]` empieza por
+  `[`. Solo se reformatea cuando `json_decode` da un array (`array_is_list` para
+  el checkbox): un valor que solo **parece** JSON se deja intacto y un texto suelto
+  se escapa. El checkbox es un chip por valor; la matriz, filas
+  `fila → valor`; el ranking se **ordena por el puesto** (1..N), no por el orden
+  del JSON. El `<span>` con los chips es HTML ya escapado, así que la celda lo
+  imprime sin volver a escapar (el resto sí se escapa). Lo ata
+  `AnalyticsChartsTest::testLasRespuestasCompuestasSePintanConChips` y
+  `testElMarcadorPiiNoSeReformateaComoJson`.
 
 **Quién respondió (fase 9)**
 
@@ -1742,7 +1783,7 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 565 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 570 comprobaciones manuales en 31 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica
@@ -1758,6 +1799,9 @@ probando la rama equivocada).
 - `docs/plan-analitica-2026-10-19.md`: plan de rediseño de la pantalla de
   analítica (W1–W4 con su selector de gráfico efímero); su tabla de estados se
   actualiza al cerrar cada fase.
+- `docs/plan-analitica-ux-2026-10-19.md`: correcciones de presentación de la
+  analítica (G1–G5: repintado de gráficos, cabecera, índice, tabla de detalle y
+  respuestas compuestas); su tabla de estados se actualiza al cerrar cada una.
 - `docs/evaluacion-propuestas.md`: qué se decidió en F0–F5 y por qué; las seis
   cerradas.
 - `docs/technical-document.md`: arquitectura y modelo de datos (23 tablas, con

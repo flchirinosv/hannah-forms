@@ -740,7 +740,12 @@ formulario.
 
 La tabla de respuestas numera sus filas desde **#1** en la primera página y cada
 una lleva también su **Ver** al detalle de la respuesta. Se recarga por AJAX al
-cambiar de página o de filtro. Si alguna vez se queda «cargando» para siempre y
+cambiar de página o de filtro. Para leerla mejor, la columna **#** y la cabecera
+se quedan fijas al desplazar en horizontal, las filas van alternando su fondo y
+las respuestas compuestas ya no salen como una línea de datos: una **selección
+múltiple** muestra un chip por valor elegido, una **matriz** una fila
+«fila → valor» y un **ranking** la lista ordenada por el puesto (1, 2, 3…). Si
+alguna vez se queda «cargando» para siempre y
 no puedes abrir ninguna respuesta, es un fallo de `analytics.js`: la clase
 `vf-loading` se quedaba puesta porque solo se quitaba cuando la petición
 **fallaba**. Corregido en el commit `751602c`; hay una prueba que lo vigila (R1).

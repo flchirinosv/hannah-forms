@@ -1746,3 +1746,57 @@ accesible del selector de atributo y tasa de respuesta solo en roster);
 comprobaciones manuales K23–K27 del bloque K de `docs/pruebas-funcionales.md`.
 
 Suite completa: 110 archivos / **1202 métodos** en verde.
+
+## La presentación de la analítica: repintado, cabecera, índice, tabla y compuestos (2026-10-19, G1–G5)
+
+Cinco correcciones reportadas por el autor al revisar en el navegador la pantalla
+de analítica de W1–W4 (plan y estado en
+`docs/plan-analitica-ux-2026-10-19.md`). Ninguna toca el modelo de datos ni las
+consultas.
+
+- **G1 — las tarjetas se quedaban en blanco al cambiar de vista.** El síntoma no
+  daba ningún error visible: `analytics.js:pintar()` creaba un `Chart` sobre un
+  canvas con una instancia viva, Chart.js lanzaba «Canvas is already in use» y el
+  `catch` solo escribía en consola, así que el lienzo quedaba vacío. La causa es
+  que `destruir()` dependía de un `Map` propio (`chartsPorCanvas`): si la
+  instancia no estaba en él —creada por otra vía o con un `destroy()` que falló—
+  no se soltaba. La corrección es `soltarCanvas()`, que consulta el registro
+  interno de Chart.js (`Chart.getChart(canvas)`) y no el `Map`; `pintar()` lo
+  llama siempre y **reintenta una vez** tras un segundo `soltarCanvas`. Ahora el
+  `console.error` es el fallo **definitivo**, no el primero. Lo ata el arnés
+  `tests/js/analytics-charts.js`, que extrae las funciones reales del ciclo de
+  vida y las corre contra un `Chart` falso que **imita el guard**: un test que
+  solo leyera el código no distingue «suelta el canvas» de «suelta el canvas que
+  está en el `Map`», que es justo la diferencia que dejaba el lienzo muerto.
+- **G2 — el conmutador de vista bajaba de línea con etiquetas largas.** La
+  cabecera era `d-flex flex-wrap …`: con un `h4` largo, el bloque de botones
+  envolvía a una fila nueva. Ahora es `.vf-card-head` (sin `flex-wrap`) con el
+  título en `.vf-card-title` (`min-width:0`, que es lo que le permite encoger en
+  vez de empujar) y las acciones en `.vf-card-actions` (`flex:0 0 auto`).
+- **G3 — el índice de preguntas se desbordaba de su columna.** Los `<a
+  class="nav-link text-truncate">` son flex items de un `nav.flex-column`, y un
+  flex item de columna tiene `min-width:auto`: no encoge por debajo de su texto
+  (`nowrap`) y se salía del `col-lg-3`. Se añade `min-width:0` al `nav` y a los
+  enlaces; el `title` con el texto completo se conserva.
+- **G4 — la tabla de detalle es ancha por diseño (una columna por pregunta) y se
+  pulió sin cambiar su estructura**: la columna `#` y la cabecera se quedan
+  `sticky` con fondo sólido, hay cebra (que tiñe también la celda fija, o
+  desentona) y las celdas son más compactas. La media query móvil **anula** el
+  `sticky` y el `min-width`: allí la tabla es una lista de tarjetas con
+  `data-label`, y un `#` pegado sobre tarjetas apiladas es basura.
+- **G5 — las respuestas compuestas se leen, no se descifran.** `_rows.php`
+  pintaba un checkbox como «a; b», una matriz como «Fila: valor; …» y un ranking
+  como «Opción: 3» en una sola línea. Ahora cada valor es un chip (marcado
+  `.vf-chip`), la matriz va fila→valor y el ranking se **ordena por el puesto**
+  (1..N), no por el orden del JSON. La trampa se mantiene: el **enmascarado PII
+  va antes** de mirar el `[`/`{` inicial (`[oculto]` empieza por `[`), y solo se
+  reformatea un JSON **válido** (`array_is_list` para el checkbox); un valor que
+  solo parece JSON se deja intacto y un texto suelto se escapa.
+
+Tests: 7 métodos nuevos (6 en `AnalyticsChartsTest` —el arnés con node, el
+contrato sin node, los chips, el marcador PII y los tres de cabecera/índice/
+tabla— contando los que ya había, y el arnés `tests/js/analytics-charts.js` con
+11 comprobaciones); comprobaciones manuales K28–K32 del bloque K de
+`docs/pruebas-funcionales.md`.
+
+Suite completa: 110 archivos / **1209 métodos** en verde.

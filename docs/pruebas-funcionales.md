@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1202 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1209 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**565 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**570 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -340,6 +340,11 @@ Para no perderte, prepara esto antes de empezar:
 | K25 | En un formulario con más de tres preguntas, usar el índice (W4, 2026-10-19) | En escritorio hay una columna «Preguntas» con enlaces que saltan a cada tarjeta (sin JS); en móvil hay un desplegable «Ir a una pregunta» que hace el salto | A | |
 | K26 | Un formulario sin respuestas y luego un filtro sin resultados (W4, 2026-10-19) | Sin respuestas hay tarjeta «Sin respuestas todavía» con botón «Ir a compartir», no un panel de ceros; con un filtro que no casa, el detalle dice «Sin respuestas para este filtro» | A | |
 | K27 | Un formulario en modo **listado** (W4, 2026-10-19) | Aparece una tarjeta «Tasa de respuesta» con «N de M (P%)» del padrón entero (no sigue el filtro de fechas); en un formulario normal no aparece | A | |
+| K28 | En las dos primeras preguntas con gráfico, alternar la vista varias veces (G1, 2026-10-19) | La tarjeta repinta cada vez y **nunca** se queda en blanco; cambiar a tabla/resumen y volver al gráfico no deja el lienzo vacío ni un error silencioso | A | |
+| K29 | Con una etiqueta de pregunta muy larga, mirar la cabecera de su tarjeta (G2, 2026-10-19) | El título ocupa su espacio y el conmutador **Vista** se queda arriba a la derecha, sin bajar a una fila nueva | A | |
+| K30 | En un formulario con muchas preguntas y etiquetas largas, mirar el índice «Preguntas» (G3, 2026-10-19) | Cada enlace recorta su texto con puntos suspensivos y no se sale de la columna; al pasar el ratón, el `title` enseña el texto completo | A | |
+| K31 | En la tabla de detalle, desplazar en horizontal con muchas columnas (G4, 2026-10-19) | La columna **#** y la cabecera se quedan fijas; las filas alternan su fondo y se siguen leyendo; en móvil la tabla son tarjetas con su rótulo | A | |
+| K32 | Con respuestas de **selección múltiple**, **matriz** y **ranking**, mirar la tabla de detalle (G5, 2026-10-19) | La selección múltiple muestra un chip por valor; la matriz una fila «fila → valor»; el ranking la lista ordenada por el puesto (1, 2, 3…); sin permiso de PII, un valor personal sale como `[oculto]` | A | |
 
 ---
 

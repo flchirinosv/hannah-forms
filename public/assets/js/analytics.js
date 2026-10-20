@@ -80,18 +80,48 @@
         camposPorId[String(f.id)] = f;
     });
 
+    // G1 — Suelta CUALQUIER Chart que Chart.js tenga registrado sobre este
+    // canvas, aunque no esté en el `Map`. Es la red de seguridad para el caso
+    // que dejaba la tarjeta en blanco: `new Chart` sobre un canvas que todavía
+    // tiene una instancia viva lanza «Canvas is already in use» y el `catch` se
+    // lo tragaba, así que el lienzo se quedaba vacío sin error visible.
+    function soltarCanvas(canvas) {
+        if (typeof Chart.getChart === 'function') {
+            var vivo = Chart.getChart(canvas);
+            if (vivo) {
+                try { vivo.destroy(); } catch (e) { /* ya destruido */ }
+            }
+        }
+    }
+
     function destruir(canvas) {
         var previo = chartsPorCanvas.get(canvas);
         if (previo) {
             try { previo.destroy(); } catch (e) { /* ya destruido */ }
             chartsPorCanvas.delete(canvas);
         }
+        // Aunque el `Map` no lo tuviera (una instancia creada por otra vía o un
+        // `destroy()` que falló), el registro interno de Chart.js manda.
+        soltarCanvas(canvas);
+    }
+
+    function crear(canvas, config) {
+        chartsPorCanvas.set(canvas, new Chart(canvas, config));
     }
 
     function pintar(canvas, config) {
         destruir(canvas);
         try {
-            chartsPorCanvas.set(canvas, new Chart(canvas, config));
+            crear(canvas, config);
+            return;
+        } catch (e) {
+            // Si aún choca con una instancia viva, se fuerza un segundo
+            // `destroy` y se reintenta UNA vez. Solo si vuelve a fallar se
+            // registra: así el fallo deja rastro y no un canvas muerto.
+            soltarCanvas(canvas);
+        }
+        try {
+            crear(canvas, config);
         } catch (e) {
             console.error('[VanillaForms] Error chart ' + (canvas.className || ''), e);
         }

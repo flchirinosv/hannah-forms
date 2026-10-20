@@ -246,12 +246,12 @@ $qsAnalytics = http_build_query(array_filter([
                 <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="<?= View::escape($familiaNumerica) ?>">
                         <div class="card-body">
-                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                                <div>
+                            <div class="vf-card-head d-flex align-items-start justify-content-between gap-2">
+                                <div class="vf-card-title">
                                     <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
                                     <span class="text-muted small">Respuesta numérica</span>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="vf-card-actions d-flex align-items-center gap-2">
                                     <?php if ($f['type'] === 'nps' && !empty($stat['nps'])): ?>
                                         <?php $nps = $stat['nps']; ?>
                                         <div class="text-end">
@@ -292,8 +292,10 @@ $qsAnalytics = http_build_query(array_filter([
                 <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
-                            <h4 class="h6 fw-bold mb-1"><?= View::escape($f['label']) ?></h4>
-                            <span class="text-muted small">Matriz — <?= (int) $mv['total'] ?> respuestas</span>
+                            <div class="vf-card-head">
+                                <h4 class="h6 fw-bold mb-1"><?= View::escape($f['label']) ?></h4>
+                                <span class="text-muted small">Matriz — <?= (int) $mv['total'] ?> respuestas</span>
+                            </div>
                             <div class="table-responsive mt-3">
                                 <table class="table table-sm align-middle mb-0 app-stat-matrix">
                                     <thead>
@@ -352,8 +354,8 @@ $qsAnalytics = http_build_query(array_filter([
                 <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="ranking">
                         <div class="card-body">
-                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                                <div>
+                            <div class="vf-card-head d-flex align-items-start justify-content-between gap-2">
+                                <div class="vf-card-title">
                                     <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
                                     <span class="text-muted small">Ranking (promedio de orden)</span>
                                 </div>
@@ -361,10 +363,12 @@ $qsAnalytics = http_build_query(array_filter([
                                       // exacto); las barras de posición media son la lectura
                                       // de un golpe. La lista blanca no ofrece doughnut: un
                                       // promedio de orden no es una parte de un todo. ?>
+                                <div class="vf-card-actions">
                                 <?= View::partial('analytics/_views', [
                                     'views'  => \App\Services\FieldAggregator::VISTAS['ranking'],
                                     'active' => 'table',
                                 ]) ?>
+                                </div>
                             </div>
                             <div class="table-responsive mt-3" data-vf-ranking-table>
                                 <table class="table table-sm align-middle mb-0 app-stat-ranking">
@@ -394,8 +398,8 @@ $qsAnalytics = http_build_query(array_filter([
                 <div class="col-md-6 vf-analytics-field" id="campo-<?= (int) $f['id'] ?>">
                     <div class="card border-0 shadow-sm h-100 vf-chart-card" data-vf-family="choice">
                         <div class="card-body">
-                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                                <div>
+                            <div class="vf-card-head d-flex align-items-start justify-content-between gap-2">
+                                <div class="vf-card-title">
                                     <h4 class="h6 fw-bold mb-0"><?= View::escape($f['label']) ?></h4>
                                     <span class="text-muted small"><?= $stat['non_empty'] ?> respuestas</span>
                                 </div>
@@ -403,10 +407,12 @@ $qsAnalytics = http_build_query(array_filter([
                                       // son porciones de un todo (alguien puede no responder) y
                                       // el anillo se vuelve ilegible con muchas. El anillo se
                                       // ofrece como lectura alternativa, no como default. ?>
+                                <div class="vf-card-actions">
                                 <?= View::partial('analytics/_views', [
                                     'views'  => \App\Services\FieldAggregator::VISTAS['choice'],
                                     'active' => 'bars',
                                 ]) ?>
+                                </div>
                             </div>
                             <div class="choice-chart-box mt-3" data-vf-chart-box><canvas class="choice-chart" data-field="<?= (int) $f['id'] ?>" data-type="<?= View::escape($f['type']) ?>"></canvas></div>
                             <div class="vf-choice-table d-none mt-3"></div>
