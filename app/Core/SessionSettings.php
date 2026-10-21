@@ -62,6 +62,15 @@ final class SessionSettings
         if (is_string($stored) && trim($stored) !== '') {
             return trim($stored);
         }
+        // También miramos config['session'] si viene desde Config::all() (caso tests)
+        try {
+            $cfg = Config::get('session', []);
+            if (is_array($cfg) && isset($cfg['name']) && trim((string) $cfg['name']) !== '') {
+                return trim((string) $cfg['name']);
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
         return self::envName();
     }
 
@@ -79,6 +88,17 @@ final class SessionSettings
             if ($v >= 60) {
                 return $v;
             }
+        }
+        try {
+            $cfg = Config::get('session', []);
+            if (is_array($cfg) && isset($cfg['lifetime'])) {
+                $v = (int) $cfg['lifetime'];
+                if ($v >= 60) {
+                    return $v;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         return self::envLifetime();
     }
@@ -101,6 +121,24 @@ final class SessionSettings
                 return false;
             }
         }
+        try {
+            $cfg = Config::get('session', []);
+            if (is_array($cfg) && array_key_exists('secure', $cfg)) {
+                $v = $cfg['secure'];
+                if (is_bool($v)) {
+                    return $v;
+                }
+                $t = strtolower(trim((string) $v));
+                if ($t === '1' || $t === 'true' || $t === 'on') {
+                    return true;
+                }
+                if ($t === '0' || $t === 'false' || $t === 'off') {
+                    return false;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
         return self::envBool('SESSION_SECURE', self::DEFAULT_SECURE);
     }
 
@@ -116,6 +154,24 @@ final class SessionSettings
                 return false;
             }
         }
+        try {
+            $cfg = Config::get('session', []);
+            if (is_array($cfg) && array_key_exists('httponly', $cfg)) {
+                $v = $cfg['httponly'];
+                if (is_bool($v)) {
+                    return $v;
+                }
+                $t = strtolower(trim((string) $v));
+                if ($t === '1' || $t === 'true' || $t === 'on') {
+                    return true;
+                }
+                if ($t === '0' || $t === 'false' || $t === 'off') {
+                    return false;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
         return self::envBool('SESSION_HTTPONLY', self::DEFAULT_HTTPONLY);
     }
 
@@ -127,6 +183,17 @@ final class SessionSettings
             if (in_array($t, self::SAMESITE_ALLOWED, true)) {
                 return $t;
             }
+        }
+        try {
+            $cfg = Config::get('session', []);
+            if (is_array($cfg) && isset($cfg['samesite'])) {
+                $t = ucfirst(strtolower(trim((string) $cfg['samesite'])));
+                if (in_array($t, self::SAMESITE_ALLOWED, true)) {
+                    return $t;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         return self::envSamesite();
     }

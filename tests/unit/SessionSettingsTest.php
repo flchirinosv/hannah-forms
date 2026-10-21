@@ -74,6 +74,7 @@ class SessionSettingsTest
         Config::setForTesting('session', ['name' => 'sess_test', 'lifetime' => 3600, 'secure' => true, 'httponly' => true, 'samesite' => 'Strict']);
         Config::setForTesting('app', []);
 
+        // Con setForTesting de app vacío y sin fila, debe salir del config/session.
         assertSame('sess_test', SessionSettings::name());
         assertSame(3600, SessionSettings::lifetime());
         assertTrue(SessionSettings::secure());
