@@ -188,6 +188,8 @@ $router->post('/admin/settings/turnstile', [AdminController::class, 'updateTurns
 $router->post('/admin/settings/uploads', [AdminController::class, 'updateUploads'], ['auth', 'admin', 'csrf']);
 // AG7 — Cupos del dashboard por usuario (formularios/hora, exportaciones/hora).
 $router->post('/admin/settings/dashboard-limits', [AdminController::class, 'updateDashboardLimits'], ['auth', 'admin', 'csrf']);
+// AG8 — Hardening de sesión / HTTPS (nombre, duración, secure, httponly, samesite).
+$router->post('/admin/settings/session', [AdminController::class, 'updateSession'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

@@ -226,4 +226,16 @@ class AdminSettingsPageTest
         assertTrue(str_contains($settings, 'name="dash_create_per_hour"'), 'con formularios por hora');
         assertTrue(str_contains($settings, 'name="dash_export_per_hour"'), 'y exportaciones por hora');
     }
+
+    /**
+     * AG8 — La tarjeta de sesión apunta a SU endpoint.
+     */
+    public function testLaTarjetaDeSesionApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/session"'), 'el formulario de sesión');
+        assertTrue(str_contains($settings, 'name="session_name"'), 'con nombre de cookie');
+        assertTrue(str_contains($settings, 'name="session_lifetime"'), 'y duración');
+    }
 }

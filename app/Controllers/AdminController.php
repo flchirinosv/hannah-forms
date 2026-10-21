@@ -20,6 +20,7 @@ use App\Core\Session;
 use App\Core\TurnstileSettings;
 use App\Core\UploadSettings;
 use App\Core\DashboardLimitSettings;
+use App\Core\SessionSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -127,6 +128,7 @@ class AdminController
             'secretAvailable'     => \App\Core\Secret::isAvailable(),
             'uploads'             => UploadSettings::all(),
             'dashboardLimits'     => DashboardLimitSettings::all(),
+            'sessionSettings'     => SessionSettings::all(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -647,6 +649,42 @@ class AdminController
 
         SecurityLog::record('instance.dashboard_limits_update', 'cupos del dashboard por usuario actualizados desde el panel');
         Session::flash('success', 'Cupos del dashboard actualizados.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/session — hardening de sesión / HTTPS.
+     *
+     * PRG. Afecta a nuevas sesiones (cambios inmediatos al loguearse de nuevo).
+     */
+    public function updateSession(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = SessionSettings::save([
+            'name'      => Request::post('session_name', ''),
+            'lifetime'  => Request::post('session_lifetime', ''),
+            'secure'    => Request::post('session_secure') !== null,
+            'httponly'  => Request::post('session_httponly') !== null,
+            'samesite'  => Request::post('session_samesite', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.session_update', 'ajustes de sesión actualizados desde el panel');
+        Session::flash('success', 'Ajustes de sesión actualizados.');
         Response::redirect('/admin/settings');
     }
 

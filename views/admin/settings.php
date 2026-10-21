@@ -628,6 +628,73 @@ use App\Core\View;
             </div>
         </div>
     </div>
+
+    <?php // AG8 — Hardening de sesión / HTTPS. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span>
+                        <div>
+                            <h3 class="app-instance-head-title">Sesión y seguridad de cookies</h3>
+                            <p class="app-instance-head-sub">
+                                Nombre, duración, <code>Secure</code>, <code>HttpOnly</code> y <code>SameSite</code>.
+                                Vacíalos para volver al <code>.env</code>. Los cambios afectan a las nuevas sesiones.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post" action="/admin/settings/session">
+                        <?= Csrf::field() ?>
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <label class="form-label" for="sessionName">Nombre de la cookie</label>
+                                <input type="text" class="form-control" id="sessionName" name="session_name"
+                                       value="<?= View::escape($sessionSettings['stored_name'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($sessionSettings['env_name'] ?? 'vanillaforms_session')) ?>">
+                                <div class="form-text">Solo letras, números y guion bajo.</div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="sessionLifetime">Duración (segundos)</label>
+                                <input type="number" class="form-control" id="sessionLifetime" name="session_lifetime"
+                                       min="60" value="<?= View::escape($sessionSettings['stored_lifetime'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($sessionSettings['env_lifetime'] ?? 7200)) ?>">
+                                <div class="form-text">Mínimo 60 s. Efectivo ahora: <strong><?= (int) ($sessionSettings['lifetime'] ?? 7200) ?> s</strong>.</div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="sessionSamesite">SameSite</label>
+                                <select class="form-select" id="sessionSamesite" name="session_samesite">
+                                    <option value="" <?= ($sessionSettings['stored_samesite'] ?? '') === '' ? 'selected' : '' ?>>Por defecto (<?= View::escape((string) ($sessionSettings['env_samesite'] ?? 'Lax')) ?>)</option>
+                                    <option value="Lax" <?= ($sessionSettings['stored_samesite'] ?? '') === 'Lax' ? 'selected' : '' ?>>Lax</option>
+                                    <option value="Strict" <?= ($sessionSettings['stored_samesite'] ?? '') === 'Strict' ? 'selected' : '' ?>>Strict</option>
+                                    <option value="None" <?= ($sessionSettings['stored_samesite'] ?? '') === 'None' ? 'selected' : '' ?>>None</option>
+                                </select>
+                                <div class="form-text">Si usas <code>None</code> necesitas <code>Secure</code>.</div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="sessionSecure" name="session_secure" value="1" <?= (($sessionSettings['stored_secure'] ?? '') === '1') || (($sessionSettings['stored_secure'] ?? '') === '' && !empty($sessionSettings['env_secure'])) ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="sessionSecure">Secure</label>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="sessionHttpOnly" name="session_httponly" value="1" <?= (($sessionSettings['stored_httponly'] ?? '') === '1') || (($sessionSettings['stored_httponly'] ?? '') === '' && !empty($sessionSettings['env_httponly'])) ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="sessionHttpOnly">HttpOnly</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes de sesión
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí solo

@@ -6,6 +6,7 @@ use App\Core\Config;
 use App\Core\Database;
 use App\Core\Env;
 use App\Core\Session;
+use App\Core\SessionSettings;
 
 require_once __DIR__ . '/autoload.php';
 
@@ -39,7 +40,15 @@ try {
     exit;
 }
 
-Session::start($config['session']);
+$sessionCfg = [
+    'name'     => SessionSettings::name(),
+    'lifetime' => SessionSettings::lifetime(),
+    'path'     => '/',
+    'secure'   => SessionSettings::secure(),
+    'httponly' => SessionSettings::httponly(),
+    'samesite' => SessionSettings::samesite(),
+];
+Session::start($sessionCfg);
 
 // Las páginas de la app son dinámicas y a veces autenticadas: nunca cachear
 // el HTML para que los assets versionados (View::asset) siempre se recarguen.

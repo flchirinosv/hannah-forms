@@ -196,6 +196,8 @@ final class SecurityLog
             'instance.uploads_update',
             // AG7 — Cupos del dashboard por usuario.
             'instance.dashboard_limits_update',
+            // AG8 — Hardening de sesión / HTTPS.
+            'instance.session_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',
