@@ -73,6 +73,13 @@ final class DashboardLimitSettings
 
     private static function envCreatePerHour(): int
     {
+        $limits = Config::get('app.limits', []);
+        if (isset($limits['create_per_hour'])) {
+            $v = (int) $limits['create_per_hour'];
+            if ($v >= 1) {
+                return $v;
+            }
+        }
         $v = (int) Env::get('DASH_CREATE_PER_HOUR', (string) self::DEFAULT_CREATE_PER_HOUR);
         if ($v < 1) {
             $v = self::DEFAULT_CREATE_PER_HOUR;
@@ -82,6 +89,13 @@ final class DashboardLimitSettings
 
     private static function envExportPerHour(): int
     {
+        $limits = Config::get('app.limits', []);
+        if (isset($limits['export_per_hour'])) {
+            $v = (int) $limits['export_per_hour'];
+            if ($v >= 1) {
+                return $v;
+            }
+        }
         $v = (int) Env::get('DASH_EXPORT_PER_HOUR', (string) self::DEFAULT_EXPORT_PER_HOUR);
         if ($v < 1) {
             $v = self::DEFAULT_EXPORT_PER_HOUR;
