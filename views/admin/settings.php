@@ -770,4 +770,3 @@ use App\Core\View;
 <?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí solo
       // vive el bloque del interruptor de registro. ?>
 <script src="<?= View::asset('js/dashboard.js') ?>" defer></script>
-</div>
