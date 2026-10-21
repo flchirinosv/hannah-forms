@@ -285,6 +285,67 @@ body {
     border-radius: var(--vf-radius);
     background: var(--vf-surface);
 }
+/* ---------- Ajustes de la instancia (marca y correo) ----------
+   Cabecera de tarjeta con el icono en «chip» y grupos internos con su propio
+   subtítulo, para que las tarjetas de `/admin/settings` no sean un muro de
+   campos separados solo por un `<hr>`. Los colores salen de los tokens, así que
+   el chip sigue el color primario de la instancia. */
+.app-instance-head {
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    margin-bottom: 1rem;
+}
+.app-instance-head-icon {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--vf-primary-light);
+    color: var(--vf-primary-dark);
+    font-size: 1rem;
+}
+.app-instance-head-title {
+    font-size: .95rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+}
+.app-instance-head-sub {
+    margin: .15rem 0 0;
+    font-size: .8rem;
+    color: var(--vf-text-muted);
+}
+/* Subtítulo de grupo DENTRO de una tarjeta (Servidor / Acceso / Remitente). */
+.app-instance-subhead {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--vf-text-muted);
+    margin: 0 0 .6rem;
+}
+/* Píldora de estado de la tarjeta (SMTP configurado / sin configurar). */
+.app-instance-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .65rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+}
+.app-instance-status.is-on  { background: #ecfdf5; color: #047857; }
+.app-instance-status.is-off { background: #fff7ed; color: #b45309; }
+/* Panel atenuado para el bloque de «probar el envío». */
+.app-instance-subpanel {
+    border: 1px dashed var(--vf-border);
+    border-radius: var(--vf-radius);
+    background: #f8fafc;
+    padding: 1rem;
+}
+.app-instance-subpanel .app-instance-subhead { margin-bottom: .35rem; }
+
 .app-stat-card { border-radius: var(--vf-radius-lg); transition: transform .2s ease, box-shadow .2s ease; }
 .app-stat-card:hover { transform: translateY(-3px); box-shadow: var(--vf-shadow-lg); }
 .app-stat-icon {
