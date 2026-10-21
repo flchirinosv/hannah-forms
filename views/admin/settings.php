@@ -685,9 +685,57 @@ use App\Core\View;
                                 </div>
                             </div>
                         </div>
+    <?php // AG9 — Red, proxy y cabeceras de seguridad. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-network-wired" aria-hidden="true"></i></span>
+                        <div>
+                            <h3 class="app-instance-head-title">Red, proxy y cabeceras</h3>
+                            <p class="app-instance-head-sub">
+                                <code>TRUST_PROXY</code>, <code>APP_REDIRECT_ALLOWLIST</code>, <code>X-Frame-Options</code> y <code>Content-Security-Policy</code>.
+                                Vacíalos para volver al <code>.env</code>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post" action="/admin/settings/network">
+                        <?= Csrf::field() ?>
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="trustProxy" name="trust_proxy" value="1" <?= (($networkSettings['stored_trust_proxy'] ?? '') === '1') || (($networkSettings['stored_trust_proxy'] ?? '') === '' && !empty($networkSettings['env_trust_proxy'])) ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="trustProxy">Confiar en proxy (<code>TRUST_PROXY</code>)</label>
+                                </div>
+                                <div class="form-text">Usar <code>X-Forwarded-For</code>/<code>X-Forwarded-Proto</code>.</div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="redirectAllowlist">Allowlist de redirección externa</label>
+                                <input type="text" class="form-control" id="redirectAllowlist" name="redirect_allowlist"
+                                       value="<?= View::escape($networkSettings['stored_redirect_allowlist'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($networkSettings['env_redirect_allowlist'] ?? '')) ?>">
+                                <div class="form-text">Separados por coma. Vacío = bloqueadas.</div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="frameOptions">X-Frame-Options</label>
+                                <select class="form-select" id="frameOptions" name="frame_options">
+                                    <option value="" <?= ($networkSettings['stored_frame_options'] ?? '') === '' ? 'selected' : '' ?>>Por defecto (<?= View::escape((string) ($networkSettings['env_frame_options'] ?? 'SAMEORIGIN')) ?>)</option>
+                                    <option value="DENY" <?= ($networkSettings['stored_frame_options'] ?? '') === 'DENY' ? 'selected' : '' ?>>DENY</option>
+                                    <option value="SAMEORIGIN" <?= ($networkSettings['stored_frame_options'] ?? '') === 'SAMEORIGIN' ? 'selected' : '' ?>>SAMEORIGIN</option>
+                                </select>
+                                <div class="form-text">Para embed usar <code>SAMEORIGIN</code> o ajustar por formulario.</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="cspPolicy">Content-Security-Policy global</label>
+                                <textarea class="form-control" id="cspPolicy" name="csp_policy" rows="3" placeholder="<?= View::escape((string) ($networkSettings['env_csp_policy'] ?? '')) ?>"><?= View::escape($networkSettings['stored_csp_policy'] ?? '') ?></textarea>
+                                <div class="form-text">Vacío = sin cabecera global. El CSP del formulario puede tener su propia política.</div>
+                            </div>
+                        </div>
                         <div class="d-flex justify-content-end mt-4">
                             <button type="submit" class="btn btn-primary app-btn-primary">
-                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes de sesión
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes de red
                             </button>
                         </div>
                     </form>
@@ -700,3 +748,4 @@ use App\Core\View;
 <?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí solo
       // vive el bloque del interruptor de registro. ?>
 <script src="<?= View::asset('js/dashboard.js') ?>" defer></script>
+</div>

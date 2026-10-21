@@ -238,4 +238,16 @@ class AdminSettingsPageTest
         assertTrue(str_contains($settings, 'name="session_name"'), 'con nombre de cookie');
         assertTrue(str_contains($settings, 'name="session_lifetime"'), 'y duración');
     }
+
+    /**
+     * AG9 — La tarjeta de red apunta a SU endpoint.
+     */
+    public function testLaTarjetaDeRedApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/network"'), 'el formulario de red');
+        assertTrue(str_contains($settings, 'name="trust_proxy"'), 'con trust proxy');
+        assertTrue(str_contains($settings, 'name="redirect_allowlist"'), 'y allowlist');
+    }
 }

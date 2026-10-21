@@ -21,6 +21,7 @@ use App\Core\TurnstileSettings;
 use App\Core\UploadSettings;
 use App\Core\DashboardLimitSettings;
 use App\Core\SessionSettings;
+use App\Core\NetworkSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -129,6 +130,7 @@ class AdminController
             'uploads'             => UploadSettings::all(),
             'dashboardLimits'     => DashboardLimitSettings::all(),
             'sessionSettings'     => SessionSettings::all(),
+            'networkSettings'     => NetworkSettings::all(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -685,6 +687,41 @@ class AdminController
 
         SecurityLog::record('instance.session_update', 'ajustes de sesión actualizados desde el panel');
         Session::flash('success', 'Ajustes de sesión actualizados.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/network — red, proxy y cabeceras de seguridad.
+     *
+     * PRG.
+     */
+    public function updateNetwork(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = NetworkSettings::save([
+            'trust_proxy'         => Request::post('trust_proxy') !== null,
+            'redirect_allowlist'  => Request::post('redirect_allowlist', ''),
+            'frame_options'       => Request::post('frame_options', ''),
+            'csp_policy'          => Request::post('csp_policy', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.network_update', 'ajustes de red/cabeceras actualizados desde el panel');
+        Session::flash('success', 'Ajustes de red actualizados.');
         Response::redirect('/admin/settings');
     }
 

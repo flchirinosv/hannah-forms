@@ -198,6 +198,8 @@ final class SecurityLog
             'instance.dashboard_limits_update',
             // AG8 — Hardening de sesión / HTTPS.
             'instance.session_update',
+            // AG9 — Red y cabeceras.
+            'instance.network_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

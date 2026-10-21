@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\NetworkSettings;
+
 /**
  * URL pública de la instancia: la que se copia al portapapeles, la que se
  * codifica en el QR y la que va en el `<iframe>` de embed.

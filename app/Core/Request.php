@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\NetworkSettings;
+
 class Request
 {
     /**
@@ -210,8 +212,18 @@ class Request
      */
     public static function trustsProxy(): bool
     {
+        if (self::$trustProxyForTesting !== null) {
+            return self::$trustProxyForTesting;
+        }
+        try {
+            if (class_exists(NetworkSettings::class)) {
+                return NetworkSettings::trustProxy();
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
         $appCfg = Config::get('app', []);
-        return self::$trustProxyForTesting ?? (bool) ($appCfg['trust_proxy'] ?? false);
+        return (bool) ($appCfg['trust_proxy'] ?? false);
     }
 
     public static function ip(): string

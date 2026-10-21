@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Config;
+use App\Core\NetworkSettings;
 
 /**
  * Allowlist de dominios para `thanks.redirect_url` (F5.1, post-submit).
@@ -59,6 +60,16 @@ class RedirectGuard
     {
         if (self::$allowlistOverride !== null) {
             return array_map('strtolower', self::$allowlistOverride);
+        }
+        try {
+            if (class_exists(NetworkSettings::class)) {
+                $list = NetworkSettings::redirectAllowlist();
+                if (!empty($list)) {
+                    return array_map('strtolower', $list);
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         $raw = (array) Config::get('app.redirect_allowlist', []);
         return array_map('strtolower', $raw);
