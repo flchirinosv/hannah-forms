@@ -56,7 +56,7 @@ class ControllerActionsTest
     private static array $savedSettings = [];
 
     /** Claves de `app_settings` que el smoke escribe y hay que devolver. */
-    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon'];
+    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout'];
 
     public function setUp(): void
     {

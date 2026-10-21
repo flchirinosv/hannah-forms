@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**572 pruebas** en 31 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**601 pruebas** en 33 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -32,7 +32,8 @@ la lista de acceso (U), la pantalla de participantes (V), el identificador del
 listado (W), el filtro de la analítica por atributo (X), la comparación por
 atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA),
 el listado paginado del panel (AB), la galería del modal de nuevo formulario
-(AC), la consola de administración (AD) y el recordatorio por correo (AE).
+(AC), la consola de administración (AD), el recordatorio por correo (AE), la
+marca de la instancia (AF) y el correo (SMTP) de la instancia (AG).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -977,6 +978,29 @@ Para llegar: panel → el formulario → *Participantes*.
 | AF12 | Un usuario sin `admin.access` intenta el POST de marca | 403 y no se guarda | A | |
 | AF13 | Todo lo anterior **sin JavaScript** | Nombre, color, subida y borrado funcionan por POST nativo; solo se pierde la sincronía del selector de color | A | |
 | AF14 | Con `APP_KEY` vacía y un ajuste de marca guardado | La instancia se ve igual (el cifrado no hace falta para la marca; solo lo usa el SMTP) | M | |
+
+## Bloque AG — Correo (SMTP) de la instancia (AG3)
+
+Tarjeta **«Correo (SMTP)»** de `/admin/settings`, con permiso `admin.access`. La
+contraseña se guarda **cifrada** con `APP_KEY` (sin SSH, sin editar el `.env`).
+
+| ID | Prueba | Resultado esperado | Tipo | Notas |
+|---|---|---|---|---|
+| AG1 | Entra a `/admin/settings` | Aparece la tarjeta «Correo (SMTP)» con sus campos y el botón «Enviar prueba» | A | |
+| AG2 | Rellena servidor, puerto, cifrado, usuario y contraseña, y guarda | Vuelve a la pantalla (PRG) con «Correo actualizado» y los valores se conservan al reabrir | A | |
+| AG3 | Reabre tras guardar la contraseña | El campo de contraseña está **vacío** y aparece la insignia «guardada»; no se muestra nunca el valor | A | |
+| AG4 | Guarda otro campo (p. ej. el nombre del remitente) sin tocar la contraseña | La contraseña guardada **sigue ahí** (la insignia «guardada» no desaparece) | A | |
+| AG5 | Marca «Borrar la contraseña guardada» y guarda | La insignia desaparece; el correo cae a la contraseña del `.env` o a ninguna | A | |
+| AG6 | Escribe un puerto `70000` y guarda | Mensaje de error, no se guarda nada | A | |
+| AG7 | Escribe un remitente que no es correo y guarda | Mensaje de error, no se guarda nada | A | |
+| AG8 | Deja el servidor en blanco y guarda | Se borra la fila del host y el correo vuelve al `.env` (aviso «no hay servidor configurado») | M | |
+| AG9 | Con el SMTP bien configurado, pulsa «Enviar prueba» | Llega un correo de prueba y sale «Correo de prueba enviado a …» | A | |
+| AG10 | Pulsa «Enviar prueba» con un servidor inexistente | Aviso con el motivo del fallo (no un error 500) y no se pierde la configuración | A | |
+| AG11 | Pulsa «Enviar prueba» sin destino | Se manda a tu propio correo | A | |
+| AG12 | Inspecciona la tabla `app_settings` tras guardar la contraseña | El valor de `mail_password` está cifrado (no se lee en claro) | M | |
+| AG13 | Sin `APP_KEY`, intenta guardar una contraseña | Aviso que nombra `APP_KEY` y no se guarda la contraseña (el resto del correo sigue del `.env`) | A | |
+| AG14 | Un usuario sin `admin.access` intenta los POST de correo | 403 y no se guarda nada | A | |
+| AG15 | Todo lo anterior **sin JavaScript** | Guardar y probar funcionan por POST nativo (PRG) | A | |
 
 ## Cuando encuentres un fallo
 

@@ -1904,3 +1904,53 @@ las cuatro claves de `app_settings` en el snapshot de `ControllerActionsTest`, q
 recorre `POST /admin/settings/brand` de verdad.
 
 Suite completa: 115 archivos / **1250 métodos** en verde.
+
+## AG3 — Correo (SMTP) por UI con contraseña cifrada (2026-10-20)
+
+Cierra el caso que dejaba AG1 sin estrenar del todo: el operador podía cambiar la
+marca desde el panel, pero para tocar el correo seguía necesitando SSH y editar el
+`.env`. AG3 pone el SMTP en `/admin/settings` con la contraseña **cifrada** (AG1).
+
+- **`App\Core\MailSettings` centraliza la config y `Mailer::config()` pasa por
+  ella.** Es la decisión que hace que esto valga para TODA la app sin tocar un solo
+  call site: los avisos al dueño, la confirmación al respondiente, las invitaciones y
+  los recordatorios del roster ya llamaban a `Mailer::send()`, y ese método resuelve
+  su config una vez, aquí. Poner la lectura en cada sitio era olvidarse de uno.
+- **Misma precedencia que `Brand` y el registro: la fila gana; sin fila, el `.env`.**
+  Una instalación que nunca abre la tarjeta se comporta exactamente como antes de
+  AG3, así que mover esto a la tabla no rompe a nadie. Y un campo de texto vacío
+  BORRA su fila (vuelve al `.env`), igual que el nombre de la instancia.
+- **La contraseña es lo único que se cifra, y sin `APP_KEY` no se guarda.** Un
+  `save()` con contraseña y sin clave devuelve error explícito («genera una con
+  `generate-key.php`») en vez de escribirla en claro en la tabla: una contraseña
+  legible en cada backup es justo lo que AG1 evitaba. El resto de campos no son
+  secretos y se guardan igual que la marca.
+- **La contraseña es de SOLO ESCRITURA.** El formulario no la rellena nunca con el
+  valor guardado (no se devuelve al HTML); la pista «guardada» solo dice si hay una
+  utilizable (`passwordStored()`), y para cambiarla se escribe encima. Un `POST` sin
+  contraseña NO la toca; para borrarla hay una casilla explícita (`clear_password`).
+  Sin esa separación, guardar cualquier otro campo habría borrado la contraseña.
+- **`decrypt()` que no lanza (AG1) es lo que permite el fallback**: con un `APP_KEY`
+  cambiado, la contraseña guardada no se puede descifrar y `all()` cae a la del
+  `.env`. Es preferible que el correo siga saliendo a que un cambio de clave lo deje
+  mudo; `passwordStored()` devuelve `false` en ese caso, así que la UI también es
+  honesta.
+- **Guardar y probar son dos formularios.** El botón «Enviar prueba»
+  (`POST /admin/settings/mail/test`) es lo que hace usable el ajuste: configurar
+  `smtp.gmail.com` sin poder probarlo deja al operador adivinando. Un fallo de SMTP
+  NO es un 500: se captura y se cuenta como aviso con el mensaje de `Mailer` (que es
+  lo que dice qué falló). Se prueba con el `setTransport()` de los tests en la
+  suite, sin abrir sockets.
+- **Dos eventos, no uno**: `instance.mail_update` (la config cambia) e
+  `instance.mail_test` (se intentó una prueba, con éxito o con el motivo del fallo).
+  A diferencia de la marca, aquí «guardar» y «probar» son acciones distintas y la
+  traza de seguridad del login SMTP importa.
+- **Sin dato en la tarjeta: la contraseña nunca se pasa a la vista.** El controlador
+  solo entrega `mailPasswordStored` y `mailSecretAvailable`; el `input` del password
+  llega vacío y con `type="password"`. `AdminSettingsPageTest` lo fija con una
+  `assertFalse` sobre cualquier `value="<?= … ?>"` en ese campo.
+
+Tests: `MailSettingsTest` (12), `MailAdminTest` (9) y dos métodos nuevos en
+`AdminSettingsPageTest`. Los ocho campos de correo entran en el snapshot de
+`ControllerActionsTest`, que recorre `POST /admin/settings/mail` y `.../test` de
+verdad (con `MAIL_HOST` vacío en el `.env` de test, la prueba no abre conexión).

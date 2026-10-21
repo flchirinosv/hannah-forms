@@ -173,6 +173,10 @@ $router->post('/admin/settings/review', [AdminController::class, 'updateReviewPo
 $router->post('/admin/settings/brand', [AdminController::class, 'updateBrand'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/settings/brand/{kind}', [AdminController::class, 'uploadBrandImage'], ['auth', 'admin', 'post-max', 'csrf']);
 $router->post('/admin/settings/brand/{kind}/remove', [AdminController::class, 'removeBrandImage'], ['auth', 'admin', 'csrf']);
+// AG3 — Correo (SMTP) de la instancia. La contraseña viaja en el mismo POST que
+// el resto (no es multipart) y se guarda cifrada; la prueba es un POST aparte.
+$router->post('/admin/settings/mail', [AdminController::class, 'updateMail'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/settings/mail/test', [AdminController::class, 'sendTestMail'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

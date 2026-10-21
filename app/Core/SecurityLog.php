@@ -179,6 +179,9 @@ final class SecurityLog
             // la instalación» y separarlas daría cuatro claves que decir es lo
             // mismo.
             'instance.brand_update',
+            // AG3 — Configuración SMTP de la instancia y su correo de prueba.
+            'instance.mail_update',
+            'instance.mail_test',
             'form.delete',
             'form.duplicate',
             'form.review_request',

@@ -5,11 +5,13 @@ Si algo de este manual y lo que ves en pantalla no coinciden, el código manda:
 `config/routes.php` para las rutas, `app/Services/FormSettings.php` para los
 ajustes y `config/permissions.php` para los permisos.
 
-Documento terminado: 2026-09-30. Última revisión: 2026-10-14, con el
+Documento terminado: 2026-09-30. Última revisión: 2026-10-20, con el
 listado de participantes (fases 1 a 10), las invitaciones por correo, el
-listado del panel paginado en el servidor (sección 5.1) y la consola de
-administración rediseñada: los ajustes de la instancia viven en
-`/admin/settings` y las altas y las acciones de fila, en diálogos.
+listado del panel paginado en el servidor (sección 5.1), la consola de
+administración rediseñada (los ajustes de la instancia viven en
+`/admin/settings` y las altas y las acciones de fila, en diálogos) y la
+marca y el correo de la instancia editables desde el panel (§4.3.2 y §4.3.3),
+con la contraseña del SMTP cifrada.
 
 ---
 
@@ -276,6 +278,36 @@ de `public/`, y los sirve la propia app en `/branding/logo` y `/branding/favicon
 
 Un formulario puede llevar su **propio** tema (§7); en la página pública de ese
 formulario su tema manda, y el color de la instancia gobierna todo lo demás.
+
+### 4.3.3 El correo de la instancia (SMTP)
+
+En la misma pantalla, la tarjeta **Correo (SMTP)** deja configurar el servidor con
+el que la instalación manda sus correos (avisos de nueva respuesta, confirmación al
+respondiente, invitaciones y recordatorios de una lista) **sin editar el `.env`**:
+
+| Campo | Para qué |
+|---|---|
+| **Servidor** | El host SMTP (p. ej. `smtp.gmail.com`). Si lo dejas en blanco, la instalación no manda correo (y lo dice). |
+| **Puerto** | Normalmente `587` (con TLS) o `465` (con SSL). |
+| **Cifrado** | `TLS` (STARTTLS), `SSL` o ninguno. |
+| **Usuario** / **Contraseña** | Las credenciales de la cuenta que manda el correo. |
+| **Remitente** | La dirección y el nombre que verá quien recibe (p. ej. `no-reply@tudominio.com`). |
+| **Tiempo de espera** | Segundos antes de darse por vencido con el servidor. |
+
+Igual que la marca, lo que guardas **gana** al `.env`; para volver al valor del
+fichero, deja el campo en blanco y guarda.
+
+**La contraseña se guarda cifrada** con la clave `APP_KEY` del `.env` (§2). Por
+eso la tarjeta no la vuelve a mostrar: enseña la insignia «guardada» si ya hay una,
+y al escribir una nueva se reemplaza. Dejar el campo vacío **no** la borra; para
+quitarla hay que marcar **«Borrar la contraseña guardada»**. Si la instalación no
+tiene `APP_KEY`, la tarjeta avisa y no permite guardar la contraseña (el resto del
+correo puede seguir leyéndose del `.env`).
+
+Después de guardar, usa **«Enviar prueba»**: manda un correo de comprobación (a la
+dirección que escribas o, si la dejas vacía, a tu propio correo) para confirmar que
+el servidor, las credenciales y el cifrado son correctos antes de que dependa de él
+la primera invitación.
 
 ### 4.4 Roles
 

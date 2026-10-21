@@ -210,6 +210,124 @@ use App\Core\View;
             </div>
         </div>
     </div>
+
+    <?php // AG3 — Correo (SMTP). La contraseña es un campo de SOLO ESCRITURA: no
+          // se rellena nunca con el valor guardado (no se devuelve al HTML). La
+          // pista «(guardada)» solo dice si hay una utilizable. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-envelope me-2 text-primary"></i>Correo (SMTP)</h3>
+                    <p class="text-muted small mb-3">
+                        El servidor con el que la instancia manda sus correos: avisos de respuesta, invitaciones y
+                        recordatorios de una lista. Déjalo en blanco para volver al <code>.env</code>.
+                        <?php if (empty($mailSecretAvailable)): ?>
+                            <br><span class="text-danger fw-semibold">
+                                No hay <code>APP_KEY</code>: no se puede guardar la contraseña cifrada. Genérala con
+                                <code>php scripts/generate-key.php --write</code> (la contraseña sigue leyéndose del <code>.env</code>).
+                            </span>
+                        <?php endif; ?>
+                    </p>
+
+                    <?php if (empty($mailConfigured)): ?>
+                        <div class="alert alert-warning app-alert mb-3" role="status">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            Ahora mismo no hay ningún servidor configurado, así que los correos no se envían
+                            (la app funciona igual: solo no salen los avisos).
+                        </div>
+                    <?php endif; ?>
+
+                    <form method="post" action="/admin/settings/mail" class="row g-3">
+                        <?= Csrf::field() ?>
+                        <div class="col-lg-4">
+                            <label class="form-label" for="mailHost">Servidor</label>
+                            <input type="text" class="form-control" id="mailHost" name="mail_host"
+                                   value="<?= View::escape($mailHost ?? '') ?>" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="col-lg-2">
+                            <label class="form-label" for="mailPort">Puerto</label>
+                            <input type="number" class="form-control" id="mailPort" name="mail_port"
+                                   min="1" max="65535" value="<?= (int) ($mailPort ?? 587) ?>">
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label" for="mailEncryption">Cifrado</label>
+                            <select class="form-select" id="mailEncryption" name="mail_encryption">
+                                <option value="tls" <?= ($mailEncryption ?? '') === 'tls' ? 'selected' : '' ?>>TLS (STARTTLS)</option>
+                                <option value="ssl" <?= ($mailEncryption ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                <option value="" <?= ($mailEncryption ?? 'tls') === '' ? 'selected' : '' ?>>Ninguno</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label" for="mailTimeout">Tiempo de espera (s)</label>
+                            <input type="number" class="form-control" id="mailTimeout" name="mail_timeout"
+                                   min="1" max="120" value="<?= (int) ($mailTimeout ?? 15) ?>">
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label class="form-label" for="mailUser">Usuario</label>
+                            <input type="text" class="form-control" id="mailUser" name="mail_user"
+                                   value="<?= View::escape($mailUser ?? '') ?>" autocomplete="off">
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label" for="mailPassword">
+                                Contraseña
+                                <?php if (!empty($mailPasswordStored)): ?>
+                                    <span class="badge bg-success-subtle text-success-emphasis ms-1">guardada</span>
+                                <?php endif; ?>
+                            </label>
+                            <input type="password" class="form-control" id="mailPassword" name="mail_password"
+                                   value="" autocomplete="new-password"
+                                   placeholder="<?= !empty($mailPasswordStored) ? 'Déjalo vacío para no cambiarla' : 'Contraseña del servidor' ?>">
+                            <?php if (!empty($mailPasswordStored)): ?>
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" id="mailClearPassword" name="clear_password" value="1">
+                                    <label class="form-check-label small" for="mailClearPassword">Borrar la contraseña guardada</label>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label class="form-label" for="mailFromAddress">Remitente (dirección)</label>
+                            <input type="email" class="form-control" id="mailFromAddress" name="mail_from_address"
+                                   value="<?= View::escape($mailFromAddress ?? '') ?>" placeholder="no-reply@tudominio.com">
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label" for="mailFromName">Remitente (nombre)</label>
+                            <input type="text" class="form-control" id="mailFromName" name="mail_from_name"
+                                   value="<?= View::escape($mailFromName ?? '') ?>" placeholder="<?= View::escape($brandName ?? '') ?>">
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar correo
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <h4 class="h6 fw-semibold">Probar el envío</h4>
+                    <p class="text-muted small mb-2">
+                        Guarda primero y luego manda un correo de prueba. Si no pones destino, se manda a tu propio correo.
+                    </p>
+                    <form method="post" action="/admin/settings/mail/test" class="row g-2 align-items-end">
+                        <?= Csrf::field() ?>
+                        <div class="col-lg-6">
+                            <label class="form-label visually-hidden" for="mailTestTo">Destino de la prueba</label>
+                            <input type="email" class="form-control" id="mailTestTo" name="test_to"
+                                   placeholder="A quién (vacío = tu correo)">
+                        </div>
+                        <div class="col-lg-6 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-primary app-form-cta" <?= empty($mailConfigured) ? 'disabled' : '' ?>>
+                                <i class="fa-solid fa-paper-plane me-1"></i>Enviar prueba
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí solo

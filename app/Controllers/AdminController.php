@@ -9,6 +9,8 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Core\Mailer;
+use App\Core\MailSettings;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\SecurityLog;
@@ -86,6 +88,7 @@ class AdminController
             return;
         }
 
+        $mail = MailSettings::all();
         View::render('admin/settings', [
             'registrationEnabled' => AuthController::registrationEnabled(),
             'reviewRequired'      => ReviewPolicy::policyOn(),
@@ -96,6 +99,17 @@ class AdminController
             'brandHasFavicon'     => \App\Core\Brand::hasFavicon(),
             'brandLogoUrl'        => \App\Core\Brand::logoUrl(),
             'brandFaviconUrl'     => \App\Core\Brand::faviconUrl(),
+            'mailHost'            => $mail['host'],
+            'mailPort'            => (int) $mail['port'],
+            'mailEncryption'      => (string) $mail['encryption'],
+            'mailUser'            => $mail['user'],
+            'mailFromAddress'     => $mail['from_address'],
+            'mailFromName'        => $mail['from_name'],
+            'mailTimeout'         => (int) $mail['timeout'],
+            // Nunca se pasa la contraseña: solo si hay una guardada y utilizable.
+            'mailPasswordStored'  => MailSettings::passwordStored(),
+            'mailConfigured'      => MailSettings::isConfigured(),
+            'mailSecretAvailable' => \App\Core\Secret::isAvailable(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -354,6 +368,113 @@ class AdminController
 
         SecurityLog::record('instance.brand_update', $kind . ' de la instancia eliminado desde el panel');
         Session::flash('success', ucfirst($kind) . ' eliminado: se vuelve al icono por defecto.');
+        Response::redirect('/admin/settings');
+    }
+
+    // ------------------------------------------------------------------
+    // Correo (SMTP) de la instancia (AG3)
+    // ------------------------------------------------------------------
+
+    /**
+     * POST /admin/settings/mail — servidor SMTP de la instancia.
+     *
+     * PRG como la marca y la revisión. La contraseña se guarda CIFRADA
+     * (`MailSettings::save()` + `Secret`): el formulario la manda como campo de
+     * solo escritura y nunca se devuelve. Un `POST` sin contraseña no la toca;
+     * para borrarla hay que marcar la casilla `clear_password`.
+     */
+    public function updateMail(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = MailSettings::save([
+            'host'            => Request::post('mail_host', ''),
+            'port'            => Request::post('mail_port', ''),
+            'encryption'      => Request::post('mail_encryption', ''),
+            'user'            => Request::post('mail_user', ''),
+            'password'        => Request::post('mail_password', null),
+            'clear_password'  => Request::post('clear_password', null),
+            'from_address'    => Request::post('mail_from_address', ''),
+            'from_name'       => Request::post('mail_from_name', ''),
+            'timeout'         => Request::post('mail_timeout', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.mail_update', 'configuración SMTP de la instancia actualizada desde el panel');
+        Session::flash('success', 'Correo actualizado.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/mail/test — manda un correo de prueba.
+     *
+     * Es lo que hace usable la tarjeta: guardar `smtp.gmail.com` sin poder
+     * probarlo deja al operador adivinando. El destino por defecto es el correo
+     * de quien lo pide (así la prueba llega a algún sitio real), y se puede
+     * escribir otro. Un fallo de SMTP NO es un error de servidor: se cuenta como
+     * aviso, con el mensaje de `Mailer` (que es lo que dice QUÉ falló: conexión,
+     * autenticación, STARTTLS…).
+     */
+    public function sendTestMail(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $to = trim((string) Request::post('test_to', ''));
+        if ($to === '') {
+            $me = Auth::user();
+            $to = is_array($me) ? trim((string) ($me['email'] ?? '')) : '';
+        }
+        if ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+            Session::flash('error', 'Escribe una dirección de destino válida para la prueba.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        if (!Mailer::isConfigured()) {
+            Session::flash('error', 'No hay SMTP configurado: rellena el servidor y guarda antes de probar.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $subject = 'Correo de prueba de ' . \App\Core\Brand::name();
+        $nombre = \App\Core\Brand::name();
+        $html = '<p>Si estás leyendo esto, el envío de correo de <strong>' . View::escape($nombre) . '</strong> funciona.</p>'
+            . '<p>Este mensaje se envió desde <em>Ajustes de la instancia</em> para comprobar la configuración SMTP.</p>';
+        $alt = "Si estas leyendo esto, el envio de correo de {$nombre} funciona.\n\n"
+            . "Este mensaje se envio desde Ajustes de la instancia para comprobar la configuracion SMTP.";
+
+        try {
+            Mailer::send([$to], $subject, $html, $alt);
+        } catch (\Throwable $e) {
+            SecurityLog::record('instance.mail_test', 'prueba SMTP fallida: ' . $e->getMessage());
+            Session::flash('error', 'No se pudo enviar la prueba: ' . $e->getMessage());
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.mail_test', 'prueba SMTP enviada');
+        Session::flash('success', 'Correo de prueba enviado a ' . $to . '.');
         Response::redirect('/admin/settings');
     }
 

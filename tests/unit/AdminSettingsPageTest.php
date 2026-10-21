@@ -86,4 +86,40 @@ class AdminSettingsPageTest
             'la pantalla marca «settings» como la pestaña activa'
         );
     }
+
+    /**
+     * AG3 — La tarjeta de correo tiene que apuntar a SUS dos endpoints, y guardar
+     * y probar son formularios distintos: uno no lleva archivo y el otro es un
+     * POST aparte. Que los dos existan es lo que hace usable el ajuste (guardar
+     * sin poder probar deja al operador adivinando).
+     */
+    public function testLaTarjetaDeCorreoApuntaASusDosEndpoints(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/mail"'), 'el formulario de guardar');
+        assertTrue(str_contains($settings, 'action="/admin/settings/mail/test"'), 'y el de la prueba');
+        assertTrue(str_contains($settings, 'name="mail_host"'), 'con los campos del SMTP');
+        assertTrue(str_contains($settings, 'name="mail_password"'), 'y el de la contraseña');
+    }
+
+    /**
+     * La contraseña es un campo de SOLO ESCRITURA: la vista NUNCA recibe el valor
+     * guardado, así que su `value` tiene que estar vacío y su `type`, en password.
+     * Un `value="<?= $mailPassword ?>"` devolvería la contraseña al HTML y a
+     * cualquier «ver código fuente».
+     */
+    public function testLaContrasenaNoSeDevuelveAlHtml(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(
+            str_contains($settings, 'id="mailPassword"') && str_contains($settings, 'type="password"'),
+            'la contraseña es un input de tipo password'
+        );
+        assertFalse(
+            (bool) preg_match('/name="mail_password"[^>]*value="<\?=/', $settings),
+            'el input de la contraseña no puede rellenar `value` con una variable de la vista'
+        );
+    }
 }

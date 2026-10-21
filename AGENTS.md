@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 115 archivos, 1250 métodos, ~9 min;
+- Suite completa: `php scripts/test.php` → 117 archivos, 1273 métodos, ~10 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **64 de los 115 archivos tocan la BD real** (los que llaman
+- **67 de los 117 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1758,7 +1758,7 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   `I18n::forRequest($settings)` es la puerta del fill y añade el override
   `?lang=`/campo oculto, validado contra `supportedLocales()`.
 
-**Marca de la instancia y secretos (AG1/AG2)**
+**Marca de la instancia y secretos (AG1/AG2/AG3)**
 
 - **`App\Core\Secret` cifra con `APP_KEY` y `decrypt()` NUNCA lanza**: sin clave
   (o con basura) devuelve `null`, y quien lo use cae al valor del `.env`. Un
@@ -1794,6 +1794,23 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
 - El orden de capas CSS es fijo: `app.css` (`:root`) → instancia
   (`View::brandStyle()`) → formulario (`FormSettings::themeCss`, gana solo en el
   público).
+- **`App\Core\MailSettings` es el ÚNICO sitio que resuelve la config SMTP**, y
+  `Mailer::config()` pasa por él (`MailSettings::all()`), así que TODO el correo
+  (avisos, invitaciones, recordatorios) usa lo que se guarda en
+  `/admin/settings` sin tocar un solo call site. Misma precedencia que la marca:
+  fila gana, sin fila manda el `.env` (`Config::mail()`).
+- **La contraseña del SMTP se guarda CIFRADA** con `Secret`, y **sin `APP_KEY`
+  `save()` no la escribe y lo dice** —nunca en claro—: la contraseña legible en
+  cada backup es justo lo que AG1 evita. Es **de solo escritura**: la vista nunca
+  recibe el valor; `passwordStored()` solo dice si hay una utilizable. Un POST sin
+  contraseña NO la toca; borrarla es la casilla explícita `clear_password` (sin
+  esa separación, guardar otro campo la habría borrado).
+- Un `APP_KEY` cambiado no deja el correo mudo: `decrypt()` devuelve `null`,
+  `all()` cae a la contraseña del `.env` y `passwordStored()` da `false`.
+- Guardar (`POST /admin/settings/mail`) y probar (`.../mail/test`) son rutas
+  distintas con permiso `admin.access` y PRG. La prueba **captura** el fallo de
+  SMTP y lo cuenta como aviso (con el mensaje de `Mailer`), nunca un 500. Dos
+  eventos: `instance.mail_update` e `instance.mail_test`.
 
 **Seguridad y peticiones**
 

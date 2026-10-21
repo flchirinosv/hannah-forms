@@ -50,11 +50,15 @@ class Mailer
     }
 
     /**
-     * Config de correo (override de tests o Config::mail()).
+     * Config de correo (override de tests, o la del panel/`.env`).
+     *
+     * Pasa por `MailSettings::all()` para que el SMTP editable desde
+     * `/admin/settings` (AG3) lo use TODO el correo de la app sin tocar cada
+     * llamada: la fila de `app_settings` gana y, sin fila, manda el `.env`.
      */
     public static function config(): array
     {
-        return self::$configOverride ?? Config::mail();
+        return self::$configOverride ?? MailSettings::all();
     }
 
     /**
