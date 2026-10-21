@@ -140,6 +140,61 @@ final class AppSettings
         return true;
     }
 
+    /**
+     * Escribe un ajuste de TEXTO.
+     *
+     * A diferencia de `setBool()`, aquí `null` y `''` son cosas distintas:
+     * `null` borra la fila (el ajuste vuelve a su default, que es el `.env`) y
+     * `''` guarda un valor vacío explícito. Es la diferencia que necesita un
+     * ajuste opcional como el color de la instancia: «no lo toques» (sin fila)
+     * no es lo mismo que «déjalo en blanco».
+     */
+    public static function set(string $key, ?string $value): bool
+    {
+        if ($value === null) {
+            return self::delete($key);
+        }
+
+        $db = self::db();
+        if ($db === null) {
+            return false;
+        }
+
+        try {
+            $db->execute(
+                'INSERT INTO app_settings (key_name, value) VALUES (:k, :v)
+                 ON DUPLICATE KEY UPDATE value = VALUES(value)',
+                ['k' => $key, 'v' => $value]
+            );
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Borra un ajuste: la fila ausente vuelve a devolver el default.
+     *
+     * Devuelve `true` tanto si borró una fila como si no había ninguna: el
+     * objetivo (la fila sin existir) es el mismo en los dos casos.
+     */
+    public static function delete(string $key): bool
+    {
+        $db = self::db();
+        if ($db === null) {
+            return false;
+        }
+
+        try {
+            $db->execute('DELETE FROM app_settings WHERE key_name = :k', ['k' => $key]);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return true;
+    }
+
     /** @param array<string, mixed> $values */
     public static function setForTesting(array $values): void
     {

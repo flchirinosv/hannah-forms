@@ -23,6 +23,12 @@ return [
         // 127.0.0.1. Ver App\Core\PublicUrl.
         'public_url' => App\Core\Env::get('APP_PUBLIC_URL', ''),
         'env'  => App\Core\Env::get('APP_ENV', 'development'),
+        // Clave maestra del cifrado de secretos en la BD (App\Core\Secret).
+        // Vive en .env, NUNCA en la BD: es lo que hace que robar solo un backup
+        // de la base de datos no revele la contraseña SMTP. Vacía = cifrado
+        // inactivo (los secretos siguen leyéndose de .env). Se genera con
+        // `php scripts/generate-key.php`.
+        'key'  => (string) App\Core\Env::get('APP_KEY', ''),
         // Registro público. Antes no había forma de apagarlo desde la app: la
         // ruta /register estaba viva siempre y quien quisiera una cuenta se
         // registraba (el rate limit frena automatismos, no a una persona). En
