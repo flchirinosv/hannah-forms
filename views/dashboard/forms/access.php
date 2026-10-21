@@ -124,12 +124,11 @@ $accessMode = (string) ($accessMode ?? 'public');
 
     <?php // Edición: `dashboard.js` mueve el panel de la fila (`#rowactions-<pid>`)
           // a este cuerpo y lo devuelve a su sitio al cerrar. El título lo pone
-          // el JS con el nombre del participante. `modal-lg` y no `modal-xl`
-          // porque el formulario va a UNA columna: en `xl` los campos saldrían de
-          // más de 1000 px y no se leerían. Un input por atributo sigue cabiendo
-          // (el cuerpo es scrollable). ?>
+          // el JS con el nombre del participante. Mismo ancho por defecto que el
+          // alta: el formulario va a UNA columna, así que un `modal-lg`/`modal-xl`
+          // dejaría un campo por atributo estirado de más de 1000 px. ?>
     <div class="modal fade" id="rosterEditModal" tabindex="-1" aria-labelledby="rosterEditModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0">
                 <div class="modal-header app-navbar text-white border-0 py-2">
                     <div class="d-flex align-items-center gap-2 text-white">
