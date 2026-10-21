@@ -31,7 +31,7 @@ $quizTypeLabel = static function (string $type) use ($locale): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $t('thanks.title') ?> — <?= View::escape($form['title']) ?></title>
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">

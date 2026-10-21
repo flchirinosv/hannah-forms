@@ -1838,3 +1838,69 @@ comprobaciones manuales K28–K33 del bloque K de
 `testAnswerValueSoloReformateaCompuestosValidos` (comprobación manual K34).
 
 Suite completa: 110 archivos / **1212 métodos** en verde.
+
+## AG1–AG2 — Marca de la instancia y cimiento de cifrado (2026-10-20)
+
+Objetivo de la tanda: que una instalación **se pueda vender y operar sin SSH ni
+editar `.env`**. AG1 pone el cimiento (guardar secretos cifrados) y AG2 lo estrena
+con la identidad visual. El SMTP por UI (AG3) vendrá encima de AG1.
+
+- **AG1 — `App\Core\Secret`, AES-256-GCM.** `APP_KEY` vive en el `.env` (nunca en
+  la BD) y sin ella el cifrado queda **inactivo**: `decrypt()` devuelve `null` en
+  vez de lanzar, y quien lo use cae al valor del `.env`. El formato es
+  `base64(iv(12)||tag(16)||ciphertext)`. La razón de que la clave **no** esté en la
+  tabla es el backup: exportar solo la BD dejaría los secretos ilegibles, y exportar
+  solo el `.env` dejaría fuera los datos; hay que copiar los dos juntos, y eso está
+  escrito en `.env.example`. `scripts/generate-key.php` genera el valor (32 bytes
+  en base64) sin sobreescribir uno existente.
+- **AG1 — `AppSettings::set()/delete()`.** La tabla ya era clave-valor
+  (`key_name` PK, `value TEXT`): no hizo falta migración. `set()` con `null` BORRA
+  la fila y con `''` guarda vacío —la diferencia entre «no lo he tocado» y «déjalo
+  en blanco», que es la que permite que el panel no convierta cada ajuste en una
+  segunda fuente de verdad congelada—.
+- **AG2 — `App\Core\Brand`.** Nombre, color, logo y favicon de la INSTANCIA.
+  Patrón idéntico a `AppSettings`: **la fila guardada gana; si no hay fila, manda
+  el `.env` o el default del código**, y nada se congela (se lee en cada request).
+  Antes el nombre salía de `APP_NAME`, el icono era un `fa-list-check` clavado en
+  cada vista y el color un `--vf-primary` hardcodeado. Un producto que se vende a
+  un cliente quiere SU marca sin tocar ficheros.
+- **AG2 — el color se valida en las DOS puertas.** `updateBrand()` lo valida antes
+  de guardar y `Brand::color()`/`themeCss()` lo vuelven a validar al salir: puede
+  haber filas escritas a mano, y `themeCss()` inyecta el valor en un `<style>` sin
+  escapar, así que un color mal formado (o un intento de inyección) no puede
+  llegar nunca al CSS. Todos los caminos caen al `DEFAULT_COLOR`.
+- **AG2 — logo y favicon por endpoint propio, no por `public/`.** Se guardan en
+  `storage/branding/` (fuera de `public/`, como los adjuntos) y los sirve
+  `BrandingController` (`GET /branding/{kind}`), que fija el `Content-Type` desde
+  el MIME real (con `finfo`, nunca `$_FILES['type']`) y añade `nosniff`. La ruta es
+  **pública** a propósito: el logo se ve en el login y en el formulario publicado,
+  a los que se llega sin sesión, y la imagen la subió un admin para que la viera
+  todo el mundo. El MIME válido sale de `Brand::MIME_EXT` (png/jpg/gif/webp).
+- **AG2 — el favicon y el logo pasan por `View::favicon()`/`View::brandLogo()`.**
+  El favicon estaba clavado en NUEVE vistas: con el helper, subir uno cambia las
+  nueve a la vez. Y el `type` del `<link>` cambia según la imagen subida, así que
+  escribirlo a mano en cada vista era garantizar que una se quedara con el
+  `image/svg+xml` viejo. `BrandMarkupTest` comprueba que el `<link ... favicon.svg>`
+  no sobrevive en ninguna vista (el fallo no da error: el HTML es válido, solo se
+  ve mal en ESA pantalla).
+- **AG2 — la tarjeta de marca en `/admin/settings`, con PRG como la revisión.**
+  Nombre y color en un `POST /admin/settings/brand`; logo y favicon en formularios
+  multipart propios (`POST /admin/settings/brand/{kind}` y `.../{kind}/remove`),
+  porque un archivo no viaja junto a un texto y su validación es otra. El `kind`
+  lo fija la ruta y lo valida el controlador (`logo`/`favicon`, otro es 404), nunca
+  el POST: el archivo no elige dónde se guarda. Permiso `admin.access`.
+- **AG2 — un solo evento `instance.brand_update`.** Nombre, color, logo y favicon
+  son cuatro cambios de lo mismo («la identidad visual de la instalación»), así que
+  una sola clave en `SecurityLog` los cubre; cuatro claves dirían lo mismo.
+- **El orden de las capas CSS es una decisión, no un accidente**: `app.css`
+  (`:root` con el default) → CSS de instancia (`View::brandStyle()` en los layouts)
+  → CSS por formulario (`FormSettings::themeCss`, que gana **solo** en el público).
+  Así el color de un formulario con tema propio manda en su página y el de la
+  instancia en todo el panel.
+
+Tests: `SecretTest` (8), `AppSettingsTextTest` (6, AG1), `BrandTest` (12),
+`BrandMarkupTest` (3) y `BrandControllerTest` (9). La tarjeta de marca deja además
+las cuatro claves de `app_settings` en el snapshot de `ControllerActionsTest`, que
+recorre `POST /admin/settings/brand` de verdad.
+
+Suite completa: 115 archivos / **1250 métodos** en verde.

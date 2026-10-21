@@ -59,7 +59,7 @@ $t = static fn (string $key, array $params = []): string => I18n::t($key, $local
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= View::escape($t('access.title')) ?></title>
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">

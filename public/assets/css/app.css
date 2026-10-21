@@ -130,6 +130,16 @@ body {
     font-size: .85rem;
     backdrop-filter: blur(4px);
 }
+/* AG2 — logo de la instancia: la imagen llena su caja y se recorta redondeada.
+   `object-fit: contain` para no deformar un logo cuadrado dentro de una caja que
+   no lo sea; el fondo semitransparente del `.app-logo` queda debajo y no molesta
+   porque la imagen lo cubre. */
+.app-logo-img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    border-radius: inherit;
+    display: block;
+}
 .app-avatar {
     width: 30px; height: 30px;
     display: inline-flex; align-items: center; justify-content: center;

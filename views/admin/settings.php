@@ -12,6 +12,7 @@
  * (`dashboard.js`, enganchado a `#instance`), porque su tarjeta sí se queda en
  * pantalla y recargar entera para mover una casilla era otra operación.
  */
+use App\Core\Brand;
 use App\Core\Csrf;
 use App\Core\View;
 ?>
@@ -90,6 +91,122 @@ use App\Core\View;
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <?php // AG2 — Marca de la instancia. Nombre y color en un POST normal; logo y
+          // favicon en formularios multipart propios (un archivo no viaja junto a
+          // un texto, y su validación es otra). Todo con PRG: sin JavaScript se
+          // comporta igual. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h6 fw-bold mb-1"><i class="fa-solid fa-palette me-2 text-primary"></i>Marca de la instancia</h3>
+                    <p class="text-muted small mb-3">
+                        El nombre, el logo, el favicon y el color con los que se presenta la aplicación en el panel,
+                        el inicio de sesión y los formularios publicados. Deja un campo en blanco para volver al valor
+                        por defecto.
+                    </p>
+
+                    <form method="post" action="/admin/settings/brand" class="row g-3 align-items-end">
+                        <?= Csrf::field() ?>
+                        <div class="col-lg-5">
+                            <label class="form-label" for="instanceName">Nombre</label>
+                            <input type="text" class="form-control" id="instanceName" name="instance_name"
+                                   maxlength="100" value="<?= View::escape($brandName ?? '') ?>"
+                                   placeholder="<?= View::escape(\App\Core\Config::get('app.name', 'VanillaForms')) ?>">
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label" for="instanceColor">Color primario</label>
+                            <div class="input-group">
+                                <input type="color" class="form-control form-control-color" id="instanceColor"
+                                       value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                       aria-label="Selector de color" data-vf-color-for="instanceColorText">
+                                <input type="text" class="form-control" id="instanceColorText" name="instance_color"
+                                       value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                       pattern="#[0-9a-fA-F]{6}" maxlength="7">
+                            </div>
+                            <div class="form-text">Formato <code>#rrggbb</code>.</div>
+                        </div>
+                        <div class="col-lg-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar marca
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="row g-4">
+                        <?php // Logo ?>
+                        <div class="col-lg-6">
+                            <h4 class="h6 fw-semibold">Logo</h4>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span class="app-logo-lg">
+                                    <?php if (!empty($brandHasLogo) && !empty($brandLogoUrl)): ?>
+                                        <img src="<?= View::escape($brandLogoUrl) ?>" alt="" class="app-logo-img">
+                                    <?php else: ?>
+                                        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                                    <?php endif; ?>
+                                </span>
+                                <div class="small text-muted">
+                                    PNG, JPG, GIF o WEBP. Se muestra en la barra lateral y en la pantalla de acceso.
+                                </div>
+                            </div>
+                            <form method="post" action="/admin/settings/brand/logo" enctype="multipart/form-data" class="mb-2">
+                                <?= Csrf::field() ?>
+                                <div class="d-flex gap-2">
+                                    <input type="file" class="form-control" name="brand_image" accept="image/png,image/jpeg,image/gif,image/webp" required>
+                                    <button type="submit" class="btn btn-outline-primary app-form-cta">Subir</button>
+                                </div>
+                            </form>
+                            <?php if (!empty($brandHasLogo)): ?>
+                                <form method="post" action="/admin/settings/brand/logo/remove" data-confirm="¿Quitar el logo de la instancia?"
+                                      data-confirm-ok="Sí, quitar" data-confirm-tone="danger">
+                                    <?= Csrf::field() ?>
+                                    <button type="submit" class="btn btn-outline-danger app-form-cta btn-sm">
+                                        <i class="fa-solid fa-trash me-1"></i>Quitar logo
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php // Favicon ?>
+                        <div class="col-lg-6">
+                            <h4 class="h6 fw-semibold">Favicon</h4>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span class="app-logo">
+                                    <?php if (!empty($brandHasFavicon) && !empty($brandFaviconUrl)): ?>
+                                        <img src="<?= View::escape($brandFaviconUrl) ?>" alt="" class="app-logo-img">
+                                    <?php else: ?>
+                                        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                                    <?php endif; ?>
+                                </span>
+                                <div class="small text-muted">
+                                    La pestaña del navegador. Cuadrado y pequeño (p. ej. 64×64).
+                                </div>
+                            </div>
+                            <form method="post" action="/admin/settings/brand/favicon" enctype="multipart/form-data" class="mb-2">
+                                <?= Csrf::field() ?>
+                                <div class="d-flex gap-2">
+                                    <input type="file" class="form-control" name="brand_image" accept="image/png,image/jpeg,image/gif,image/webp" required>
+                                    <button type="submit" class="btn btn-outline-primary app-form-cta">Subir</button>
+                                </div>
+                            </form>
+                            <?php if (!empty($brandHasFavicon)): ?>
+                                <form method="post" action="/admin/settings/brand/favicon/remove" data-confirm="¿Quitar el favicon de la instancia?"
+                                      data-confirm-ok="Sí, quitar" data-confirm-tone="danger">
+                                    <?= Csrf::field() ?>
+                                    <button type="submit" class="btn btn-outline-danger app-form-cta btn-sm">
+                                        <i class="fa-solid fa-trash me-1"></i>Quitar favicon
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

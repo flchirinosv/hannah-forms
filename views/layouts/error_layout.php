@@ -9,7 +9,7 @@ $config = \App\Core\Config::all();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($message) ? View::escape($message) : 'Error' ?> — <?= View::escape($config['app']['name']) ?></title>
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">

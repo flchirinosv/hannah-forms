@@ -299,4 +299,62 @@ class View
 
         return null;
     }
+
+    /**
+     * El logo de la instancia dentro de un `span` con la clase dada.
+     *
+     * Si hay un logo subido (`Brand::logoUrl()`) pinta un `<img>`; si no, cae al
+     * icono FontAwesome de siempre (`fa-list-check`, el mismo de antes de AG2).
+     * El `alt` es el nombre de la instancia, así que quien use lector de pantalla
+     * oye la marca y no «imagen».
+     *
+     * Se centraliza aquí porque el logo aparece en TRES sitios (sidebar, topbar,
+     * pantalla de auth) y tener tres copias es la forma más barata de que una se
+     * quede con el icono viejo cuando se sube un logo.
+     */
+    public static function brandLogo(string $wrapClass = 'app-logo'): string
+    {
+        $url = Brand::logoUrl();
+        if ($url !== null) {
+            return '<span class="' . self::escape($wrapClass) . '">'
+                . '<img src="' . self::escape($url) . '" alt="' . self::escape(Brand::name()) . '" class="app-logo-img">'
+                . '</span>';
+        }
+
+        return '<span class="' . self::escape($wrapClass) . '"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>';
+    }
+
+    /**
+     * El `<link rel="icon">` de la instancia.
+     *
+     * Con favicon subido apunta a `/branding/favicon` con su `type` real; sin él,
+     * al `favicon.svg` vendorizado de siempre. Devuelve la ETIQUETA completa
+     * porque el favicon se repite en nueve vistas y el `type` cambia según la
+     * imagen subida (png/jpg/webp): escribirlo a mano en cada una es garantizar
+     * que una se quede con el `image/svg+xml` viejo.
+     */
+    public static function favicon(): string
+    {
+        $url = Brand::faviconUrl();
+        if ($url !== null) {
+            return '<link rel="icon" href="' . self::escape($url) . '">';
+        }
+
+        return '<link rel="icon" type="image/svg+xml" href="' . self::escape(self::asset('favicon.svg')) . '">';
+    }
+
+    /**
+     * El `<style>` con los tokens de marca de la instancia (color primario).
+     *
+     * Va en los layouts ANTES del CSS por formulario: en la página pública de un
+     * formulario con tema propio, ese tema puede sobrescribir el color de la
+     * instancia; en el panel, el color de la instancia es el que manda.
+     * `Brand::themeCss()` no emite nada si el color es el default, así que esto
+     * no añade un `<style>` a una instalación que no toca la marca.
+     */
+    public static function brandStyle(): string
+    {
+        $css = Brand::themeCss();
+        return $css === '' ? '' : '<style>' . $css . '</style>';
+    }
 }

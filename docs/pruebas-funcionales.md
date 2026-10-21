@@ -4,7 +4,7 @@ Lista de comprobaciones para **detectar problemas** en una instalación, antes
 de un despliegue y después de cualquier cambio. Escrita contra el código
 (verificada contra el código).
 
-No sustituye a la suite automática (`php scripts/test.php`, 1212 casos): esa
+No sustituye a la suite automática (`php scripts/test.php`, 1250 casos): esa
 verifica reglas y casos límite sin navegador. Esta tabla verifica lo que solo
 se ve en pantalla: que algo se vea bien, que un botón esté donde debe, que el
 teclado funcione.
@@ -958,6 +958,25 @@ Para llegar: panel → el formulario → *Participantes*.
 | AE18 | Pulsa el botón **sin JavaScript** | Pide confirmación, envía por POST y recarga; el resultado y los números son los mismos | A | |
 | AE19 | Con teclado: tabula hasta el botón y pulsa `Enter` | Abre la confirmación y, en «Cancelar», devuelve el foco al botón | M | |
 | AE20 | Borra a una persona de la lista | Su correo sale de la cola: dejar de estar en la lista cierra la puerta, aunque tenga enlace | A | |
+
+## AF. La marca de la instancia (AG2, 2026-10-20)
+
+| # | Qué probar | Esperado | P. | Estado |
+|---|---|---|---|---|
+| AF1 | `/admin/settings`, tarjeta «Marca de la instancia» | Aparece con nombre, color, logo y favicon; es de la instalación, no de una cuenta | A | |
+| AF2 | Escribe un nombre y guarda | La sidebar, la topbar y la pestaña del navegador muestran ese nombre; vuelve a la pantalla (PRG) | A | |
+| AF3 | Elige un color en el selector | El campo de texto se sincroniza; al guardar, botones y enlaces del panel cambian de color | M | |
+| AF4 | Escribe un color **inválido** («azul») y guarda | Mensaje de error, **no** se guarda y el color queda en el default (nada se rompe) | A | |
+| AF5 | Borra el nombre y guarda | Vuelve al `APP_NAME` del `.env`; la barra no queda vacía | M | |
+| AF6 | Sube un logo (PNG) | El logo aparece en la sidebar y en el login, y `GET /branding/logo` responde con `Content-Type: image/png` y `nosniff` | A | |
+| AF7 | Sube un `.txt` renombrado a `.png` | Se rechaza por MIME real (`finfo`), no por el nombre | A | |
+| AF8 | Sube un favicon | La pestaña del navegador cambia; las **nueve** vistas (panel, fill, gracias, print…) lo muestran | A | |
+| AF9 | Quita el logo | Confirmación, y vuelve al icono por defecto (`fa-list-check`); `branding/logo` deja de existir | A | |
+| AF10 | Borra el archivo de `storage/branding/` a mano y recarga | El panel cae al icono por defecto sin error (una fila sin archivo = sin URL) | M | |
+| AF11 | Apunta `GET /branding/loquesea` | 404 | A | |
+| AF12 | Un usuario sin `admin.access` intenta el POST de marca | 403 y no se guarda | A | |
+| AF13 | Todo lo anterior **sin JavaScript** | Nombre, color, subida y borrado funcionan por POST nativo; solo se pierde la sincronía del selector de color | A | |
+| AF14 | Con `APP_KEY` vacía y un ajuste de marca guardado | La instancia se ve igual (el cifrado no hace falta para la marca; solo lo usa el SMTP) | M | |
 
 ## Cuando encuentres un fallo
 

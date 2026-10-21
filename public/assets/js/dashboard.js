@@ -428,6 +428,31 @@
     });
 })();
 
+/* Sincronía del selector de color con su campo de texto (`/admin/settings`, AG2).
+ *
+ * Van juntos porque uno es la forma cómoda (picker) y el otro la precisa (hex):
+ * sin esto, elegir un color en el picker no se guardaría (el POST manda el
+ * texto) y escribir un hex no movería el picker. El gancho es `data-vf-color-for`
+ * y no un `oninput` en línea, que la CSP prohíbe. */
+(function () {
+    'use strict';
+
+    document.querySelectorAll('[data-vf-color-for]').forEach(function (picker) {
+        const target = document.getElementById(picker.dataset.vfColorFor);
+        if (!target) {
+            return;
+        }
+        picker.addEventListener('input', function () {
+            target.value = picker.value;
+        });
+        target.addEventListener('input', function () {
+            if (/^#[0-9a-fA-F]{6}$/.test(target.value)) {
+                picker.value = target.value;
+            }
+        });
+    });
+})();
+
 /* ---- Grupos colapsables (views/dashboard/forms/show.php y views/admin/groups.php)
  * En la ficha del formulario son seis grupos porque, con los seis abiertos,
  * «Ajustes del formulario» ocupaba más de tres pantallas y el ajuste que se busca

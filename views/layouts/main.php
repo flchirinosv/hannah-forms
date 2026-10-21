@@ -1,10 +1,11 @@
 <?php
 use App\Core\Auth;
+use App\Core\Brand;
 use App\Core\View;
 
-$config = \App\Core\Config::all();
 $currentUser = Auth::user();
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$appName = Brand::name();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -12,14 +13,15 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?= View::escape($pageDescription ?? 'VanillaForms — sistema de formularios web simple y rápido.') ?>">
-    <meta property="og:title" content="<?= isset($pageTitle) ? View::escape($pageTitle) . ' — ' : '' ?><?= View::escape($config['app']['name']) ?>">
+    <meta property="og:title" content="<?= isset($pageTitle) ? View::escape($pageTitle) . ' — ' : '' ?><?= View::escape($appName) ?>">
     <meta property="og:description" content="<?= View::escape($pageDescription ?? 'VanillaForms — sistema de formularios web simple y rápido.') ?>">
     <meta property="og:type" content="website">
-    <title><?= isset($pageTitle) ? View::escape($pageTitle) . ' — ' : '' ?><?= View::escape($config['app']['name']) ?></title>
-    <link rel="icon" type="image/svg+xml" href="<?= View::asset('favicon.svg') ?>">
+    <title><?= isset($pageTitle) ? View::escape($pageTitle) . ' — ' : '' ?><?= View::escape($appName) ?></title>
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">
+    <?= View::brandStyle() ?>
 </head>
 <?php // `data-csrf` es el token global del panel: `app.js` lo lee para mandarlo
       // en `X-CSRF-Token` en los POST que se hacen por fetch SIN formulario
@@ -40,8 +42,8 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Cerrar la navegación"></button>
             </div>
             <a class="app-sidebar-brand app-navbar" href="/">
-                <span class="app-logo"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
-                <span class="app-sidebar-label fw-bold"><?= View::escape($config['app']['name']) ?></span>
+                <?= View::brandLogo('app-logo') ?>
+                <span class="app-sidebar-label fw-bold"><?= View::escape($appName) ?></span>
             </a>
             <ul class="nav flex-column app-sidebar-nav">
                 <?php // Cada enlace se enseña solo si su destino le va a dejar pasar.
@@ -107,8 +109,8 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
             <a class="app-topbar-brand" href="/">
-                <span class="app-logo"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
-                <span class="fw-bold"><?= View::escape($config['app']['name']) ?></span>
+                <?= View::brandLogo('app-logo') ?>
+                <span class="fw-bold"><?= View::escape($appName) ?></span>
             </a>
         </header>
 
@@ -130,7 +132,7 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 </main>
 
 <footer class="text-center text-muted small py-4 app-footer">
-    <span class="mx-2">© <?= date('Y') ?> <?= View::escape($config['app']['name']) ?></span>
+    <span class="mx-2">© <?= date('Y') ?> <?= View::escape($appName) ?></span>
     <span class="mx-2">·</span>
     <span>Vanilla PHP + MySQL + nginx</span>
 </footer>

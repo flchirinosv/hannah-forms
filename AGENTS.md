@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 110 archivos, 1212 métodos, ~8 min;
+- Suite completa: `php scripts/test.php` → 115 archivos, 1250 métodos, ~9 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -49,7 +49,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - `public/index.php` → `config/bootstrap.php` (carga `.env` con `App\Core\Env`,
   fija **UTC** en PHP, conecta la BD, inicia sesión) → `config/routes.php` →
   controlador. `public/index.php` es el único PHP que ve el web server.
-- Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (13),
+- Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (14),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
   `Services` (19), `lang/{es,en}.php`.
   `views/` = 72 plantillas y partials con `View` (veintisiete con prefijo `_`, sin ruta
@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **63 de los 110 archivos tocan la BD real** (los que llaman
+- **64 de los 115 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1757,6 +1757,43 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
 - `resolve($settings)` mantiene su firma clásica para emails y middleware;
   `I18n::forRequest($settings)` es la puerta del fill y añade el override
   `?lang=`/campo oculto, validado contra `supportedLocales()`.
+
+**Marca de la instancia y secretos (AG1/AG2)**
+
+- **`App\Core\Secret` cifra con `APP_KEY` y `decrypt()` NUNCA lanza**: sin clave
+  (o con basura) devuelve `null`, y quien lo use cae al valor del `.env`. Un
+  `decrypt()` que lanzara convertiría «no hay APP_KEY» (una instalación normal)
+  en un error de servidor. AES-256-GCM, `base64(iv(12)||tag(16)||ciphertext)`. La
+  clave **no va en la BD**: copiar solo la BD dejaría los secretos ilegibles, así
+  que el backup es BD **y** `.env` juntos (`.env.example` lo dice).
+- **`AppSettings::set()` con `null` BORRA la fila y con `''` guarda vacío.** Es la
+  diferencia entre «no lo he tocado» y «déjalo en blanco», y es lo que permite que
+  un ajuste del panel no convierta la tabla en una segunda fuente de verdad
+  congelada: sin fila, manda el `.env`.
+- **`App\Core\Brand` sigue ese mismo orden**: la fila gana; sin fila, el `.env`
+  (`app.name`) o el default del código. Nada se congela. `Brand::color()` y
+  `themeCss()` **revalidan** el hex al salir (no solo al guardar): puede haber una
+  fila escrita a mano y `themeCss()` inyecta en un `<style>` sin escapar.
+- **El logo y el favicon se sirven por `GET /branding/{kind}`, no por `public/`**:
+  viven en `storage/branding/` con un `.htaccess` de guarda, y el controlador fija
+  el `Content-Type` desde el MIME real (`finfo`, nunca `$_FILES['type']`) más
+  `nosniff`. La ruta es **pública** a propósito (el login y el fill no tienen
+  sesión). El `{kind}` lo valida el controlador (`logo`/`favicon`; otro es 404),
+  nunca lo elige el POST.
+- **`meta()` lee por CLAVE (`instance_logo`), la API habla de KIND (`logo`)**: hay
+  `keyForKind()` en medio. Pasar el kind a `meta()` devolvía `null` siempre y el
+  MIME y la ruta del logo salían vacíos **sin ningún error** (`BrandTest` lo ata).
+- **El favicon y el logo pasan por `View::favicon()`/`View::brandLogo()` en las
+  vistas**: el `<link ... favicon.svg>` sobrevivió a mano en nueve vistas y subir
+  un favicon habría cambiado una sola. `BrandMarkupTest` recorre las vistas y
+  falla si alguna lo clava.
+- Los ajustes de marca se guardan con **PRG** (`POST /admin/settings/brand[/{kind}]`)
+  y permiso `admin.access`; el evento del log es **uno** (`instance.brand_update`).
+  Un nombre en blanco borra la fila (vuelve al `.env`), donde la marca no debe
+  quedar «vacía».
+- El orden de capas CSS es fijo: `app.css` (`:root`) → instancia
+  (`View::brandStyle()`) → formulario (`FormSettings::themeCss`, gana solo en el
+  público).
 
 **Seguridad y peticiones**
 

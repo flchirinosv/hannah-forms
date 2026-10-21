@@ -8,6 +8,7 @@ use App\Controllers\AccountController;
 use App\Controllers\AnalyticsController;
 use App\Controllers\AttachmentController;
 use App\Controllers\AuthController;
+use App\Controllers\BrandingController;
 use App\Controllers\BuilderController;
 use App\Controllers\DashboardController;
 use App\Controllers\FillController;
@@ -25,6 +26,11 @@ $router->post('/login', [AuthController::class, 'login'], ['guest', 'csrf']);
 $router->get('/register', [AuthController::class, 'showRegister'], ['guest']);
 $router->post('/register', [AuthController::class, 'register'], ['guest', 'csrf']);
 $router->post('/logout', [AuthController::class, 'logout'], ['auth', 'csrf']);
+
+// Marca de la instancia (AG2). PÚBLICA a propósito: el logo aparece en el login
+// y en el formulario publicado, a los que se llega sin sesión. La imagen vive en
+// storage/branding/ (fuera de public/) y se sirve por aquí.
+$router->get('/branding/{kind}', [BrandingController::class, 'show']);
 
 // F2 — Recuperación y cambio de contraseña.
 // `/reset-password` NO lleva middleware `guest`: el enlace del correo se abre en
@@ -161,6 +167,12 @@ $router->post('/admin/users/toggle', [AdminController::class, 'toggleActive'], [
 $router->get('/admin/settings', [AdminController::class, 'settings'], ['auth', 'admin']);
 $router->post('/admin/settings/registration', [AdminController::class, 'updateRegistration'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/settings/review', [AdminController::class, 'updateReviewPolicy'], ['auth', 'admin', 'csrf']);
+// AG2 — Marca de la instancia. El nombre/color van en un POST normal; el logo y
+// el favicon en multipart (con `post-max` para que un cuerpo que pasa el límite
+// no se lea como un CSRF inválido).
+$router->post('/admin/settings/brand', [AdminController::class, 'updateBrand'], ['auth', 'admin', 'csrf']);
+$router->post('/admin/settings/brand/{kind}', [AdminController::class, 'uploadBrandImage'], ['auth', 'admin', 'post-max', 'csrf']);
+$router->post('/admin/settings/brand/{kind}/remove', [AdminController::class, 'removeBrandImage'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

@@ -370,7 +370,7 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= View::escape($form['title']) ?></title>
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">
@@ -385,8 +385,8 @@ $renderCard = static function (array $field) use ($old, $fieldTypes, $logicAttr,
 
     <div class="vf-header flip-in">
         <div class="vf-header-top">
-            <span class="app-logo-sm"><i class="fa-solid fa-list-check"></i></span>
-            <span class="small"><?= View::escape(\App\Core\Config::get('app.name')) ?></span>
+            <?= View::brandLogo('app-logo-sm') ?>
+            <span class="small"><?= View::escape(\App\Core\Brand::name()) ?></span>
         </div>
         <h1><?= View::escape($form['title']) ?></h1>
         <?php if ($form['description']): ?>

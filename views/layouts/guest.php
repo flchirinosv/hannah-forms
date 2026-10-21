@@ -1,18 +1,20 @@
 <?php
+use App\Core\Brand;
 use App\Core\View;
 
-$config = \App\Core\Config::all();
+$appName = Brand::name();
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= View::escape($config['app']['name']) ?></title>
-    <link rel="icon" type="image/svg+xml" href="<?= View::asset('favicon.svg') ?>">
+    <title><?= View::escape($appName) ?></title>
+    <?= View::favicon() ?>
     <link rel="stylesheet" href="<?= View::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/app.css') ?>">
+    <?= View::brandStyle() ?>
 </head>
 <body class="auth-body">
     <div class="auth-wrapper">
@@ -20,9 +22,9 @@ $config = \App\Core\Config::all();
             <div class="card-body p-4 p-md-5">
                 <div class="text-center mb-4">
                     <a href="/" class="d-inline-block mb-3">
-                        <span class="app-logo-lg"><i class="fa-solid fa-list-check"></i></span>
+                        <?= View::brandLogo('app-logo-lg') ?>
                     </a>
-                    <h1 class="h3 fw-bold app-brand-title"><?= View::escape($config['app']['name']) ?></h1>
+                    <h1 class="h3 fw-bold app-brand-title"><?= View::escape($appName) ?></h1>
                 </div>
 
                 <?php if (\App\Core\Session::hasFlash('success')): ?>

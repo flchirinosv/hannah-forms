@@ -174,6 +174,11 @@ final class SecurityLog
             'instance.registration_off',
             'instance.review_on',
             'instance.review_off',
+            // AG2 — Marca de la instancia (nombre, color, logo, favicon). Un solo
+            // evento para las cuatro: todas son «se cambió la identidad visual de
+            // la instalación» y separarlas daría cuatro claves que decir es lo
+            // mismo.
+            'instance.brand_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

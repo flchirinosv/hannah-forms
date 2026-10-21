@@ -90,6 +90,12 @@ class AdminController
             'registrationEnabled' => AuthController::registrationEnabled(),
             'reviewRequired'      => ReviewPolicy::policyOn(),
             'reviewNotifyEmail'   => ReviewPolicy::notifyEmail(),
+            'brandName'           => \App\Core\Brand::name(),
+            'brandColor'          => \App\Core\Brand::color(),
+            'brandHasLogo'        => \App\Core\Brand::hasLogo(),
+            'brandHasFavicon'     => \App\Core\Brand::hasFavicon(),
+            'brandLogoUrl'        => \App\Core\Brand::logoUrl(),
+            'brandFaviconUrl'     => \App\Core\Brand::faviconUrl(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -213,6 +219,141 @@ class AdminController
             ? 'Revisión activada: los formularios pasan por la bandeja antes de publicarse.'
             : 'Revisión desactivada: cada quien publica su formulario sin revisión.');
 
+        Response::redirect('/admin/settings');
+    }
+
+    // ------------------------------------------------------------------
+    // Marca de la instancia (AG2)
+    // ------------------------------------------------------------------
+
+    /**
+     * POST /admin/settings/brand — nombre y color primario de la instancia.
+     *
+     * POST nativo con PRG, como la revisión: la tarjeta de marca no repinta
+     * huecos, así que el camino sin JavaScript es exactamente el mismo. El logo
+     * y el favicon van por sus propias rutas (multipart), porque un archivo no
+     * viaja en un `application/x-www-form-urlencoded` ni se puede validar junto
+     * a un texto.
+     *
+     * Semántica de «vaciar»: un nombre en blanco BORRA la fila (vuelve al
+     * `APP_NAME` del `.env`), no guarda un `''`. Un color en blanco también
+     * borra la fila (vuelve al default). Es la diferencia entre «no lo he
+     * tocado» y «déjalo en blanco» que `AppSettings::set()` distingue.
+     */
+    public function updateBrand(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $name  = trim((string) Request::post('instance_name', ''));
+        $color = trim((string) Request::post('instance_color', ''));
+
+        if (mb_strlen($name) > 100) {
+            Session::flash('error', 'El nombre de la instancia no puede superar los 100 caracteres.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        // El color se valida ANTES de guardar: `Brand::themeCss()` lo inyecta en
+        // un `<style>` sin escapar, así que un valor que no sea `#rrggbb` no debe
+        // llegar nunca a la fila (aunque `color()` también lo filtre al salir).
+        if ($color !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $color) !== 1) {
+            Session::flash('error', 'El color debe ser un valor hex como #5b5bd6.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $ok = AppSettings::set(\App\Core\Brand::NAME, $name === '' ? null : $name);
+        $ok = AppSettings::set(\App\Core\Brand::COLOR, $color === '' ? null : strtolower($color)) && $ok;
+
+        if (!$ok) {
+            Session::flash('error', 'No se pudo guardar la marca. ¿Falta ejecutar las migraciones?');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.brand_update', 'marca de la instancia actualizada desde el panel');
+        Session::flash('success', 'Marca actualizada.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/brand/logo — sube el logo de la instancia.
+     * POST /admin/settings/brand/favicon — sube el favicon.
+     *
+     * Dos rutas que comparten este cuerpo porque hacen lo mismo con distinto
+     * destino, y separarlas en dos métodos idénticos solo daría dos sitios donde
+     * olvidar el log. El `kind` lo fija el controlador, nunca el POST: el
+     * archivo no elige dónde se guarda.
+     */
+    public function uploadBrandImage(string $kind): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        if (!in_array($kind, ['logo', 'favicon'], true)) {
+            Response::notFound();
+            return;
+        }
+
+        $file = $_FILES['brand_image'] ?? null;
+        if (!is_array($file)) {
+            Session::flash('error', 'No se recibió ninguna imagen.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = \App\Core\Brand::saveUpload($kind, $file);
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.brand_update', $kind . ' de la instancia actualizado desde el panel');
+        Session::flash('success', ucfirst($kind) . ' actualizado.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/brand/logo/remove — quita el logo.
+     * POST /admin/settings/brand/favicon/remove — quita el favicon.
+     */
+    public function removeBrandImage(string $kind): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        if (!in_array($kind, ['logo', 'favicon'], true)) {
+            Response::notFound();
+            return;
+        }
+
+        \App\Core\Brand::remove($kind);
+
+        SecurityLog::record('instance.brand_update', $kind . ' de la instancia eliminado desde el panel');
+        Session::flash('success', ucfirst($kind) . ' eliminado: se vuelve al icono por defecto.');
         Response::redirect('/admin/settings');
     }
 

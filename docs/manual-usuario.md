@@ -53,7 +53,7 @@ correos.
 cp .env.example .env
 $EDITOR .env
 
-# 2. Base de datos (crea la BD y las 19 tablas)
+# 2. Base de datos (crea la BD y las 23 tablas)
 mysql < database/schema.sql
 
 # 3. Roles y permisos (NO crea usuarios)
@@ -95,6 +95,7 @@ mínimo. Las que de verdad importan:
 | `APP_PUBLIC_URL` | *(vacía)* | Si el formulario se sirve desde otro dominio (CDN, proxy), ponlo aquí. Vacía = se deduce del host de cada petición. |
 | `TRUST_PROXY` | `false` | **Déjalo en `false`** si no hay proxy. En `true` la app confía en `X-Forwarded-For`, y es justo eso lo que permite saltarse el límite de envíos. |
 | `APP_LOCALE` | `es` | Idioma de la interfaz: `es` o `en`. |
+| `APP_KEY` | *(vacía)* | Clave para **cifrar secretos guardados en la BD** (la contraseña del SMTP, AG3). Genérala con `php scripts/generate-key.php --write`. Sin ella el cifrado queda **inactivo** y los ajustes cifrados caen al valor del `.env`. **Cópiala en el mismo backup que la base de datos**: sin la clave, los secretos de la BD no se pueden descifrar. |
 | `APP_TIMEZONE` | `America/Caracas` | **Solo presentación**. Las fechas se guardan en UTC; esta variable decide cómo se muestran. |
 | `CSP_POLICY` | restringida | CSP con `script-src 'self'`. Para desactivarla hay que vaciarla a mano. |
 | `APP_REDIRECT_ALLOWLIST` | *(vacía)* | Dominios a los que se permite redirigir tras enviar. **Vacía = ninguna redirección externa se sigue.** |
@@ -112,6 +113,7 @@ mínimo. Las que de verdad importan:
 ```bash
 php scripts/test.php                     # suite completa (el único control de calidad)
 php scripts/test.php --filter <método>   # un test; casa por NOMBRE DE MÉTODO
+php scripts/generate-key.php --write     # genera APP_KEY y la escribe en .env
 php scripts/clean-rate-limits.php --all  # vaciar contadores (pide confirmación)
 php scripts/clean-uploads.php --dry-run  # ver adjuntos huérfanos, sin borrar nada
 ```
@@ -249,6 +251,31 @@ no podrás marcar casillas.
 
 Sin JavaScript, los tres se guardan como formularios de toda la vida y la página
 se recarga.
+
+### 4.3.2 La marca de la instancia
+
+En `/admin/settings`, la tarjeta **Marca de la instancia** (permiso `admin.access`)
+deja ponerle a la instalación su propia identidad sin tocar ficheros:
+
+| Ajuste | Qué cambia |
+|---|---|
+| **Nombre** | Lo que se lee en la barra lateral, en la barra superior, en la pantalla de acceso y en la pestaña del navegador. En blanco = vuelve al `APP_NAME` del `.env`. |
+| **Color primario** | El color de botones y enlaces del panel y del formulario publicado. Formato `#rrggbb`; en blanco = el color por defecto. |
+| **Logo** | La imagen de la marca (PNG, JPG, GIF o WEBP). Se muestra en la barra lateral y en el login. |
+| **Favicon** | El icono de la pestaña del navegador. Cuadrado y pequeño (64×64 va bien). |
+
+Todo se lee en cada petición, así que el cambio se ve al recargar. Igual que el
+registro público, lo que se guarda **gana** al `.env`: para volver al valor del
+fichero, deja el campo en blanco y guarda.
+
+El logo y el favicon se guardan como **imagen subida** (no una URL externa) para
+que la instalación no dependa de un tercero: viven en `storage/branding/`, fuera
+de `public/`, y los sirve la propia app en `/branding/logo` y `/branding/favicon`
+(que son públicos, porque el login y el formulario publicado se ven sin sesión).
+**Guarda `storage/` en tus backups** junto con la base de datos.
+
+Un formulario puede llevar su **propio** tema (§7); en la página pública de ese
+formulario su tema manda, y el color de la instancia gobierna todo lo demás.
 
 ### 4.4 Roles
 
