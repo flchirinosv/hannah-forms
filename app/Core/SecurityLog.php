@@ -191,6 +191,9 @@ final class SecurityLog
             // secret). Un solo evento: las dos son «se cambió el anti-bot de la
             // instalación», y la secret nunca se registra.
             'instance.turnstile_update',
+            // AG6 — Límites de subida de la instancia (tamaño por archivo y
+            // número por campo). Los campos de formulario solo pueden restringir.
+            'instance.uploads_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\UploadSettings;
 use App\Core\Config;
 use App\Core\Request;
 use App\Models\Answer;
@@ -81,7 +82,7 @@ final class Uploader
 
     public static function maxSizeMb(array $validations = []): int
     {
-        $global = self::intConfig('app.uploads.max_size_mb', self::DEFAULT_MAX_MB);
+        $global = UploadSettings::maxSizeMb();
         // El límite real lo impone PHP (upload_max_filesize): si es menor que
         // el configurado se usa el de PHP, para no prometer un tamaño imposible
         // y recibir un error de subida confuso.
@@ -96,7 +97,7 @@ final class Uploader
 
     public static function maxFiles(array $validations = []): int
     {
-        $global = self::intConfig('app.uploads.max_files', self::DEFAULT_MAX_FILES);
+        $global = UploadSettings::maxFiles();
         $perField = isset($validations['max_files']) ? (int) $validations['max_files'] : 0;
         $n = $perField > 0 ? min($perField, $global) : $global;
         return max(1, $n);

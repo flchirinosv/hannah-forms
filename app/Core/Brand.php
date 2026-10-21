@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Config;
+use App\Core\UploadSettings;
+
 /**
  * Identidad visual de la INSTANCIA: nombre, logo, favicon y color primario.
  *
@@ -192,7 +195,7 @@ final class Brand
             return ['ok' => false, 'error' => 'Archivo temporal no disponible.', 'mime' => null];
         }
 
-        $maxBytes = ((int) Config::get('app.uploads.max_size_mb', 10)) * 1024 * 1024;
+        $maxBytes = UploadSettings::maxSizeMb() * 1024 * 1024;
         if ((int) ($file['size'] ?? 0) > $maxBytes) {
             return ['ok' => false, 'error' => 'La imagen supera el tamaño máximo permitido.', 'mime' => null];
         }

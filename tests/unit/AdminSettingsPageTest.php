@@ -200,4 +200,17 @@ class AdminSettingsPageTest
             'el input de la secret key no puede rellenar `value` con una variable de la vista'
         );
     }
+
+    /**
+     * AG6 — La tarjeta de límites de subida apunta a SU endpoint y manda los dos
+     * campos con los nombres que lee `UploadSettings::save()`.
+     */
+    public function testLaTarjetaDeSubidasApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/uploads"'), 'el formulario de subidas');
+        assertTrue(str_contains($settings, 'name="upload_max_size_mb"'), 'con el tamaño máximo');
+        assertTrue(str_contains($settings, 'name="upload_max_files"'), 'y el número de archivos');
+    }
 }

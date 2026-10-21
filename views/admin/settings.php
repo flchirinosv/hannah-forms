@@ -446,6 +446,59 @@ use App\Core\View;
         </div>
     </div>
 
+    <?php // AG6 — Límites de subida de archivos. El campo de formulario solo
+          // puede restringir, nunca ampliar. El límite efectivo tiene en cuenta
+          // upload_max_filesize de PHP (lo aplica Uploader). ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i></span>
+                        <div>
+                            <h3 class="app-instance-head-title">Subidas de archivos</h3>
+                            <p class="app-instance-head-sub">
+                                Tamaño máximo por archivo y número máximo por campo. Un campo puede bajar estos
+                                límites, pero nunca subirlos. Vacíalos para volver al <code>.env</code>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post" action="/admin/settings/uploads">
+                        <?= Csrf::field() ?>
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <label class="form-label" for="uploadMaxSizeMb">Tamaño máximo por archivo (MB)</label>
+                                <input type="number" class="form-control" id="uploadMaxSizeMb" name="upload_max_size_mb"
+                                       min="1" value="<?= View::escape($uploads['stored_max_size_mb'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($uploads['env_max_size_mb'] ?? 10)) ?>">
+                                <div class="form-text">
+                                    Efectivo ahora: <strong><?= (int) ($uploads['max_size_mb'] ?? 10) ?> MB</strong>.
+                                    Si PHP lo limita más, <code>Uploader</code> lo aplica igual.
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="uploadMaxFiles">Archivos máximos por campo</label>
+                                <input type="number" class="form-control" id="uploadMaxFiles" name="upload_max_files"
+                                       min="1" value="<?= View::escape($uploads['stored_max_files'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($uploads['env_max_files'] ?? 5)) ?>">
+                                <div class="form-text">
+                                    Efectivo ahora: <strong><?= (int) ($uploads['max_files'] ?? 5) ?></strong>.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar límites
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <?php // AG5 — Anti-bot (Cloudflare Turnstile). El interruptor está en cada
           // formulario (settings.anti_bot.enabled), pero las CLAVES son de la
           // instancia: sin ellas, un formulario que pide Turnstile no se sirve.

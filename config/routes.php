@@ -183,6 +183,9 @@ $router->post('/admin/settings/instance', [AdminController::class, 'updateInstan
 // AG5 — Claves de Cloudflare Turnstile de la instancia. La site key es pública;
 // la secret va cifrada en el mismo POST (no es multipart) y es de solo escritura.
 $router->post('/admin/settings/turnstile', [AdminController::class, 'updateTurnstile'], ['auth', 'admin', 'csrf']);
+// AG6 — Límites de subida de archivos (tamaño/número). El campo solo puede
+// restringir, nunca ampliar; el límite efectivo tiene en cuenta upload_max_filesize.
+$router->post('/admin/settings/uploads', [AdminController::class, 'updateUploads'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

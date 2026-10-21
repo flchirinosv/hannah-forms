@@ -42,8 +42,8 @@ snapshot `ControllerActionsTest::APP_SETTINGS_KEYS`.
 
 | # | Fase | Claves `.env` | Esfuerzo | Estado |
 |---|------|---------------|----------|--------|
-| AG5 | **Turnstile por UI** (site key + secret cifrada) | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | 1 d | **PENDIENTE** |
-| AG6 | **Límites de upload por UI** | `UPLOAD_MAX_SIZE_MB`, `UPLOAD_MAX_FILES` | 0.5 d | PENDIENTE |
+| AG5 | **Turnstile por UI** (site key + secret cifrada) | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | 1 d | **COMPLETADA** |
+| AG6 | **Límites de upload por UI** | `UPLOAD_MAX_SIZE_MB`, `UPLOAD_MAX_FILES` | 0.5 d | **COMPLETADA** |
 | AG7 | **Cupos del dashboard por UI** | `DASH_CREATE_PER_HOUR`, `DASH_EXPORT_PER_HOUR` | 0.5 d | PENDIENTE |
 | AG8 | **Hardening de sesión / HTTPS por UI** | `SESSION_SECURE`, `SESSION_SAMESITE`, `SESSION_HTTPONLY`, `SESSION_LIFETIME`, `SESSION_NAME` | 1 d | PENDIENTE |
 | AG9 | **Red y redirecciones por UI** | `TRUST_PROXY`, `APP_REDIRECT_ALLOWLIST`, `FRAME_OPTIONS` + `CSP` | 1.5 d | PENDIENTE |

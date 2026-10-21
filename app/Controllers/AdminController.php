@@ -18,6 +18,7 @@ use App\Core\Secret;
 use App\Core\SecurityLog;
 use App\Core\Session;
 use App\Core\TurnstileSettings;
+use App\Core\UploadSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -123,6 +124,7 @@ class AdminController
             'mailSecretAvailable' => \App\Core\Secret::isAvailable(),
             'turnstile'           => TurnstileSettings::all(),
             'secretAvailable'     => \App\Core\Secret::isAvailable(),
+            'uploads'             => UploadSettings::all(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -576,6 +578,40 @@ class AdminController
 
         SecurityLog::record('instance.turnstile_update', 'claves de Cloudflare Turnstile de la instancia actualizadas desde el panel');
         Session::flash('success', 'Claves de Turnstile actualizadas.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/uploads — límites de subida de la instancia.
+     *
+     * PRG como los demás ajustes. El campo solo puede restringir, nunca ampliar;
+     * el límite efectivo tiene en cuenta `upload_max_filesize` de PHP.
+     */
+    public function updateUploads(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = UploadSettings::save([
+            'max_size_mb' => Request::post('upload_max_size_mb', ''),
+            'max_files'   => Request::post('upload_max_files', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.uploads_update', 'límites de subida de la instancia actualizados desde el panel');
+        Session::flash('success', 'Límites de subida actualizados.');
         Response::redirect('/admin/settings');
     }
 
