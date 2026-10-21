@@ -278,7 +278,7 @@ final class NetworkSettings
         }
 
         // TRUST_PROXY: checkbox -> 1/0
-        $trust = isset($data['trust_proxy']) ? '1' : '0';
+        $trust = isset($data['trust_proxy']) && $data['trust_proxy'] ? '1' : '0';
         if (!AppSettings::set(self::TRUST_PROXY, $trust)) {
             return ['ok' => false, 'error' => 'No se pudo guardar la configuración (¿migraciones?).'];
         }
