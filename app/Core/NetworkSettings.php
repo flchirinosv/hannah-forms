@@ -61,6 +61,38 @@ final class NetworkSettings
                 return false;
             }
         }
+        try {
+            $cfg = Config::get('app.security', []);
+            if (is_array($cfg) && array_key_exists('trust_proxy', $cfg)) {
+                $v = $cfg['trust_proxy'];
+                if (is_bool($v)) {
+                    return $v;
+                }
+                $t = strtolower(trim((string) $v));
+                if ($t === '1' || $t === 'true' || $t === 'on') {
+                    return true;
+                }
+                if ($t === '0' || $t === 'false' || $t === 'off') {
+                    return false;
+                }
+            }
+            $cfg2 = Config::get('app', []);
+            if (is_array($cfg2) && array_key_exists('trust_proxy', $cfg2)) {
+                $v = $cfg2['trust_proxy'];
+                if (is_bool($v)) {
+                    return $v;
+                }
+                $t = strtolower(trim((string) $v));
+                if ($t === '1' || $t === 'true' || $t === 'on') {
+                    return true;
+                }
+                if ($t === '0' || $t === 'false' || $t === 'off') {
+                    return false;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
         return self::envBool('TRUST_PROXY', false);
     }
 
@@ -73,6 +105,26 @@ final class NetworkSettings
         $stored = AppSettings::get(self::REDIRECT_ALLOWLIST);
         if (is_string($stored) && trim($stored) !== '') {
             return self::parseAllowlist($stored);
+        }
+        try {
+            $raw = Config::get('app.redirect_allowlist', null);
+            if (is_array($raw)) {
+                $list = array_map(function ($p) {
+                    if (is_string($p) && $p !== '') {
+                        return strtolower(preg_replace('/:\d+$/', '', trim($p)));
+                    }
+                    return null;
+                }, $raw);
+                $list = array_values(array_filter($list, function ($x) { return is_string($x) && $x !== ''; }));
+                if (!empty($list)) {
+                    return $list;
+                }
+            }
+            if (is_string($raw) && trim($raw) !== '') {
+                return self::parseAllowlist($raw);
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         return self::envRedirectAllowlist();
     }
@@ -143,6 +195,24 @@ final class NetworkSettings
         $stored = AppSettings::get(self::CSP_POLICY);
         if (is_string($stored)) {
             return trim($stored);
+        }
+        try {
+            $cfg = Config::get('app.csp_policy', null);
+            if (is_string($cfg)) {
+                $t = trim($cfg);
+                if ($t !== '') {
+                    return $t;
+                }
+            }
+            $app = Config::get('app', []);
+            if (is_array($app) && isset($app['csp_policy']) && is_string($app['csp_policy'])) {
+                $t = trim($app['csp_policy']);
+                if ($t !== '') {
+                    return $t;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         return self::envCspPolicy();
     }
