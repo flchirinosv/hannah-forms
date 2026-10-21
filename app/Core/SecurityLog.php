@@ -194,6 +194,8 @@ final class SecurityLog
             // AG6 — Límites de subida de la instancia (tamaño por archivo y
             // número por campo). Los campos de formulario solo pueden restringir.
             'instance.uploads_update',
+            // AG7 — Cupos del dashboard por usuario.
+            'instance.dashboard_limits_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

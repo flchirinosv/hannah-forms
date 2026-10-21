@@ -213,4 +213,17 @@ class AdminSettingsPageTest
         assertTrue(str_contains($settings, 'name="upload_max_size_mb"'), 'con el tamaño máximo');
         assertTrue(str_contains($settings, 'name="upload_max_files"'), 'y el número de archivos');
     }
+
+    /**
+     * AG7 — La tarjeta de cupos del dashboard apunta a SU endpoint y manda los dos
+     * campos con los nombres que lee `DashboardLimitSettings::save()`.
+     */
+    public function testLaTarjetaDeCuposDelDashboardApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/dashboard-limits"'), 'el formulario de cupos');
+        assertTrue(str_contains($settings, 'name="dash_create_per_hour"'), 'con formularios por hora');
+        assertTrue(str_contains($settings, 'name="dash_export_per_hour"'), 'y exportaciones por hora');
+    }
 }

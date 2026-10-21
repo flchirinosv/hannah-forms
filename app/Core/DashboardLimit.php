@@ -15,14 +15,8 @@ namespace App\Core;
  * ruta no se alcanza sin sesión, y no queremos compartir un contador "" entre
  * peticiones anónimas de tests).
  *
- * Límites en `config/config.php` (`app.limits`), override por .env:
- * `DASH_CREATE_PER_HOUR` (default 30) y `DASH_EXPORT_PER_HOUR` (default 120).
- *
- * OJO: la ventana es de 3600 s (1 h), igual que `RateLimiter::MAX_WINDOW`.
- * `cleanExpired()` y `scripts/clean-rate-limits.php` borran filas más
- * viejas que la ventana más larga de la app, así que `MAX_WINDOW` se subió a
- * 3600 en el MISMO cambio que añadió estos límites: no bajes ese techo ni
- * añadas aquí una ventana mayor sin subirlo en el mismo commit.
+ * Límites configurables desde `/admin/settings` (`app_settings`) con
+ * precedencia fila→`.env` → default. Defaults 30 y 120 por hora.
  */
 final class DashboardLimit
 {
@@ -30,15 +24,15 @@ final class DashboardLimit
 
     public static function createAllowed(): bool
     {
-        return self::isAllowed('dash:create', 'create_per_hour', 30);
+        return self::isAllowed('dash:create', DashboardLimitSettings::createPerHour());
     }
 
     public static function exportAllowed(): bool
     {
-        return self::isAllowed('dash:export', 'export_per_hour', 120);
+        return self::isAllowed('dash:export', DashboardLimitSettings::exportPerHour());
     }
 
-    private static function isAllowed(string $scope, string $configKey, int $fallback): bool
+    private static function isAllowed(string $scope, int $max): bool
     {
         $userId = Auth::id();
         if ($userId === null) {
@@ -47,8 +41,6 @@ final class DashboardLimit
             return true;
         }
 
-        $limits = Config::get('app.limits', []);
-        $max = (int) ($limits[$configKey] ?? $fallback);
         $identifier = (string) $userId;
 
         $allowed = RateLimiter::isAllowed($scope, $identifier, $max, self::WINDOW);

@@ -186,6 +186,8 @@ $router->post('/admin/settings/turnstile', [AdminController::class, 'updateTurns
 // AG6 — Límites de subida de archivos (tamaño/número). El campo solo puede
 // restringir, nunca ampliar; el límite efectivo tiene en cuenta upload_max_filesize.
 $router->post('/admin/settings/uploads', [AdminController::class, 'updateUploads'], ['auth', 'admin', 'csrf']);
+// AG7 — Cupos del dashboard por usuario (formularios/hora, exportaciones/hora).
+$router->post('/admin/settings/dashboard-limits', [AdminController::class, 'updateDashboardLimits'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

@@ -438,12 +438,55 @@ use App\Core\View;
                                 <button type="submit" class="btn btn-outline-primary app-form-cta" <?= empty($mailConfigured) ? 'disabled' : '' ?>>
                                     <i class="fa-solid fa-paper-plane me-1"></i>Enviar prueba
                                 </button>
-                            </div>
-                        </form>
+    <?php // AG7 — Cupos del dashboard por usuario (crear / exportar), por cuenta. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span>
+                        <div>
+                            <h3 class="app-instance-head-title">Cupos del dashboard</h3>
+                            <p class="app-instance-head-sub">
+                                Límites por usuario autenticado (por hora). Protegen la cuenta, no la IP.
+                                Vacíalos para volver al <code>.env</code>.
+                            </p>
+                        </div>
                     </div>
+
+                    <form method="post" action="/admin/settings/dashboard-limits">
+                        <?= Csrf::field() ?>
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <label class="form-label" for="dashCreatePerHour">Formularios creados / hora</label>
+                                <input type="number" class="form-control" id="dashCreatePerHour" name="dash_create_per_hour"
+                                       min="1" value="<?= View::escape($dashboardLimits['stored_create_per_hour'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($dashboardLimits['env_create_per_hour'] ?? 30)) ?>">
+                                <div class="form-text">
+                                    Efectivo ahora: <strong><?= (int) ($dashboardLimits['create_per_hour'] ?? 30) ?>/h</strong>.
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="dashExportPerHour">Exportaciones / hora</label>
+                                <input type="number" class="form-control" id="dashExportPerHour" name="dash_export_per_hour"
+                                       min="1" value="<?= View::escape($dashboardLimits['stored_export_per_hour'] ?? '') ?>"
+                                       placeholder="<?= View::escape((string) ($dashboardLimits['env_export_per_hour'] ?? 120)) ?>">
+                                <div class="form-text">
+                                    Efectivo ahora: <strong><?= (int) ($dashboardLimits['export_per_hour'] ?? 120) ?>/h</strong>.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar cupos
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
+    </div>
+
     </div>
 
     <?php // AG6 — Límites de subida de archivos. El campo de formulario solo

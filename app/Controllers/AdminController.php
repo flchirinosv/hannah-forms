@@ -19,6 +19,7 @@ use App\Core\SecurityLog;
 use App\Core\Session;
 use App\Core\TurnstileSettings;
 use App\Core\UploadSettings;
+use App\Core\DashboardLimitSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -125,6 +126,7 @@ class AdminController
             'turnstile'           => TurnstileSettings::all(),
             'secretAvailable'     => \App\Core\Secret::isAvailable(),
             'uploads'             => UploadSettings::all(),
+            'dashboardLimits'     => DashboardLimitSettings::all(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -612,6 +614,39 @@ class AdminController
 
         SecurityLog::record('instance.uploads_update', 'límites de subida de la instancia actualizados desde el panel');
         Session::flash('success', 'Límites de subida actualizados.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/dashboard-limits — cupos por usuario del dashboard.
+     *
+     * PRG. Por defecto 30 formularios/hora y 120 exportaciones/hora.
+     */
+    public function updateDashboardLimits(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = DashboardLimitSettings::save([
+            'create_per_hour' => Request::post('dash_create_per_hour', ''),
+            'export_per_hour' => Request::post('dash_export_per_hour', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.dashboard_limits_update', 'cupos del dashboard por usuario actualizados desde el panel');
+        Session::flash('success', 'Cupos del dashboard actualizados.');
         Response::redirect('/admin/settings');
     }
 

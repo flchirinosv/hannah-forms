@@ -56,7 +56,7 @@ class ControllerActionsTest
     private static array $savedSettings = [];
 
     /** Claves de `app_settings` que el smoke escribe y hay que devolver. */
-    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout', 'instance_public_url', 'instance_timezone', 'instance_locale', 'instance_turnstile_site_key', 'instance_turnstile_secret_key', 'instance_upload_max_size_mb', 'instance_upload_max_files'];
+    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout', 'instance_public_url', 'instance_timezone', 'instance_locale', 'instance_turnstile_site_key', 'instance_turnstile_secret_key', 'instance_upload_max_size_mb', 'instance_upload_max_files', 'instance_dash_create_per_hour', 'instance_dash_export_per_hour'];
 
     public function setUp(): void
     {
@@ -455,11 +455,11 @@ class ControllerActionsTest
             // filas se devuelven en `cleanupResiduals()`.
             $post['turnstile_site_key'] = '';
             $post['clear_secret'] = '1';
-        } elseif ($path === '/admin/settings/uploads') {
+        } elseif ($path === '/admin/settings/dashboard-limits') {
             // Vaciar los dos borra las filas (vuelve al .env). Las filas se
             // devuelven en `cleanupResiduals()`.
-            $post['upload_max_size_mb'] = '';
-            $post['upload_max_files'] = '';
+            $post['dash_create_per_hour'] = '';
+            $post['dash_export_per_hour'] = '';
         } elseif (str_contains($path, '/admin/roles/create')) {
             // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
             // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol
