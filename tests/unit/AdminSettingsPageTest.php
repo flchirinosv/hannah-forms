@@ -250,4 +250,15 @@ class AdminSettingsPageTest
         assertTrue(str_contains($settings, 'name="trust_proxy"'), 'con trust proxy');
         assertTrue(str_contains($settings, 'name="redirect_allowlist"'), 'y allowlist');
     }
+
+    /**
+     * AG10 — La tarjeta de webhook apunta a SU endpoint.
+     */
+    public function testLaTarjetaDeWebhookApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/webhook"'), 'el formulario de webhook');
+        assertTrue(str_contains($settings, 'name="webhook_allow_private_hosts"'), 'con allow private');
+    }
 }

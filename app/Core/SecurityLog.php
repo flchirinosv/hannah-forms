@@ -200,6 +200,8 @@ final class SecurityLog
             'instance.session_update',
             // AG9 — Red y cabeceras.
             'instance.network_update',
+            // AG10 — Webhook red local.
+            'instance.webhook_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

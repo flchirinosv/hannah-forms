@@ -192,6 +192,8 @@ $router->post('/admin/settings/dashboard-limits', [AdminController::class, 'upda
 $router->post('/admin/settings/session', [AdminController::class, 'updateSession'], ['auth', 'admin', 'csrf']);
 // AG9 — Red, proxy, redirecciones externas y cabeceras (X-Frame-Options/CSP).
 $router->post('/admin/settings/network', [AdminController::class, 'updateNetwork'], ['auth', 'admin', 'csrf']);
+// AG10 — Webhook red local.
+$router->post('/admin/settings/webhook', [AdminController::class, 'updateWebhook'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

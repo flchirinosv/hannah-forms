@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Config;
+use App\Core\WebhookSettings;
 
 /**
  * Webhook
@@ -167,6 +168,13 @@ final class Webhook
     {
         if (self::$allowPrivate !== null) {
             return self::$allowPrivate;
+        }
+        try {
+            if (class_exists(WebhookSettings::class)) {
+                return WebhookSettings::allowPrivateHosts();
+            }
+        } catch (\Throwable $e) {
+            // ignore
         }
         return (bool) Config::get('app.webhook.allow_private_hosts', false);
     }

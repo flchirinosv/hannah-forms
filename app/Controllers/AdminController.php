@@ -22,6 +22,7 @@ use App\Core\UploadSettings;
 use App\Core\DashboardLimitSettings;
 use App\Core\SessionSettings;
 use App\Core\NetworkSettings;
+use App\Core\WebhookSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -131,6 +132,7 @@ class AdminController
             'dashboardLimits'     => DashboardLimitSettings::all(),
             'sessionSettings'     => SessionSettings::all(),
             'networkSettings'     => NetworkSettings::all(),
+            'webhookSettings'     => WebhookSettings::all(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -722,6 +724,38 @@ class AdminController
 
         SecurityLog::record('instance.network_update', 'ajustes de red/cabeceras actualizados desde el panel');
         Session::flash('success', 'Ajustes de red actualizados.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/webhook — webhook red local.
+     *
+     * PRG.
+     */
+    public function updateWebhook(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = WebhookSettings::save([
+            'allow_private_hosts' => Request::post('webhook_allow_private_hosts') !== null,
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.webhook_update', 'ajustes de webhook actualizados desde el panel');
+        Session::flash('success', 'Ajustes de webhook actualizados.');
         Response::redirect('/admin/settings');
     }
 
