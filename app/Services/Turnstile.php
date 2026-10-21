@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Config;
+use App\Core\TurnstileSettings;
 
 /**
  * B2 — Cloudflare Turnstile (verificación bot-server, opt-in por formulario).
@@ -46,8 +46,8 @@ final class Turnstile
     }
 
     /**
-     * Fija las claves como siVINieran del .env (tests). null = leer de la
-     * config (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY), que es lo normal.
+     * Fija las claves como si vinieran del `.env` (tests). null = resolver por
+     * instancia (`TurnstileSettings`: fila del panel → `.env`), que es lo normal.
      */
     public static function setKeysForTesting(?string $siteKey, ?string $secret): void
     {
@@ -57,12 +57,12 @@ final class Turnstile
 
     private static function siteKey(): string
     {
-        return self::$siteKey ?? trim((string) Config::get('app.turnstile.site_key', ''));
+        return self::$siteKey ?? TurnstileSettings::siteKey();
     }
 
     private static function secretKey(): string
     {
-        return self::$secretKey ?? trim((string) Config::get('app.turnstile.secret_key', ''));
+        return self::$secretKey ?? TurnstileSettings::secretKey();
     }
 
     /** ¿La instancia tiene claves para servir el widget? */

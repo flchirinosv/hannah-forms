@@ -1019,6 +1019,28 @@ contraseña se guarda **cifrada** con `APP_KEY` (sin SSH, sin editar el `.env`).
 | AH10 | Un usuario sin `admin.access` intenta el POST de identidad | 403 y no se guarda nada | A | |
 | AH11 | Todo lo anterior **sin JavaScript** | Guardar funciona por POST nativo (PRG) | A | |
 
+## Bloque AI — Anti-bot (Cloudflare Turnstile) de la instancia (AG5)
+
+Tarjeta **«Anti-bot (Cloudflare Turnstile)»** de `/admin/settings`, con permiso
+`admin.access`. Las claves son de la **instancia**: la site key es pública, la
+secret se guarda **cifrada** con `APP_KEY`. Sin las dos, los formularios con
+anti-bot encendido **no se sirven** (403).
+
+| ID | Prueba | Resultado esperado | Tipo | Notas |
+|---|---|---|---|---|
+| AI1 | Entra a `/admin/settings` | Aparece la tarjeta «Anti-bot (Cloudflare Turnstile)» con sus campos y el estado «Sin configurar» | A | |
+| AI2 | Rellena la site key y la secret y guarda | Vuelve (PRG) con «Claves de Turnstile actualizadas» y el estado pasa a «Configurado» | A | |
+| AI3 | Reabre tras guardar la secret | El campo de la secret está **vacío** y aparece la insignia «guardada»; no se muestra nunca el valor | A | |
+| AI4 | Guarda solo otro campo sin tocar la secret | La secret guardada **sigue ahí** (la insignia no desaparece) | A | |
+| AI5 | Marca «Borrar la secret key guardada» y guarda | La insignia desaparece; cae al `.env` o queda sin configurar | A | |
+| AI6 | Guarda solo la site key (sin secret) | Aviso de que se necesitan **las dos** y **no** se guarda nada a medias | A | |
+| AI7 | Guarda solo la secret (sin site key) | Mismo aviso, sin escrituras parciales | A | |
+| AI8 | Deja ambas en blanco y guarda | Se borran las filas y el panel vuelve al `.env` | A | |
+| AI9 | Inspecciona `app_settings` tras guardar la secret | El valor de `instance_turnstile_secret_key` está cifrado (no se lee en claro) | M | |
+| AI10 | Sin `APP_KEY`, intenta guardar una secret | Aviso que nombra `APP_KEY` y la secret no se guarda en claro | A | |
+| AI11 | Un usuario sin `admin.access` intenta el POST de Turnstile | 403 y no se guarda nada | A | |
+| AI12 | Todo lo anterior **sin JavaScript** | Guardar funciona por POST nativo (PRG) | A | |
+
 ## Cuando encuentres un fallo
 
 

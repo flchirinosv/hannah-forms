@@ -107,7 +107,7 @@ mínimo. Las que de verdad importan:
 | `DASH_EXPORT_PER_HOUR` | `120` | Exportaciones por hora y usuario. |
 | `FILL_SUBMIT_PER_10MIN` | `10` | Envíos que una misma IP puede mandar al formulario cada 10 minutos. Sube el número para un censo con muchas respuestas desde la misma red; bájalo para apretar. |
 | `ROSTER_CODE_PER_15MIN` | `10` | Intentos de **código de lista** que una IP puede probar cada 15 minutos. Baja este número en un padrón sensible. Lo que **no** se cambia por aquí son los intentos por código concreto: son siempre 10 por un rato, y contar por código es lo que hace que adivinarlo cueste. |
-| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | *(vacías)* | Cloudflare Turnstile. **Sin las dos**, un formulario con anti-bot activado no se sirve (403). |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | *(vacías)* | Cloudflare Turnstile. **Sin las dos**, un formulario con anti-bot activado no se sirve (403). **Editables en `/admin/settings`** (§4.3.5): la fila guarda ambas; la secret se cifra desde el panel. Vaciar ambas vuelve al `.env`. |
 | Bloque `MAIL_*` | vacío | SMTP. Con `MAIL_HOST` vacío los correos no se envían, pero la app **no se rompe**: es el modo por defecto en desarrollo. |
 
 ### 3.4 Scripts de mantenimiento
@@ -653,9 +653,10 @@ rellena, la app responde como si hubiera ido bien pero **no guarda nada**.
 
 ### 7.2 Turnstile
 
-Opcional, de Cloudflare. Necesita `TURNSTILE_SITE_KEY` y
-`TURNSTILE_SECRET_KEY` en `.env`. Sin las dos claves, un formulario con
-anti-bot activo **no se sirve** (403), en lugar de degradar.
+Opcional, de Cloudflare. Se configuran en **Configuración → Anti-bot (Turnstile)**
+del panel, o en `.env` (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`). La secret
+se guarda cifrada con `APP_KEY`. Sin las dos claves, un formulario con anti-bot
+activo **no se sirve** (403), en lugar de degradar.
 
 ### 7.3 Webhook
 

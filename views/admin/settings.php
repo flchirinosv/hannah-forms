@@ -445,6 +445,93 @@ use App\Core\View;
             </div>
         </div>
     </div>
+
+    <?php // AG5 — Anti-bot (Cloudflare Turnstile). El interruptor está en cada
+          // formulario (settings.anti_bot.enabled), pero las CLAVES son de la
+          // instancia: sin ellas, un formulario que pide Turnstile no se sirve.
+          // La site key es pública; la secret se guarda cifrada y es de solo
+          // escritura (post nativo con PRG, como marca/correo/identidad). ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span>
+                        <div class="flex-grow-1">
+                            <h3 class="app-instance-head-title">Anti-bot (Cloudflare Turnstile)</h3>
+                            <p class="app-instance-head-sub">
+                                Las claves con las que se verifica que quien responde no es un robot. Cada formulario
+                                decide si lo usa; sin las claves, los que lo piden no se sirven. Déjalas en blanco para
+                                volver al <code>.env</code>.
+                            </p>
+                        </div>
+                        <span class="app-instance-status <?= empty($turnstile['configured']) ? 'is-off' : 'is-on' ?>">
+                            <i class="fa-solid <?= empty($turnstile['configured']) ? 'fa-shield-halved' : 'fa-shield' ?>" aria-hidden="true"></i>
+                            <?= empty($turnstile['configured']) ? 'Sin configurar' : 'Configurado' ?>
+                        </span>
+                    </div>
+
+                    <?php if (empty($turnstile['configured'])): ?>
+                        <div class="alert alert-warning app-alert mb-3" role="status">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app
+                            funciona igual: solo quedan bloqueados esos).
+                        </div>
+                    <?php endif; ?>
+                    <?php if (empty($secretAvailable)): ?>
+                        <div class="alert alert-danger app-alert mb-3" role="status">
+                            <i class="fa-solid fa-key me-1"></i>
+                            No hay <code>APP_KEY</code>: no se puede guardar la secret key cifrada. Genérala con
+                            <code>php scripts/generate-key.php --write</code> (la secret del <code>.env</code> se sigue leyendo).
+                        </div>
+                    <?php endif; ?>
+
+                    <form method="post" action="/admin/settings/turnstile">
+                        <?= Csrf::field() ?>
+
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <label class="form-label" for="turnstileSiteKey">Site key</label>
+                                <input type="text" class="form-control" id="turnstileSiteKey" name="turnstile_site_key"
+                                       value="<?= View::escape($turnstile['stored_site_key'] ?? '') ?>"
+                                       placeholder="<?= View::escape(($turnstile['env_site_key'] ?? '') !== '' ? $turnstile['env_site_key'] : '0x4AAAAAAA…') ?>"
+                                       autocomplete="off">
+                                <div class="form-text">
+                                    Pública: viaja en el HTML del widget.<?= ($turnstile['env_site_key'] ?? '') !== '' ? ' Sin fila manda el <code>.env</code>.' : '' ?>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label" for="turnstileSecret">
+                                    Secret key
+                                    <?php if (!empty($turnstile['secret_stored'])): ?>
+                                        <span class="badge bg-success-subtle text-success-emphasis ms-1">guardada</span>
+                                    <?php endif; ?>
+                                </label>
+                                <input type="password" class="form-control" id="turnstileSecret" name="turnstile_secret"
+                                       value="" autocomplete="new-password"
+                                       placeholder="<?= !empty($turnstile['secret_stored']) ? 'Déjala vacía para no cambiarla' : 'Secret key de siteverify' ?>">
+                                <?php if (!empty($turnstile['secret_stored'])): ?>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" id="turnstileClearSecret" name="clear_secret" value="1">
+                                        <label class="form-check-label small" for="turnstileClearSecret">Borrar la secret key guardada</label>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="form-text">
+                                    Privada: se guarda cifrada y no se vuelve a mostrar. Se necesitan <strong>las dos</strong> claves.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar claves
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php // `dashboard.js` con `defer`, igual que en el resto del panel: aquí solo

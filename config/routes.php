@@ -180,6 +180,9 @@ $router->post('/admin/settings/mail/test', [AdminController::class, 'sendTestMai
 // AG4 — Identidad operativa de la instancia: URL pública, zona horaria e idioma.
 // Los tres son un PIN que gana sobre el `.env`; vaciarlos lo borra.
 $router->post('/admin/settings/instance', [AdminController::class, 'updateInstance'], ['auth', 'admin', 'csrf']);
+// AG5 — Claves de Cloudflare Turnstile de la instancia. La site key es pública;
+// la secret va cifrada en el mismo POST (no es multipart) y es de solo escritura.
+$router->post('/admin/settings/turnstile', [AdminController::class, 'updateTurnstile'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);

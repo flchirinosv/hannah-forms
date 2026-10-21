@@ -56,7 +56,7 @@ class ControllerActionsTest
     private static array $savedSettings = [];
 
     /** Claves de `app_settings` que el smoke escribe y hay que devolver. */
-    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout', 'instance_public_url', 'instance_timezone', 'instance_locale'];
+    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout', 'instance_public_url', 'instance_timezone', 'instance_locale', 'instance_turnstile_site_key', 'instance_turnstile_secret_key'];
 
     public function setUp(): void
     {
@@ -447,6 +447,14 @@ class ControllerActionsTest
             $post['instance_public_url'] = 'https://humo.test.local';
             $post['instance_timezone'] = 'America/Caracas';
             $post['instance_locale'] = 'es';
+        } elseif ($path === '/admin/settings/turnstile') {
+            // Coherencia: las dos claves o ninguna. El smoke no tiene por qué
+            // tener APP_KEY para cifrar una secret, así que limpia las dos
+            // (vaciar la site key + borrar la secret deja el estado coherente y
+            // ejercita el camino de escritura sin depender del cifrado). Las
+            // filas se devuelven en `cleanupResiduals()`.
+            $post['turnstile_site_key'] = '';
+            $post['clear_secret'] = '1';
         } elseif (str_contains($path, '/admin/roles/create')) {
             // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
             // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol

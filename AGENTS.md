@@ -1758,7 +1758,7 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   `I18n::forRequest($settings)` es la puerta del fill y añade el override
   `?lang=`/campo oculto, validado contra `supportedLocales()`.
 
-**Marca de la instancia y secretos (AG1/AG2/AG3/AG4)**
+**Marca de la instancia y secretos (AG1/AG2/AG3/AG4/AG5)**
 
 - **`App\Core\Secret` cifra con `APP_KEY` y `decrypt()` NUNCA lanza**: sin clave
   (o con basura) devuelve `null`, y quien lo use cae al valor del `.env`. Un
@@ -1840,6 +1840,26 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
 - **`schema.sql`/`.env` no cambian de forma**: `APP_PUBLIC_URL`, `APP_TIMEZONE` y
   `APP_LOCALE` siguen siendo el fallback; lo que se acaba de sacar de SSH es la
   NECESIDAD de editarlos para cambiar el dominio, la hora o el idioma.
+- **`App\Core\TurnstileSettings` es el ÚNICO sitio que resuelve las claves de
+  Cloudflare Turnstile** (`instance_turnstile_site_key`, la secret cifrada en
+  `instance_turnstile_secret_key`), y `App\Services\Turnstile` las lee por él
+  (`siteKey()`/`secretKey()` conservan el seam `setKeysForTesting()`): la site key
+  es pública y la secret es **de solo escritura** (cifrada con `Secret`, nunca se
+  devuelve a la vista; `secretStored()` solo dice si hay una utilizable). Misma
+  precedencia que marca/correo/identidad: **la fila gana; sin fila, el `.env`**
+  (`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`).
+- **Turnstile exige LAS DOS claves a la vez, y `save()` no deja «medio
+  configurado»**: `isConfigured()` es `site !== '' && secret !== ''`, y un
+  formulario con `settings.anti_bot.enabled` **no se sirve** si falta una (el GET
+  cae a `fill/closed` y el POST corta con 403). Guardar solo una dejaría la
+  instalación con todos los formularios anti-bot caídos, así que `save()` calcula
+  el estado EFECTIVO (fila nueva + `.env`) y, si queda una sola, rechaza y **no
+  escribe nada**. Borrar la secret es la casilla `clear_secret`; un POST sin secret
+  no la toca.
+- Un `APP_KEY` cambiado **no deja la instancia sin anti-bot**: `secretKey()` no
+  puede descifrar la fila, cae al `.env` completo y `secretStored()` da `false`.
+  El evento del log es **uno** (`instance.turnstile_update`, la secret nunca se
+  registra) y la ruta `POST /admin/settings/turnstile` va con `admin.access`.
 
 **Seguridad y peticiones**
 

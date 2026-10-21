@@ -187,6 +187,10 @@ final class SecurityLog
             // que la instalación se presenta y se interpreta», y separarlos daría
             // tres claves para el mismo hecho.
             'instance.settings_update',
+            // AG5 — Claves de Cloudflare Turnstile de la instancia (site key y
+            // secret). Un solo evento: las dos son «se cambió el anti-bot de la
+            // instalación», y la secret nunca se registra.
+            'instance.turnstile_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

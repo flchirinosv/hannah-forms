@@ -168,4 +168,36 @@ class AdminSettingsPageTest
             'y una opción vacía «Por defecto» para borrar la fila'
         );
     }
+
+    /**
+     * AG5 — La tarjeta de Turnstile apunta a SU endpoint y manda las dos claves
+     * con los nombres que lee `TurnstileSettings::save()`.
+     */
+    public function testLaTarjetaDeTurnstileApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/turnstile"'), 'el formulario de Turnstile');
+        assertTrue(str_contains($settings, 'name="turnstile_site_key"'), 'con la site key');
+        assertTrue(str_contains($settings, 'name="turnstile_secret"'), 'y la secret key');
+    }
+
+    /**
+     * La secret key es de SOLO ESCRITURA, como la del SMTP: la vista nunca recibe
+     * el valor guardado, así que su `value` está vacío y su `type`, en password.
+     * Un `value="<?= ... ?>"` devolvería la credencial al HTML.
+     */
+    public function testLaSecretKeyDeTurnstileNoSeDevuelveAlHtml(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(
+            str_contains($settings, 'id="turnstileSecret"') && str_contains($settings, 'type="password"'),
+            'la secret key es un input de tipo password'
+        );
+        assertFalse(
+            (bool) preg_match('/name="turnstile_secret"[^>]*value="<\?=/', $settings),
+            'el input de la secret key no puede rellenar `value` con una variable de la vista'
+        );
+    }
 }

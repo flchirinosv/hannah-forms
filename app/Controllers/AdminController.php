@@ -14,8 +14,10 @@ use App\Core\Mailer;
 use App\Core\MailSettings;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Secret;
 use App\Core\SecurityLog;
 use App\Core\Session;
+use App\Core\TurnstileSettings;
 use App\Core\View;
 use App\Models\Role;
 use App\Models\RoleGroup;
@@ -119,6 +121,8 @@ class AdminController
             'mailPasswordStored'  => MailSettings::passwordStored(),
             'mailConfigured'      => MailSettings::isConfigured(),
             'mailSecretAvailable' => \App\Core\Secret::isAvailable(),
+            'turnstile'           => TurnstileSettings::all(),
+            'secretAvailable'     => \App\Core\Secret::isAvailable(),
             'csrf'                => Csrf::token(),
         ]);
     }
@@ -529,6 +533,49 @@ class AdminController
 
         SecurityLog::record('instance.settings_update', 'identidad de la instancia (URL, zona horaria e idioma) actualizada desde el panel');
         Session::flash('success', 'Identidad de la instancia actualizada.');
+        Response::redirect('/admin/settings');
+    }
+
+    /**
+     * POST /admin/settings/turnstile — claves de Cloudflare Turnstile.
+     *
+     * PRG como marca, correo e identidad. El anti-bot es opt-in por formulario,
+     * pero las claves son de la INSTANCIA: sin ellas, un formulario que pide
+     * Turnstile no se sirve. La site key es pública; la secret se guarda CIFRADA
+     * (`TurnstileSettings::save()` + `Secret`) y es de solo escritura: el
+     * formulario la manda a vaciar salvo que se teclee una nueva, y borrarla
+     * exige la casilla `clear_secret`. `save()` rechaza dejar una sola de las
+     * dos: medio configurado es peor que no configurado.
+     *
+     * El permiso es `admin.access`, el del middleware `admin`: son ajustes de la
+     * instalación entera, no de la cuenta de nadie.
+     */
+    public function updateTurnstile(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = TurnstileSettings::save([
+            'site_key'    => Request::post('turnstile_site_key', ''),
+            'secret'      => Request::post('turnstile_secret', null),
+            'clear_secret' => Request::post('clear_secret', null),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.turnstile_update', 'claves de Cloudflare Turnstile de la instancia actualizadas desde el panel');
+        Session::flash('success', 'Claves de Turnstile actualizadas.');
         Response::redirect('/admin/settings');
     }
 
