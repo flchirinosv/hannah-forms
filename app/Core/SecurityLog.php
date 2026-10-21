@@ -182,6 +182,11 @@ final class SecurityLog
             // AG3 — Configuración SMTP de la instancia y su correo de prueba.
             'instance.mail_update',
             'instance.mail_test',
+            // AG4 — Identidad operativa de la instancia (URL pública, zona
+            // horaria e idioma). Un solo evento: los tres son «cambió la forma en
+            // que la instalación se presenta y se interpreta», y separarlos daría
+            // tres claves para el mismo hecho.
+            'instance.settings_update',
             'form.delete',
             'form.duplicate',
             'form.review_request',

@@ -94,11 +94,11 @@ mínimo. Las que de verdad importan:
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `APP_URL` | `http://127.0.0.1:8080` | Dirección de la app. |
-| `APP_PUBLIC_URL` | *(vacía)* | Si el formulario se sirve desde otro dominio (CDN, proxy), ponlo aquí. Vacía = se deduce del host de cada petición. |
+| `APP_PUBLIC_URL` | *(vacía)* | Si el formulario se sirve desde otro dominio (CDN, proxy), ponlo aquí. Vacía = se deduce del host de cada petición. **Editable en `/admin/settings`** (§4.3.4): la fila guardada gana. |
 | `TRUST_PROXY` | `false` | **Déjalo en `false`** si no hay proxy. En `true` la app confía en `X-Forwarded-For`, y es justo eso lo que permite saltarse el límite de envíos. |
-| `APP_LOCALE` | `es` | Idioma de la interfaz: `es` o `en`. |
+| `APP_LOCALE` | `es` | Idioma de la interfaz: `es` o `en`. **Editable en `/admin/settings`** (§4.3.4): la fila guardada gana. |
 | `APP_KEY` | *(vacía)* | Clave para **cifrar secretos guardados en la BD** (la contraseña del SMTP, AG3). Genérala con `php scripts/generate-key.php --write`. Sin ella el cifrado queda **inactivo** y los ajustes cifrados caen al valor del `.env`. **Cópiala en el mismo backup que la base de datos**: sin la clave, los secretos de la BD no se pueden descifrar. |
-| `APP_TIMEZONE` | `America/Caracas` | **Solo presentación**. Las fechas se guardan en UTC; esta variable decide cómo se muestran. |
+| `APP_TIMEZONE` | `America/Caracas` | **Solo presentación**. Las fechas se guardan en UTC; esta variable decide cómo se muestran. **Editable en `/admin/settings`** (§4.3.4): la fila guardada gana. |
 | `CSP_POLICY` | restringida | CSP con `script-src 'self'`. Para desactivarla hay que vaciarla a mano. |
 | `APP_REDIRECT_ALLOWLIST` | *(vacía)* | Dominios a los que se permite redirigir tras enviar. **Vacía = ninguna redirección externa se sigue.** |
 | `UPLOAD_MAX_SIZE_MB` | `10` | Tope de tamaño de adjuntos. El valor efectivo es el menor entre este y el de `php.ini`. |
@@ -1110,7 +1110,7 @@ El 413 y el 419 están ahí porque el orden importa: si el cuerpo del POST super
 | El webhook no llega a una IP local | Faltan los **dos** opt-ins. |
 | Los adjuntos no se suben | Permisos de escritura en `storage/uploads/`, o el tipo no está en la lista. |
 | Un usuario ve todo enmascarado | Es correcto: le falta `responses.pii`. |
-| La analítica muestra horas raras | `APP_TIMEZONE` solo afecta a la presentación. Ajusta esa variable, no los datos. |
+| La analítica muestra horas raras | La zona horaria solo afecta a la presentación. Ajusta **Identidad operativa** en `/admin/settings` (o `APP_TIMEZONE`), no los datos: las fechas se guardan en UTC. |
 | Faltan extensiones (`php -m` no lista `mbstring` o `fileinfo`) | La app arranca, pero falla justo cuando usas respuestas con texto o adjuntos |
 
 ### 14.3 Antes de decir que algo está roto

@@ -9,6 +9,7 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Core\InstanceSettings;
 use App\Core\Mailer;
 use App\Core\MailSettings;
 use App\Core\Request;
@@ -89,10 +90,18 @@ class AdminController
         }
 
         $mail = MailSettings::all();
+        $instance = InstanceSettings::all();
         View::render('admin/settings', [
             'registrationEnabled' => AuthController::registrationEnabled(),
             'reviewRequired'      => ReviewPolicy::policyOn(),
             'reviewNotifyEmail'   => ReviewPolicy::notifyEmail(),
+            'instancePublicUrl'   => $instance['stored_public_url'],
+            'instanceTimezone'    => $instance['stored_timezone'],
+            'instanceLocale'      => $instance['stored_locale'],
+            'envPublicUrl'        => $instance['env_public_url'],
+            'envTimezone'         => $instance['env_timezone'],
+            'envLocale'           => $instance['env_locale'],
+            'timezoneOptions'     => \DateTimeZone::listIdentifiers(),
             'brandName'           => \App\Core\Brand::name(),
             'brandColor'          => \App\Core\Brand::color(),
             'brandHasLogo'        => \App\Core\Brand::hasLogo(),
@@ -475,6 +484,51 @@ class AdminController
 
         SecurityLog::record('instance.mail_test', 'prueba SMTP enviada');
         Session::flash('success', 'Correo de prueba enviado a ' . $to . '.');
+        Response::redirect('/admin/settings');
+    }
+
+    // ------------------------------------------------------------------
+    // Identidad operativa de la instancia (AG4)
+    // ------------------------------------------------------------------
+
+    /**
+     * POST /admin/settings/instance — URL pública, zona horaria e idioma.
+     *
+     * PRG como marca, correo y revisión. Los tres valores son un PIN que gana
+     * sobre el `.env` (`APP_PUBLIC_URL`, `APP_TIMEZONE`, `APP_LOCALE`), y vaciar
+     * cualquiera BORRA su fila (vuelve al `.env` / al default), no guarda un
+     * `''`. Los consumidores (`PublicUrl`, `Clock`, `I18n`) leen la fila en cada
+     * petición, así que el cambio se ve en la siguiente carga sin reiniciar nada.
+     *
+     * El permiso es `admin.access`, el mismo del middleware `admin`: son ajustes
+     * de la instalación entera, no de la cuenta de nadie.
+     */
+    public function updateInstance(): void
+    {
+        if (!Auth::can('admin.access')) {
+            Response::forbidden();
+            return;
+        }
+        if (!Csrf::verifyRequest()) {
+            Session::flash('error', 'Token de seguridad inválido.');
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        $result = InstanceSettings::save([
+            'public_url' => Request::post('instance_public_url', ''),
+            'timezone'   => Request::post('instance_timezone', ''),
+            'locale'     => Request::post('instance_locale', ''),
+        ]);
+
+        if (!$result['ok']) {
+            Session::flash('error', (string) $result['error']);
+            Response::redirect('/admin/settings');
+            return;
+        }
+
+        SecurityLog::record('instance.settings_update', 'identidad de la instancia (URL, zona horaria e idioma) actualizada desde el panel');
+        Session::flash('success', 'Identidad de la instancia actualizada.');
         Response::redirect('/admin/settings');
     }
 

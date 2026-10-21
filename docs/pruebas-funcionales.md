@@ -23,7 +23,7 @@ teclado funcione.
 | **P.** | Prioridad: **A** = bloqueante (rompe el uso o pierde datos), **M** = molestia real, **B** = estética. |
 | **Estado** | Lo rellenas tú: `OK`, `FALLA` o `N/A` (y por qué). |
 
-**601 pruebas** en 33 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
+**612 pruebas** en 34 bloques (contadas con `grep -cE '^\| [A-Z]+[0-9]+[a-z]? \|'`;
 el 417 que decía aquí antes no cuadraba con el fichero y era un número
 recordado, no medido): A–Q, las regresiones (R) de fallos que ya
 existieron y se corrigieron, la tanda visual (S) de la ronda del constructor y
@@ -33,7 +33,8 @@ listado (W), el filtro de la analítica por atributo (X), la comparación por
 atributo con su techo (Y), quién respondió (Z), el correo de invitación (AA),
 el listado paginado del panel (AB), la galería del modal de nuevo formulario
 (AC), la consola de administración (AD), el recordatorio por correo (AE), la
-marca de la instancia (AF) y el correo (SMTP) de la instancia (AG).
+marca de la instancia (AF), el correo (SMTP) de la instancia (AG) y la identidad
+operativa de la instancia (AH).
 
 **Estado inicial:** todos en blanco. Una prueba pasa si está `OK` o `N/A`.
 Cualquier `FALLA` es un hallazgo; anota el `#` en el issue.
@@ -1001,6 +1002,22 @@ contraseña se guarda **cifrada** con `APP_KEY` (sin SSH, sin editar el `.env`).
 | AG13 | Sin `APP_KEY`, intenta guardar una contraseña | Aviso que nombra `APP_KEY` y no se guarda la contraseña (el resto del correo sigue del `.env`) | A | |
 | AG14 | Un usuario sin `admin.access` intenta los POST de correo | 403 y no se guarda nada | A | |
 | AG15 | Todo lo anterior **sin JavaScript** | Guardar y probar funcionan por POST nativo (PRG) | A | |
+
+## Bloque AH — Identidad operativa de la instancia (AG4)
+
+| # | Acción | Resultado esperado | M | Estado |
+|---|--------|--------------------|---|--------|
+| AH1 | Entra a `/admin/settings` | Aparece la tarjeta «Identidad operativa» con URL pública, zona horaria e idioma | A | |
+| AH2 | Escribe una URL como `https://formularios.midominio.com` y guarda | Vuelve (PRG) con «Identidad de la instancia actualizada» | A | |
+| AH3 | Copia el enlace de compartir de un formulario | El enlace usa la URL pública guardada, no el host de la petición | A | |
+| AH4 | Cambia la zona horaria a `America/Bogota` y guarda | Las fechas se muestran con la hora de Bogotá en la siguiente carga (no la del `.env`) | A | |
+| AH5 | Cambia el idioma a «Inglés» y recarga un formulario público | El formulario arranca en inglés (un formulario con idioma fijo conserva el suyo) | A | |
+| AH6 | Vuelve a dejar un campo en blanco y guarda | Ese ajuste vuelve al valor por defecto del `.env` (no queda vacío) | A | |
+| AH7 | Escribe una URL inválida (p. ej. `no es una url`) y guarda | Aviso de URL no válida y **no** se guarda (las otras dos filas tampoco cambian a medias) | A | |
+| AH8 | Intenta guardar una zona inventada (`Marte/Olympus`) | Aviso y no se guarda | A | |
+| AH9 | Inspecciona `app_settings` tras guardar | Hay filas `instance_public_url`, `instance_timezone` e `instance_locale` | M | |
+| AH10 | Un usuario sin `admin.access` intenta el POST de identidad | 403 y no se guarda nada | A | |
+| AH11 | Todo lo anterior **sin JavaScript** | Guardar funciona por POST nativo (PRG) | A | |
 
 ## Cuando encuentres un fallo
 

@@ -97,7 +97,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **67 de los 117 archivos tocan la BD real** (los que llaman
+- **68 de los 118 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1758,7 +1758,7 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   `I18n::forRequest($settings)` es la puerta del fill y añade el override
   `?lang=`/campo oculto, validado contra `supportedLocales()`.
 
-**Marca de la instancia y secretos (AG1/AG2/AG3)**
+**Marca de la instancia y secretos (AG1/AG2/AG3/AG4)**
 
 - **`App\Core\Secret` cifra con `APP_KEY` y `decrypt()` NUNCA lanza**: sin clave
   (o con basura) devuelve `null`, y quien lo use cae al valor del `.env`. Un
@@ -1811,6 +1811,35 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   distintas con permiso `admin.access` y PRG. La prueba **captura** el fallo de
   SMTP y lo cuenta como aviso (con el mensaje de `Mailer`), nunca un 500. Dos
   eventos: `instance.mail_update` e `instance.mail_test`.
+- **`App\Core\InstanceSettings` es el ÚNICO sitio que resuelve la identidad
+  operativa** (`instance_public_url`, `instance_timezone`, `instance_locale`), y
+  los tres consumidores pasan por él: `PublicUrl::base()` (`app.public_url`),
+  `Clock::displayZone()` (`app.timezone`) e `I18n::resolve()` (`app.locale`), más
+  los dos correos que fijaban el idioma a mano (`AccountController::sendReset`,
+  `ReviewController`). Misma precedencia que marca y correo: **la fila gana; sin
+  fila, el `.env`**. Guardar es `POST /admin/settings/instance` con `admin.access`
+  y PRG, y el evento es **uno** (`instance.settings_update`): los tres son «cambió
+  cómo la instalación se presenta».
+- **Un valor inválido en la fila se IGNORA, no se sirve**: `InstanceSettings`
+  valida la URL (esquema http/https + host), la zona contra
+  `DateTimeZone::listIdentifiers()` y el idioma contra `I18n::supportedLocales()`
+  **al guardar y al leer**. Una fila escrita a mano con «Marte/Olympus» no puede
+  romper la aritmética de fechas ni un enlace. Los mismos predicados son la
+  validación de `save()` (un valor malo no guarda NADA: ni borra la fila anterior).
+- **El idioma de la fila es el DEFAULT, no un candado**: un formulario puede
+  seguir fijando el suyo (`settings.locale.code`) y el visitante sobrescribirlo
+  con `?lang=`; lo que cambia la fila es el punto de partida de `I18n::resolve()`.
+- **`all()` distingue lo GUARDADO de lo RESUELTO**: `stored_*` (la fila cruda,
+  `''` sin fila) prellena el formulario; `env_*` es lo que se enseña como
+  «Por defecto (…)»; `public_url`/`timezone`/`locale` son el valor efectivo. Con
+  el valor resuelto solo, la opción «Por defecto» del desplegable no se podría
+  seleccionar nunca (siempre hay un no-vacío).
+- **`Clock::displayZone()` cachea por petición**, así que cambiar la zona desde el
+  panel se ve en la **siguiente** petición. El seam `Clock::forgetDisplayZoneForTesting()`
+  existe para que un test que cambia la fila en el mismo proceso relea de verdad.
+- **`schema.sql`/`.env` no cambian de forma**: `APP_PUBLIC_URL`, `APP_TIMEZONE` y
+  `APP_LOCALE` siguen siendo el fallback; lo que se acaba de sacar de SSH es la
+  NECESIDAD de editarlos para cambiar el dominio, la hora o el idioma.
 
 **Seguridad y peticiones**
 
@@ -1868,14 +1897,15 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 572 comprobaciones manuales en 31 bloques (A–Z, AA,
+- `docs/pruebas-funcionales.md`: 612 comprobaciones manuales en 34 bloques (A–Z, AA,
   las regresiones R, la tanda visual S, las acciones sin recarga T, el
   diálogo de confirmación con el alta de la allowlist U, la pantalla de
   participantes V, el identificador de la lista W, el filtro de la analítica
   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
   el correo de invitación AA, el listado paginado del panel AB, la galería del
-  modal de nuevo formulario AC, la consola de administración con modales AD y el
-  recordatorio por correo AE), para detectar
+  modal de nuevo formulario AC, la consola de administración con modales AD, el
+  recordatorio por correo AE, la marca de la instancia AF, el correo SMTP AG y la
+  identidad operativa AH), para detectar
   problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
   panel, R, S, T, U, AA y AE son la

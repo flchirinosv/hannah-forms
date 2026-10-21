@@ -67,7 +67,7 @@ final class I18n
                 return $code;
             }
         }
-        $appLocale = strtolower(trim((string) Config::get('app.locale', 'es')));
+        $appLocale = strtolower(trim(InstanceSettings::locale()));
         return in_array($appLocale, self::supportedLocales(), true) ? $appLocale : 'es';
     }
 

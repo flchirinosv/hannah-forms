@@ -122,4 +122,50 @@ class AdminSettingsPageTest
             'el input de la contraseña no puede rellenar `value` con una variable de la vista'
         );
     }
+
+    /**
+     * AG4 — La tarjeta de identidad operativa apunta a SU endpoint y manda los
+     * tres campos con los nombres que lee `InstanceSettings::save()`. Si uno
+     * cambiara, el POST guardaría vacío (borraría la fila) sin ningún error.
+     */
+    public function testLaTarjetaDeIdentidadApuntaASuEndpoint(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(str_contains($settings, 'action="/admin/settings/instance"'), 'el formulario de la identidad');
+        assertTrue(str_contains($settings, 'name="instance_public_url"'), 'con la URL pública');
+        assertTrue(str_contains($settings, 'name="instance_timezone"'), 'la zona horaria');
+        assertTrue(str_contains($settings, 'name="instance_locale"'), 'y el idioma');
+    }
+
+    /**
+     * El idioma es una lista CERRADA (dos opciones) y la zona sale de la lista
+     * IANA que pasa el controlador (`$timezoneOptions`); la opción «Por defecto»
+     * se pinta vacía para poder BORRAR la fila y volver al `.env`. Una lista de
+     * texto libre en el idioma dejaría guardar «fr», que `save()` rechaza.
+     */
+    public function testElIdiomaEsUnaListaCerradaYLaZonaEsUnDesplegable(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        assertTrue(
+            (bool) preg_match('/<select[^>]*name="instance_timezone"/', $settings),
+            'la zona horaria es un desplegable, no un campo de texto'
+        );
+        assertTrue(
+            str_contains($settings, 'foreach (($timezoneOptions ?? []) as $tz)'),
+            'y se rellena con la lista IANA que pasa el controlador'
+        );
+
+        assertTrue(
+            (bool) preg_match('/<select[^>]*name="instance_locale"/', $settings),
+            'el idioma también es un desplegable'
+        );
+        assertTrue(str_contains($settings, 'value="es"'), 'con español');
+        assertTrue(str_contains($settings, 'value="en"'), 'e inglés');
+        assertTrue(
+            str_contains($settings, '<option value=""'),
+            'y una opción vacía «Por defecto» para borrar la fila'
+        );
+    }
 }

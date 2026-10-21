@@ -365,7 +365,7 @@ class AccountController
         // idioma por defecto de la app, validado contra las soportadas. No se
         // infiere del `Accept-Language` de quien pide el enlace: el correo lo lee
         // quien lo recibe, que puede ser otra persona con otro navegador.
-        $locale = (string) \App\Core\Config::get('app.locale', 'es');
+        $locale = \App\Core\InstanceSettings::locale();
         if (!in_array($locale, I18n::supportedLocales(), true)) {
             $locale = 'es';
         }

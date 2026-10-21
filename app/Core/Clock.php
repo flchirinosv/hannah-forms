@@ -44,20 +44,30 @@ final class Clock
     private static ?DateTimeZone $displayZone = null;
 
     /**
-     * Zona en la que se presenta al usuario (`app.timezone`).
+     * Zona en la que se presenta al usuario. La resuelve `InstanceSettings`
+     * (fila del panel → `APP_TIMEZONE` → `America/Caracas`).
      *
      * Se cachea por petición. Si el identificador no fuera válido, se cae a UTC
-     * en vez de reventar: una variable de entorno mal escrita no puede dejar la
-     * aplicación sin pintar fechas.
+     * en vez de reventar: una variable de entorno mal escrita (o una fila rara)
+     * no puede dejar la aplicación sin pintar fechas.
      */
     public static function displayZone(): DateTimeZone
     {
         if (self::$displayZone === null) {
-            $name = (string) Config::get('app.timezone', 'America/Caracas');
+            $name = InstanceSettings::timezone();
             self::$displayZone = new DateTimeZone(self::isValidZone($name) ? $name : 'UTC');
         }
 
         return self::$displayZone;
+    }
+
+    /**
+     * Seam de test: olvida la zona cacheada para que la siguiente lectura vuelva
+     * a resolverla (la fila del panel puede haber cambiado dentro del proceso).
+     */
+    public static function forgetDisplayZoneForTesting(): void
+    {
+        self::$displayZone = null;
     }
 
     public static function isValidZone(string $name): bool

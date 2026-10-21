@@ -229,14 +229,17 @@ guardada gana; si no hay fila, manda el `.env`», y sembrarla con el valor del
 aplicada no puede caer en 500) a través de
 `AuthController::registrationEnabled()`.
 
-Desde AG1–AG3 la tabla también guarda, con ese mismo patrón, los ajustes de
+Desde AG1–AG4 la tabla también guarda, con ese mismo patrón, los ajustes de
 instancia editables desde `/admin/settings`: `review_required` /
 `review_notify_email` (revisión), las cuatro claves de marca (`instance_name`,
-`instance_color`, `instance_logo`, `instance_favicon`; las lee `App\Core\Brand`)
-y las ocho del correo (`mail_host`, `mail_port`, `mail_encryption`, `mail_user`,
+`instance_color`, `instance_logo`, `instance_favicon`; las lee `App\Core\Brand`),
+las ocho del correo (`mail_host`, `mail_port`, `mail_encryption`, `mail_user`,
 `mail_password`, `mail_from_address`, `mail_from_name`, `mail_timeout`; las lee
-`App\Core\MailSettings`). **`mail_password` es el único valor cifrado** con
-`App\Core\Secret` (AES-256-GCM, clave `APP_KEY` del `.env`); el resto son texto.
+`App\Core\MailSettings`) y las tres de identidad operativa
+(`instance_public_url`, `instance_timezone`, `instance_locale`; las lee
+`App\Core\InstanceSettings`, y con ellas `PublicUrl`, `Clock` e `I18n`).
+**`mail_password` es el único valor cifrado** con `App\Core\Secret`
+(AES-256-GCM, clave `APP_KEY` del `.env`); el resto son texto.
 `AppSettings::set()` con `null` borra la fila (= vuelve al `.env`) y con `''`
 guarda vacío.
 

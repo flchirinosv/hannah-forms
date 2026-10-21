@@ -78,7 +78,7 @@ final class PublicUrl
             }
         }
 
-        $pinned = trim((string) Config::get('app.public_url', ''));
+        $pinned = trim(InstanceSettings::publicUrl());
         if ($pinned !== '') {
             $clean = self::cleanBase($pinned);
             if ($clean !== '') {
@@ -184,7 +184,7 @@ final class PublicUrl
         if (self::$baseOverride !== null) {
             return self::cleanBase(self::$baseOverride) !== '';
         }
-        $pinned = trim((string) Config::get('app.public_url', ''));
+        $pinned = trim(InstanceSettings::publicUrl());
         return $pinned !== '' && self::cleanBase($pinned) !== '';
     }
 

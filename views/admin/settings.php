@@ -120,6 +120,69 @@ use App\Core\View;
         </div>
     </div>
 
+    <?php // AG4 — Identidad operativa de la instancia: URL pública, zona horaria e
+          // idioma. Los tres eran del `.env` y exigían SSH. Son un PIN que gana
+          // sobre él; vaciar un campo borra la fila y vuelve al `.env`. Post
+          // nativo con PRG, como marca y correo: la tarjeta no repinta huecos. ?>
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="app-instance-head">
+                        <span class="app-instance-head-icon"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i></span>
+                        <div>
+                            <h3 class="app-instance-head-title">Identidad operativa</h3>
+                            <p class="app-instance-head-sub">
+                                La dirección con la que se comparten los formularios, la zona horaria con la que se ven
+                                las fechas y el idioma por defecto. Deja un campo en blanco para volver al
+                                <code>.env</code>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post" action="/admin/settings/instance" class="row g-3">
+                        <?= Csrf::field() ?>
+                        <div class="col-lg-6">
+                            <label class="form-label" for="instancePublicUrl">URL pública</label>
+                            <input type="url" class="form-control" id="instancePublicUrl" name="instance_public_url"
+                                   value="<?= View::escape($instancePublicUrl ?? '') ?>"
+                                   placeholder="<?= View::escape(($envPublicUrl ?? '') !== '' ? $envPublicUrl : 'https://formularios.tudominio.com') ?>">
+                            <div class="form-text">
+                                La que va en el enlace copiado, el QR y el embed.<?= ($envPublicUrl ?? '') !== '' ? ' Sin fila manda el <code>.env</code>.' : ' Vacía se deduce de cada petición (correcto sin proxy).' ?>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label" for="instanceTimezone">Zona horaria</label>
+                            <select class="form-select" id="instanceTimezone" name="instance_timezone">
+                                <option value=""<?= ($instanceTimezone ?? '') === '' ? ' selected' : '' ?>>
+                                    Por defecto (<?= View::escape($envTimezone ?? 'America/Caracas') ?>)</option>
+                                <?php foreach (($timezoneOptions ?? []) as $tz): ?>
+                                    <option value="<?= View::escape($tz) ?>"<?= ($instanceTimezone ?? '') === $tz ? ' selected' : '' ?>><?= View::escape($tz) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">Con la que se muestran las fechas.</div>
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label" for="instanceLocale">Idioma por defecto</label>
+                            <select class="form-select" id="instanceLocale" name="instance_locale">
+                                <option value=""<?= ($instanceLocale ?? '') === '' ? ' selected' : '' ?>>
+                                    Por defecto (<?= View::escape($envLocale ?? 'es') ?>)</option>
+                                <option value="es"<?= ($instanceLocale ?? '') === 'es' ? ' selected' : '' ?>>Español</option>
+                                <option value="en"<?= ($instanceLocale ?? '') === 'en' ? ' selected' : '' ?>>Inglés</option>
+                            </select>
+                            <div class="form-text">Un formulario puede fijar el suyo.</div>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar identidad
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php // AG2 — Marca de la instancia. Nombre y color en un POST normal; logo y
           // favicon en formularios multipart propios (un archivo no viaja junto a
           // un texto, y su validación es otra). Todo con PRG: sin JavaScript se

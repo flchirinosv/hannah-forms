@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Core\AppSettings;
 use App\Core\Config;
 use App\Core\PublicUrl;
 use App\Core\Request;
@@ -33,6 +34,13 @@ class PublicUrlTest
         $this->serverBackup = $_SERVER;
         PublicUrl::setBaseForTesting(null);
         Request::setTrustProxyForTesting(null);
+        // AG4: `PublicUrl::base()` lee ahora la fila `instance_public_url` del
+        // panel antes del `.env`. El runner comparte BD y otra prueba
+        // (`ControllerActionsTest`, que recorre `POST /admin/settings/instance`)
+        // deja escritas filas reales hasta su limpieza al final del proceso, así
+        // que aquí se neutraliza la tabla para probar SOLO la escalera
+        // pin → petición → `app.url` sin depender del orden de los tests.
+        AppSettings::setForTesting([]);
     }
 
     public function tearDown(): void
@@ -40,6 +48,7 @@ class PublicUrlTest
         $_SERVER = $this->serverBackup;
         PublicUrl::setBaseForTesting(null);
         Request::setTrustProxyForTesting(null);
+        AppSettings::forgetForTesting();
     }
 
     /** Deja `$_SERVER` sin rastro de una petición web: el caso CLI. */

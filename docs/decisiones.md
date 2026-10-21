@@ -1954,3 +1954,52 @@ Tests: `MailSettingsTest` (12), `MailAdminTest` (9) y dos métodos nuevos en
 `AdminSettingsPageTest`. Los ocho campos de correo entran en el snapshot de
 `ControllerActionsTest`, que recorre `POST /admin/settings/mail` y `.../test` de
 verdad (con `MAIL_HOST` vacío en el `.env` de test, la prueba no abre conexión).
+
+## AG4 — Identidad operativa de la instancia por UI (2026-10-21)
+
+El tercer y último ajuste que exigía SSH después de la marca (AG2) y el correo
+(AG3): el operador tenía que entrar por consola para cambiar su dominio
+(`APP_PUBLIC_URL`), su hora (`APP_TIMEZONE`) o su idioma (`APP_LOCALE`). Son los
+tres datos con los que se PRESENTA una instalación, así que son justo los que un
+cliente recién desplegado quiere tocar el primer día.
+
+- **`App\Core\InstanceSettings` centraliza los tres y los tres consumidores pasan
+  por él**: `PublicUrl::base()` (el enlace copiado, el QR y el embed),
+  `Clock::displayZone()` (la zona en la que se pintan las fechas) e
+  `I18n::resolve()`/`forRequest()` (el idioma por defecto). Misma precedencia que
+  marca y correo: **la fila gana; sin fila, el `.env`**. Una instalación que nunca
+  abre la tarjeta se comporta igual que antes.
+  - Se cazaron además dos call sites que fijaban el idioma a mano para el correo
+    (`AccountController::sendReset`, `ReviewController`) y ahora leen la fila: si no,
+    cambiar el idioma de la instancia dejaría los correos en el idioma viejo.
+- **Un valor inválido se IGNORA al leer y no se guarda al escribir.** La URL tiene
+  que ser http/https con host (se le añade el esquema si falta), la zona tiene que
+  estar en `DateTimeZone::listIdentifiers()` y el idioma en
+  `I18n::supportedLocales()`. Puede haber una fila escrita a mano (o de una versión
+  anterior) y servir «Marte/Olympus» no puede romper la aritmética de fechas: se
+  cae al `.env`. `save()` usa **los mismos predicados**, así que un valor malo no
+  guarda NADA (no borra la fila anterior a medias).
+- **El idioma de la fila es el DEFAULT, no un candado.** Un formulario puede seguir
+  fijando el suyo (`settings.locale.code`) y el visitante sobrescribirlo con
+  `?lang=`; la fila solo mueve el punto de partida de `I18n::resolve()`.
+- **`all()` separa lo GUARDADO de lo RESUELTO (`stored_*` / `env_*` / efectivo).**
+  El desplegable de zona e idioma necesita una opción «Por defecto (…)» que borre
+  la fila; con el valor ya resuelto (que nunca es vacío, porque cae al `.env`) esa
+  opción no se podría seleccionar jamás. Por eso la vista se prellena con
+  `stored_*` y enseña `env_*` en la etiqueta.
+- **`Clock::displayZone()` cachea por petición**, así que el cambio de zona se ve
+  en la siguiente carga, no en la que se guardó. El seam
+  `Clock::forgetDisplayZoneForTesting()` deja que un test que cambia la fila en el
+  mismo proceso note el cambio de verdad en vez de leer la zona cacheada.
+- **Un solo evento `instance.settings_update`.** Los tres son «cambió cómo la
+  instalación se presenta y se interpreta»; separarlos daría tres claves para el
+  mismo hecho, igual que en la marca.
+- **`.env` y `schema.sql` no cambian de forma.** `APP_PUBLIC_URL`, `APP_TIMEZONE`
+  y `APP_LOCALE` siguen siendo el fallback documentado; lo que se saca de SSH es
+  la NECESIDAD de editarlos para cambiar el dominio, la hora o el idioma.
+
+Tests: `InstanceSettingsTest` (12: precedencia, validación al leer y al guardar,
+los tres consumidores, `all()` guardado-vs-resuelto y el borrado de fila) y dos
+métodos nuevos en `AdminSettingsPageTest`. Las tres claves entran en el snapshot
+de `ControllerActionsTest`, que recorre `POST /admin/settings/instance` de verdad.
+`Clock::forgetDisplayZoneForTesting()` se suma a los seams de test.

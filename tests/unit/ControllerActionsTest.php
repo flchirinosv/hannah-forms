@@ -56,7 +56,7 @@ class ControllerActionsTest
     private static array $savedSettings = [];
 
     /** Claves de `app_settings` que el smoke escribe y hay que devolver. */
-    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout'];
+    private const APP_SETTINGS_KEYS = ['registration_enabled', 'review_required', 'review_notify_email', 'instance_name', 'instance_color', 'instance_logo', 'instance_favicon', 'mail_host', 'mail_port', 'mail_encryption', 'mail_user', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_timeout', 'instance_public_url', 'instance_timezone', 'instance_locale'];
 
     public function setUp(): void
     {
@@ -440,6 +440,13 @@ class ControllerActionsTest
             // `cleanupResiduals()`.
             $post['review_required'] = '1';
             $post['review_notify_email'] = '0';
+        } elseif ($path === '/admin/settings/instance') {
+            // Valores válidos explícitos: sin ellos el POST probaría el camino
+            // de «vaciar», que también borra filas. Las tres se devuelven en
+            // `cleanupResiduals()`.
+            $post['instance_public_url'] = 'https://humo.test.local';
+            $post['instance_timezone'] = 'America/Caracas';
+            $post['instance_locale'] = 'es';
         } elseif (str_contains($path, '/admin/roles/create')) {
             // El nombre lleva un prefijo reconocible porque `cleanupResiduals()`
             // lo borra: `roles` no tiene created_at ni opt-in de demo, y un rol

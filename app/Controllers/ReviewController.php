@@ -324,7 +324,7 @@ class ReviewController
             return;
         }
 
-        $locale = (string) \App\Core\Config::get('app.locale', 'es');
+        $locale = \App\Core\InstanceSettings::locale();
         if (!in_array($locale, I18n::supportedLocales(), true)) {
             $locale = 'es';
         }

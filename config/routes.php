@@ -177,6 +177,9 @@ $router->post('/admin/settings/brand/{kind}/remove', [AdminController::class, 'r
 // el resto (no es multipart) y se guarda cifrada; la prueba es un POST aparte.
 $router->post('/admin/settings/mail', [AdminController::class, 'updateMail'], ['auth', 'admin', 'csrf']);
 $router->post('/admin/settings/mail/test', [AdminController::class, 'sendTestMail'], ['auth', 'admin', 'csrf']);
+// AG4 — Identidad operativa de la instancia: URL pública, zona horaria e idioma.
+// Los tres son un PIN que gana sobre el `.env`; vaciarlos lo borra.
+$router->post('/admin/settings/instance', [AdminController::class, 'updateInstance'], ['auth', 'admin', 'csrf']);
 $router->get('/admin/forms', [AdminController::class, 'allForms'], ['auth', 'admin']);
 // RBAC (2026-09-28)
 $router->get('/admin/groups', [AdminController::class, 'groups'], ['auth', 'admin']);
