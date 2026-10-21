@@ -140,7 +140,7 @@ use App\Core\View;
                         </div>
                     </div>
 
-                    <form method="post" action="/admin/settings/brand" class="row g-3 align-items-end">
+                    <form method="post" action="/admin/settings/brand" class="row g-3">
                         <?= Csrf::field() ?>
                         <div class="col-lg-5">
                             <label class="form-label" for="instanceName">Nombre</label>
@@ -158,12 +158,15 @@ use App\Core\View;
                                        value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
                                        pattern="#[0-9a-fA-F]{6}" maxlength="7">
                             </div>
-                            <div class="form-text">Formato <code>#rrggbb</code>.</div>
+                            <div class="form-text mt-1">Formato <code>#rrggbb</code>.</div>
                         </div>
-                        <div class="col-lg-3 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary app-btn-primary">
-                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar marca
-                            </button>
+                        <div class="col-lg-3">
+                            <label class="form-label invisible" for="brandSaveBtn">Guardar</label>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" id="brandSaveBtn" class="btn btn-primary app-btn-primary">
+                                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar marca
+                                </button>
+                            </div>
                         </div>
                     </form>
 
@@ -172,7 +175,7 @@ use App\Core\View;
                     <p class="app-instance-subhead">Imágenes</p>
                     <div class="row g-4">
                         <?php // Logo ?>
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 d-flex flex-column">
                             <h4 class="h6 fw-semibold">Logo</h4>
                             <div class="d-flex align-items-center gap-3 mb-2">
                                 <span class="app-logo-lg">
@@ -186,7 +189,7 @@ use App\Core\View;
                                     PNG, JPG, GIF o WEBP. Se muestra en la barra lateral y en la pantalla de acceso.
                                 </div>
                             </div>
-                            <form method="post" action="/admin/settings/brand/logo" enctype="multipart/form-data" class="mb-2">
+                            <form method="post" action="/admin/settings/brand/logo" enctype="multipart/form-data" class="mt-auto">
                                 <?= Csrf::field() ?>
                                 <div class="d-flex gap-2">
                                     <input type="file" class="form-control" name="brand_image" accept="image/png,image/jpeg,image/gif,image/webp" required>
@@ -205,10 +208,10 @@ use App\Core\View;
                         </div>
 
                         <?php // Favicon ?>
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 d-flex flex-column">
                             <h4 class="h6 fw-semibold">Favicon</h4>
                             <div class="d-flex align-items-center gap-3 mb-2">
-                                <span class="app-logo">
+                                <span class="app-logo-lg">
                                     <?php if (!empty($brandHasFavicon) && !empty($brandFaviconUrl)): ?>
                                         <img src="<?= View::escape($brandFaviconUrl) ?>" alt="" class="app-logo-img">
                                     <?php else: ?>
@@ -219,7 +222,7 @@ use App\Core\View;
                                     La pestaña del navegador. Cuadrado y pequeño (p. ej. 64×64).
                                 </div>
                             </div>
-                            <form method="post" action="/admin/settings/brand/favicon" enctype="multipart/form-data" class="mb-2">
+                            <form method="post" action="/admin/settings/brand/favicon" enctype="multipart/form-data" class="mt-auto">
                                 <?= Csrf::field() ?>
                                 <div class="d-flex gap-2">
                                     <input type="file" class="form-control" name="brand_image" accept="image/png,image/jpeg,image/gif,image/webp" required>
