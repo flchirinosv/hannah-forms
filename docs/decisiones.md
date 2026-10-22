@@ -34,3 +34,36 @@ gana; sin fila, `.env`.
   claves entran en `ControllerActionsTest::APP_SETTINGS_KEYS` y el smoke ejercita
   el POST. Documentación actualizada (AGENTS, manual, pruebas-funcionales
   bloque AI, technical-document, `.env.example`).
+
+## AG11 — Instalador guiado web (2026-10-21)
+
+Cierra el arranque sin SSH. Hasta ahora instalar exigía: crear la BD
+(`mysql < schema.sql` + `seed.sql`), copiar el `.env`, generar `APP_KEY` y crear
+el primer admin con `php scripts/create-admin.php`. Todo eso lo hace ahora un
+asistente en `/install.php`.
+
+- **Entrypoint propio, no una ruta.** `config/bootstrap.php` conecta la BD y
+  `exit` si falla; en una instalación nueva la base no existe y ninguna ruta de
+  `config/routes.php` llegaría a dibujarse. Por eso `public/install.php` carga
+  solo el autoload + `.env` (opcional) y levanta sesión y CSRF propios.
+- **`App\Services\InstallGuard`**: gate de «ya instalado» con el marcador en disco
+  `storage/installed.lock` (JSON con fecha y email del admin, `0600`). No se puede
+  preguntar a la BD porque a mitad de instalación puede no existir. Tras marcar,
+  `install.php` responde 403 salvo `?force`. También revisa los requisitos (PHP,
+  extensiones, permisos de escritura).
+- **`App\Services\Installer`**: conecta con PDO **sin `dbname`**, hace
+  `CREATE DATABASE IF NOT EXISTS`, y aplica `schema.sql` + `seed.sql` **reescribiendo
+  su `USE vanilla_forms;`** por la base elegida (el `sqlSinUse` es puro y estático
+  para poder probarlo). Luego corre las migraciones pendientes y crea el primer
+  admin reutilizando `AuthController::validateNewUser` y resolviendo el rol `admin`
+  **por nombre**. `schema.sql` usa `CREATE INDEX` plano: está pensado para una base
+  **vacía** y no es idempotente (AGENTS.md ya lo avisa).
+- **`App\Core\EnvWriter`**: escribe el `.env` de forma **atómica** (tmp + `rename`),
+  preservando comentarios y orden, sin duplicar claves, con permisos `0600`. El
+  cargador (`Env::load`) solo leía hasta ahora; el instalador es el primer escritor
+  programático.
+- **`APP_KEY` no se sobrescribe jamás**: solo se genera si no había una utilizable.
+  Sobrescribirla perdería el descifrado de los secretos guardados.
+- La contraseña de BD y la del admin nunca se muestran ni se guardan en el lock.
+  El CSS del asistente (`.app-install-*`) va en `app.css` porque la CSP prohíbe
+  `on*=` e inline salvo `style-src 'unsafe-inline'`.

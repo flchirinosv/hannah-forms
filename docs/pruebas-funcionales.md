@@ -1041,6 +1041,32 @@ anti-bot encendido **no se sirven** (403).
 | AI11 | Un usuario sin `admin.access` intenta el POST de Turnstile | 403 y no se guarda nada | A | |
 | AI12 | Todo lo anterior **sin JavaScript** | Guardar funciona por POST nativo (PRG) | A | |
 
+## Bloque AJ — Instalador guiado web (AG11)
+
+Asistente en `/install.php` (entrypoint propio, fuera del router). Crea la base,
+aplica el esquema, crea el primer admin y escribe el `.env`. Hacer estas pruebas
+**sobre una base descartable** (`DB_NAME` distinto), no sobre una instalación viva.
+
+| ID | Prueba | Resultado esperado | Tipo | Notas |
+|---|---|---|---|---|
+| AJ1 | Abre `/install.php` en una instalación ya hecha | Página «Ya está instalado» con 403; el asistente no se abre | A | |
+| AJ2 | Abre `/install.php` con `?force` en una instalación hecha | Vuelve a mostrar el asistente | A | solo para reinstalar |
+| AJ3 | Paso «Requisitos» con todo correcto | Lista verde (PHP, extensiones, permisos) y botón «Continuar» | A | |
+| AJ4 | Quita permiso de escritura a `storage/uploads` y recarga | Requisito en rojo y «Continuar» bloqueado | A | |
+| AJ5 | Rellena host/base/usuario/clave válidos y continúa | Crea la base, aplica el esquema y pasa al paso «Administrador» | A | |
+| AJ6 | Escribe un nombre de base con `;` o espacio | Aviso de nombre no válido; no se crea nada | A | |
+| AJ7 | Contraseña de BD incorrecta | Mensaje con el error real de MySQL (no el genérico) | A | |
+| AJ8 | Crea el admin con email inválido | Aviso «Email no válido», no se crea | A | |
+| AJ9 | Crea el admin con contraseña corta o distinta a la repetición | Aviso de longitud / de coincidencia | A | |
+| AJ10 | Completa el paso admin y termina | Pantalla «Instalación completada» y redirección a `/login` | A | |
+| AJ11 | Entra con el email y la contraseña elegidos | Inicia sesión y llega al dashboard con rol `admin` | A | |
+| AJ12 | Inspecciona `app_settings` y `users` | Rol `admin` insertado; el usuario nuevo tiene ese rol | M | |
+| AJ13 | Mira el `.env` tras instalar | Trae `DB_*`, `APP_URL` y una `APP_KEY` nueva; permisos `0600` | M | |
+| AJ14 | Inspecciona `storage/installed.lock` | Existe, con fecha y email del admin; **sin** contraseñas | M | |
+| AJ15 | Reabre `/install.php` tras terminar | 403 «Ya está instalado» (el paso AJ1 se cumple de nuevo) | A | |
+| AJ16 | Repite la instalación teniendo ya `APP_KEY` en el `.env` | La `APP_KEY` **no** se sobrescribe | M | |
+| AJ17 | Intenta el POST del instalador sin token CSRF | Rechazado (400) y sin efectos | A | |
+
 ## Cuando encuentres un fallo
 
 

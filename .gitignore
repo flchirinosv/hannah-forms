@@ -12,6 +12,10 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 
+# Marca de instalación del instalador web (AG11): la crea cada instalación, no
+# debe viajar en el repo (si estuviera, nadie podría instalar con `install.php`).
+/storage/installed.lock
+
 # Tests temporales
 /tests/output/
 

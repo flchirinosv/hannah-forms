@@ -200,27 +200,34 @@ no se toca, pero verificar que sigue valiendo con claves de fila.
 copiar `.env`, generar `APP_KEY`, crear el primer admin por CLI
 (`scripts/create-admin.php`). Todo por SSH. El instalador lo hace **sin terminal**.
 
-**Diseño (a decidir en implementación, propuesta):**
+**Diseño implementado:**
 
-- Entrada: `public/install.php` o ruta `GET/POST /install`, **bloqueada si ya hay
-  una instalación** (detectar `app_settings` con `instance_*`/usuarios, o un
-  marcador en disco `storage/installed.lock`).
-- Pasos: (1) requisitos (PHP ≥ 8.2, extensiones `pdo_mysql`, `mbstring`, `fileinfo`,
-  `openssl`; permisos de `storage/uploads` y `storage/branding`); (2) conexión BD
-  (host/puerto/nombre/usuario/clave; probar con `PDO`); (3) esquema (aplicar
-  `schema.sql` + `seed.sql` desde PHP, o `migrate.php`); (4) `.env` (escribir
-  archivo con `DB_*`, `APP_KEY` generada, `APP_URL`); (5) primer admin (email +
-  contraseña, reutilizar `AuthController::validateNewUser` y `PASSWORD_MIN`);
-  (6) ajustes de instancia iniciales (marca, SMTP opcional, identidad) — reusar las
-  tarjetas/servicios de AG2/AG3/AG4.
-- **Seguridad**: el instalador no debe quedar accesible tras instalar; si no hay
-  `APP_KEY`/`.env`, las claves del paso 2 y 4 van por POST y se validan; nunca
-  mostrar la contraseña. Considerar un token de instalación temporal en disco.
-- **Reutilización**: `create-admin.php` y `database/migrate.php` ya tienen la lógica;
-  el instalador la llama desde PHP (sin `exec` si es posible).
-- Tests: un test que verifique el gate de «ya instalado» (no se puede reabrir) y la
-  validación de requisitos; el flujo completo end-to-end es manual
-  (`docs/pruebas-funcionales.md`, bloque nuevo).
+- Entrada: **`public/install.php`** (entrypoint propio, NO una ruta de
+  `config/routes.php`). Razón: `config/bootstrap.php` conecta la BD y `exit` si
+  falla, así que en una instalación nueva ninguna ruta llegaría a dibujarse. El
+  entrypoint carga solo el autoload y el `.env` (opcional) y levanta sesión + CSRF
+  propios.
+- Gate: `App\Services\InstallGuard` decide con un marcador en disco
+  (`storage/installed.lock`, JSON con fecha + email del admin, `0600`). No se puede
+  preguntar a la BD (a mitad de instalación puede no existir). Una vez marcado,
+  `install.php` responde 403 salvo `?force`.
+- Pasos: (1) requisitos (PHP ≥ 8.2, `pdo_mysql`/`mbstring`/`fileinfo`/`openssl`,
+  escritura en `storage/`, `storage/uploads`, `storage/branding` y `.env`);
+  (2) conexión BD y creación de la base (`App\Services\Installer` conecta sin
+  `dbname`, `CREATE DATABASE IF NOT EXISTS`, aplica `schema.sql` + `seed.sql` con su
+  `USE` reescrito y las migraciones pendientes); (3) admin (email + contraseña,
+  reutiliza `AuthController::validateNewUser` / `PASSWORD_MIN` y resuelve el rol
+  `admin` por nombre); (4) escritura del `.env` con `App\Core\EnvWriter` (atómico,
+  preserva comentarios, `0600`) y `APP_KEY` **solo si no había una**.
+- Seguridad: nada queda accesible tras instalar (lock); la contraseña de BD y la del
+  admin nunca se muestran ni se guardan en el lock; `APP_KEY` existente **nunca** se
+  sobrescribe (perdería el descifrado de los secretos). El CSS del asistente va en
+  `app.css` (clases `.app-install-*`) porque la CSP prohíbe estilos/scripts en línea
+  más allá de `style-src 'unsafe-inline'`.
+- Tests: `EnvWriterTest` (atómico, merge, permisos, relectura), `InstallerTest`
+  (nombre válido, reescritura `USE`/`CREATE DATABASE`, validación de admin, ciclo
+  real si el usuario puede crear bases), `InstallGuardTest` (lock, 0600, requisitos).
+  El flujo completo POST end-to-end es manual (`docs/pruebas-funcionales.md`, bloque AI).
 
 ---
 
@@ -247,10 +254,14 @@ copiar `.env`, generar `APP_KEY`, crear el primer admin por CLI
 
 | Fase | Estado | Commit |
 |------|--------|--------|
-| AG5 Turnstile | PENDIENTE | — |
-| AG6 Uploads | PENDIENTE | — |
-| AG7 Cupos dashboard | PENDIENTE | — |
-| AG8 Sesión/HTTPS | PENDIENTE | — |
-| AG9 Red/redirecciones | PENDIENTE | — |
-| AG10 Webhook red local | PENDIENTE | — |
-| AG11 Instalador web | PENDIENTE | — |
+| AG5 Turnstile | COMPLETADA | 32fd89e |
+| AG6 Uploads | COMPLETADA | af4d8a8 |
+| AG7 Cupos dashboard | COMPLETADA | 58ccd51 |
+| AG8 Sesión/HTTPS | COMPLETADA | c0a2fd4 |
+| AG9 Red/redirecciones | COMPLETADA | 94885ce |
+| AG10 Webhook red local | COMPLETADA | a632dcc |
+| AG11 Instalador web | COMPLETADA | — |
+
+> AG10 incluye el arreglo estructural de `views/admin/settings.php` (`ca97c87`):
+> la vista arrastraba `</form>`/`</div>` sin cerrar desde AG7–AG9 y dejaba las
+> últimas tarjetas anidadas dentro de los formularios anteriores.

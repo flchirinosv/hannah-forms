@@ -63,6 +63,7 @@ HTTP Response
 | Capa | Responsabilidad | Ubicacion |
 |------|----------------|-----------|
 | **Front Controller** | Configuracion, arranque, dispatch | `public/index.php` |
+| **Instalador** | Asistente web `/install.php` (entrypoint aparte: no carga el bootstrap porque este muere sin BD) | `public/install.php` |
 | **Router** | Matching URL -> handler + middleware | `app/Core/Router.php` |
 | **Controllers** | Manejar request/response, validar, orquestar | `app/Controllers/` |
 | **Models** | Acceso a datos y logica de dominio | `app/Models/` |
@@ -84,6 +85,9 @@ HTTP Response
 - `Config`: carga de parametros desde `config/config.php`.
 - `FormPanel` (servicio): los cuatro huecos del panel del formulario que dependen de `forms.status` (`vfSlotStatusBadge`, `vfSlotReviewTrail`, `vfSlotActions`, `vfSlotShare`), para que GET y el POST por fetch pinten **los mismos partials**.
 - `RosterPanel` (servicio): el panel del listado de participantes de `GET /forms/{id}/access` (sus seis huecos y el HTML de cada uno).
+- `EnvWriter` (AG11): escritor **atomico** del `.env` (tmp + `rename`, preserva comentarios y orden, no duplica claves, `0600`).
+- `Installer` (servicio, AG11): conecta con PDO **sin `dbname`**, crea la base, reescribe el `USE`/`CREATE DATABASE` de `schema.sql`/`seed.sql`, aplica migraciones y crea el primer admin (rol `admin` por nombre).
+- `InstallGuard` (servicio, AG11): gate de «ya instalado» (marcador `storage/installed.lock`, `0600`) y comprobacion de requisitos del servidor.
 
 ---
 

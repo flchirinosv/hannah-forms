@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 117 archivos, 1273 métodos, ~10 min;
+- Suite completa: `php scripts/test.php` → 127 archivos, 1353 métodos, ~7–9 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -48,11 +48,14 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 
 - `public/index.php` → `config/bootstrap.php` (carga `.env` con `App\Core\Env`,
   fija **UTC** en PHP, conecta la BD, inicia sesión) → `config/routes.php` →
-  controlador. `public/index.php` es el único PHP que ve el web server.
+  controlador. `public/index.php` es el único PHP que ve el web server en la app
+  en marcha; `public/install.php` es el **entrypoint aparte** del instalador
+  (AG11), porque `bootstrap.php` muere si la BD no existe y ninguna ruta llegaría
+  a dibujarse.
 - Autoload PSR-4 propio `App\` → `app/` (`config/autoload.php`): `Controllers` (14),
   `Core` (el middleware vive en `Core/Middleware/Middleware.php`), `Models` (10),
-  `Services` (19), `lang/{es,en}.php`.
-  `views/` = 72 plantillas y partials con `View` (veintisiete con prefijo `_`, sin ruta
+  `Services` (21), `lang/{es,en}.php`.
+  `views/` = 78 plantillas y partials con `View` (veintisiete con prefijo `_`, sin ruta
   propia: se pintan dentro de otra); `public/assets/js/` = `builder`, `fill`,
   `dashboard`, `analytics`, `app`, `print` + 3 librerías vendorizadas.
 - **Los recuentos de este fichero se miden, no se recuerdan**:
@@ -97,7 +100,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **68 de los 118 archivos tocan la BD real** (los que llaman
+- **74 de los 127 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1917,15 +1920,15 @@ probando la rama equivocada).
 - `docs/manual-usuario.md`: manual de instalación y uso (para quien opera la
   instancia). Escrito contra el código: si necesitas saber cómo funciona algo,
   **mira el código y actualiza el manual**, no al revés.
-- `docs/pruebas-funcionales.md`: 612 comprobaciones manuales en 34 bloques (A–Z, AA,
-  las regresiones R, la tanda visual S, las acciones sin recarga T, el
-  diálogo de confirmación con el alta de la allowlist U, la pantalla de
-  participantes V, el identificador de la lista W, el filtro de la analítica
-  por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
-  el correo de invitación AA, el listado paginado del panel AB, la galería del
-  modal de nuevo formulario AC, la consola de administración con modales AD, el
-  recordatorio por correo AE, la marca de la instancia AF, el correo SMTP AG y la
-  identidad operativa AH), para detectar
+- `docs/pruebas-funcionales.md`: 629 comprobaciones manuales en 35 bloques (A–Z, AA,
+   las regresiones R, la tanda visual S, las acciones sin recarga T, el
+   diálogo de confirmación con el alta de la allowlist U, la pantalla de
+   participantes V, el identificador de la lista W, el filtro de la analítica
+   por atributo X, la comparación por atributo con su techo Y, quién respondió Z,
+   el correo de invitación AA, el listado paginado del panel AB, la galería del
+   modal de nuevo formulario AC, la consola de administración con modales AD, el
+   recordatorio por correo AE, la marca de la instancia AF, el correo SMTP AG, la
+   identidad operativa AH, el anti-bot AI y el instalador web AJ), para detectar
   problemas que la suite no ve
   (teclado, maquetación, flujo en pantalla). Al tocar el builder, el fill o el
   panel, R, S, T, U, AA y AE son la

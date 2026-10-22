@@ -449,6 +449,12 @@ body {
 .auth-wrapper { width: 100%; max-width: 460px; }
 .auth-card { border-radius: 24px; overflow: hidden; }
 .auth-card .card-body { background: rgba(255,255,255,.98); }
+
+/* ---------- Installer (AG11) ---------- */
+.app-install-steps { gap: .25rem; flex-wrap: wrap; }
+.app-install-steps .nav-link { padding: .35rem .75rem; font-size: .85rem; }
+.app-install-steps .nav-link.disabled { cursor: default; opacity: .55; }
+.app-install-icon { color: var(--vf-primary); }
 .app-logo-lg {
     width: 64px; height: 64px;
     display: inline-flex; align-items: center; justify-content: center;

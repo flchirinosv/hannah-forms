@@ -48,7 +48,28 @@ correos.
 
 ## 3. Instalación
 
-### 3.1 Desde cero
+### 3.0 Instalador web (lo más rápido, sin terminal)
+
+Sirve la app (`php -S 127.0.0.1:8080 -t public` o nginx apuntando a `public/`) y
+abre **`/install.php`** en el navegador. El asistente:
+
+1. comprueba los requisitos (PHP ≥ 8.2, extensiones `pdo_mysql`, `mbstring`,
+   `fileinfo`, `openssl`, y permiso de escritura en `storage/`,
+   `storage/uploads`, `storage/branding` y `.env`);
+2. pide los datos de la base, la crea si no existe y aplica el esquema, los roles y
+   las migraciones;
+3. pide el primer administrador (nombre, email y contraseña);
+4. **escribe el `.env`** (`DB_*`, `APP_URL` y una `APP_KEY` nueva) y crea
+   `storage/installed.lock`.
+
+Al terminar te manda a `/login`. A partir de ahí el instalador queda bloqueado
+(403 «Ya está instalado»): para reabrirlo habría que borrar `storage/installed.lock`
+(o añadir `?force` a la URL). **La `APP_KEY` que ya exista nunca se sobrescribe**
+—perderla dejaría ilegibles los secretos guardados en la BD—. El usuario de la
+base necesita permiso para **crear la base y las tablas**; si tu proveedor no lo
+da, usa la instalación por terminal de §3.1.
+
+### 3.1 Desde cero (terminal)
 
 ```bash
 # 1. Configuración
