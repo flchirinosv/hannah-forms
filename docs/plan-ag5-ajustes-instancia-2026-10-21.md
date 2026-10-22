@@ -260,7 +260,7 @@ copiar `.env`, generar `APP_KEY`, crear el primer admin por CLI
 | AG8 Sesión/HTTPS | COMPLETADA | c0a2fd4 |
 | AG9 Red/redirecciones | COMPLETADA | 94885ce |
 | AG10 Webhook red local | COMPLETADA | a632dcc |
-| AG11 Instalador web | COMPLETADA | — |
+| AG11 Instalador web | COMPLETADA | 63db0ae |
 
 > AG10 incluye el arreglo estructural de `views/admin/settings.php` (`ca97c87`):
 > la vista arrastraba `</form>`/`</div>` sin cerrar desde AG7–AG9 y dejaba las
