@@ -27,7 +27,16 @@ use App\Models\User;
  */
 class BrandControllerTest
 {
-    private const KEYS = [Brand::NAME, Brand::COLOR, Brand::LOGO, Brand::FAVICON];
+    private const KEYS = [
+        Brand::NAME,
+        Brand::COLOR,
+        Brand::COLOR_GRAD_START,
+        Brand::COLOR_GRAD_END,
+        Brand::COLOR_BG,
+        Brand::COLOR_TEXT,
+        Brand::LOGO,
+        Brand::FAVICON,
+    ];
 
     private ?int $adminId = null;
     private ?int $userId = null;
@@ -82,9 +91,15 @@ class BrandControllerTest
 
     private static function borrarFilas(): void
     {
+        $ph = [];
+        $args = [];
+        foreach (self::KEYS as $i => $key) {
+            $ph[] = ':k' . $i;
+            $args['k' . $i] = $key;
+        }
         Database::getInstance(Config::db())->execute(
-            'DELETE FROM app_settings WHERE key_name IN (:a, :b, :c, :d)',
-            ['a' => Brand::NAME, 'b' => Brand::COLOR, 'c' => Brand::LOGO, 'd' => Brand::FAVICON]
+            'DELETE FROM app_settings WHERE key_name IN (' . implode(', ', $ph) . ')',
+            $args
         );
     }
 
@@ -142,6 +157,59 @@ class BrandControllerTest
         assertSame('/admin/settings', (string) ($halt['url'] ?? ''));
         assertSame('Encuestas Sur', Brand::name(), 'el nombre se guarda');
         assertSame('#aabbcc', Brand::color(), 'y el color se normaliza');
+    }
+
+    public function testUnAdminGuardaDegradadoFondoYTexto(): void
+    {
+        $this->post([
+            'instance_name'             => 'Marca',
+            'instance_color'            => '#112233',
+            'instance_color_grad_start' => '#AABBCC',
+            'instance_color_grad_end'   => '#ddeeff',
+            'instance_color_bg'         => '#ff0000',
+            'instance_color_text'       => '#000000',
+        ], (int) $this->adminId);
+
+        assertSame('#aabbcc', Brand::gradientStart(), 'el inicio del degradado se normaliza');
+        assertSame('#ddeeff', Brand::gradientEnd(), 'y el fin');
+        assertSame('#ff0000', Brand::background(), 'el fondo de acceso');
+        assertSame('#000000', Brand::text(), 'y el texto sobre el degradado');
+    }
+
+    public function testLosColoresVaciosBorranSuFilaYCaenAlAutomatico(): void
+    {
+        AppSettings::set(Brand::COLOR_GRAD_START, '#abcdef');
+        AppSettings::set(Brand::COLOR_TEXT, '#123456');
+
+        $this->post([
+            'instance_name'             => '',
+            'instance_color'            => '#112233',
+            'instance_color_grad_start' => '',
+            'instance_color_grad_end'   => '',
+            'instance_color_bg'         => '',
+            'instance_color_text'       => '',
+        ], (int) $this->adminId);
+
+        assertNull(self::fila(Brand::COLOR_GRAD_START), 'un degradado vacío borra su fila');
+        assertSame('#112233', Brand::gradientStart(), 'y cae al primario');
+        assertNull(self::fila(Brand::COLOR_TEXT), 'el texto vacío borra su fila');
+        assertNull(Brand::text(), 'y vuelve al automático (null)');
+    }
+
+    public function testUnColorDeDegradadoInvalidoNoSeGuarda(): void
+    {
+        $halt = $this->post([
+            'instance_name'             => 'X',
+            'instance_color'            => '#112233',
+            'instance_color_grad_start' => 'azul',
+        ], (int) $this->adminId);
+
+        assertSame('redirect', (string) ($halt['type'] ?? ''), 'vuelve a ajustes con el aviso');
+        // El POST entero se rechaza: el color malo no se guarda, y como el guard
+        // va ANTES de escribir, el primario de la misma tanda tampoco.
+        assertNull(self::fila(Brand::COLOR_GRAD_START), 'un valor no-hex no llega a la fila');
+        assertNull(self::fila(Brand::COLOR), 'ni se escribe el primario de la misma tanda');
+        assertSame(Brand::DEFAULT_COLOR, Brand::gradientStart(), 'y el degradado cae al default');
     }
 
     public function testUnColorInvalidoNoSeGuarda(): void

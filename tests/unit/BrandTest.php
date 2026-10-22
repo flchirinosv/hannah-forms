@@ -69,7 +69,13 @@ class BrandTest
         AppSettings::setForTesting([Brand::COLOR => '#AABBCC']);
 
         assertSame('#aabbcc', Brand::color(), 'el hex guardado se normaliza');
-        assertSame(':root{--vf-primary:#aabbcc;}', Brand::themeCss(), 'el CSS usa el hex normalizado');
+        // Con solo el primario guardado, el CSS lleva su variable y la tinta
+        // automática sobre el degradado (y NO la del degradado, que cae al
+        // default de app.css).
+        $css = Brand::themeCss();
+        assertTrue(str_contains($css, '--vf-primary:#aabbcc'), 'el CSS usa el hex normalizado: ' . $css);
+        assertTrue(str_contains($css, '--vf-on-grad:'), 'el texto sobre el degradado se calcula: ' . $css);
+        assertTrue(!str_contains($css, '--vf-grad-start'), 'sin fila de degradado no se emite su variable');
     }
 
     public function testUnColorInvalidoCaeAlDefaultYNoSeInyecta(): void
@@ -78,6 +84,45 @@ class BrandTest
 
         assertSame(Brand::DEFAULT_COLOR, Brand::color(), 'un color inválido no pasa');
         assertSame('', Brand::themeCss(), 'y no se inyecta nada en el <style>');
+    }
+
+    public function testElDegradadoYElFondoSeEmiteComoVariables(): void
+    {
+        AppSettings::setForTesting([
+            Brand::COLOR_GRAD_START => '#112233',
+            Brand::COLOR_GRAD_END   => '#445566',
+            Brand::COLOR_BG         => '#778899',
+            Brand::COLOR_TEXT       => '#ffcc00',
+        ]);
+
+        assertSame('#112233', Brand::gradientStart());
+        assertSame('#445566', Brand::gradientEnd());
+        assertSame('#778899', Brand::background());
+        assertSame('#ffcc00', Brand::text());
+
+        $css = Brand::themeCss();
+        assertTrue(str_contains($css, '--vf-grad-start:#112233'), 'inicio del degradado: ' . $css);
+        assertTrue(str_contains($css, '--vf-grad-end:#445566'), 'fin del degradado');
+        assertTrue(str_contains($css, '--vf-instance-bg:#778899'), 'fondo de instancia');
+        assertTrue(str_contains($css, '--vf-on-grad:#ffcc00'), 'texto elegido a mano');
+    }
+
+    public function testElDegradadoSinFilaCaeAlPrimarioYAlVioletaDefault(): void
+    {
+        AppSettings::setForTesting([Brand::COLOR => '#0d6efd']);
+
+        assertSame('#0d6efd', Brand::gradientStart(), 'sin extremo, el inicio es el primario');
+        assertSame(Brand::DEFAULT_GRAD_END, Brand::gradientEnd(), 'y el fin, el violeta default');
+        assertNull(Brand::background(), 'sin fondo guardado no hay color de fondo');
+        assertNull(Brand::text(), 'sin texto guardado, el automático');
+    }
+
+    public function testLaTintaAutomaticaSeEmiteSoloSiHayAlgunColor(): void
+    {
+        assertSame('', Brand::themeCss(), 'sin ningún color no hay <style>');
+
+        AppSettings::setForTesting([Brand::COLOR_BG => '#101010']);
+        assertTrue(str_contains(Brand::themeCss(), '--vf-on-grad:'), 'con un color guardado, la tinta se calcula');
     }
 
     public function testUnColorDeTresDigitosNoVale(): void

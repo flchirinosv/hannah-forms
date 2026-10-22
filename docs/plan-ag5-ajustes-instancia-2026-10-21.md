@@ -49,6 +49,7 @@ snapshot `ControllerActionsTest::APP_SETTINGS_KEYS`.
 | AG9 | **Red y redirecciones por UI** | `TRUST_PROXY`, `APP_REDIRECT_ALLOWLIST`, `FRAME_OPTIONS` + `CSP` | 1.5 d | **COMPLETADA** |
 | AG10 | **Webhook red local por UI** | `WEBHOOK_ALLOW_PRIVATE_HOSTS` | 0.5 d | PENDIENTE |
 | AG11 | **Instalador guiado web** (el ejecutable) | — | 2 d | PENDIENTE |
+| AG12 | **Personalización ampliada de color** (instancia + formulario) y logo estirado | — | 0.5 d | PENDIENTE |
 
 Orden elegido por **riesgo/valor decreciente**: AG5 es el único que hoy **rompe el
 fill con 403**; AG11 cierra la promesa de «vendible y autogestionable».
@@ -231,6 +232,53 @@ copiar `.env`, generar `APP_KEY`, crear el primer admin por CLI
 
 ---
 
+## Fase AG12 — Personalización ampliada de color y arreglo del logo
+
+**Problema.**
+
+1. La marca de la instancia (AG2) solo dejaba elegir el **color primario**. El
+   degradado de la navbar/sidebar/login seguía clavado en el código (`#5b5bd6` →
+   `#8b5cf6`), así que una instancia con marca propia quedaba a medio teñir. Lo mismo
+   dentro de cada formulario (`settings.theme`): `primary` y `background`, nada más.
+2. En la tarjeta «Marca de la instancia» de `/admin/settings`, el logo subido salía
+   **estirado** (aplanado en horizontal) en pantallas estrechas: la caja `.app-logo-lg`
+   era un `inline-flex` sin `flex: 0 0 auto`, así que en un padre flex apretado
+   encogía solo el ancho y rompía la proporción de `.app-logo-img`
+   (`width:100%;height:100%;object-fit:contain`).
+
+**Diseño implementado.**
+
+- **Cuatro colores nuevos** en las dos superficies (instancia `Brand` y formulario
+  `FormSettings::theme`): `gradient_start`, `gradient_end`, `background` (fondo de las
+  pantallas de acceso) y `text` (tinta **sobre** el degradado).
+- **Auto por defecto**: si `text` está vacío, `--vf-on-grad` se **calcula por
+  luminancia** del extremo inicial con `App\Core\Contrast::inkFor()` (WCAG, corte
+  `0.5`): blanco sobre fondos oscuros, `#1e293b` sobre claros. Sin esto, un degradado
+  amarillo o celeste dejaba el texto blanco ilegible.
+- **Tokens** en `:root` de `app.css` (`--vf-grad-start`, `--vf-grad-end`,
+  `--vf-on-grad`, `--vf-on-primary`, `--vf-instance-bg`); `Brand::themeCss()` y
+  `FormSettings::themeCss()` los sobrescriben con la fila guardada. Se sustituyeron
+  los `#8b5cf6`/`#d946ef`/`#7c3aed` hardcodeados de `.app-navbar`,
+  `.app-sidebar-inner`, `.auth-body`, `.vf-header::before`, `.vf-progress-bar` y
+  `.vf-submit`. Solo queda a mano el `#newFormModal .app-tpl-cover` (miniatura
+  decorativa).
+- **`FormSettings::normalize()`/`validate()`** cubren las cinco claves de color
+  (hex o vacío); `BuilderController` ya las guardaba por el `settings` del payload.
+  En el builder se añaden los cuatro controles en la sección Tema (con un interruptor
+  «Automático» que habilita/deshabilita el texto) y `builder.js` pinta el degradado y
+  el fondo en la vista previa (`paintThemePreview`).
+- **Instancia**: `updateBrand()` valida y guarda los cuatro colores (hex o vacío →
+  `null`), y `views/admin/settings.php` los edita con los selectores de color que ya
+  usaba el primario (`data-vf-color-for`).
+- **Logo**: `.app-logo`, `.app-logo-lg` y `.app-logo-sm` ganan `flex: 0 0 auto` +
+  `min-width`/`min-height` (34/64/26 px) y `.app-logo-img` `flex: 0 0 auto`. La caja
+  ya no se encoge en un padre flex apretado y la imagen conserva su proporción.
+- **Tests**: `ContrastTest` (luminancia, forma corta, valor ilegible → blanco),
+  nuevos casos en `FormSettingsTest` (degradado, tinta automática, texto explícito) y
+  en `BrandTest`/`BrandControllerTest` (precedencia, vaciar borra la fila, hex
+  inválido). Las cuatro claves nuevas entran en `ControllerActionsTest::APP_SETTINGS_KEYS`.
+---
+
 ## Convenciones y trampas (no olvidar)
 
 - **Migraciones**: si una fase añade una clave nueva que necesita re-seed del
@@ -261,6 +309,7 @@ copiar `.env`, generar `APP_KEY`, crear el primer admin por CLI
 | AG9 Red/redirecciones | COMPLETADA | 94885ce |
 | AG10 Webhook red local | COMPLETADA | a632dcc |
 | AG11 Instalador web | COMPLETADA | 63db0ae |
+| AG12 Color ampliado + logo | COMPLETADA | (pendiente de commit) |
 
 > AG10 incluye el arreglo estructural de `views/admin/settings.php` (`ca97c87`):
 > la vista arrastraba `</form>`/`</div>` sin cerrar desde AG7–AG9 y dejaba las

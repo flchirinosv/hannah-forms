@@ -235,8 +235,11 @@ aplicada no puede caer en 500) a través de
 
 Desde AG1–AG5 la tabla también guarda, con ese mismo patrón, los ajustes de
 instancia editables desde `/admin/settings`: `review_required` /
-`review_notify_email` (revisión), las cuatro claves de marca (`instance_name`,
-`instance_color`, `instance_logo`, `instance_favicon`; las lee `App\Core\Brand`),
+`review_notify_email` (revisión), las ocho claves de marca (`instance_name`,
+`instance_color`, `instance_color_grad_start`, `instance_color_grad_end`,
+`instance_color_bg`, `instance_color_text`, `instance_logo`, `instance_favicon`;
+las lee `App\Core\Brand`, y `instance_color_text` vacío dispara el auto-contraste
+de `App\Core\Contrast`),
 las ocho del correo (`mail_host`, `mail_port`, `mail_encryption`, `mail_user`,
 `mail_password`, `mail_from_address`, `mail_from_name`, `mail_timeout`; las lee
 `App\Core\MailSettings`) y las tres de identidad operativa

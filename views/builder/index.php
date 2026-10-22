@@ -335,7 +335,25 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                         <label for="stBackground" class="form-label small fw-semibold">Color de fondo<?= $helpButton('El fondo de la página del formulario.') ?></label>
                         <input type="color" class="form-control form-control-color w-100" id="stBackground" value="#f6f6f6">
                     </div>
-                    <div class="col-sm-12">
+                    <div class="col-sm-6">
+                        <label for="stGradStart" class="form-label small fw-semibold">Degradado: inicio<?= $helpButton('El primer color de la franja, la barra de progreso y el botón de enviar. Si lo dejas igual que el principal, el degradado arranca en tu color.') ?></label>
+                        <input type="color" class="form-control form-control-color w-100" id="stGradStart" value="#0d6efd">
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="stGradEnd" class="form-label small fw-semibold">Degradado: fin<?= $helpButton('El segundo color del degradado.') ?></label>
+                        <input type="color" class="form-control form-control-color w-100" id="stGradEnd" value="#8b5cf6">
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="stText" class="form-label small fw-semibold">Color del texto sobre el degradado<?= $helpButton('El texto y el botón que van encima del degradado. Con el automático encendido se elige solo (blanco sobre fondos oscuros, oscuro sobre claros).') ?></label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" class="form-control form-control-color" id="stText" value="#ffffff">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="stTextAuto">
+                                <label class="form-check-label small" for="stTextAuto">Automático</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
                         <label for="stFont" class="form-label small fw-semibold">Fuente<?= $helpButton('Se sirve desde esta misma instalación, sin llamar a ningún servicio externo: elige una del catálogo y se descargará de aquí. «Predeterminada» usa la tipografía del panel.') ?></label>
                         <select class="form-select form-select-sm" id="stFont">
                             <option value="">Predeterminada</option>
@@ -349,6 +367,7 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                 <div class="border rounded p-3 mb-4 bg-light">
                     <p class="small fw-semibold mb-2"><i class="fa-solid fa-eye me-1"></i>Así se verá <span class="text-muted fw-normal">(solo los colores; la tipografía se aplica al formulario publicado)</span></p>
                     <div class="d-flex flex-wrap align-items-center gap-3" id="stThemePreview">
+                        <span class="d-inline-flex align-items-center justify-content-center" id="stThemePreviewBg" style="width:44px;height:44px;border-radius:10px;border:1px solid #dee2e6" title="Color de fondo de la página"><i class="fa-solid fa-image" aria-hidden="true"></i></span>
                         <button type="button" class="btn btn-sm" id="stThemePreviewBtn" disabled>Enviar</button>
                         <span class="small fw-semibold" id="stThemePreviewTitle">Título del formulario</span>
                         <span class="small flex-grow-1" style="min-width:120px;max-width:220px;height:6px;border-radius:3px;background:#dee2e6"><span id="stThemePreviewBar" style="display:block;height:100%;width:60%;border-radius:3px"></span></span>

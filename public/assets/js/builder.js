@@ -2421,6 +2421,11 @@
             const s = FORM_SETTINGS;
             st('stPrimary').value = (s.theme && s.theme.primary) || '#0d6efd';
             st('stBackground').value = (s.theme && s.theme.background) || '#f6f6f6';
+            st('stGradStart').value = (s.theme && s.theme.gradient_start) || (s.theme && s.theme.primary) || '#0d6efd';
+            st('stGradEnd').value = (s.theme && s.theme.gradient_end) || '#8b5cf6';
+            st('stText').value = (s.theme && s.theme.text) || '#ffffff';
+            st('stTextAuto').checked = !(s.theme && s.theme.text);
+            st('stText').disabled = st('stTextAuto').checked;
             st('stFont').value = (s.theme && s.theme.font) || '';
             st('stQuizEnabled').checked = !!(s.quiz && s.quiz.enabled);
             st('stRandQuestions').checked = !!(s.randomize && s.randomize.questions);
@@ -2440,6 +2445,23 @@
         // que la gente duda tanto de ellos. NO aplica la fuente a propósito: la
         // maqueta es solo de color; la tipografía elegida (una familia del
         // catálogo) se ve en el formulario publicado.
+        //
+        // `textoAuto()` reproduce en JS el cálculo de `App\Core\Contrast`
+        // (luminancia WCAG): el preview tiene que decir lo MISMO que el
+        // formulario publicado cuando el texto va en automático, o se elige un
+        // amarillo y el constructor enseña blanco mientras el fill enseña negro.
+        function textoAuto(hex) {
+            const h = String(hex || '').replace('#', '');
+            const n = h.length === 3 ? h[0] + h[0] + h[1] + h[1] + h[2] + h[2] : h;
+            if (!/^[0-9a-fA-F]{6}$/.test(n)) return '#ffffff';
+            const ch = (i) => {
+                const v = parseInt(n.substr(i, 2), 16) / 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            };
+            const lum = 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
+            return lum < 0.5 ? '#ffffff' : '#1e293b';
+        }
+
         function paintThemePreview() {
             const primary = st('stPrimary');
             const background = st('stBackground');
@@ -2447,15 +2469,25 @@
             if (!primary || !background || !box) return;
             const p = primary.value || '#0d6efd';
             const b = background.value || '#f6f6f6';
-            box.style.backgroundColor = b;
+            const gStart = (st('stGradStart') && st('stGradStart').value) || p;
+            const gEnd = (st('stGradEnd') && st('stGradEnd').value) || '#8b5cf6';
+            const autoOn = !st('stTextAuto') || st('stTextAuto').checked;
+            const onGrad = autoOn ? textoAuto(gStart) : ((st('stText') && st('stText').value) || '#ffffff');
             const btn = st('stThemePreviewBtn');
             if (btn) {
-                btn.style.backgroundColor = p;
-                btn.style.borderColor = p;
-                btn.style.color = '#fff';
+                btn.style.background = 'linear-gradient(90deg, ' + gStart + ', ' + gEnd + ')';
+                btn.style.borderColor = 'transparent';
+                btn.style.color = onGrad;
             }
+            const title = st('stThemePreviewTitle');
+            if (title) title.style.color = onGrad;
             const bar = st('stThemePreviewBar');
-            if (bar) bar.style.backgroundColor = p;
+            if (bar) bar.style.background = 'linear-gradient(90deg, ' + gStart + ', ' + gEnd + ')';
+            // El fondo de página se pinta SOLO en la muestra de fondo: la caja
+            // del preview lleva el degradado para que se vean los dos, y el
+            // color de fondo va de marco.
+            const bgSwatch = st('stThemePreviewBg');
+            if (bgSwatch) bgSwatch.style.backgroundColor = b;
         }
 
         // La fuente ya no es texto libre: el <select> solo ofrece las familias
@@ -2491,6 +2523,13 @@
                 theme: {
                     primary: g('stPrimary').value || null,
                     background: g('stBackground').value || null,
+                    gradient_start: g('stGradStart').value || null,
+                    gradient_end: g('stGradEnd').value || null,
+                    // El texto en automático se manda como `null`: el servidor
+                    // recalcula la tinta por luminancia. Mandar el color del
+                    // <input> congelaría la decisión y un cambio posterior del
+                    // degradado dejaría texto ilegible.
+                    text: g('stTextAuto').checked ? null : (g('stText').value || null),
                     font: g('stFont').value.trim() || null,
                 },
                 quiz: { enabled: g('stQuizEnabled').checked },
@@ -2525,10 +2564,19 @@
         // Vista previa del tema y aviso de la fuente. Se engancha una sola vez al
         // arrancar el builder (no en cada apertura de la modal): los listeners
         // viven en los inputs, así que solo hay que leerlos.
-        ['stPrimary', 'stBackground'].forEach((id) => {
+        ['stPrimary', 'stBackground', 'stGradStart', 'stGradEnd', 'stText'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', paintThemePreview);
         });
+        // El interruptor «texto automático» habilita/deshabilita el selector de
+        // texto y repinta. Sin deshabilitarlo, se podría elegir un color que el
+        // servidor ignora (va `null`), y el control mentiría.
+        if (st('stTextAuto')) {
+            st('stTextAuto').addEventListener('change', () => {
+                if (st('stText')) st('stText').disabled = st('stTextAuto').checked;
+                paintThemePreview();
+            });
+        }
         if (st('stFont')) st('stFont').addEventListener('change', checkFontLive);
 
         if (st('btnFormSettings') && settingsModalHolder) {

@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 127 archivos, 1353 métodos, ~7–9 min;
+- Suite completa: `php scripts/test.php` → 128 archivos, 1369 métodos, ~7–9 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -100,7 +100,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **74 de los 127 archivos tocan la BD real** (los que llaman
+- **74 de los 128 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1797,6 +1797,27 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
 - El orden de capas CSS es fijo: `app.css` (`:root`) → instancia
   (`View::brandStyle()`) → formulario (`FormSettings::themeCss`, gana solo en el
   público).
+- **La marca tiene CINCO colores y `gradient_start` sin fila cae al primario**:
+  `primary`, `gradient_start`, `gradient_end`, `background` (fondo de las pantallas
+  de acceso) y `text` (tinta sobre el degradado). El degradado se emite por tokens
+  (`--vf-grad-start`/`--vf-grad-end`), así que dejar `gradient_start` vacío es
+  «tiñe la navbar con el primario», que es como se comportaba la marca antes de que
+  el degradado se pudiera tocar. Solo queda un hex a mano: `#newFormModal
+  .app-tpl-cover` (miniatura decorativa).
+- **El contraste del texto sobre el degradado es AUTOMÁTICO por defecto, y su
+  cálculo es `App\Core\Contrast::inkFor()`** (luminancia WCAG, corte `0.5`): blanco
+  sobre fondos oscuros, `#1e293b` sobre claros. Sin él, un degradado amarillo o
+  celeste dejaba el texto **blanco sobre blanco** y el formulario ilegible sin que
+  nada fallara, ni en PHP ni en el navegador. Un valor que no se puede parsear cae a
+  blanco (nunca deja el texto invisible). El mismo cálculo vive en JS (`textoAuto()`
+  de `builder.js`) para la vista previa; **los dos son el mismo predicado y tienen
+  que moverse juntos**, o el constructor enseña un texto y el publicado otro.
+- **El logo llevaba `flex: 0 0 auto` + `min-width`/`min-height` y `.app-logo-img`
+  también**: la caja era un `inline-flex` sin base fija y en un padre flex apretado
+  encogía **solo el ancho**, rompiendo el aspect ratio de la imagen
+  (`width:100%;height:100%;object-fit:contain`) — se veía estirada en la tarjeta de
+  marca de `/admin/settings`. No es cosmética de sobra: sin `flex: 0 0 auto` el
+  navegador puede encoger el hueco del logo por debajo de su tamaño.
 - **`App\Core\MailSettings` es el ÚNICO sitio que resuelve la config SMTP**, y
   `Mailer::config()` pasa por él (`MailSettings::all()`), así que TODO el correo
   (avisos, invitaciones, recordatorios) usa lo que se guarda en

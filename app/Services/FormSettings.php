@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Contrast;
+
 /**
  * Configuración por formulario (`forms.settings`, JSON).
  *
@@ -71,7 +73,14 @@ final class FormSettings
     public static function defaults(): array
     {
         return [
-            'theme'     => ['primary' => null, 'background' => null, 'font' => null],
+            'theme'     => [
+                'primary'        => null,
+                'background'     => null,
+                'gradient_start' => null,
+                'gradient_end'   => null,
+                'text'           => null,
+                'font'           => null,
+            ],
             'schedule'  => ['open_at' => null, 'close_at' => null],
             'quota'     => ['enabled' => false, 'max' => 0],
             'notify'    => [
@@ -117,7 +126,7 @@ final class FormSettings
         $out = self::defaults();
 
         if (isset($raw['theme']) && is_array($raw['theme'])) {
-            foreach (['primary', 'background', 'font'] as $k) {
+            foreach (['primary', 'background', 'gradient_start', 'gradient_end', 'text', 'font'] as $k) {
                 if (array_key_exists($k, $raw['theme'])) {
                     $v = $raw['theme'][$k];
                     $out['theme'][$k] = is_string($v) ? self::short(trim($v), 40) : null;
@@ -515,7 +524,7 @@ final class FormSettings
             return 'La URL de redirección no es válida (debe ser http/https).';
         }
 
-        foreach (['primary', 'background'] as $k) {
+        foreach (['primary', 'background', 'gradient_start', 'gradient_end', 'text'] as $k) {
             $c = $n['theme'][$k];
             if ($c !== null && $c !== '' && preg_match('/^#[0-9a-fA-F]{3,8}$/', $c) !== 1) {
                 return 'El color de tema "' . $k . '" no es un hex válido (#RRGGBB o #RRGGBBAA).';
@@ -584,6 +593,38 @@ final class FormSettings
         }
         if (isset($theme['background']) && $theme['background'] !== '') {
             $vars[] = '--vf-background:' . $theme['background'];
+        }
+        // Extremos del degradado (`.vf-header::before`, `.vf-progress-bar`,
+        // `.vf-submit` en la página pública). Cada extremo cae al anterior si no
+        // se elige: `start` al color principal y `end` al violeta por defecto de
+        // `app.css`, así que un tema que solo toca el primario sigue viéndose
+        // coherente en vez de quedarse sin degradado.
+        $gradStart = isset($theme['gradient_start']) && $theme['gradient_start'] !== ''
+            ? (string) $theme['gradient_start']
+            : null;
+        $gradEnd = isset($theme['gradient_end']) && $theme['gradient_end'] !== ''
+            ? (string) $theme['gradient_end']
+            : null;
+        if ($gradStart !== null) {
+            $vars[] = '--vf-grad-start:' . $gradStart;
+        }
+        if ($gradEnd !== null) {
+            $vars[] = '--vf-grad-end:' . $gradEnd;
+        }
+        // Color del TEXTO sobre el degradado. Si el editor no lo elige, se
+        // calcula por luminancia del extremo de arranque (o del primario, si
+        // tampoco lo hay): blanco sobre fondos oscuros, tinta oscura sobre
+        // claros. Eso evita el blanco-sobre-amarillo ilegible sin obligar a
+        // nadie a saber de contraste.
+        $text = isset($theme['text']) && $theme['text'] !== '' ? (string) $theme['text'] : null;
+        if ($text === null) {
+            $base = $gradStart ?? (isset($theme['primary']) && $theme['primary'] !== '' ? (string) $theme['primary'] : null);
+            if ($base !== null && preg_match('/^#[0-9a-fA-F]{3,8}$/', $base) === 1) {
+                $text = Contrast::inkFor($base);
+            }
+        }
+        if ($text !== null) {
+            $vars[] = '--vf-on-grad:' . $text;
         }
         // @font-face + variable. Sin comillas: una familia con espacios es CSS
         // válido (`font-family:Source Serif 4`) y el htmlspecialchars de abajo

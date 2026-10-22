@@ -111,6 +111,10 @@ class AdminController
             'timezoneOptions'     => \DateTimeZone::listIdentifiers(),
             'brandName'           => \App\Core\Brand::name(),
             'brandColor'          => \App\Core\Brand::color(),
+            'brandGradStart'      => \App\Core\Brand::gradientStart(),
+            'brandGradEnd'        => \App\Core\Brand::gradientEnd(),
+            'brandBg'             => \App\Core\Brand::background(),
+            'brandText'           => \App\Core\Brand::text(),
             'brandHasLogo'        => \App\Core\Brand::hasLogo(),
             'brandHasFavicon'     => \App\Core\Brand::hasFavicon(),
             'brandLogoUrl'        => \App\Core\Brand::logoUrl(),
@@ -302,13 +306,37 @@ class AdminController
         // un `<style>` sin escapar, así que un valor que no sea `#rrggbb` no debe
         // llegar nunca a la fila (aunque `color()` también lo filtre al salir).
         if ($color !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $color) !== 1) {
-            Session::flash('error', 'El color debe ser un valor hex como #5b5bd6.');
+            Session::flash('error', 'El color primario debe ser un valor hex como #5b5bd6.');
             Response::redirect('/admin/settings');
             return;
         }
 
+        // Los cuatro colores nuevos comparten validación: un hex válido, o vacío
+        // para «usa el default / calcula el contraste». Se validan juntos para
+        // que el mensaje de error diga QUÉ campo está mal y no «algo falló».
+        $colores = [
+            'instance_color_grad_start' => 'El color de inicio del degradado',
+            'instance_color_grad_end'   => 'El color de fin del degradado',
+            'instance_color_bg'         => 'El color de fondo de acceso',
+            'instance_color_text'       => 'El color del texto sobre el degradado',
+        ];
+        $values = [];
+        foreach ($colores as $key => $label) {
+            $v = trim((string) Request::post($key, ''));
+            if ($v !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $v) !== 1) {
+                Session::flash('error', $label . ' debe ser un valor hex como #5b5bd6, o vacío para el automático.');
+                Response::redirect('/admin/settings');
+                return;
+            }
+            $values[$key] = $v === '' ? null : strtolower($v);
+        }
+
         $ok = AppSettings::set(\App\Core\Brand::NAME, $name === '' ? null : $name);
         $ok = AppSettings::set(\App\Core\Brand::COLOR, $color === '' ? null : strtolower($color)) && $ok;
+        $ok = AppSettings::set(\App\Core\Brand::COLOR_GRAD_START, $values['instance_color_grad_start']) && $ok;
+        $ok = AppSettings::set(\App\Core\Brand::COLOR_GRAD_END, $values['instance_color_grad_end']) && $ok;
+        $ok = AppSettings::set(\App\Core\Brand::COLOR_BG, $values['instance_color_bg']) && $ok;
+        $ok = AppSettings::set(\App\Core\Brand::COLOR_TEXT, $values['instance_color_text']) && $ok;
 
         if (!$ok) {
             Session::flash('error', 'No se pudo guardar la marca. ¿Falta ejecutar las migraciones?');

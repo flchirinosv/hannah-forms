@@ -165,8 +165,9 @@ class SidebarLayoutTest
             'existe la regla de `.app-sidebar-inner`'
         );
         assertTrue(
-            str_contains($inner[1], 'linear-gradient') && preg_match('/\bcolor:\s*#fff/i', $inner[1]) === 1,
-            'la sidebar es oscura (degradado) con texto blanco'
+            str_contains($inner[1], 'linear-gradient')
+                && preg_match('/\bcolor:\s*(#fff|var\(--vf-on-grad)/i', $inner[1]) === 1,
+            'la sidebar es oscura (degradado) con texto claro (blanco o el token --vf-on-grad)'
         );
 
         assertSame(

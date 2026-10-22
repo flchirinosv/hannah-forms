@@ -148,6 +148,59 @@ class FormSettingsTest
         assertSame('', FormSettings::themeCss(FormSettings::defaults()), 'sin tema no se emite CSS');
     }
 
+    public function testThemeCssEmiteDegradadoYTintaAutomatica(): void
+    {
+        $settings = FormSettings::normalize([
+            'theme' => ['gradient_start' => '#ff0000', 'gradient_end' => '#00ff00'],
+        ]);
+        $css = FormSettings::themeCss($settings);
+        self::assertStringContains('--vf-grad-start:#ff0000', $css);
+        self::assertStringContains('--vf-grad-end:#00ff00', $css);
+        // Con un rojo de arranque (oscuro), la tinta automática es blanca.
+        self::assertStringContains('--vf-on-grad:#ffffff', $css);
+    }
+
+    public function testLaTintaAutomaticaSeCalculaPorLuminancia(): void
+    {
+        // Un degradado que arranca en amarillo claro NO puede pedir blanco: el
+        // texto quedaría ilegible, que es el fallo que motivó el cálculo.
+        $claro = FormSettings::themeCss(FormSettings::normalize([
+            'theme' => ['gradient_start' => '#fff59d'],
+        ]));
+        self::assertStringContains('--vf-on-grad:#1e293b', $claro);
+
+        $oscuro = FormSettings::themeCss(FormSettings::normalize([
+            'theme' => ['gradient_start' => '#1e293b'],
+        ]));
+        self::assertStringContains('--vf-on-grad:#ffffff', $oscuro);
+    }
+
+    public function testUnColorDeTextoExplicitoGanaSobreElAutomatico(): void
+    {
+        $css = FormSettings::themeCss(FormSettings::normalize([
+            'theme' => ['gradient_start' => '#000000', 'text' => '#ffcc00'],
+        ]));
+        self::assertStringContains('--vf-on-grad:#ffcc00', $css);
+        assertFalse(str_contains($css, '--vf-on-grad:#ffffff'), 'el color elegido manda, no el calculado');
+    }
+
+    public function testElDegradadoNoSeEmiteSiSusExtremosEstanVacios(): void
+    {
+        $css = FormSettings::themeCss(FormSettings::normalize([
+            'theme' => ['primary' => '#0d6efd', 'gradient_start' => '', 'gradient_end' => ''],
+        ]));
+        assertFalse(str_contains($css, '--vf-grad-start'), 'sin extremo no se emite su variable');
+        assertFalse(str_contains($css, '--vf-grad-end'), 'ni la del fin');
+    }
+
+    public function testValidateRechazaUnColorDeDegradadoInvalido(): void
+    {
+        $err = FormSettings::validate(FormSettings::normalize([
+            'theme' => ['gradient_start' => 'azul'],
+        ]));
+        assertNotNull($err, 'un degradado no-hex se rechaza');
+    }
+
     public function testSaveSettingsRoundTrip(): void
     {
         Form::saveSettings((int) $this->formId, [

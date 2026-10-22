@@ -705,12 +705,12 @@ class BuilderPreviewCssTest
         $cuerpo = (string) $bloque;
 
         assertTrue(
-            preg_match('/(?:^|;|\s)color:\s*(#fff|#ffffff|white|rgba?\([^)]*255)/i', $cuerpo) === 1,
-            '.vf-submit declara un texto en claro: sin clase `btn` el color sería el del navegador (negro) sobre el degradado'
+            preg_match('/(?:^|;|\s)color:\s*(#fff|#ffffff|white|rgba?\([^)]*255|var\(--vf-on-grad)/i', $cuerpo) === 1,
+            '.vf-submit declara un texto en claro (o el token que lo controla): sin clase `btn` el color sería el del navegador (negro) sobre el degradado'
         );
         assertTrue(
-            str_contains($cuerpo, 'linear-gradient') && str_contains($cuerpo, '#7c3aed'),
-            'y el degradado acaba en morado oscuro, que es el fondo que tiene que sostener ese texto'
+            str_contains($cuerpo, 'linear-gradient') && str_contains($cuerpo, 'var(--vf-grad'),
+            'y el degradado sale de los tokens de marca, que sostienen ese texto'
         );
         assertTrue(
             preg_match('/(?:^|;|\s|\})\/\//m', $cuerpo) !== 1,

@@ -979,6 +979,11 @@ Para llegar: panel → el formulario → *Participantes*.
 | AF12 | Un usuario sin `admin.access` intenta el POST de marca | 403 y no se guarda | A | |
 | AF13 | Todo lo anterior **sin JavaScript** | Nombre, color, subida y borrado funcionan por POST nativo; solo se pierde la sincronía del selector de color | A | |
 | AF14 | Con `APP_KEY` vacía y un ajuste de marca guardado | La instancia se ve igual (el cifrado no hace falta para la marca; solo lo usa el SMTP) | M | |
+| AF15 | Elige dos colores de degradado y guarda | La sidebar, la topbar y el login pasan a ese degradado; con un degradado claro, el texto se ve oscuro **solo** | M | |
+| AF16 | Deja vacío el color de texto con un degradado oscuro | El texto y los botones sobre el degradado salen blancos (automático por luminancia) | M | |
+| AF17 | Elige a mano un color de texto y guarda | Manda el color elegido, no el automático | M | |
+| AF18 | Escribe un degradado «azul» y guarda | Error y **nada** de la tanda se guarda (ni el primario del mismo POST) | A | |
+| AF19 | Sube un logo y mira la tarjeta en un móvil (o ventana estrecha) | El logo conserva su proporción (no se aplana) | M | |
 
 ## Bloque AG — Correo (SMTP) de la instancia (AG3)
 

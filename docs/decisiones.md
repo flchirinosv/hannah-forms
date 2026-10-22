@@ -67,3 +67,47 @@ asistente en `/install.php`.
 - La contraseña de BD y la del admin nunca se muestran ni se guardan en el lock.
   El CSS del asistente (`.app-install-*`) va en `app.css` porque la CSP prohíbe
   `on*=` e inline salvo `style-src 'unsafe-inline'`.
+
+## AG12 — Personalización ampliada de color y logo estirado (2026-10-22)
+
+La marca (AG2) solo dejaba tocar el color **primario**; el degradado de
+navbar/sidebar/login seguía clavado en el código, y lo mismo dentro del formulario
+(`settings.theme`: `primary` + `background`). Una instancia con marca propia
+quedaba a medio teñir. Y en pantalla estrecha el logo subido salía **aplanado**.
+
+- **Cinco colores en las dos superficies** (instancia `Brand` y formulario
+  `FormSettings::theme`): `primary`, `gradient_start`, `gradient_end`,
+  `background` (fondo de las pantallas de acceso) y `text` (tinta **sobre** el
+  degradado). Fila ausente = default; vaciar borra la fila, como en el resto del
+  patrón de instancia. `gradient_start` sin fila cae al primario (tocar solo el
+  primario sigue tiñendo la navbar entera, el comportamiento de antes),
+  `gradient_end` al violeta `DEFAULT_GRAD_END`.
+- **Auto-contraste**: si `text` está vacío, `--vf-on-grad` se calcula por
+  luminancia del extremo inicial con `App\Core\Contrast::inkFor()` (WCAG, corte
+  `0.5`): blanco sobre fondos oscuros y `#1e293b` sobre claros. Sin esto, un
+  degradado amarillo o celeste dejaba el texto **blanco sobre blanco** y el
+  formulario ilegible sin que nada fallara. Un valor que no se puede parsear cae a
+  blanco (nunca deja el texto invisible).
+- **Tokens en `:root`** (`--vf-grad-start`, `--vf-grad-end`, `--vf-on-grad`,
+  `--vf-on-primary`, `--vf-instance-bg`) y se quitaron los `#8b5cf6`/`#d946ef`/
+  `#7c3aed` hardcodeados de `.app-navbar`, `.app-sidebar-inner`, `.auth-body`,
+  `.vf-header::before`, `.vf-progress-bar` y `.vf-submit`. Solo queda a mano el
+  `#newFormModal .app-tpl-cover` (miniatura decorativa). Los tokens nuevos tienen
+  su consumidor, que es lo que vigila `ThemeFontCssInjectionTest`.
+- **Builder**: cuatro controles nuevos en la sección Tema (`stGradStart`,
+  `stGradEnd`, `stText` + interruptor `stTextAuto`) y `paintThemePreview()` pinta el
+  degradado y el fondo. `FormSettings::normalize()`/`validate()` cubren las cinco
+  claves de color; el payload ya las llevaba en `settings`.
+- **Instancia**: `updateBrand()` valida (hex o vacío) y guarda los cuatro colores;
+  `views/admin/settings.php` los edita con el mismo picker `data-vf-color-for` del
+  primario. Las claves nuevas entran en `ControllerActionsTest::APP_SETTINGS_KEYS`.
+- **Logo estirado**: `.app-logo`, `.app-logo-lg` y `.app-logo-sm` ganan
+  `flex: 0 0 auto` + `min-width`/`min-height` (34/64/26 px) y `.app-logo-img`
+  `flex: 0 0 auto`. La causa era que la caja era un `inline-flex` sin base fija y
+  en un padre flex apretado encogía **solo el ancho**, rompiendo el aspect ratio de
+  la imagen (`width:100%;height:100%;object-fit:contain`).
+- **Tests**: `ContrastTest` (negro/blanco/claros, forma corta, valor ilegible),
+  casos nuevos en `FormSettingsTest` y `BrandTest`/`BrandControllerTest`
+  (precedencia, vaciar borra la fila, hex inválido rechaza el POST), y se
+  actualizaron `BrandTest`, `SidebarLayoutTest` y `BuilderPreviewCssTest` que
+  fijaban los hex viejos.

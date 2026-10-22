@@ -284,6 +284,10 @@ deja ponerle a la instalación su propia identidad sin tocar ficheros:
 |---|---|
 | **Nombre** | Lo que se lee en la barra lateral, en la barra superior, en la pantalla de acceso y en la pestaña del navegador. En blanco = vuelve al `APP_NAME` del `.env`. |
 | **Color primario** | El color de botones y enlaces del panel y del formulario publicado. Formato `#rrggbb`; en blanco = el color por defecto. |
+| **Color de inicio del degradado** | El color con el que arranca el degradado de la marca (barra lateral, barra superior, login). En blanco = el color primario. |
+| **Color de fin del degradado** | El color con el que termina el degradado. En blanco = el violeta por defecto. |
+| **Color de fondo de acceso** | El fondo de las pantallas de entrada (login, registro, recuperación). En blanco = el degradado. |
+| **Color del texto sobre el degradado** | El color del texto y de los botones que van encima del degradado. En blanco = **automático**: la app elige blanco o tinta oscura según la luminosidad del degradado, para que el texto siempre se lea. |
 | **Logo** | La imagen de la marca (PNG, JPG, GIF o WEBP). Se muestra en la barra lateral y en el login. |
 | **Favicon** | El icono de la pestaña del navegador. Cuadrado y pequeño (64×64 va bien). |
 

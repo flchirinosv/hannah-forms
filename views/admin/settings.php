@@ -203,33 +203,87 @@ use App\Core\View;
                         </div>
                     </div>
 
-                    <form method="post" action="/admin/settings/brand" class="row g-3">
+                    <form method="post" action="/admin/settings/brand">
                         <?= Csrf::field() ?>
-                        <div class="col-lg-5">
-                            <label class="form-label" for="instanceName">Nombre</label>
-                            <input type="text" class="form-control" id="instanceName" name="instance_name"
-                                   maxlength="100" value="<?= View::escape($brandName ?? '') ?>"
-                                   placeholder="<?= View::escape(\App\Core\Config::get('app.name', 'VanillaForms')) ?>">
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label" for="instanceColor">Color primario</label>
-                            <div class="input-group">
-                                <input type="color" class="form-control form-control-color" id="instanceColor"
-                                       value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
-                                       aria-label="Selector de color" data-vf-color-for="instanceColorText">
-                                <input type="text" class="form-control" id="instanceColorText" name="instance_color"
-                                       value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
-                                       pattern="#[0-9a-fA-F]{6}" maxlength="7">
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <label class="form-label" for="instanceName">Nombre</label>
+                                <input type="text" class="form-control" id="instanceName" name="instance_name"
+                                       maxlength="100" value="<?= View::escape($brandName ?? '') ?>"
+                                       placeholder="<?= View::escape(\App\Core\Config::get('app.name', 'VanillaForms')) ?>">
                             </div>
-                            <div class="form-text mt-1">Formato <code>#rrggbb</code>.</div>
-                        </div>
-                        <div class="col-lg-3">
-                            <label class="form-label invisible" for="brandSaveBtn">Guardar</label>
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" id="brandSaveBtn" class="btn btn-primary app-btn-primary">
-                                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar marca
-                                </button>
+                            <div class="col-lg-4">
+                                <label class="form-label" for="instanceColor">Color primario</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="instanceColor"
+                                           value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                           aria-label="Selector de color" data-vf-color-for="instanceColorText">
+                                    <input type="text" class="form-control" id="instanceColorText" name="instance_color"
+                                           value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                           pattern="#[0-9a-fA-F]{6}" maxlength="7">
+                                </div>
                             </div>
+                            <div class="col-lg-3">
+                                <label class="form-label invisible" for="brandSaveBtn">Guardar</label>
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" id="brandSaveBtn" class="btn btn-primary app-btn-primary">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i>Guardar marca
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="app-instance-subhead mt-4">Colores de la marca</p>
+                        <div class="row g-3">
+                            <div class="col-lg-3 col-md-4">
+                                <label class="form-label" for="instanceGradStart">Degradado: inicio</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="instanceGradStart"
+                                           value="<?= View::escape($brandGradStart ?? $brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                           aria-label="Selector de color" data-vf-color-for="instanceGradStartText">
+                                    <input type="text" class="form-control" id="instanceGradStartText" name="instance_color_grad_start"
+                                           value="<?= View::escape($brandGradStart ?? $brandColor ?? Brand::DEFAULT_COLOR) ?>"
+                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="—">
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-4">
+                                <label class="form-label" for="instanceGradEnd">Degradado: fin</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="instanceGradEnd"
+                                           value="<?= View::escape($brandGradEnd ?? Brand::DEFAULT_GRAD_END) ?>"
+                                           aria-label="Selector de color" data-vf-color-for="instanceGradEndText">
+                                    <input type="text" class="form-control" id="instanceGradEndText" name="instance_color_grad_end"
+                                           value="<?= View::escape($brandGradEnd ?? Brand::DEFAULT_GRAD_END) ?>"
+                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="—">
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-4">
+                                <label class="form-label" for="instanceBg">Fondo de acceso</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="instanceBg"
+                                           value="<?= View::escape($brandBg ?? '#eef1fa') ?>"
+                                           aria-label="Selector de color" data-vf-color-for="instanceBgText">
+                                    <input type="text" class="form-control" id="instanceBgText" name="instance_color_bg"
+                                           value="<?= View::escape($brandBg ?? '') ?>"
+                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="Automático">
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-4">
+                                <label class="form-label" for="instanceTextColor">Texto sobre el degradado</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="instanceTextColor"
+                                           value="<?= View::escape($brandText ?? '#ffffff') ?>"
+                                           aria-label="Selector de color" data-vf-color-for="instanceTextColorText">
+                                    <input type="text" class="form-control" id="instanceTextColorText" name="instance_color_text"
+                                           value="<?= View::escape($brandText ?? '') ?>"
+                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="Automático">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text mt-2">
+                            Formato <code>#rrggbb</code>. El <strong>fondo de acceso</strong> y el <strong>texto sobre
+                            el degradado</strong> en blanco se calculan solos: el fondo cae al degradado de siempre y el
+                            texto elige blanco u oscuro según el contraste del inicio del degradado.
                         </div>
                     </form>
 

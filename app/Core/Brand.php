@@ -33,6 +33,18 @@ final class Brand
     /** Color primario (hex `#rrggbb`). Fila ausente = el default del código. */
     public const COLOR = 'instance_color';
 
+    /** Extremo inicial del degradado de marca. Fila ausente = el primario. */
+    public const COLOR_GRAD_START = 'instance_color_grad_start';
+
+    /** Extremo final del degradado de marca. Fila ausente = el violeta default. */
+    public const COLOR_GRAD_END = 'instance_color_grad_end';
+
+    /** Color de fondo de las pantallas de la instancia (login, etc.). */
+    public const COLOR_BG = 'instance_color_bg';
+
+    /** Color del TEXTO sobre el degradado. Vacío = automático por luminancia. */
+    public const COLOR_TEXT = 'instance_color_text';
+
     /** Metadatos JSON del logo subido (`{stored, mime, size}`). */
     public const LOGO = 'instance_logo';
 
@@ -41,6 +53,9 @@ final class Brand
 
     /** Color primario por defecto: el mismo `--vf-primary` de siempre. */
     public const DEFAULT_COLOR = '#5b5bd6';
+
+    /** Extremo final del degradado por defecto: el violeta de `app.css`. */
+    public const DEFAULT_GRAD_END = '#8b5cf6';
 
     /** Directorio de marca dentro de `storage/`. Fuera de `public/`. */
     public const DIR = 'branding';
@@ -83,6 +98,64 @@ final class Brand
     }
 
     /**
+     * Extremo inicial del degradado. Fila ausente (o inválida) = el primario,
+     * que es como se comportaba la marca antes de que el degradado se pudiera
+     * configurar: tocar solo el color principal sigue tiñendo la navbar entera.
+     */
+    public static function gradientStart(): string
+    {
+        $stored = AppSettings::get(self::COLOR_GRAD_START);
+        if ($stored !== null && self::isValidColor($stored)) {
+            return strtolower(trim($stored));
+        }
+
+        return self::color();
+    }
+
+    /** Extremo final del degradado. Fila ausente (o inválida) = violeta default. */
+    public static function gradientEnd(): string
+    {
+        $stored = AppSettings::get(self::COLOR_GRAD_END);
+        if ($stored !== null && self::isValidColor($stored)) {
+            return strtolower(trim($stored));
+        }
+
+        return self::DEFAULT_GRAD_END;
+    }
+
+    /**
+     * Color de fondo de las pantallas de la instancia (login, registro…). Fila
+     * ausente = `null`, y el CSS de siempre (el degradado de `.auth-body`) se
+     * queda sin tocar.
+     */
+    public static function background(): ?string
+    {
+        $stored = AppSettings::get(self::COLOR_BG);
+        if ($stored !== null && self::isValidColor($stored)) {
+            return strtolower(trim($stored));
+        }
+
+        return null;
+    }
+
+    /**
+     * Color del texto sobre el degradado, o `null` para «automático».
+     *
+     * Con `null`, `themeCss()` calcula la tinta por luminancia del extremo
+     * inicial: es el comportamiento que la vista promete con el interruptor
+     * «Automático», y por eso un valor vacío NO cae a blanco a pelo.
+     */
+    public static function text(): ?string
+    {
+        $stored = AppSettings::get(self::COLOR_TEXT);
+        if ($stored !== null && self::isValidColor($stored)) {
+            return strtolower(trim($stored));
+        }
+
+        return null;
+    }
+
+    /**
      * ¿Hay un logo subido? No comprueba que el archivo siga en disco: eso lo
      * resuelve `logoUrl()` contra el filesystem real.
      */
@@ -112,22 +185,58 @@ final class Brand
     }
 
     /**
-     * CSS de instancia: el color primario. Se inyecta en un `<style>` de los
-     * layouts, ANTES del CSS por formulario (que puede sobrescribirlo en la
-     * página pública de ese formulario). Sin color guardado no emite nada, así
-     * que una instalación que no toca la marca no lleva un `<style>` de más.
+     * CSS de instancia: color primario, extremos del degradado, fondo y tinta
+     * sobre el degradado. Se inyecta en un `<style>` de los layouts, ANTES del
+     * CSS por formulario (que puede sobrescribirlo en la página pública de ese
+     * formulario).
+     *
+     * Sin NINGÚN color guardado no se emite nada, así que una instalación que no
+     * toca la marca no lleva un `<style>` de más. Cada variable se emite solo si
+     * su fila es válida; lo que falte cae al default del `:root` de `app.css`.
+     * `--vf-on-grad` en automático (sin fila o vacío) se calcula por luminancia
+     * del extremo inicial, para que el texto sobre el degradado nunca salga
+     * ilegible sin que nadie tenga que elegir.
      */
     public static function themeCss(): string
     {
-        // Sin color guardado (o inválido) no se emite nada: el `:root` de
-        // `app.css` ya trae el default, y una instalación que no toca la marca no
-        // lleva un `<style>` de más.
-        $stored = AppSettings::get(self::COLOR);
-        if ($stored === null || !self::isValidColor($stored)) {
+        $vars = [];
+
+        $color = AppSettings::get(self::COLOR);
+        if ($color !== null && self::isValidColor($color)) {
+            $vars[] = '--vf-primary:' . strtolower(trim($color));
+        }
+
+        $gradStart = AppSettings::get(self::COLOR_GRAD_START);
+        if ($gradStart !== null && self::isValidColor($gradStart)) {
+            $vars[] = '--vf-grad-start:' . strtolower(trim($gradStart));
+        }
+
+        $gradEnd = AppSettings::get(self::COLOR_GRAD_END);
+        if ($gradEnd !== null && self::isValidColor($gradEnd)) {
+            $vars[] = '--vf-grad-end:' . strtolower(trim($gradEnd));
+        }
+
+        $bg = AppSettings::get(self::COLOR_BG);
+        if ($bg !== null && self::isValidColor($bg)) {
+            $vars[] = '--vf-instance-bg:' . strtolower(trim($bg));
+        }
+
+        $text = AppSettings::get(self::COLOR_TEXT);
+        if ($text !== null && self::isValidColor($text)) {
+            $vars[] = '--vf-on-grad:' . strtolower(trim($text));
+        } elseif ($vars !== []) {
+            // Automático: tinta por luminancia del extremo inicial (o del
+            // primario si no se tocó el degradado). Solo cuando ya hay algún
+            // color guardado, para no emitir un bloque con una sola variable
+            // calculada sobre el default de siempre.
+            $vars[] = '--vf-on-grad:' . Contrast::inkFor(self::gradientStart());
+        }
+
+        if ($vars === []) {
             return '';
         }
 
-        return ':root{--vf-primary:' . strtolower(trim($stored)) . ';}';
+        return ':root{' . implode(';', $vars) . ';}';
     }
 
     /**
