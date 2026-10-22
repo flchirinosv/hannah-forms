@@ -438,6 +438,14 @@ use App\Core\View;
                                 <button type="submit" class="btn btn-outline-primary app-form-cta" <?= empty($mailConfigured) ? 'disabled' : '' ?>>
                                     <i class="fa-solid fa-paper-plane me-1"></i>Enviar prueba
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php // AG7 — Cupos del dashboard por usuario (crear / exportar), por cuenta. ?>
     <div class="row g-3 mt-1">
         <div class="col-12">
@@ -485,8 +493,6 @@ use App\Core\View;
                 </div>
             </div>
         </div>
-    </div>
-
     </div>
 
     <?php // AG6 — Límites de subida de archivos. El campo de formulario solo
@@ -685,6 +691,17 @@ use App\Core\View;
                                 </div>
                             </div>
                         </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar sesión
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php // AG9 — Red, proxy y cabeceras de seguridad. ?>
     <div class="row g-3 mt-1">
         <div class="col-12">
@@ -733,6 +750,18 @@ use App\Core\View;
                                 <div class="form-text">Vacío = sin cabecera global. El CSP del formulario puede tener su propia política.</div>
                             </div>
                         </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary app-btn-primary">
+                                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ajustes de red
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php // AG10 — Webhook a red local. ?>
     <div class="row g-3 mt-1">
         <div class="col-12">
