@@ -52,6 +52,15 @@
     }
 
     function copyLink(url) {
+        if (!url) {
+            return;
+        }
+        // Si la URL ya es absoluta (http/https), usarla tal cual; si es relativa,
+        // anteponer el origen para copiarla completa.
+        if (/^https?:\/\//i.test(url)) {
+            copyText(url, 'Enlace copiado');
+            return;
+        }
         copyText(window.location.origin + url, 'Enlace copiado');
     }
 

@@ -500,7 +500,10 @@
         btn.addEventListener('click', function () {
             var input = document.getElementById('shareUrl');
             if (!input || !navigator.clipboard) return;
-            navigator.clipboard.writeText(input.value).then(function () {
+            var text = input.value || '';
+            if (!text) return;
+            var toCopy = /^https?:\/\//i.test(text) ? text : window.location.origin + text;
+            navigator.clipboard.writeText(toCopy).then(function () {
                 btn.textContent = '¡Copiado!';
                 setTimeout(function () { btn.textContent = 'Copiar'; }, 1500);
             });
