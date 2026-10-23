@@ -96,4 +96,37 @@ class BrandMarkupTest
             'nada de handlers en línea: la CSP los prohíbe'
         );
     }
+
+    public function testElPanelAjustesNoCongelaElDefaultDeLosColores(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+
+        // Los campos de TEXTO se prellenan con el valor GUARDADO, no con el
+        // efectivo: si `gradient_start` mostrara el primario (su fallback) y el
+        // admin guardara sin tocarlo, la fila quedaría escrita y el degradado
+        // dejaría de seguir al primario cuando este cambie. El selector de color
+        // sí usa el efectivo, porque `type="color"` no admite vacío.
+        foreach ([
+            'instanceColorText'     => '$brandColorStored',
+            'instanceGradStartText' => '$brandGradStartStored',
+            'instanceGradEndText'   => '$brandGradEndStored',
+        ] as $id => $prefijo) {
+            $pos = strpos($settings, 'id="' . $id . '"');
+            assertTrue($pos !== false, 'falta el campo ' . $id);
+            $chunk = substr($settings, (int) $pos, 260);
+            assertTrue(
+                str_contains($chunk, $prefijo),
+                $id . ' tiene que prellenarse con ' . $prefijo . ' (el valor guardado), no con el efectivo'
+            );
+        }
+    }
+
+    public function testElPatronDeColorAceptaLaFormaCortaYLaLarga(): void
+    {
+        $settings = self::leer('views/admin/settings.php');
+        assertTrue(
+            substr_count($settings, 'pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?"') >= 4,
+            'el patrón del navegador tiene que aceptar #rgb y #rrggbb, o rechazaría un valor que el servidor sí admite'
+        );
+    }
 }

@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Core\AppSettings;
 use App\Core\Brand;
 use App\Core\Config;
+use App\Core\Contrast;
 
 /**
  * Marca de la instancia (AG2): nombre, color, logo y favicon.
@@ -125,15 +126,31 @@ class BrandTest
         assertTrue(str_contains(Brand::themeCss(), '--vf-on-grad:'), 'con un color guardado, la tinta se calcula');
     }
 
-    public function testUnColorDeTresDigitosNoVale(): void
+    public function testUnColorDeTresDigitosSeNormalizaASeis(): void
     {
-        // La forma corta `#abc` es válida en CSS pero se rechaza a propósito:
-        // normalizarla exigiría expandirla, y admitirla solo aquí dejaría el CSV
-        // de ajustes con dos formatos distintos para el mismo color.
+        // La forma corta `#abc` es válida en CSS y se acepta desde que la
+        // instancia y el tema del formulario comparten el predicado de
+        // `Contrast`. Lo importante es que se GUARDA/EMITE expandida a
+        // `#aabbcc`: así solo hay un formato almacenado y el CSV de ajustes no
+        // mezcla `#abc` con `#aabbcc` para el mismo color.
         AppSettings::setForTesting([Brand::COLOR => '#abc']);
 
-        assertSame(Brand::DEFAULT_COLOR, Brand::color(), 'solo #rrggbb');
-        assertSame('', Brand::themeCss(), 'y no emite CSS');
+        assertSame('#aabbcc', Brand::color(), 'la forma corta se expande');
+        assertSame(':root{--vf-primary:#aabbcc;--vf-on-grad:' . Contrast::inkFor('#aabbcc') . ';}', Brand::themeCss());
+    }
+
+    public function testElValorGuardadoNoEsElEfectivoCuandoNoHayFila(): void
+    {
+        // El formulario de /admin/settings se prellena con `storedColor()`: si
+        // usara el efectivo, `gradient_start` (que cae al primario) se escribiría
+        // al guardar sin tocarlo y el degradado dejaría de seguir al primario.
+        AppSettings::setForTesting([]);
+        assertNull(Brand::storedColor(Brand::COLOR_GRAD_START), 'sin fila no hay valor guardado');
+        assertSame(Brand::DEFAULT_COLOR, Brand::gradientStart(), 'pero el efectivo cae al primario');
+
+        AppSettings::setForTesting([Brand::COLOR_GRAD_START => '#abc']);
+        assertSame('#aabbcc', Brand::storedColor(Brand::COLOR_GRAD_START), 'la fila se normaliza al leer');
+        assertNull(Brand::storedColor('clave_que_no_es_color'), 'una clave que no es de color no se expone');
     }
 
     public function testSinLogoNoHayUrlNiHasLogo(): void

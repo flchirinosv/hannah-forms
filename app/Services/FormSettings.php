@@ -129,7 +129,20 @@ final class FormSettings
             foreach (['primary', 'background', 'gradient_start', 'gradient_end', 'text', 'font'] as $k) {
                 if (array_key_exists($k, $raw['theme'])) {
                     $v = $raw['theme'][$k];
-                    $out['theme'][$k] = is_string($v) ? self::short(trim($v), 40) : null;
+                    if (!is_string($v)) {
+                        $out['theme'][$k] = null;
+                        continue;
+                    }
+                    $v = trim($v);
+                    // Los cinco colores se guardan en la forma canónica
+                    // `#rrggbb` (el predicado y la expansión son los de
+                    // `Contrast`, los mismos que usa `Brand`). Un valor que no
+                    // sea hex se conserva tal cual para que `validate()` pueda
+                    // señalar CUÁL es el campo malo: si aquí se borrara a null,
+                    // la validación no vería nada y el error se perdería.
+                    $out['theme'][$k] = in_array($k, ['primary', 'background', 'gradient_start', 'gradient_end', 'text'], true)
+                        ? (Contrast::normalizeHex($v) ?? self::short($v, 40))
+                        : self::short($v, 40);
                 }
             }
             // La tipografía es una lista CERRADA (`fonts()`), no texto libre:
@@ -526,8 +539,8 @@ final class FormSettings
 
         foreach (['primary', 'background', 'gradient_start', 'gradient_end', 'text'] as $k) {
             $c = $n['theme'][$k];
-            if ($c !== null && $c !== '' && preg_match('/^#[0-9a-fA-F]{3,8}$/', $c) !== 1) {
-                return 'El color de tema "' . $k . '" no es un hex válido (#RRGGBB o #RRGGBBAA).';
+            if ($c !== null && $c !== '' && !Contrast::isHex($c)) {
+                return 'El color de tema "' . $k . '" no es un hex válido (#RRGGBB).';
             }
         }
 
@@ -588,23 +601,30 @@ final class FormSettings
     {
         $theme = $settings['theme'] ?? [];
         $vars = [];
-        if (isset($theme['primary']) && $theme['primary'] !== '') {
-            $vars[] = '--vf-primary:' . $theme['primary'];
+
+        // Cada color se REVALIDA al salir (no basta con `validate()`, que solo
+        // corre al guardar): esta función lee de `forms.settings`, así que puede
+        // recibir una fila escrita a mano o guardada cuando la validación era
+        // más laxa, y esto acaba dentro de un `<style>` del fill público. El
+        // predicado y la normalización son los de `Contrast` (los mismos que
+        // `Brand`), así que un valor de 8 dígitos o basura no se emite y cae al
+        // default, en vez de producir CSS inválido en silencio. Mismo criterio
+        // que la fuente: el catálogo/el hex es la puerta de salida.
+        $primary = self::colorHex($theme['primary'] ?? null);
+        if ($primary !== null) {
+            $vars[] = '--vf-primary:' . $primary;
         }
-        if (isset($theme['background']) && $theme['background'] !== '') {
-            $vars[] = '--vf-background:' . $theme['background'];
+        $background = self::colorHex($theme['background'] ?? null);
+        if ($background !== null) {
+            $vars[] = '--vf-background:' . $background;
         }
         // Extremos del degradado (`.vf-header::before`, `.vf-progress-bar`,
         // `.vf-submit` en la página pública). Cada extremo cae al anterior si no
         // se elige: `start` al color principal y `end` al violeta por defecto de
         // `app.css`, así que un tema que solo toca el primario sigue viéndose
         // coherente en vez de quedarse sin degradado.
-        $gradStart = isset($theme['gradient_start']) && $theme['gradient_start'] !== ''
-            ? (string) $theme['gradient_start']
-            : null;
-        $gradEnd = isset($theme['gradient_end']) && $theme['gradient_end'] !== ''
-            ? (string) $theme['gradient_end']
-            : null;
+        $gradStart = self::colorHex($theme['gradient_start'] ?? null);
+        $gradEnd = self::colorHex($theme['gradient_end'] ?? null);
         if ($gradStart !== null) {
             $vars[] = '--vf-grad-start:' . $gradStart;
         }
@@ -616,10 +636,10 @@ final class FormSettings
         // tampoco lo hay): blanco sobre fondos oscuros, tinta oscura sobre
         // claros. Eso evita el blanco-sobre-amarillo ilegible sin obligar a
         // nadie a saber de contraste.
-        $text = isset($theme['text']) && $theme['text'] !== '' ? (string) $theme['text'] : null;
+        $text = self::colorHex($theme['text'] ?? null);
         if ($text === null) {
-            $base = $gradStart ?? (isset($theme['primary']) && $theme['primary'] !== '' ? (string) $theme['primary'] : null);
-            if ($base !== null && preg_match('/^#[0-9a-fA-F]{3,8}$/', $base) === 1) {
+            $base = $gradStart ?? $primary;
+            if ($base !== null) {
                 $text = Contrast::inkFor($base);
             }
         }
@@ -642,6 +662,19 @@ final class FormSettings
             return '';
         }
         return $fonts . ':root{' . implode(';', array_map('htmlspecialchars', $vars)) . ';}';
+    }
+
+    /**
+     * Devuelve un color de tema en `#rrggbb`, o `null` si no es un hex válido.
+     *
+     * Es la puerta de SALIDA de `themeCss()`: el valor acaba en un `<style>` del
+     * fill público, así que una fila guardada a mano o con un formato que ya no
+     * se acepta no se emite (cae al default del `:root`). No lanza ni avisa,
+     * porque en el render no hay a quién avisar.
+     */
+    private static function colorHex(mixed $value): ?string
+    {
+        return is_string($value) ? Contrast::normalizeHex($value) : null;
     }
 
     private static function short(string $s, int $max): string

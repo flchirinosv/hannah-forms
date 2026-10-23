@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 128 archivos, 1369 métodos, ~7–9 min;
+- Suite completa: `php scripts/test.php` → 129 archivos, 1377 métodos, ~7–9 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -100,7 +100,7 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - Los asserts (`assertTrue`, `assertEquals`, `assertSame`, `assertNull`,
   `assertNotNull`, `assertArrayHasKey`, `assertFalse`, `fail`) los **define**
   `scripts/test.php`, así que un archivo de test **no corre directo**.
-- **74 de los 128 archivos tocan la BD real** (los que llaman
+- **74 de los 129 archivos tocan la BD real** (los que llaman
   `Database::getInstance`): necesitan `pdo_mysql` + `mbstring` y MariaDB con el
   esquema de `.env`. Crean datos temporales (`@test.local`, tablas `_db_test*`) y
   se auto-limpian.
@@ -1811,7 +1811,26 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
   nada fallara, ni en PHP ni en el navegador. Un valor que no se puede parsear cae a
   blanco (nunca deja el texto invisible). El mismo cálculo vive en JS (`textoAuto()`
   de `builder.js`) para la vista previa; **los dos son el mismo predicado y tienen
-  que moverse juntos**, o el constructor enseña un texto y el publicado otro.
+  que moverse juntos**, o el constructor enseña un texto y el publicado otro. La
+  tabla que los ata está duplicada en `tests/unit/ContrastParityTest.php` y
+  `tests/js/contrast.js`, y el arnés extrae `textoAuto()` del builder REAL (un
+  cambio de fórmula en un solo lado pone uno de los dos en rojo).
+- **`Contrast::isHex()`/`normalizeHex()` son el ÚNICO predicado de color de la
+  app**, y los usan las dos superficies (`Brand` para la instancia, `FormSettings`
+  para el tema del formulario) más `AdminController::updateBrand()`. El formato que
+  se acepta y se guarda es `#rrggbb`; `#rgb` también vale y **se expande** al
+  guardar (`#abc` → `#aabbcc`), así que solo hay un formato almacenado. Antes
+  `FormSettings` aceptaba `#RRGGBBAA` pero `Contrast` solo parseaba 3/6 dígitos: un
+  degradado de 8 pasaba la validación y la tinta automática caía a blanco en
+  silencio. Un valor no-hex **no** se borra en `normalize()` (se conserva para que
+  `validate()` diga cuál es el campo malo); quien lo descarta es la **salida**.
+- **`FormSettings::themeCss()` revalida cada color al SALIR, no solo `validate()`
+  al guardar**: lee de `forms.settings`, así que puede recibir una fila escrita a
+  mano o guardada con la validación vieja, y su salida va a un `<style>` público.
+  Es la misma puerta de salida que ya existía para la tipografía (catálogo
+  cerrado), ahora para el hex: un valor inválido cae al default del `:root` en vez
+  de emitir CSS roto sin ningún error. `Brand::themeCss()` hace lo mismo vía
+  `storedHex()`.
 - **El logo llevaba `flex: 0 0 auto` + `min-width`/`min-height` y `.app-logo-img`
   también**: la caja era un `inline-flex` sin base fija y en un padre flex apretado
   encogía **solo el ancho**, rompiendo el aspect ratio de la imagen

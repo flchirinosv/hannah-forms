@@ -59,7 +59,7 @@ class FormSettingsTest
         ];
         $n = FormSettings::normalize($raw);
         assertSame('#ff0000', $n['theme']['primary']);
-        assertSame('#fff', $n['theme']['background']);
+        assertSame('#ffffff', $n['theme']['background'], 'la forma corta se expande a #rrggbb');
         assertSame('Lora', $n['theme']['font']);
         assertTrue($n['quota']['enabled']);
         assertSame(25, $n['quota']['max']);
@@ -199,6 +199,30 @@ class FormSettingsTest
             'theme' => ['gradient_start' => 'azul'],
         ]));
         assertNotNull($err, 'un degradado no-hex se rechaza');
+    }
+
+    public function testThemeCssRevalidaElColorAlSalirDeUnaFilaGuardada(): void
+    {
+        // `validate()` solo corre al guardar; `themeCss()` lee de `forms.settings`
+        // y su salida va a un `<style>` público. Una fila escrita a mano (o
+        // guardada cuando la validación era más laxa, p. ej. `#RRGGBBAA`) no
+        // debe emitir CSS inválido en silencio: es la misma puerta de salida que
+        // ya existe para la tipografía, aplicada al color.
+        $css = FormSettings::themeCss([
+            'theme' => [
+                'primary'        => 'rojo',
+                'background'     => '#11223344',
+                'gradient_start' => '#zzz',
+                'gradient_end'   => '#abc',
+                'text'           => 'javascript:alert(1)',
+            ],
+        ]);
+
+        assertFalse(str_contains($css, 'rojo'), 'un nombre CSS no se emite');
+        assertFalse(str_contains($css, '#11223344'), 'un hex de 8 no se emite');
+        assertFalse(str_contains($css, '#zzz'), 'un hex imposible no se emite');
+        assertFalse(str_contains($css, 'javascript'), 'una inyección no se emite');
+        assertTrue(str_contains($css, '--vf-grad-end:#aabbcc'), 'la forma corta válida sí se emite, expandida');
     }
 
     public function testSaveSettingsRoundTrip(): void

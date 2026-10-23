@@ -63,7 +63,10 @@ final class Contrast
      */
     private static function rgb(string $value): ?array
     {
-        $hex = ltrim(trim($value), '#');
+        $hex = trim($value);
+        if (str_starts_with($hex, '#')) {
+            $hex = substr($hex, 1);
+        }
         if (preg_match('/^[0-9a-fA-F]{3}$/', $hex) === 1) {
             // Atajo de 3 dígitos: cada uno se duplica (f -> ff).
             $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
@@ -77,6 +80,42 @@ final class Contrast
             (int) hexdec(substr($hex, 2, 2)),
             (int) hexdec(substr($hex, 4, 2)),
         ];
+    }
+
+    /**
+     * ¿Es `$value` un color hex que esta clase (y el resto de la app) acepta?
+     *
+     * Es el predicado ÚNICO de color de la app: lo comparten `Brand`
+     * (instancia) y `FormSettings` (tema por formulario), para que las dos
+     * superficies acepten y emitan el mismo formato. Antes `FormSettings`
+     * aceptaba `#RRGGBBAA` (8 dígitos) pero `Contrast` solo parseaba 3 o 6, así
+     * que un degradado de 8 dígitos pasaba la validación y la tinta automática
+     * caía a blanco en silencio: dos formatos válidos donde solo uno funciona.
+     *
+     * Acepta `#rgb` y `#rrggbb` (con o sin `#`); cualquier otra longitud o
+     * carácter no vale. La forma corta se admite porque CSS la admite y quien la
+     * escribe espera que funcione; `normalizeHex()` la expande antes de guardar.
+     */
+    public static function isHex(string $value): bool
+    {
+        return self::rgb($value) !== null;
+    }
+
+    /**
+     * Normaliza un color hex a `#rrggbb` en minúsculas, o `null` si no es válido.
+     *
+     * Es la puerta que deja el valor en la forma canónica que se guarda y se
+     * emite: así `#ABC` y `#aabbcc` son lo mismo, y `#RRGGBBAA` (que ya no se
+     * acepta) no se cuela como un color de 8 dígitos que `inkFor()` no sabe leer.
+     */
+    public static function normalizeHex(string $value): ?string
+    {
+        $rgb = self::rgb($value);
+        if ($rgb === null) {
+            return null;
+        }
+
+        return sprintf('#%02x%02x%02x', $rgb[0], $rgb[1], $rgb[2]);
     }
 
     /** Luminancia relativa WCAG (0 = negro, 1 = blanco). */

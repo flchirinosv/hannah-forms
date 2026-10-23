@@ -111,3 +111,46 @@ quedaba a medio teñir. Y en pantalla estrecha el logo subido salía **aplanado*
   (precedencia, vaciar borra la fila, hex inválido rechaza el POST), y se
   actualizaron `BrandTest`, `SidebarLayoutTest` y `BuilderPreviewCssTest` que
   fijaban los hex viejos.
+
+### Cierre de huecos de AG12 (2026-10-22)
+
+La evaluación posterior encontró cuatro cabos sueltos, todos de la misma familia:
+la validación de color no estaba centralizada y la salida no era tan estricta como
+la entrada.
+
+- **Un único predicado de color**: `Contrast::isHex()`/`normalizeHex()`. Lo usan
+  `Brand`, `FormSettings` y `AdminController::updateBrand()`. Antes `FormSettings`
+  aceptaba `#RRGGBBAA` (regex `{3,8}`) y `Brand` solo `#RRGGBB`; peor: `Contrast`
+  solo parsea 3/6, así que un degradado de 8 dígitos pasaba la validación y la
+  tinta automática caía a **blanco en silencio**. Ahora el formato aceptado y
+  almacenado es `#rrggbb`, con `#rgb` expandido al guardar. Un valor no-hex se
+  conserva en `normalize()` (para que `validate()` diga cuál es el campo malo) y
+  lo descarta la salida.
+- **`FormSettings::themeCss()` revalida al salir**: ya lo hacía con la tipografía
+  (catálogo cerrado) pero no con los colores, que se emitían con solo
+  `htmlspecialchars`. Una fila escrita a mano producía CSS inválido en el fill
+  público sin error. Ahora cada color pasa por `Contrast::normalizeHex()` antes de
+  emitirse, igual que `Brand::themeCss()` vía `storedHex()`.
+- **Paridad PHP↔JS atada por test**: la tabla de colores de
+  `tests/js/contrast.js` es la misma que la de `tests/unit/ContrastParityTest.php`;
+  el arnés extrae `textoAuto()` del builder REAL. Cambiar la fórmula en un solo
+  lado pone uno de los dos en rojo. Los dos parsers se alinearon (un solo `#`
+  inicial, `trim()`).
+- **Tabla de fases del plan al día**: AG10/AG11/AG12 seguían como `PENDIENTE` en
+  la tabla superior de `plan-ag5-ajustes-instancia-2026-10-21.md` mientras la de
+  estado las daba por COMPLETADAS.
+- **El formulario de `/admin/settings` ya no congela el default**: los campos de
+  TEXTO de color se prellenaban con el valor EFECTIVO. Como `gradient_start` cae
+  al primario cuando no hay fila, guardar cualquier otro ajuste sin tocar el
+  degradado escribía el primario de ese momento en la fila y el degradado dejaba
+  de seguirlo en los cambios posteriores. `Brand::storedColor()` devuelve lo
+  guardado (o `null`, que el campo pinta vacío) y `AdminController` pasa las tres
+  claves `*Stored`; los selectores `type="color"` siguen con el efectivo porque
+  no admiten vacío.
+- **Tests nuevos**: `ContrastParityTest` (2), `ContrastTest` amplía
+  `isHex`/`normalizeHex` (2), `FormSettingsTest` añade la revalidación de salida
+  (1), `BrandTest` cubre `storedColor()` (1) y `BrandMarkupTest` ata el
+  prellenado guardado y el patrón `#rgb`/`#rrggbb` (2). `BrandTest::testUnColorDeTresDigitosNoVale`
+  pasa a `testUnColorDeTresDigitosSeNormalizaASeis` (la forma corta ya vale y se
+  expande); `testNormalizeAplanaYDescartaClavesExtras` espera `#ffffff` en vez de
+  `#fff`.

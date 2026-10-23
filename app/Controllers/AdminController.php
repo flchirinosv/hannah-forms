@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\AppSettings;
 use App\Core\Auth;
 use App\Core\Config;
+use App\Core\Contrast;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\InstanceSettings;
@@ -111,8 +112,11 @@ class AdminController
             'timezoneOptions'     => \DateTimeZone::listIdentifiers(),
             'brandName'           => \App\Core\Brand::name(),
             'brandColor'          => \App\Core\Brand::color(),
+            'brandColorStored'    => \App\Core\Brand::storedColor(\App\Core\Brand::COLOR),
             'brandGradStart'      => \App\Core\Brand::gradientStart(),
+            'brandGradStartStored' => \App\Core\Brand::storedColor(\App\Core\Brand::COLOR_GRAD_START),
             'brandGradEnd'        => \App\Core\Brand::gradientEnd(),
+            'brandGradEndStored'  => \App\Core\Brand::storedColor(\App\Core\Brand::COLOR_GRAD_END),
             'brandBg'             => \App\Core\Brand::background(),
             'brandText'           => \App\Core\Brand::text(),
             'brandHasLogo'        => \App\Core\Brand::hasLogo(),
@@ -303,9 +307,10 @@ class AdminController
         }
 
         // El color se valida ANTES de guardar: `Brand::themeCss()` lo inyecta en
-        // un `<style>` sin escapar, así que un valor que no sea `#rrggbb` no debe
-        // llegar nunca a la fila (aunque `color()` también lo filtre al salir).
-        if ($color !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $color) !== 1) {
+        // un `<style>` sin escapar, así que un valor que no sea un hex válido no
+        // debe llegar nunca a la fila. El predicado y la normalización son los
+        // de `Contrast`, los mismos que usan `Brand` y `FormSettings`.
+        if ($color !== '' && !Contrast::isHex($color)) {
             Session::flash('error', 'El color primario debe ser un valor hex como #5b5bd6.');
             Response::redirect('/admin/settings');
             return;
@@ -323,16 +328,18 @@ class AdminController
         $values = [];
         foreach ($colores as $key => $label) {
             $v = trim((string) Request::post($key, ''));
-            if ($v !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $v) !== 1) {
+            if ($v !== '' && !Contrast::isHex($v)) {
                 Session::flash('error', $label . ' debe ser un valor hex como #5b5bd6, o vacío para el automático.');
                 Response::redirect('/admin/settings');
                 return;
             }
-            $values[$key] = $v === '' ? null : strtolower($v);
+            $values[$key] = $v === '' ? null : Contrast::normalizeHex($v);
         }
 
+        $primary = $color === '' ? null : Contrast::normalizeHex($color);
+
         $ok = AppSettings::set(\App\Core\Brand::NAME, $name === '' ? null : $name);
-        $ok = AppSettings::set(\App\Core\Brand::COLOR, $color === '' ? null : strtolower($color)) && $ok;
+        $ok = AppSettings::set(\App\Core\Brand::COLOR, $primary) && $ok;
         $ok = AppSettings::set(\App\Core\Brand::COLOR_GRAD_START, $values['instance_color_grad_start']) && $ok;
         $ok = AppSettings::set(\App\Core\Brand::COLOR_GRAD_END, $values['instance_color_grad_end']) && $ok;
         $ok = AppSettings::set(\App\Core\Brand::COLOR_BG, $values['instance_color_bg']) && $ok;

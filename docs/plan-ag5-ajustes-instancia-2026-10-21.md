@@ -47,9 +47,9 @@ snapshot `ControllerActionsTest::APP_SETTINGS_KEYS`.
 | AG7 | **Cupos del dashboard por UI** | `DASH_CREATE_PER_HOUR`, `DASH_EXPORT_PER_HOUR` | 0.5 d | **COMPLETADA** |
 | AG8 | **Hardening de sesión / HTTPS por UI** | `SESSION_NAME`, `SESSION_LIFETIME`, `SESSION_SECURE`, `SESSION_HTTPONLY`, `SESSION_SAMESITE` | 1 d | **COMPLETADA** |
 | AG9 | **Red y redirecciones por UI** | `TRUST_PROXY`, `APP_REDIRECT_ALLOWLIST`, `FRAME_OPTIONS` + `CSP` | 1.5 d | **COMPLETADA** |
-| AG10 | **Webhook red local por UI** | `WEBHOOK_ALLOW_PRIVATE_HOSTS` | 0.5 d | PENDIENTE |
-| AG11 | **Instalador guiado web** (el ejecutable) | — | 2 d | PENDIENTE |
-| AG12 | **Personalización ampliada de color** (instancia + formulario) y logo estirado | — | 0.5 d | PENDIENTE |
+| AG10 | **Webhook red local por UI** | `WEBHOOK_ALLOW_PRIVATE_HOSTS` | 0.5 d | **COMPLETADA** |
+| AG11 | **Instalador guiado web** (el ejecutable) | — | 2 d | **COMPLETADA** |
+| AG12 | **Personalización ampliada de color** (instancia + formulario) y logo estirado | — | 0.5 d | **COMPLETADA** |
 
 Orden elegido por **riesgo/valor decreciente**: AG5 es el único que hoy **rompe el
 fill con 403**; AG11 cierra la promesa de «vendible y autogestionable».

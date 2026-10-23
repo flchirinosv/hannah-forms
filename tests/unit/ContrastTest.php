@@ -57,4 +57,29 @@ class ContrastTest
         assertTrue(Contrast::prefersLightInk('#000000'), 'negro pide tinta clara');
         assertTrue(!Contrast::prefersLightInk('#ffffff'), 'blanco no pide tinta clara');
     }
+
+    public function testElPredicadoDeHexEsElQueUsaTodaLaApp(): void
+    {
+        // `isHex()` es el predicado ÚNICO de color: lo comparten `Brand`,
+        // `FormSettings` y `AdminController::updateBrand()`. Si `Contrast`
+        // parsea 3/6 dígitos, el predicado no puede aceptar otra longitud (antes
+        // FormSettings admitía 8 y la tinta automática caía a blanco sin aviso).
+        assertTrue(Contrast::isHex('#fff'));
+        assertTrue(Contrast::isHex('#FFFFFF'));
+        assertTrue(Contrast::isHex('aabbcc'), 'sin almohadilla también');
+        assertTrue(!Contrast::isHex('#11223344'), '8 dígitos ya no se aceptan');
+        assertTrue(!Contrast::isHex('#12345'), 'cinco dígitos no valen');
+        assertTrue(!Contrast::isHex('rojo'));
+        assertTrue(!Contrast::isHex(''));
+    }
+
+    public function testNormalizeHexExpandeYMinusculiza(): void
+    {
+        assertSame('#aabbcc', Contrast::normalizeHex('#ABC'));
+        assertSame('#112233', Contrast::normalizeHex('#112233'));
+        assertSame('#112233', Contrast::normalizeHex(' 112233 '), 'recorta espacios');
+        assertNull(Contrast::normalizeHex('#11223344'));
+        assertNull(Contrast::normalizeHex('rojo'));
+        assertNull(Contrast::normalizeHex(''));
+    }
 }

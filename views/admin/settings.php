@@ -219,8 +219,8 @@ use App\Core\View;
                                            value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
                                            aria-label="Selector de color" data-vf-color-for="instanceColorText">
                                     <input type="text" class="form-control" id="instanceColorText" name="instance_color"
-                                           value="<?= View::escape($brandColor ?? Brand::DEFAULT_COLOR) ?>"
-                                           pattern="#[0-9a-fA-F]{6}" maxlength="7">
+                                           value="<?= View::escape($brandColorStored ?? '') ?>"
+                                           pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" maxlength="7">
                                 </div>
                             </div>
                             <div class="col-lg-3">
@@ -242,8 +242,8 @@ use App\Core\View;
                                            value="<?= View::escape($brandGradStart ?? $brandColor ?? Brand::DEFAULT_COLOR) ?>"
                                            aria-label="Selector de color" data-vf-color-for="instanceGradStartText">
                                     <input type="text" class="form-control" id="instanceGradStartText" name="instance_color_grad_start"
-                                           value="<?= View::escape($brandGradStart ?? $brandColor ?? Brand::DEFAULT_COLOR) ?>"
-                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="—">
+                                           value="<?= View::escape($brandGradStartStored ?? '') ?>"
+                                           pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" maxlength="7" placeholder="—">
                                 </div>
                             </div>
                             <div class="col-lg-3 col-md-4">
@@ -253,8 +253,8 @@ use App\Core\View;
                                            value="<?= View::escape($brandGradEnd ?? Brand::DEFAULT_GRAD_END) ?>"
                                            aria-label="Selector de color" data-vf-color-for="instanceGradEndText">
                                     <input type="text" class="form-control" id="instanceGradEndText" name="instance_color_grad_end"
-                                           value="<?= View::escape($brandGradEnd ?? Brand::DEFAULT_GRAD_END) ?>"
-                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="—">
+                                           value="<?= View::escape($brandGradEndStored ?? '') ?>"
+                                           pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" maxlength="7" placeholder="—">
                                 </div>
                             </div>
                             <div class="col-lg-3 col-md-4">
@@ -265,7 +265,7 @@ use App\Core\View;
                                            aria-label="Selector de color" data-vf-color-for="instanceBgText">
                                     <input type="text" class="form-control" id="instanceBgText" name="instance_color_bg"
                                            value="<?= View::escape($brandBg ?? '') ?>"
-                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="Automático">
+                                           pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" maxlength="7" placeholder="Automático">
                                 </div>
                             </div>
                             <div class="col-lg-3 col-md-4">
@@ -276,12 +276,13 @@ use App\Core\View;
                                            aria-label="Selector de color" data-vf-color-for="instanceTextColorText">
                                     <input type="text" class="form-control" id="instanceTextColorText" name="instance_color_text"
                                            value="<?= View::escape($brandText ?? '') ?>"
-                                           pattern="#[0-9a-fA-F]{6}" maxlength="7" placeholder="Automático">
+                                           pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" maxlength="7" placeholder="Automático">
                                 </div>
                             </div>
                         </div>
                         <div class="form-text mt-2">
-                            Formato <code>#rrggbb</code>. El <strong>fondo de acceso</strong> y el <strong>texto sobre
+                            Formato <code>#rrggbb</code> (o <code>#rgb</code>, que se guarda como
+                            <code>#rrggbb</code>). El <strong>fondo de acceso</strong> y el <strong>texto sobre
                             el degradado</strong> en blanco se calculan solos: el fondo cae al degradado de siempre y el
                             texto elige blanco u oscuro según el contraste del inicio del degradado.
                         </div>

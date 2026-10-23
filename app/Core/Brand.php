@@ -89,12 +89,7 @@ final class Brand
      */
     public static function color(): string
     {
-        $stored = AppSettings::get(self::COLOR);
-        if ($stored !== null && self::isValidColor($stored)) {
-            return strtolower(trim($stored));
-        }
-
-        return self::DEFAULT_COLOR;
+        return self::storedHex(self::COLOR) ?? self::DEFAULT_COLOR;
     }
 
     /**
@@ -104,23 +99,13 @@ final class Brand
      */
     public static function gradientStart(): string
     {
-        $stored = AppSettings::get(self::COLOR_GRAD_START);
-        if ($stored !== null && self::isValidColor($stored)) {
-            return strtolower(trim($stored));
-        }
-
-        return self::color();
+        return self::storedHex(self::COLOR_GRAD_START) ?? self::color();
     }
 
     /** Extremo final del degradado. Fila ausente (o inválida) = violeta default. */
     public static function gradientEnd(): string
     {
-        $stored = AppSettings::get(self::COLOR_GRAD_END);
-        if ($stored !== null && self::isValidColor($stored)) {
-            return strtolower(trim($stored));
-        }
-
-        return self::DEFAULT_GRAD_END;
+        return self::storedHex(self::COLOR_GRAD_END) ?? self::DEFAULT_GRAD_END;
     }
 
     /**
@@ -130,12 +115,7 @@ final class Brand
      */
     public static function background(): ?string
     {
-        $stored = AppSettings::get(self::COLOR_BG);
-        if ($stored !== null && self::isValidColor($stored)) {
-            return strtolower(trim($stored));
-        }
-
-        return null;
+        return self::storedHex(self::COLOR_BG);
     }
 
     /**
@@ -147,12 +127,48 @@ final class Brand
      */
     public static function text(): ?string
     {
-        $stored = AppSettings::get(self::COLOR_TEXT);
-        if ($stored !== null && self::isValidColor($stored)) {
-            return strtolower(trim($stored));
+        return self::storedHex(self::COLOR_TEXT);
+    }
+
+    /**
+     * Valor GUARDADO de una clave de color, sin fallback: `null` si no hay fila
+     * (o si la fila no es un hex válido).
+     *
+     * Sirve para prellenar `/admin/settings` sin CONGELAR el default. Si el
+     * campo de texto se pinta con el valor EFECTIVO —`gradient_start` cae al
+     * primario cuando no hay fila— y el admin guarda sin tocarlo, la fila queda
+     * escrita con el primario de ese momento y el degradado deja de seguirlo
+     * cuando el primario cambia después. El selector de color sí usa el valor
+     * efectivo, porque `type="color"` no admite vacío; el texto vacío es el que
+     * dice «no hay fila».
+     */
+    public static function storedColor(string $key): ?string
+    {
+        $keys = [self::COLOR, self::COLOR_GRAD_START, self::COLOR_GRAD_END, self::COLOR_BG, self::COLOR_TEXT];
+        if (!in_array($key, $keys, true)) {
+            return null;
         }
 
-        return null;
+        return self::storedHex($key);
+    }
+
+    /**
+     * Lee una clave de color de `app_settings` y la devuelve en `#rrggbb`, o
+     * `null` si no hay fila o el valor no es un hex válido.
+     *
+     * El predicado y la normalización son los de `Contrast`, que es el ÚNICO
+     * sitio donde vive la lógica de color: así la instancia y el tema del
+     * formulario aceptan el mismo formato y `Contrast::inkFor()` (que solo
+     * entiende 3 o 6 dígitos) nunca recibe algo que no sepa leer.
+     */
+    private static function storedHex(string $key): ?string
+    {
+        $stored = AppSettings::get($key);
+        if ($stored === null) {
+            return null;
+        }
+
+        return Contrast::normalizeHex($stored);
     }
 
     /**
@@ -201,29 +217,29 @@ final class Brand
     {
         $vars = [];
 
-        $color = AppSettings::get(self::COLOR);
-        if ($color !== null && self::isValidColor($color)) {
-            $vars[] = '--vf-primary:' . strtolower(trim($color));
+        $color = self::storedHex(self::COLOR);
+        if ($color !== null) {
+            $vars[] = '--vf-primary:' . $color;
         }
 
-        $gradStart = AppSettings::get(self::COLOR_GRAD_START);
-        if ($gradStart !== null && self::isValidColor($gradStart)) {
-            $vars[] = '--vf-grad-start:' . strtolower(trim($gradStart));
+        $gradStart = self::storedHex(self::COLOR_GRAD_START);
+        if ($gradStart !== null) {
+            $vars[] = '--vf-grad-start:' . $gradStart;
         }
 
-        $gradEnd = AppSettings::get(self::COLOR_GRAD_END);
-        if ($gradEnd !== null && self::isValidColor($gradEnd)) {
-            $vars[] = '--vf-grad-end:' . strtolower(trim($gradEnd));
+        $gradEnd = self::storedHex(self::COLOR_GRAD_END);
+        if ($gradEnd !== null) {
+            $vars[] = '--vf-grad-end:' . $gradEnd;
         }
 
-        $bg = AppSettings::get(self::COLOR_BG);
-        if ($bg !== null && self::isValidColor($bg)) {
-            $vars[] = '--vf-instance-bg:' . strtolower(trim($bg));
+        $bg = self::storedHex(self::COLOR_BG);
+        if ($bg !== null) {
+            $vars[] = '--vf-instance-bg:' . $bg;
         }
 
-        $text = AppSettings::get(self::COLOR_TEXT);
-        if ($text !== null && self::isValidColor($text)) {
-            $vars[] = '--vf-on-grad:' . strtolower(trim($text));
+        $text = self::storedHex(self::COLOR_TEXT);
+        if ($text !== null) {
+            $vars[] = '--vf-on-grad:' . $text;
         } elseif ($vars !== []) {
             // Automático: tinta por luminancia del extremo inicial (o del
             // primario si no se tocó el degradado). Solo cuando ya hay algún
@@ -431,11 +447,6 @@ final class Brand
     private static function dirAbsoluto(): string
     {
         return (string) Config::get('paths.storage', dirname(__DIR__, 2) . '/storage') . '/' . self::DIR;
-    }
-
-    private static function isValidColor(string $value): bool
-    {
-        return preg_match('/^#[0-9a-fA-F]{6}$/', trim($value)) === 1;
     }
 
     private static function detectMime(string $tmp): ?string

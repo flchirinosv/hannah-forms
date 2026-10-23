@@ -2451,7 +2451,7 @@
         // formulario publicado cuando el texto va en automático, o se elige un
         // amarillo y el constructor enseña blanco mientras el fill enseña negro.
         function textoAuto(hex) {
-            const h = String(hex || '').replace('#', '');
+            const h = String(hex || '').trim().replace(/^#/, '');
             const n = h.length === 3 ? h[0] + h[0] + h[1] + h[1] + h[2] + h[2] : h;
             if (!/^[0-9a-fA-F]{6}$/.test(n)) return '#ffffff';
             const ch = (i) => {
