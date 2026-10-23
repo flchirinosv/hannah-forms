@@ -291,7 +291,12 @@ class Mailer
 
     private static function expect(string $reply, array $codes, string $what): void
     {
-        if (strlen($reply) < 3 || !in_array(substr($reply, 0, 3), $codes, true)) {
+        // El código se compara como ENTERO: `substr()` devuelve string y las
+        // listas de llamadas son `[220]`, `[250]`… Comparar `"220"` contra
+        // `220` con `in_array(..., true)` daba false SIEMPRE, así que la
+        // primera respuesta de cualquier SMTP real se rechazaba como
+        // «inesperada» (el transporte de los tests nunca pasa por aquí).
+        if (strlen($reply) < 3 || !in_array((int) substr($reply, 0, 3), $codes, true)) {
             throw new \RuntimeException("SMTP: {$what} inesperado ('{$reply}').");
         }
     }

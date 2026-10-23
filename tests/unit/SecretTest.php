@@ -79,7 +79,10 @@ class SecretTest
 
     public function testSinLlaveElCifradoEstaInactivo(): void
     {
-        Secret::setKeyForTesting(null);
+        // `null` vuelve a leer APP_KEY del .env; para probar la AUSENCIA hay
+        // que forzar la cadena vacía. Con una instalación que ya generó su
+        // clave (lo normal al guardar la contraseña SMTP) el test fallaba.
+        Secret::setKeyForTesting('');
 
         assertSame(false, Secret::isAvailable(), 'sin APP_KEY no hay cifrado');
         assertNull(Secret::encrypt('lo-que-sea'), 'y cifrar devuelve null, no un texto en claro');

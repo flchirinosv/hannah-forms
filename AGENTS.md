@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 129 archivos, 1377 métodos, ~7–9 min;
+- Suite completa: `php scripts/test.php` → 129 archivos, 1378 métodos, ~7–9 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -514,6 +514,13 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **`Mailer::isConfigured()` va ANTES de `Mailer::send()`**, porque `send()` lanza con
   `MAIL_HOST` vacío y eso se leería como «el servidor de correo falló» cuando lo que
   falta es configuración.
+- **El transporte de test NO ejecuta `smtpSession()`**: `Mailer::setTransport()` se
+  salta la conversación real, así que un fallo en `expect()` (comparar `"220"` con
+  `[220]` en estricto, string contra int) pasó la suite entera en verde mientras
+  TODO envío real moría en el saludo. Los códigos se comparan como entero y lo ata
+  `MailerTest::testElCodigoDeRespuestaSmtpSeComparaComoEntero`, que invoca el
+  predicado por reflexión; el transporte de test sigue siendo lo correcto para el
+  sobre y la config.
 - **La ruta NO lleva `post-max`**: el `post-max` del fill existe porque un cuerpo que
   pasa de `post_max_size` vacía `$_FILES` y sin el guard el error es de CSRF. Aquí no
   hay archivo, así que el middleware solo estorbaría (y obligaría a subir el límite).
@@ -1950,6 +1957,11 @@ auditable. En sentido contrario, el **preview en vivo (`previewBody()`)
 `Response::setRecordHalt/lastHalt`, `RedirectGuard::setAllowlistForTesting`,
 `PublicUrl::setBaseForTesting`, `Auth::forgetCache`. `Config` no tiene setter:
 para lo suyo, o `null` = se lee de la config, o un seam propio.
+**`Secret::setKeyForTesting(null)` NO significa «sin clave»**: vuelve a leer
+`APP_KEY` del `.env` (una instalación normal ya la tiene). Para probar la
+AUSENCIA hay que pasar `''`, que es lo único que anula el override; un test que
+use `null` esperando que no haya cifrado pasa solo mientras la instancia no haya
+generado su clave.
 `Auth::assumeLoggedIn()` es además el **único** modo de falsar una sesión en un
 test: fija `auth_at` a la vez que `user_id`, y omitirlo hace que `Auth::user()`
 cierre la sesión y todos los `Auth::can()` de ese test den false (verde, pero

@@ -113,6 +113,38 @@ class MailerTest
         assertFalse(str_contains($env['headers'], "\r\nTo: evil@x.com"));
     }
 
+    public function testElCodigoDeRespuestaSmtpSeComparaComoEntero(): void
+    {
+        // Regresión: `substr()` devuelve string y las listas de llamadas son
+        // `[220]`, `[250]`… Comparar `"220"` contra `220` con
+        // `in_array(..., true)` daba false SIEMPRE, así que el saludo real
+        // («220 in.mailjet.com ESMTP Mailjet») se rechazaba como inesperado y
+        // ningún envío por SMTP llegaba a funcionar. El transporte de prueba no
+        // pasa por `smtpSession`, así que se comprueba aquí el predicado.
+        $expect = new \ReflectionMethod(Mailer::class, 'expect');
+        $expect->setAccessible(true);
+
+        try {
+            $expect->invoke(null, '220 in.mailjet.com ESMTP Mailjet', [220], 'saludo');
+        } catch (\RuntimeException $e) {
+            fail('el 220 del saludo tiene que aceptarse: ' . $e->getMessage());
+        }
+
+        try {
+            $expect->invoke(null, '535 autenticación rechazada', [220], 'saludo');
+            fail('un código fuera de la lista debe lanzar');
+        } catch (\RuntimeException $e) {
+            assertTrue(str_contains($e->getMessage(), 'saludo inesperado'));
+        }
+
+        try {
+            $expect->invoke(null, 'EOF', [220], 'saludo');
+            fail('EOF no es una respuesta válida');
+        } catch (\RuntimeException $e) {
+            assertTrue(str_contains($e->getMessage(), 'saludo inesperado'));
+        }
+    }
+
     public function testSendSinDestinatariosValidosLanza(): void
     {
         try {

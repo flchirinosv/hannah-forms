@@ -160,7 +160,8 @@ class TurnstileSettingsTest
 
     public function testSinAppKeyLaSecretNoSeGuardaEnClaro(): void
     {
-        Secret::setKeyForTesting(null);
+        // `null` = vuelve a leer APP_KEY; `''` = fuerza su ausencia.
+        Secret::setKeyForTesting('');
         $r = TurnstileSettings::save(['site_key' => 'site-1', 'secret' => 'mi-secret']);
 
         assertFalse($r['ok'], 'sin APP_KEY no se guarda');

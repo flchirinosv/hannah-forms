@@ -197,7 +197,9 @@ class MailSettingsTest
 
     public function testSinAppKeyNoSeGuardaLaContrasenaYLoDice(): void
     {
-        Secret::setKeyForTesting(null);
+        // `null` = vuelve a leer APP_KEY; `''` = fuerza su ausencia. El test
+        // tiene que simular la instalación SIN clave, no la del .env actual.
+        Secret::setKeyForTesting('');
 
         $r = MailSettings::save([
             'host' => 'h', 'port' => '587', 'encryption' => 'tls',

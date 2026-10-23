@@ -154,3 +154,20 @@ la entrada.
   pasa a `testUnColorDeTresDigitosSeNormalizaASeis` (la forma corta ya vale y se
   expande); `testNormalizeAplanaYDescartaClavesExtras` espera `#ffffff` en vez de
   `#fff`.
+
+### El SMTP real rechazaba el saludo 220 (2026-10-23)
+
+El botón «Enviar prueba» de `/admin/settings` fallaba con `SMTP: saludo
+inesperado ('220 in.mailjet.com ESMTP Mailjet')`: el servidor respondía bien, pero
+`Mailer::expect()` comparaba `substr($reply, 0, 3)` (string `"220"`) contra las
+listas de códigos (`[220]`, enteros) con `in_array(..., true)`. La comparación
+estricta string/int da `false` SIEMPRE, así que la primera respuesta de cualquier
+SMTP real se rechazaba. El transporte de prueba (`Mailer::setTransport()`) no pasa
+por `smtpSession()`, por eso los tests no lo veían y el fallo solo aparecía con un
+servidor de verdad.
+
+Se corrige comparando el código como entero (`(int) substr(...)`) y se añade
+`MailerTest::testElCodigoDeRespuestaSmtpSeComparaComoEntero`, que invoca `expect()`
+por reflexión con el saludo real de Mailjet y con un código/EOF inválidos. Mutar la
+comparación de vuelta a string pone el test en rojo. Verificado con un envío real:
+el servidor acepta y finaliza el mensaje.
