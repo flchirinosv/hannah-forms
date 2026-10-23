@@ -166,7 +166,7 @@ class AccessCardDesignTest
     public function testVaciarLaListaQuedaFueraDelColapsable(): void
     {
         self::modo(FormSettings::ACCESS_ROSTER);
-        FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        FormParticipant::create((int) self::$formId, 'V-1', 'Nombre', '', '', []);
         $html = self::tarjeta();
 
         $inicio = strpos($html, 'id="rosterImportCard"');
@@ -189,7 +189,7 @@ class AccessCardDesignTest
     public function testElColapsableDeImportarSeAbreCuandoHayInforme(): void
     {
         self::modo(FormSettings::ACCESS_ROSTER);
-        FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        FormParticipant::create((int) self::$formId, 'V-1', 'Nombre', '', '', []);
         $form = Form::find((int) self::$formId);
 
         $sinInforme = RosterPanel::panel(RosterPanel::data((int) self::$formId), $form, null);

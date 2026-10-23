@@ -106,7 +106,9 @@ $router->get('/forms/{id}/participants/template', [ParticipantController::class,
 $router->post('/forms/{id}/participants', [ParticipantController::class, 'store'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/update', [ParticipantController::class, 'update'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/delete', [ParticipantController::class, 'destroy'], ['auth', 'post-max', 'csrf']);
-$router->post('/forms/{id}/participants/import', [ParticipantController::class, 'import'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/import', [ParticipantController::class, 'preview'], ['auth', 'post-max', 'csrf']);
+$router->post('/forms/{id}/participants/import/confirm', [ParticipantController::class, 'confirm'], ['auth', 'csrf']);
+$router->post('/forms/{id}/participants/import/cancel', [ParticipantController::class, 'cancel'], ['auth', 'csrf']);
 $router->post('/forms/{id}/participants/truncate', [ParticipantController::class, 'truncate'], ['auth', 'post-max', 'csrf']);
 $router->post('/forms/{id}/participants/attribute', [ParticipantController::class, 'destroyAttribute'], ['auth', 'post-max', 'csrf']);
 // Fase 10 — el correo de invitación del listado. Sin `post-max` (no hay archivo) y

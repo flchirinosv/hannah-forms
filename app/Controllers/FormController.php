@@ -591,9 +591,8 @@ class FormController
     private static function rotuloIdentificador(string $identificador): string
     {
         return match ($identificador) {
-            'indicador' => 'indicador',
-            'correo'    => 'correo',
-            default     => 'cédula',
+            'correo' => 'correo',
+            default  => 'cédula',
         };
     }
 

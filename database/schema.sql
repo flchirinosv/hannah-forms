@@ -160,10 +160,10 @@ CREATE TABLE IF NOT EXISTS form_access_tokens (
 CREATE TABLE IF NOT EXISTS form_participants (
     id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     form_id          INT UNSIGNED NOT NULL,
-    cedula           VARCHAR(190) NOT NULL DEFAULT '' COMMENT 'Uno de los tres candidatos a identificador',
+    cedula           VARCHAR(190) NOT NULL DEFAULT '' COMMENT 'Cédula',
     nombre           VARCHAR(190) NOT NULL DEFAULT '',
-    indicador        VARCHAR(190) NOT NULL DEFAULT '',
     correo           VARCHAR(190) NOT NULL DEFAULT '' COMMENT 'Normalizado a minúsculas por el modelo',
+    telefono         VARCHAR(190) NOT NULL DEFAULT '',
     identifier_value VARCHAR(190) NOT NULL COMMENT 'Denormalizado: la puerta busca siempre por aquí',
     code             CHAR(16) NOT NULL COMMENT 'Credencial personal; NO es la fila ni el identificador',
     responded_at     DATETIME DEFAULT NULL COMMENT 'Su único escritor es el mismo POST que crea la respuesta',
@@ -178,10 +178,6 @@ CREATE TABLE IF NOT EXISTS form_participants (
     CONSTRAINT fk_form_participant_form FOREIGN KEY (form_id) REFERENCES forms(id) ON DELETE CASCADE
 ) ENGINE=InnoDB COMMENT='Listado de participantes con acceso al formulario';
 
--- El catálogo de atributos es la FRONTERA DE SEGURIDAD: el SQL solo recibe un
--- `key_name` que salió de aquí, y una clave inventada no encuentra nada.
--- `label` es lo que escribió el dueño en la cabecera del xlsx y es único por
--- formulario porque es lo que ve en la interfaz.
 CREATE TABLE IF NOT EXISTS form_participant_fields (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     form_id    INT UNSIGNED NOT NULL,

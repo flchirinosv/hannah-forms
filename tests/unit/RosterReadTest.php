@@ -62,21 +62,21 @@ class RosterReadTest
         // El contrato que importa: exportar la lista para corregirla y volver a
         // subirla tiene que devolver LOS MISMOS datos, no una versión degradada.
         $participantes = [
-            ['id' => 1, 'cedula' => 'V-1', 'nombre' => 'Ana Pérez', 'correo' => '', 'indicador' => 'C-1', 'data' => []],
-            ['id' => 2, 'cedula' => 'V-2', 'nombre' => 'Luis & María <R>', 'correo' => 'luis@x.com', 'indicador' => '', 'data' => ['sede' => 'Caracas']],
+            ['id' => 1, 'cedula' => 'V-1', 'nombre' => 'Ana Pérez', 'correo' => '', 'telefono' => '0414', 'data' => []],
+            ['id' => 2, 'cedula' => 'V-2', 'nombre' => 'Luis & María <R>', 'correo' => 'luis@x.com', 'telefono' => '', 'data' => ['sede' => 'Caracas']],
         ];
         $atributos = [['key_name' => 'sede', 'label' => 'Sede']];
 
-        $ruta = self::guardar(RosterTemplate::exportar($participantes, $atributos, [1 => 'a1b2c3', 2 => '']));
+        $ruta = self::guardar(RosterTemplate::exportar($participantes, $atributos, [1 => 'a1b2c3', 2 => ''], 'cedula'));
         $leido = RosterTemplate::leer($ruta);
 
         assertEquals(
-            ['cedula', 'nombre', 'correo', 'indicador', 'Sede', 'codigo'],
+            ['Cédula', 'Nombre completo', 'Correo', 'Teléfono', 'Sede', 'Código'],
             $leido['cabeceras'],
             'las cabeceras del archivo exportado deben releerse tal cual'
         );
         assertEquals(2, count($leido['filas']));
-        assertEquals(['V-1', 'Ana Pérez', '', 'C-1', '', 'a1b2c3'], $leido['filas'][0]);
+        assertEquals(['V-1', 'Ana Pérez', '', '0414', '', 'a1b2c3'], $leido['filas'][0]);
         // El `&` y el `<` es lo que un nombre real trae, y un lector que no
         // deshace las entidades lo leería como algo que no es el texto guardado.
         assertEquals('Luis & María <R>', $leido['filas'][1][1]);

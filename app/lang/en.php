@@ -104,23 +104,18 @@ return [
     // credential of the email and the QR), which is why the other three mention
     // it and the code's own string does not.
     'access.intro_roster_cedula'    => 'This form is only for the people on the list. Enter the ID number you are listed with; if you have your invitation code, that works too.',
-    'access.intro_roster_indicador' => 'This form is only for the people on the list. Enter the centre code you are listed with; if you have your invitation code, that works too.',
     'access.intro_roster_correo'    => 'This form is only for the people on the list. Enter the email address you are listed with; if you have your invitation code, that works too.',
     'access.intro_roster_codigo'    => 'This form is only for the people on the list. Enter your personal code.',
     'access.label_cedula'           => 'Your ID number',
-    'access.label_indicador'        => 'Your centre code',
     'access.label_correo'           => 'Your email',
     'access.label_codigo'           => 'Your personal code',
     'access.placeholder_cedula'     => 'E.g. V-12345678',
-    'access.placeholder_indicador'  => 'E.g. 12345678',
     'access.placeholder_correo'     => 'name@example.com',
     'access.placeholder_codigo'     => 'The 16 characters of your code',
     'access.note_roster_cedula'     => 'Your ID number and your invitation code are personal: do not share them.',
-    'access.note_roster_indicador'  => 'Your centre code and your invitation code are personal: do not share them.',
     'access.note_roster_correo'     => 'Your email and your invitation code are personal: do not share them.',
     'access.note_roster_codigo'     => 'The code is personal: do not share it.',
     'access.invalid_cedula'         => 'That ID number is not on the list.',
-    'access.invalid_indicador'      => 'That centre code is not on the list.',
     'access.invalid_correo'         => 'That email address is not on the list.',
     'access.invalid_codigo'         => 'That code is not valid.',
     'access.code_blocked'     => 'Too many attempts. Wait a few minutes and try again.',
@@ -134,7 +129,6 @@ return [
 
     // F5 — Roster (see `roster.*` in es.php).
     'roster.id_cedula'      => 'ID number',
-    'roster.id_indicador'   => 'staff number',
     'roster.id_correo'      => 'email address',
     'roster.created'        => 'The participant was added to the list.',
     'roster.saved'          => 'The participant changes were saved.',
@@ -297,3 +291,13 @@ return [
     'err.not_embeddable' => 'This form cannot be embedded.',
     'err.turnstile' => 'We could not verify you are not a robot. Tick the box and try again.',
 ];
+
+    // Roster import mapping
+    'roster.import_map_ready' => 'File loaded ({n} rows). Choose which column is each field.',
+    'roster.import_pending_expired' => 'Pending import expired. Upload the file again.',
+    'roster.import_cancelled' => 'Import cancelled.',
+    'roster.err_mapeo_invalido' => 'Column mapping is not valid.',
+    'roster.err_mapeo_duplicado' => 'You cannot use the same column for two fields.',
+    'roster.err_mapeo_sin_identificador' => 'You must select the ID column (Cédula).',
+    'roster.err_atributo_largo' => 'Some attribute label is too long to save.',
+    'roster.template_hint' => 'Template with Cédula | Nombre completo | Correo | Teléfono',

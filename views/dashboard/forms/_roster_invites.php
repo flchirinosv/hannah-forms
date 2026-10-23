@@ -17,7 +17,7 @@ use App\Services\RosterPanel;
  * no hay a quién escribir o si el botón se ha roto. Es el mismo criterio que
  * `pageHeaderHint()` en el builder.
  *
- * - Con `cedula` o `indicador` no hay botón: el enlace va en la columna «Código» y
+ * - Con `cedula` no hay botón: el enlace va en la columna «Código» y
  *   lo reparte quien gestiona la lista. Aquí se dice eso, que es la información
  *   que le falta al dueño para entender por qué no aparece.
  * - Sin SMTP (`MAIL_HOST` vacío) se dice, y se recuerda que los códigos siguen
@@ -60,7 +60,7 @@ $haySmtp = Mailer::isConfigured();
         <p class="small text-muted mb-0">
             <i class="fa-solid fa-envelope me-1"></i>
             No hay invitaciones por correo: este formulario se identifica por
-            <?= $identificador === 'indicador' ? 'indicador' : 'cédula' ?>.
+            cédula.
             El enlace de cada persona está en la columna «Código» de la lista.
         </p>
     <?php } else { ?>

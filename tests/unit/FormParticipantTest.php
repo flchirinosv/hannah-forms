@@ -94,8 +94,8 @@ class FormParticipantTest
         // El correo es la clave de la puerta: `Ana@X.com` y `ana@x.com` tienen que
         // ser la misma fila. La cédula NO se baja, porque `V-1` y `v-1` pueden ser
         // dos personas y la cédula es lo que el dueño escribió.
-        assertSame('ana@x.com', FormParticipant::identifierValue('correo', '', '', '  Ana@X.com '));
-        assertSame('V-1', FormParticipant::identifierValue('cedula', ' V-1 ', '', ''));
+        assertSame('ana@x.com', FormParticipant::identifierValue('correo', '', '  Ana@X.com '));
+        assertSame('V-1', FormParticipant::identifierValue('cedula', ' V-1 ', ''));
     }
 
     public function testLosEspaciosInternosSeColapsanParaQueLaFilaSeEncuentreAlBuscar(): void
@@ -145,7 +145,7 @@ class FormParticipantTest
         // aquí encubriría el error dentro del importador, que deduplicaría y
         // buscaría por el dato equivocado. Lo que sí dice es con qué columna se
         // lee el archivo.
-        assertSame('', FormParticipant::identifierValue('codigo', 'V-1', 'IND-2', 'ana@test.local'));
+        assertSame('', FormParticipant::identifierValue('codigo', 'V-1', 'ana@test.local'));
         assertSame('cedula', FormParticipant::identificadorDeArchivo('codigo'));
         assertSame('cedula', FormParticipant::identificadorDeArchivo('cedula'));
         assertSame('correo', FormParticipant::identificadorDeArchivo('correo'));
@@ -157,7 +157,7 @@ class FormParticipantTest
         // Sin cédula pero con indicador: cambiar a `cedula` dejaría la lista entera
         // sin forma de identificar a nadie, y es exactamente lo que hay que decir
         // antes de guardar el ajuste en vez de aceptarlo en silencio.
-        $vacio = FormParticipant::create((int) self::$formId, 'indicador', ['indicador' => 'IND-1', 'nombre' => 'Ana']);
+        $vacio = FormParticipant::create((int) self::$formId, 'IND-1', 'Ana', '', '');
         assertTrue($vacio['ok']);
 
         // El segundo tiene las dos: cédula e indicador, y ningún correo. Así cada
@@ -181,7 +181,7 @@ class FormParticipantTest
 
     public function testElCodigoSeTecleaSinLosCaracteresQueSeConfunden(): void
     {
-        $r = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        $r = FormParticipant::create((int) self::$formId, 'V-1', '', '', '');
         assertTrue($r['ok']);
         $fila = FormParticipant::find($r['id']);
         assertNotNull($fila);
@@ -202,8 +202,8 @@ class FormParticipantTest
         // el `UNIQUE` es GLOBAL a propósito: dos participantes de formularios
         // distintos no pueden compartir credencial.
         $otro = Form::create((int) self::$ownerId, 'Otro listado');
-        $a = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
-        $b = FormParticipant::create((int) $otro, 'cedula', ['cedula' => 'V-1']);
+        $a = FormParticipant::create((int) self::$formId, 'V-1', '', '', '');
+        $b = FormParticipant::create((int) $otro, 'V-1', '', '', '');
         assertTrue($a['ok']);
         assertTrue($b['ok']);
         assertNull(FormParticipant::findByCode('este-no-existe'), 'un código que no existe no devuelve fila');
@@ -230,7 +230,7 @@ class FormParticipantTest
         // La mitad de la autorización va en el WHERE, no en un filtro de PHP: igual
         // que en `FormAccess::findValidToken()`.
         $otro = Form::create((int) self::$ownerId, 'Otro listado');
-        $r = FormParticipant::create((int) $otro, 'cedula', ['cedula' => 'V-1']);
+        $r = FormParticipant::create((int) $otro, 'V-1', '', '', '');
         $code = (string) FormParticipant::find($r['id'])['code'];
 
         assertNotNull(FormParticipant::findByCode($code), 'el código existe en la tabla');
@@ -508,7 +508,7 @@ class FormParticipantTest
         // `ON DELETE SET NULL`, no `CASCADE`. Quitar a alguien de la lista es dejar
         // de invitarlo; con `CASCADE` su respuesta desaparecería y no habría forma de
         // recuperarla.
-        $r = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        $r = FormParticipant::create((int) self::$formId, 'V-1', '', '', '');
         $field = Field::create((int) self::$formId, 'text', 'Nombre', '', '', true);
         $sub = Submission::create((int) self::$formId);
         Answer::create((int) $sub, (int) $field, 'Ana');
@@ -526,7 +526,7 @@ class FormParticipantTest
 
     public function testVaciarLaListaTampocoBorraRespuestas(): void
     {
-        $r = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1']);
+        $r = FormParticipant::create((int) self::$formId, 'V-1', '', '', '');
         $field = Field::create((int) self::$formId, 'text', 'Nombre', '', '', true);
         $sub = Submission::create((int) self::$formId);
         Answer::create((int) $sub, (int) $field, 'Ana');

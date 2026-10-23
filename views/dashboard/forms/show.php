@@ -219,7 +219,6 @@ $helpButton = static fn(string $html, string $label = 'Qué hace este ajuste'): 
                                 <select class="form-select form-select-sm" id="access_identifier" name="access_identifier"<?= (($settings['access']['mode'] ?? 'public') === 'roster') ? '' : ' disabled' ?>>
                                     <?php $identificadorActual = (string) ($settings['access']['identifier'] ?? 'cedula'); ?>
                                     <option value="cedula"<?= $identificadorActual === 'cedula' ? ' selected' : '' ?>>Cédula</option>
-                                    <option value="indicador"<?= $identificadorActual === 'indicador' ? ' selected' : '' ?>>Indicador del centro</option>
                                     <option value="correo"<?= $identificadorActual === 'correo' ? ' selected' : '' ?>>Correo electrónico</option>
                                     <option value="codigo"<?= $identificadorActual === 'codigo' ? ' selected' : '' ?>>Código</option>
                                 </select>

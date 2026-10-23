@@ -74,10 +74,10 @@ class RosterTemplateTest
     {
         $celdas = self::celdas(self::parte(RosterTemplate::plantilla(), 'xl/worksheets/sheet1.xml'));
 
-        assertEquals('cedula', $celdas['A1']);
-        assertEquals('nombre', $celdas['B1']);
-        assertEquals('correo', $celdas['C1']);
-        assertEquals('indicador', $celdas['D1']);
+        assertEquals('Cédula', $celdas['A1']);
+        assertEquals('Nombre completo', $celdas['B1']);
+        assertEquals('Correo', $celdas['C1']);
+        assertEquals('Teléfono', $celdas['D1']);
     }
 
     public function testLaPlantillaNoTraeFilasDeEjemplo(): void

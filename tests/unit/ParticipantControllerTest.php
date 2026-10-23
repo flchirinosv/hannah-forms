@@ -231,7 +231,6 @@ class ParticipantControllerTest
         $out = self::llamar('store', (int) self::$formId, [
             'cedula'    => 'V-1',
             'nombre'    => 'Ana',
-            'indicador' => 'IND-1',
             'correo'    => 'ana@test.local',
         ]);
 

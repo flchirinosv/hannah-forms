@@ -76,8 +76,7 @@ $modeChip = match ($accessMode) {
           // decir solo «con el código que le tocó» en un formulario cuyo identificador
           // es la cédula escribe una puerta que no es la que se le pide al visitante. ?>
     <?php $entradaRoster = match (\App\Models\FormParticipant::identifierFor((int) $form['id'])) {
-        'indicador' => 'con el indicador con el que figura en ella o con el código que le tocó',
-        'correo'    => 'con el correo con el que figura en ella o con el código que le tocó',
+                'correo'    => 'con el correo con el que figura en ella o con el código que le tocó',
         'codigo'    => 'con el código que le tocó',
         default     => 'con la cédula con la que figura en ella o con el código que le tocó',
     }; ?>

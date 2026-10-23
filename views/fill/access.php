@@ -3,7 +3,7 @@
  * F4 — Identificación previa de un formulario restringido.
  *
  * Datos: $form, $locale, $csrf, $mode ('email'|'allowlist'|'roster'), $identifier
- * (el `access.identifier` de la lista: 'cedula'|'indicador'|'correo'|'codigo'),
+ * (el `access.identifier` de la lista: 'cedula'|'correo'|'codigo'),
  * $embed, $sent (bool), $sentMessage (string), $errorMessage (?string),
  * $oldEmail (?string).
  *
@@ -78,8 +78,7 @@ $t = static fn (string $key, array $params = []): string => I18n::t($key, $local
                     <i class="fa-solid <?= View::escape($isRoster
                         ? match ($identificador) {
                             'codigo'    => 'fa-ticket',
-                            'indicador' => 'fa-building',
-                            'correo'    => 'fa-envelope',
+                                                        'correo'    => 'fa-envelope',
                             default     => 'fa-id-card',
                         }
                         : 'fa-envelope') ?>"></i>

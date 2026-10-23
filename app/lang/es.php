@@ -103,23 +103,18 @@ return [
     // credencial del correo y del QR), y por eso los textos de los otros tres lo
     // mencionan y el del propio código no.
     'access.intro_roster_cedula'    => 'Este formulario es solo para las personas de la lista. Escribe la cédula con la que figuras en ella; si tienes el código de tu invitación, también sirve.',
-    'access.intro_roster_indicador' => 'Este formulario es solo para las personas de la lista. Escribe el indicador con el que figuras en ella; si tienes el código de tu invitación, también sirve.',
     'access.intro_roster_correo'    => 'Este formulario es solo para las personas de la lista. Escribe el correo con el que figuras en ella; si tienes el código de tu invitación, también sirve.',
     'access.intro_roster_codigo'    => 'Este formulario es solo para las personas de la lista. Escribe el código personal que te tocó.',
     'access.label_cedula'           => 'Tu cédula',
-    'access.label_indicador'        => 'Tu indicador',
     'access.label_correo'           => 'Tu correo',
     'access.label_codigo'           => 'Tu código personal',
     'access.placeholder_cedula'     => 'Ej.: V-12345678',
-    'access.placeholder_indicador'  => 'Ej.: 12345678',
     'access.placeholder_correo'     => 'nombre@ejemplo.com',
     'access.placeholder_codigo'     => 'Los 16 caracteres de tu código',
     'access.note_roster_cedula'     => 'La cédula y el código de invitación son personales: no los compartas.',
-    'access.note_roster_indicador'  => 'El indicador y el código de invitación son personales: no los compartas.',
     'access.note_roster_correo'     => 'El correo y el código de invitación son personales: no los compartas.',
     'access.note_roster_codigo'     => 'El código es personal: no lo compartas.',
     'access.invalid_cedula'         => 'Esa cédula no está en la lista.',
-    'access.invalid_indicador'      => 'Ese indicador no está en la lista.',
     'access.invalid_correo'         => 'Ese correo no está en la lista.',
     'access.invalid_codigo'         => 'Ese código no es válido.',
     'access.code_blocked'     => 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
@@ -135,7 +130,6 @@ return [
     // mensajes los ve quien gestiona el formulario y el idioma del formulario es el
     // que se habla; además `fill.js` leerá los nombres de campo).
     'roster.id_cedula'      => 'cédula',
-    'roster.id_indicador'   => 'indicador',
     'roster.id_correo'      => 'correo electrónico',
     'roster.created'        => 'Se añadió el participante a la lista.',
     'roster.saved'          => 'Se guardaron los cambios del participante.',
@@ -298,3 +292,13 @@ return [
     'err.not_embeddable' => 'Este formulario no permite ser embebido.',
     'err.turnstile' => 'No pudimos verificar que no eres un robot. Marca la casilla e inténtalo de nuevo.',
 ];
+
+    // Roster import mapping
+    'roster.import_map_ready' => 'Archivo cargado ({n} filas). Elige qué columna es cada dato.',
+    'roster.import_pending_expired' => 'La importación pendiente ha caducado. Vuelve a subir el archivo.',
+    'roster.import_cancelled' => 'Importación cancelada.',
+    'roster.err_mapeo_invalido' => 'El mapeo de columnas no es válido.',
+    'roster.err_mapeo_duplicado' => 'No puedes usar la misma columna para dos campos.',
+    'roster.err_mapeo_sin_identificador' => 'Debes seleccionar la columna de Cédula.',
+    'roster.err_atributo_largo' => 'Alguna etiqueta de atributo es demasiado larga para guardarse.',
+    'roster.template_hint' => 'Plantilla con Cédula | Nombre completo | Correo | Teléfono',
