@@ -144,4 +144,14 @@ final class I18n
         $cat = is_file($file) ? (include $file) : [];
         self::$catalog[$locale] = is_array($cat) ? $cat : [];
     }
+
+    /**
+     * Normaliza un código de idioma al valor soportado o vacío.
+     */
+    public static function normalizeLocale(string $code): string
+    {
+        $code = strtolower(trim($code));
+        return in_array($code, self::supportedLocales(), true) ? $code : '';
+    }
 }
+
