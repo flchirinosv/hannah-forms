@@ -416,17 +416,48 @@ final class FormParticipant
         return ['ok' => true, 'id' => (int) $id];
     }
 
-    public static function update(int $id, int $formId, string $cedula, string $nombre, string $correo, string $telefono, array $data = [], string $identificador = 'cedula'): array
+    public static function update($id, $formId = null, $cedula = '', $nombre = '', $correo = '', $telefono = '', $data = [], string $identificador = 'cedula'): array
     {
-        $fila = self::find($id);
-        if ($fila === null || (int) $fila['form_id'] !== $formId) {
+        // Compatibilidad API antigua: update($id, $formId, $identificador, $datos)
+        if (is_string($formId) && in_array($formId, ['cedula', 'correo', 'codigo'], true) && is_array($cedula)) {
+            $identificadorOld = $formId;
+            $datos = $cedula;
+            $fid = (int) $nombre;
+            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? $datos['indicador'] ?? '');
+            $nombre = (string) ($datos['nombre'] ?? '');
+            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+            $telefono = (string) ($datos['telefono'] ?? '');
+            if (is_array($correo)) { $data = $correo; $correo = ''; }
+            if (is_array($telefono)) { $data = $telefono; $telefono = ''; }
+            if (is_array($data) && isset($data['cedula'])) { $cedula = (string) $data['cedula']; }
+            if (is_array($data) && isset($data['nombre'])) { $nombre = (string) $data['nombre']; }
+            if (is_array($data) && isset($data['correo'])) { $correo = (string) $data['correo']; }
+            if (is_array($data) && isset($data['telefono'])) { $telefono = (string) $data['telefono']; }
+            $formId = $fid;
+            $identificador = $identificadorOld;
+        }
+        if (is_array($nombre)) {
+            $datos = $nombre;
+            $nombre = (string) ($datos['nombre'] ?? '');
+            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+            $telefono = (string) ($datos['telefono'] ?? '');
+            if (is_array($correo)) { $data = $correo; $correo = ''; }
+            if (is_array($telefono)) { $data = $telefono; $telefono = ''; }
+            if (isset($datos['cedula'])) { $cedula = (string) $datos['cedula']; }
+        }
+        if (is_array($correo)) { $data = $correo; $correo = ''; }
+        if (is_array($telefono)) { $data = $telefono; $telefono = ''; }
+        if (!is_array($data)) { $data = []; }
+
+        $fila = self::find((int) $id);
+        if ($fila === null || (int) $fila['form_id'] !== (int) $formId) {
             return ['ok' => false, 'motivo' => 'no_encontrado'];
         }
 
-        $cedula = self::normalizar($cedula);
-        $nombre = self::normalizar($nombre);
-        $correo = self::normalizarCorreo($correo);
-        $telefono = self::normalizar($telefono);
+        $cedula = self::normalizar((string) $cedula);
+        $nombre = self::normalizar((string) $nombre);
+        $correo = self::normalizarCorreo((string) $correo);
+        $telefono = self::normalizar((string) $telefono);
 
         if (!isset(self::COLUMNA_IDENTIFICADOR[$identificador])) {
             $identificador = 'cedula';
@@ -438,8 +469,8 @@ final class FormParticipant
             return ['ok' => false, 'motivo' => $motivo];
         }
 
-        $existe = self::findByIdentifierValue($formId, $identificador, $identificadorValor);
-        if ($existe !== null && (int) $existe['id'] !== $id) {
+        $existe = self::findByIdentifierValue((int) $formId, $identificador, $identificadorValor);
+        if ($existe !== null && (int) $existe['id'] !== (int) $id) {
             return ['ok' => false, 'motivo' => self::MOTIVO_DUPLICADO, 'id' => (int) $existe['id']];
         }
 
@@ -452,17 +483,17 @@ final class FormParticipant
                 'correo' => $correo,
                 'telefono' => $telefono,
                 'identifier_value' => $identificadorValor,
-                'id' => $id,
-                'form_id' => $formId,
+                'id' => (int) $id,
+                'form_id' => (int) $formId,
             ]
         );
 
         if ($cambioCorreo) {
-            self::db()->execute('UPDATE form_participants SET invited_at = NULL WHERE id = :id', ['id' => $id]);
+            self::db()->execute('UPDATE form_participants SET invited_at = NULL WHERE id = :id', ['id' => (int) $id]);
         }
 
         if (is_array($data)) {
-            self::guardarAtributos($formId, (int) $id, $data);
+            self::guardarAtributos((int) $formId, (int) $id, $data);
         }
 
         return ['ok' => true];
