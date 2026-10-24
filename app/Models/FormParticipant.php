@@ -298,12 +298,81 @@ final class FormParticipant
         self::db()->execute('UPDATE form_participants SET responded_at = NOW() WHERE id = :id AND responded_at IS NULL', ['id' => $id]);
     }
 
-    public static function create(int $formId, string $cedula, string $nombre, string $correo, string $telefono, array $data = [], string $identificador = 'cedula'): array
+    public static function create(int $formId, $cedula = '', $nombre = '', $correo = '', $telefono = '', $data = [], string $identificador = 'cedula'): array
     {
-        $cedula = self::normalizar($cedula);
-        $nombre = self::normalizar($nombre);
-        $correo = self::normalizarCorreo($correo);
-        $telefono = self::normalizar($telefono);
+        // Compatibilidad con API antigua: create($formId, $identificador, $datos)
+        if (is_string($cedula) && in_array($cedula, ['cedula', 'correo', 'codigo'], true) && is_array($nombre)) {
+            $identificadorOld = $cedula;
+            $datos = $nombre;
+            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? $datos['indicador'] ?? '');
+            $nombre = (string) ($datos['nombre'] ?? '');
+            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+            $telefono = (string) ($datos['telefono'] ?? '');
+            $data = is_array($correo) ? $correo : (is_array($telefono) ? $telefono : (is_array($data) && !is_string($data) ? $data : []));
+            // si $correo era array (3 args antiguos con array como 3er)
+            if (is_array($correo) && isset($correo['cedula']) || (is_array($correo) && isset($correo['nombre']) && !isset($correo[0]))) {
+                // ya manejado arriba
+            }
+            // ajustar
+            if (is_array($correo) && !isset($correo['cedula']) && !isset($correo['nombre']) && !isset($correo['correo'])) {
+                // no es datos
+            }
+            // mejor: si $correo es array
+            if (is_array($correo)) {
+                $data = $correo;
+                $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+            } elseif (is_array($telefono)) {
+                $data = $telefono;
+                $telefono = '';
+            }
+            if (is_array($data) && isset($data['cedula'])) {
+                $cedula = (string) $data['cedula'];
+            }
+            if (is_array($data) && isset($data['nombre'])) {
+                $nombre = (string) $data['nombre'];
+            }
+            if (is_array($data) && isset($data['correo'])) {
+                $correo = (string) $data['correo'];
+            }
+            if (is_array($data) && isset($data['telefono'])) {
+                $telefono = (string) $data['telefono'];
+            }
+            $identificador = $identificadorOld;
+        }
+
+        if (is_array($nombre)) {
+            $datos = $nombre;
+            $nombre = (string) ($datos['nombre'] ?? '');
+            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+            $telefono = (string) ($datos['telefono'] ?? '');
+            if (is_array($correo)) {
+                $data = $correo;
+                $correo = '';
+            } elseif (is_array($telefono)) {
+                $data = $telefono;
+                $telefono = '';
+            }
+            if (isset($datos['cedula'])) { $cedula = (string) $datos['cedula']; }
+            if (isset($datos['correo'])) { $correo = (string) $datos['correo']; }
+            if (isset($datos['telefono'])) { $telefono = (string) $datos['telefono']; }
+        }
+
+        if (is_array($correo)) {
+            $data = $correo;
+            $correo = '';
+        }
+        if (is_array($telefono)) {
+            $data = $telefono;
+            $telefono = '';
+        }
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $cedula = self::normalizar((string) $cedula);
+        $nombre = self::normalizar((string) $nombre);
+        $correo = self::normalizarCorreo((string) $correo);
+        $telefono = self::normalizar((string) $telefono);
 
         if (!isset(self::COLUMNA_IDENTIFICADOR[$identificador])) {
             $identificador = 'cedula';
@@ -326,7 +395,7 @@ final class FormParticipant
         }
 
         $db = self::db();
-        $id = $db->insert(
+        $db->execute(
             'INSERT INTO form_participants (form_id, cedula, nombre, correo, telefono, identifier_value, code) VALUES (:form_id, :cedula, :nombre, :correo, :telefono, :identifier_value, :code)',
             [
                 'form_id' => $formId,
@@ -338,6 +407,7 @@ final class FormParticipant
                 'code' => $code,
             ]
         );
+        $id = $db->lastInsertId();
 
         if ($id > 0 && is_array($data) && $data !== []) {
             self::guardarAtributos($formId, (int) $id, $data);
