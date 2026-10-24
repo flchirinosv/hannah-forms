@@ -291,8 +291,6 @@ return [
     'err.upload_too_big_global' => 'El envío supera el tamaño máximo permitido por el servidor ({max} MB). Intenta con archivos más pequeños.',
     'err.not_embeddable' => 'Este formulario no permite ser embebido.',
     'err.turnstile' => 'No pudimos verificar que no eres un robot. Marca la casilla e inténtalo de nuevo.',
-];
-
     // Roster import mapping
     'roster.import_map_ready' => 'Archivo cargado ({n} filas). Elige qué columna es cada dato.',
     'roster.import_pending_expired' => 'La importación pendiente ha caducado. Vuelve a subir el archivo.',
@@ -302,3 +300,4 @@ return [
     'roster.err_mapeo_sin_identificador' => 'Debes seleccionar la columna de Cédula.',
     'roster.err_atributo_largo' => 'Alguna etiqueta de atributo es demasiado larga para guardarse.',
     'roster.template_hint' => 'Plantilla con Cédula | Nombre completo | Correo | Teléfono',
+];

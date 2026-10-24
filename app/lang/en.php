@@ -290,8 +290,6 @@ return [
     'err.upload_too_big_global' => 'The submission exceeds the maximum size allowed by the server ({max} MB). Try smaller files.',
     'err.not_embeddable' => 'This form cannot be embedded.',
     'err.turnstile' => 'We could not verify you are not a robot. Tick the box and try again.',
-];
-
     // Roster import mapping
     'roster.import_map_ready' => 'File loaded ({n} rows). Choose which column is each field.',
     'roster.import_pending_expired' => 'Pending import expired. Upload the file again.',
@@ -301,3 +299,4 @@ return [
     'roster.err_mapeo_sin_identificador' => 'You must select the ID column (Cédula).',
     'roster.err_atributo_largo' => 'Some attribute label is too long to save.',
     'roster.template_hint' => 'Template with Cédula | Nombre completo | Correo | Teléfono',
+];
