@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Config;
-use App\Services\I18n;
+use App\Core\I18n;
 
 final class FormSettings
 {
