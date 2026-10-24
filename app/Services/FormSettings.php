@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\Config;
 use App\Core\I18n;
+use App\Core\Contrast;
 
 final class FormSettings
 {
