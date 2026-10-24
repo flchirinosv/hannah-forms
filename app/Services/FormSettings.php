@@ -146,18 +146,18 @@ final class FormSettings
         }
 
         $primary = Contrast::normalizeHex((string) ($settings['theme']['primary'] ?? ''));
-        if ($primary !== '') {
+        if ($primary !== null && $primary !== '') {
             $add('--vf-primary', $primary);
             $add('--vf-primary-contrast', Contrast::inkFor($primary));
         }
 
         $start = Contrast::normalizeHex((string) ($settings['theme']['gradient_start'] ?? ''));
         $end = Contrast::normalizeHex((string) ($settings['theme']['gradient_end'] ?? ''));
-        if ($start !== '' && $end !== '') {
+        if ($start !== null && $start !== '' && $end !== null && $end !== '') {
             $add('--vf-grad-start', $start);
             $add('--vf-grad-end', $end);
             $ink = Contrast::normalizeHex((string) ($settings['theme']['text'] ?? ''));
-            if ($ink === '') {
+            if ($ink === null || $ink === '') {
                 $ink = Contrast::inkFor($start);
             }
             $add('--vf-grad-text', $ink);
