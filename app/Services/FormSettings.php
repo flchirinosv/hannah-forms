@@ -153,7 +153,8 @@ final class FormSettings
 
         $start = Contrast::normalizeHex((string) ($settings['theme']['gradient_start'] ?? ''));
         $end = Contrast::normalizeHex((string) ($settings['theme']['gradient_end'] ?? ''));
-        if ($start !== null && $start !== '' && $end !== null && $end !== '') {
+        $hasGradient = ($start !== null && $start !== '' && $end !== null && $end !== '');
+        if ($hasGradient) {
             $add('--vf-grad-start', $start);
             $add('--vf-grad-end', $end);
             $ink = Contrast::normalizeHex((string) ($settings['theme']['text'] ?? ''));
@@ -164,14 +165,18 @@ final class FormSettings
         }
 
         $bg = Contrast::normalizeHex((string) ($settings['theme']['background'] ?? ''));
-        if ($bg !== '') {
+        if ($bg !== null && $bg !== '') {
             $add('--vf-background', $bg);
         }
 
         $root .= '}';
         $css[] = $root;
 
-        $css[] = 'body.fill-body{background:radial-gradient(1200px 600px at 50% 0, var(--vf-grad-start, #0f7bff), var(--vf-grad-end, #1a1f36)) fixed;background-size:cover;color:var(--vf-grad-text, #fff);}';
+        if ($hasGradient) {
+            $css[] = 'body.fill-body{background:radial-gradient(1200px 600px at 50% 0, var(--vf-grad-start, #0f7bff), var(--vf-grad-end, #1a1f36)) fixed;background-size:cover;color:var(--vf-grad-text, #fff);}';
+        } else {
+            $css[] = 'body.fill-body{background:#f7f8fa;color:#1f2937;}';
+        }
         $css[] = '.fill-card{background:var(--fill-card-bg, #fff);color:var(--fill-card-text, #1f2937);}';
 
         return implode("\n", $css);
