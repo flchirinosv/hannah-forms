@@ -21,6 +21,206 @@ final class FormSettings
 
     public const RESTRICTED_MODES = [self::ACCESS_EMAIL, self::ACCESS_ALLOWLIST, self::ACCESS_ROSTER];
 
+    public const DASHBOARD_BLOCKS = ['access','schedule','quota','notify','anti_bot','locale','review'];
+
+    public const BUILDER_BLOCKS = ['theme','redirects'];
+
+    public static function defaults(): array
+    {
+        return [
+            'access' => [
+                'mode' => self::ACCESS_PUBLIC,
+                'identifier' => 'cedula',
+                'emails' => [],
+                'allow_public_link' => true,
+                'require_email' => false,
+            ],
+            'schedule' => [
+                'open_at' => '',
+                'close_at' => '',
+            ],
+            'quota' => [
+                'enabled' => false,
+                'max' => 0,
+            ],
+            'notify' => [
+                'enabled' => false,
+                'emails' => [],
+                'confirmation' => [
+                    'enabled' => false,
+                    'to_field' => '',
+                ],
+            ],
+            'anti_bot' => [
+                'enabled' => false,
+                'turnstile' => [
+                    'enabled' => false,
+                ],
+            ],
+            'locale' => [
+                'code' => '',
+            ],
+            'review' => [
+                'required' => false,
+            ],
+            'theme' => [
+                'primary' => null,
+                'gradient_start' => null,
+                'gradient_end' => null,
+                'background' => null,
+                'text' => null,
+                'font' => 'inter',
+            ],
+            'redirects' => [
+                'after_submit' => '',
+            ],
+        ];
+    }
+
+    public static function merge(array $current, array $patch, ?array $allowlist = null): array
+    {
+        $base = is_array($current) ? $current : [];
+        $out = array_replace_recursive(self::defaults(), $base);
+        if ($patch === []) {
+            return $out;
+        }
+
+        if ($allowlist === null) {
+            $allowlist = array_keys(self::defaults());
+        }
+
+        $allowed = array_flip($allowlist);
+        foreach ($patch as $block => $value) {
+            if (!array_key_exists($block, $allowed)) {
+                continue;
+            }
+            if (!is_array($value)) {
+                continue;
+            }
+            if (!isset($out[$block]) || !is_array($out[$block])) {
+                $out[$block] = $value;
+                continue;
+            }
+            $out[$block] = array_replace_recursive($out[$block], $value);
+        }
+
+        return $out;
+    }
+
+    public static function fromDashboardPost(array $post): array
+    {
+        $parche = [];
+
+        if (array_key_exists('access_mode', $post) && is_string($post['access_mode'])) {
+            $mode = trim($post['access_mode']);
+            if (in_array($mode, self::ACCESS_MODES, true)) {
+                $parche['access'] = $parche['access'] ?? [];
+                $parche['access']['mode'] = $mode;
+            }
+        }
+        if (array_key_exists('access_identifier', $post) && is_string($post['access_identifier'])) {
+            $id = trim($post['access_identifier']);
+            if (in_array($id, self::ACCESS_IDENTIFIERS, true)) {
+                $parche['access'] = $parche['access'] ?? [];
+                $parche['access']['identifier'] = $id;
+            }
+        }
+
+        if (array_key_exists('open_at', $post) && is_string($post['open_at'])) {
+            $v = trim($post['open_at']);
+            if ($v !== '') {
+                $v = str_replace('T', ' ', $v);
+                $parche['schedule'] = $parche['schedule'] ?? [];
+                $parche['schedule']['open_at'] = $v;
+            }
+        }
+        if (array_key_exists('close_at', $post) && is_string($post['close_at'])) {
+            $v = trim($post['close_at']);
+            if ($v !== '') {
+                $v = str_replace('T', ' ', $v);
+                $parche['schedule'] = $parche['schedule'] ?? [];
+                $parche['schedule']['close_at'] = $v;
+            }
+        }
+
+        if (array_key_exists('notify_enabled', $post)) {
+            $val = $post['notify_enabled'];
+            $parche['notify'] = $parche['notify'] ?? [];
+            $parche['notify']['enabled'] = ($val === '1' || $val === 1 || $val === true);
+        }
+        if (array_key_exists('notify_emails', $post) && is_string($post['notify_emails'])) {
+            $raw = $post['notify_emails'];
+            $emails = [];
+            foreach (preg_split('/[,;\n\r]+/', $raw) ?: [] as $e) {
+                $e = trim(strtolower($e));
+                if ($e === '') {
+                    continue;
+                }
+                if (filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                    $emails[] = $e;
+                }
+            }
+            $emails = array_values(array_unique($emails));
+            $parche['notify'] = $parche['notify'] ?? [];
+            $parche['notify']['emails'] = $emails;
+        }
+        if (array_key_exists('confirm_enabled', $post)) {
+            $val = $post['confirm_enabled'];
+            $parche['notify'] = $parche['notify'] ?? [];
+            $parche['notify']['confirmation'] = $parche['notify']['confirmation'] ?? [];
+            $parche['notify']['confirmation']['enabled'] = ($val === '1' || $val === 1 || $val === true);
+        }
+        if (array_key_exists('confirm_to_field', $post) && is_string($post['confirm_to_field'])) {
+            $parche['notify'] = $parche['notify'] ?? [];
+            $parche['notify']['confirmation'] = $parche['notify']['confirmation'] ?? [];
+            $parche['notify']['confirmation']['to_field'] = trim($post['confirm_to_field']);
+        }
+
+        if (array_key_exists('quota_enabled', $post)) {
+            $val = $post['quota_enabled'];
+            $parche['quota'] = $parche['quota'] ?? [];
+            $parche['quota']['enabled'] = ($val === '1' || $val === 1 || $val === true);
+        }
+        if (array_key_exists('quota_max', $post) && is_string($post['quota_max'])) {
+            $v = trim($post['quota_max']);
+            if ($v !== '' && is_numeric($v)) {
+                $parche['quota'] = $parche['quota'] ?? [];
+                $parche['quota']['max'] = (int) $v;
+            }
+        }
+
+        if (array_key_exists('locale', $post) && is_string($post['locale'])) {
+            $v = trim($post['locale']);
+            if ($v !== '') {
+                $norm = \App\Core\I18n::normalizeLocale($v);
+                if ($norm !== '') {
+                    $parche['locale'] = $parche['locale'] ?? [];
+                    $parche['locale']['code'] = $norm;
+                }
+            }
+        }
+
+        if (array_key_exists('antibot_enabled', $post)) {
+            $val = $post['antibot_enabled'];
+            $parche['anti_bot'] = $parche['anti_bot'] ?? [];
+            $parche['anti_bot']['enabled'] = ($val === '1' || $val === 1 || $val === true);
+        }
+        if (array_key_exists('turnstile_enabled', $post)) {
+            $val = $post['turnstile_enabled'];
+            $parche['anti_bot'] = $parche['anti_bot'] ?? [];
+            $parche['anti_bot']['turnstile'] = $parche['anti_bot']['turnstile'] ?? [];
+            $parche['anti_bot']['turnstile']['enabled'] = ($val === '1' || $val === 1 || $val === true);
+        }
+
+        if (array_key_exists('review_required', $post)) {
+            $val = $post['review_required'];
+            $parche['review'] = $parche['review'] ?? [];
+            $parche['review']['required'] = ($val === '1' || $val === 1 || $val === true);
+        }
+
+        return $parche;
+    }
+
     public static function normalize(array $settings): array
     {
         if (!isset($settings['access']) || !is_array($settings['access'])) {

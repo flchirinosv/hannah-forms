@@ -423,7 +423,7 @@ class RosterDoorTest
             'cedula' => 'V-' . bin2hex(random_bytes(3)),
             'correo' => 'puerta-' . bin2hex(random_bytes(3)) . '@test.local',
         ]);
-        assertTrue((bool) $conCorreo['ok'], 'el participante se crea: ' . (string) $conCorreo['motivo']);
+        assertTrue((bool) $conCorreo['ok'], 'el participante se crea');
         $fila = FormParticipant::find((int) $conCorreo['id']);
         assertNotNull($fila, 'y se lee');
 
@@ -501,7 +501,7 @@ class RosterDoorTest
             'nombre' => 'Persona ' . $rand,
         ]);
 
-        assertTrue((bool) $res['ok'], 'el participante se crea: ' . (string) $res['motivo']);
+        assertTrue((bool) $res['ok'], 'el participante se crea');
         $fila = FormParticipant::find((int) $res['id']);
         assertNotNull($fila, 'y se lee');
 

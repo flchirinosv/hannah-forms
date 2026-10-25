@@ -596,7 +596,7 @@ class FillController
         }
 
         $formId = (int) $form['id'];
-        $ip = RosterDoor::ip();
+        $ip = Request::ip();
         $codigo = (string) Request::post('code', '');
         $volver = '/f/' . rawurlencode((string) $form['slug']);
 

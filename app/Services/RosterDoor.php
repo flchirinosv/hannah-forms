@@ -112,14 +112,34 @@ final class RosterDoor
 
     public static function otorgar(array $form, array $participante): void
     {
-        Session::regenerateId(true);
+        self::grant((int) $form['id'], (int) $participante['id']);
+    }
+
+    public static function grant(int $formId, int $participantId): void
+    {
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
+        } elseif (session_status() === PHP_SESSION_ACTIVE && function_exists('session_regenerate_id')) {
+            @session_regenerate_id(true);
+        }
         $_SESSION['vf_roster_grant'] = [
-            'form_id' => (int) $form['id'],
-            'participant_id' => (int) $participante['id'],
+            'form_id' => $formId,
+            'participant_id' => $participantId,
             'kind' => self::GRANT_PARTICIPANTE,
             'exp' => 0,
             'at' => time(),
         ];
+        // También guardar en formato que espera FillController (vf_form_access)
+        $grants = $_SESSION['vf_form_access'] ?? [];
+        if (!is_array($grants)) {
+            $grants = [];
+        }
+        $grants[$formId] = [
+            'id' => $participantId,
+            'kind' => 'participant',
+            'exp' => 0,
+        ];
+        $_SESSION['vf_form_access'] = $grants;
     }
 
     public static function concedido(array $form): ?array
@@ -158,6 +178,49 @@ final class RosterDoor
             return null;
         }
         return $participante;
+    }
+
+    public static function seguirEnLaLista(int $formId, int $participantId): bool
+    {
+        return FormParticipant::existeEnFormulario($formId, $participantId);
+    }
+
+    public static function sigueEnLaLista(int $formId, int $participantId): bool
+    {
+        return self::seguirEnLaLista($formId, $participantId);
+    }
+
+    public static function podar(array &$grants): void
+    {
+        if (!is_array($grants)) {
+            return;
+        }
+        foreach ($grants as $k => $v) {
+            if (!is_array($v)) {
+                unset($grants[$k]);
+                continue;
+            }
+            if (($v['kind'] ?? '') === 'participant') {
+                $pid = (int) ($v['id'] ?? 0);
+                $fid = (int) $k;
+                if ($pid <= 0 || !self::sigueEnLaLista($fid, $pid)) {
+                    unset($grants[$k]);
+                }
+                continue;
+            }
+            $exp = (int) ($v['exp'] ?? 0);
+            if ($exp > 0 && $exp <= time()) {
+                unset($grants[$k]);
+            }
+        }
+    }
+
+    public static function revoke(int $formId): void
+    {
+        unset($_SESSION['vf_roster_grant']);
+        if (isset($_SESSION['vf_form_access']) && is_array($_SESSION['vf_form_access'])) {
+            unset($_SESSION['vf_form_access'][$formId]);
+        }
     }
 
     public static function limpiar(): void

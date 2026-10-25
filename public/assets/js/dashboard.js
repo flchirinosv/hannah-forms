@@ -594,7 +594,10 @@
             const destino = document.querySelector(montaje.getAttribute('data-vf-modal-move'));
             if (!destino) { return; }
             const cuerpo = destino.querySelector('[data-vf-modal-body]');
-            const formulario = montaje.querySelector('[data-vf-modal-form]');
+            let formulario = montaje.querySelector('[data-vf-modal-form]');
+            if (!formulario && montaje.hasAttribute('data-vf-modal-form')) {
+                formulario = montaje;
+            }
             if (!cuerpo || !formulario) { return; }
             cuerpo.appendChild(formulario);
             montaje.hidden = true;

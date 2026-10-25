@@ -174,6 +174,18 @@ final class FormParticipant
         return $row === null ? null : $row;
     }
 
+    public static function findByCodeInForm(int $formId, string $code): ?array
+    {
+        $code = self::normalizarCode($code);
+        if (!self::codeValido($code)) {
+            return null;
+        }
+
+        $row = self::db()->fetch('SELECT * FROM form_participants WHERE form_id = :form_id AND code = :code', ['form_id' => $formId, 'code' => $code]);
+
+        return $row === null ? null : $row;
+    }
+
     public static function findByIdentifierValue(int $formId, string $identificador, string $valor): ?array
     {
         $valor = self::normalizar($valor);
@@ -208,8 +220,8 @@ final class FormParticipant
 
         $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
         $row = self::db()->fetch(
-            "SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id AND (cedula LIKE :q ESCAPE '\\\\' OR nombre LIKE :q ESCAPE '\\\\' OR correo LIKE :q ESCAPE '\\\\' OR telefono LIKE :q ESCAPE '\\\\')",
-            ['form_id' => $formId, 'q' => $like]
+            "SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id AND (cedula LIKE :q1 ESCAPE '\\\\' OR nombre LIKE :q2 ESCAPE '\\\\' OR correo LIKE :q3 ESCAPE '\\\\' OR telefono LIKE :q4 ESCAPE '\\\\')",
+            ['form_id' => $formId, 'q1' => $like, 'q2' => $like, 'q3' => $like, 'q4' => $like]
         );
 
         return (int) ($row['c'] ?? 0);
@@ -225,8 +237,11 @@ final class FormParticipant
         $where = 'WHERE form_id = :form_id';
         if ($q !== '') {
             $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
-            $where .= " AND (cedula LIKE :q ESCAPE '\\\\' OR nombre LIKE :q ESCAPE '\\\\' OR correo LIKE :q ESCAPE '\\\\' OR telefono LIKE :q ESCAPE '\\\\')";
-            $params['q'] = $like;
+            $where .= " AND (cedula LIKE :q1 ESCAPE '\\\\' OR nombre LIKE :q2 ESCAPE '\\\\' OR correo LIKE :q3 ESCAPE '\\\\' OR telefono LIKE :q4 ESCAPE '\\\\')";
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
+            $params['q4'] = $like;
         }
 
         $sql = "SELECT * FROM form_participants {$where} ORDER BY {$order} LIMIT " . (int) $limit . ' OFFSET ' . (int) $offset;
@@ -304,7 +319,7 @@ final class FormParticipant
         if (is_string($cedula) && in_array($cedula, ['cedula', 'correo', 'codigo'], true) && is_array($nombre)) {
             $identificadorOld = $cedula;
             $datos = $nombre;
-            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? $datos['indicador'] ?? '');
+            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? '');
             $nombre = (string) ($datos['nombre'] ?? '');
             $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
             $telefono = (string) ($datos['telefono'] ?? '');
@@ -423,7 +438,7 @@ final class FormParticipant
             $identificadorOld = $formId;
             $datos = $cedula;
             $fid = (int) $nombre;
-            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? $datos['indicador'] ?? '');
+            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? '');
             $nombre = (string) ($datos['nombre'] ?? '');
             $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
             $telefono = (string) ($datos['telefono'] ?? '');

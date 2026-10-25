@@ -218,7 +218,7 @@ public function testLosCaracteresDeControlSeDescartanYElArchivoAbre(): void
         );
         $celdas = self::celdas(self::parte($binario, 'xl/worksheets/sheet1.xml'));
 
-        assertEquals('indicador', $celdas['D1']);
+        assertEquals('telefono', $celdas['D1']);
         assertEquals('Sede', $celdas['E1']);
         assertEquals('codigo', $celdas['F1']);
     }

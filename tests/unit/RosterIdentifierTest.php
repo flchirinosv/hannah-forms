@@ -86,7 +86,7 @@ class RosterIdentifierTest
 
     public function testElPlanCuentaLasPersonasQueSeQuedarianSinIdentidad(): void
     {
-        self::persona(['indicador' => 'IND-1', 'nombre' => 'Ana'], 'indicador');
+        self::persona(['cedula' => 'V-1', 'nombre' => 'Ana'], 'cedula');
         self::persona(['cedula' => 'V-2', 'nombre' => 'Luis', 'correo' => 'luis@test.local']);
 
         $plan = FormParticipant::planDeReidentificacion((int) self::$formId, 'correo');
@@ -179,19 +179,14 @@ class RosterIdentifierTest
 
     public function testElPlanAgrupaLosRepetidosComoElIndiceYNoComoPhp(): void
     {
-        // Estas dos SÍ pueden coexistir: la primera está identificada por cédula y
-        // la segunda por indicador, así que sus `identifier_value` son distintas.
-        // Al cambiar a cédula, las dos quieren lo mismo… y «V-1» y «v-1» son **la
-        // misma clave** para el `UNIQUE (form_id, identifier_value)`, porque la
-        // tabla es `utf8mb4_unicode_ci`. Un plan que las contara en PHP (con un
-        // array asociativo, que distingue mayúsculas) diría «no hay repetidos» y el
-        // `UPDATE` se comería un error de servidor en vez de un mensaje.
+        // Estas dos SÍ pueden coexistir: una identificada por cédula y otra por correo,
+        // así que sus `identifier_value` son distintas. Al cambiar a cédula, las dos quieren lo mismo…
         $una = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1', 'nombre' => 'Ana']);
         assertTrue($una['ok'], 'la primera entra');
         $otra = FormParticipant::create(
             (int) self::$formId,
-            'indicador',
-            ['indicador' => 'IND-2', 'cedula' => 'v-1', 'nombre' => 'Zule']
+            'correo',
+            ['correo' => 'zule@test.local', 'cedula' => 'v-1', 'nombre' => 'Zule']
         );
         assertTrue($otra['ok'], 'la segunda también, con su propia identidad');
 
@@ -214,7 +209,7 @@ class RosterIdentifierTest
     {
         self::modo(FormSettings::ACCESS_ROSTER, 'cedula');
         $ana = self::persona(['cedula' => 'V-1', 'nombre' => 'Ana']); // sin correo
-        self::persona(['indicador' => 'IND-9', 'nombre' => 'Luis'], 'indicador'); // sin cédula
+        $luis = self::persona(['correo' => 'luis@test.local', 'nombre' => 'Luis']); // sin cédula
 
         $r = self::guardar(['access_mode' => 'roster', 'access_identifier' => 'correo']);
 
@@ -317,10 +312,10 @@ class RosterIdentifierTest
     {
         self::modo(FormSettings::ACCESS_ROSTER, 'cedula');
 
-        $r = self::guardar(['access_mode' => 'roster', 'access_identifier' => 'indicador']);
+        $r = self::guardar(['access_mode' => 'roster', 'access_identifier' => 'correo']);
 
         assertTrue($r['json']['ok'] === true, 'sin lista no hay a quién dejar fuera');
-        assertSame('indicador', FormParticipant::identifierFor((int) self::$formId));
+        assertSame('correo', FormParticipant::identifierFor((int) self::$formId));
     }
 
     public function testUnPostSinIdentificadorNoTocaElQueEstabaGuardado(): void
@@ -394,12 +389,12 @@ class RosterIdentifierTest
             'y el selector DESACTIVADO: escondido sin `disabled` seguiría mandando «cédula» en cada guardado'
         );
 
-        self::modo(FormSettings::ACCESS_ROSTER, 'indicador');
+        self::modo(FormSettings::ACCESS_ROSTER, 'cedula');
         $roster = self::ficha();
 
         assertTrue(!str_contains($roster, 'id="accessIdentifierBox" hidden'), 'en «Solo el listado» se ve');
         assertTrue(
-            preg_match('/<option value="indicador" selected>/', $roster) === 1,
+            preg_match('/<option value="cedula" selected>/', $roster) === 1,
             'con lo que está guardado, que es lo que el dueño eligió'
         );
     }

@@ -114,7 +114,7 @@ class ParticipantSchemaTest
 
     public function testUnParticipanteGuardaLosTresCandidatosAIdentificadorYElDenormalizado(): void
     {
-        foreach (['cedula', 'nombre', 'indicador', 'correo', 'identifier_value', 'code'] as $columna) {
+        foreach (['cedula', 'nombre', 'telefono', 'correo', 'identifier_value', 'code'] as $columna) {
             assertNotNull(
                 self::columna('form_participants', $columna),
                 'falta form_participants.' . $columna

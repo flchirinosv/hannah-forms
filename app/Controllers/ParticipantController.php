@@ -545,7 +545,7 @@ final class ParticipantController
             return null;
         }
         if (FormSettings::mode(Form::settingsFrom($form)) !== FormSettings::ACCESS_ROSTER) {
-            Response::abort(403);
+            Response::abort(404);
             return null;
         }
         return $form;

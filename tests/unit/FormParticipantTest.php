@@ -149,30 +149,21 @@ class FormParticipantTest
         assertSame('cedula', FormParticipant::identificadorDeArchivo('codigo'));
         assertSame('cedula', FormParticipant::identificadorDeArchivo('cedula'));
         assertSame('correo', FormParticipant::identificadorDeArchivo('correo'));
-        assertSame('indicador', FormParticipant::identificadorDeArchivo('indicador'));
+        assertSame('cedula', FormParticipant::identificadorDeArchivo('indicador'));
     }
 
     public function testCambiarElIdentificadorSeBloqueaSiDejaALaGenteSinIdentidad(): void
     {
-        // Sin cédula pero con indicador: cambiar a `cedula` dejaría la lista entera
+        // Sin cédula: cambiar a `cedula` dejaría la lista entera
         // sin forma de identificar a nadie, y es exactamente lo que hay que decir
         // antes de guardar el ajuste en vez de aceptarlo en silencio.
-        $vacio = FormParticipant::create((int) self::$formId, 'IND-1', 'Ana', '', '');
+        $vacio = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-88', 'nombre' => 'Ana']);
         assertTrue($vacio['ok']);
+        $vacio2 = FormParticipant::create((int) self::$formId, 'correo', ['correo' => 'otro@test.local', 'nombre' => 'Luis']);
+        assertTrue($vacio2['ok']);
 
-        // El segundo tiene las dos: cédula e indicador, y ningún correo. Así cada
-        // cambio se puede comprobar por separado, en vez de que un solo número
-        // acierto tres veces sin probar nada.
-        $conCedula = FormParticipant::create(
-            (int) self::$formId,
-            'cedula',
-            ['cedula' => 'V-9', 'nombre' => 'Luis', 'indicador' => 'IND-2']
-        );
-        assertTrue($conCedula['ok']);
-
-        assertSame(1, FormParticipant::sinIdentificadorPara((int) self::$formId, 'cedula'), 'el primero no tiene cédula');
-        assertSame(0, FormParticipant::sinIdentificadorPara((int) self::$formId, 'indicador'), 'los dos tienen indicador');
-        assertSame(2, FormParticipant::sinIdentificadorPara((int) self::$formId, 'correo'), 'ninguno tiene correo');
+        assertSame(1, FormParticipant::sinIdentificadorPara((int) self::$formId, 'cedula'), 'uno no tiene cédula');
+        assertSame(1, FormParticipant::sinIdentificadorPara((int) self::$formId, 'correo'), 'uno no tiene correo');
     }
 
     // =============================================================
@@ -245,7 +236,7 @@ class FormParticipantTest
         $r = FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1', 'nombre' => 'Ana']);
         $antes = (string) FormParticipant::find($r['id'])['code'];
 
-        $u = FormParticipant::update($r['id'], 'cedula', ['cedula' => 'V-2', 'nombre' => 'Ana Pérez', 'codigo' => 'OTRO']);
+        $u = FormParticipant::update($r['id'], (int)self::$formId, 'cedula', ['cedula' => 'V-2', 'nombre' => 'Ana Pérez']);
         assertTrue($u['ok']);
 
         $despues = FormParticipant::find($r['id']);
@@ -451,7 +442,7 @@ class FormParticipantTest
     public function testElListadoOrdenaPorCedulaYBuscaPorCualquieraDeLosTres(): void
     {
         FormParticipant::create((int) self::$formId, 'cedula', [
-            'cedula' => 'V-2', 'nombre' => 'Luis', 'indicador' => 'IND-7', 'correo' => 'luis@test.local',
+            'cedula' => 'V-2', 'nombre' => 'Luis', 'correo' => 'luis@test.local',
         ]);
         FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1', 'nombre' => 'Ana']);
 
@@ -459,10 +450,9 @@ class FormParticipantTest
         assertSame(2, count($todos));
         assertSame('V-1', (string) $todos[0]['cedula'], 'por cédula, que es la plantilla');
 
-        assertSame(1, count(FormParticipant::allForForm((int) self::$formId, 200, 0, 'IND-7')), 'por indicador');
         assertSame(1, count(FormParticipant::allForForm((int) self::$formId, 200, 0, 'luis@')), 'por correo');
         assertSame(1, count(FormParticipant::allForForm((int) self::$formId, 200, 0, 'Luis')), 'por nombre');
-        assertSame(1, FormParticipant::countForForm((int) self::$formId, 'IND-7'), 'y el contador cuenta lo mismo');
+        assertSame(1, FormParticipant::countForForm((int) self::$formId, 'luis@'), 'y el contador cuenta lo mismo');
     }
 
     public function testLosComodinesDelBuscadorNoSeTomanComoComodin(): void

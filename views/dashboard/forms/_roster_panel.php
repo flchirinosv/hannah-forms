@@ -25,10 +25,10 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
                         </div>
                     </div>
                     <div class="row g-3 mt-1">
-                        <div class="col-12" id="rosterStats">
+                        <div class="col-12">
                             <?= View::partial('dashboard/forms/_roster_stats', ['roster' => $roster]) ?>
                         </div>
-                        <div class="col-12" id="rosterInvites">
+                        <div class="col-12">
                             <?= View::partial('dashboard/forms/_roster_invites', ['roster' => $roster, 'formId' => $formId]) ?>
                         </div>
                     </div>
@@ -36,7 +36,7 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
             </div>
         </div>
 
-        <div class="col-12">
+        <div class="col-12" id="vfPaneRosterLista" data-vf-pane>
             <div id="rosterListCard" class="card shadow-sm">
                 <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
@@ -76,7 +76,7 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
             </div>
         </div>
 
-        <div class="col-12">
+        <div class="col-12" id="vfPaneRosterImportar" data-vf-pane>
             <div id="rosterImportCard" class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h2 class="h6 mb-0">Importar / Exportar</h2>
@@ -160,5 +160,8 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
     </div>
 </div>
 
-<?= View::partial('dashboard/forms/_roster_add_modal', ['formId' => $formId, 'roster' => $roster]) ?>
+<div data-vf-modal-move="#rosterAddModal" data-vf-modal-form id="rosterAddForm">
+    <?= View::partial('dashboard/forms/_roster_add_form', ['roster' => $roster, 'formId' => $formId]) ?>
+</div>
+
 <?= View::partial('dashboard/forms/_roster_edit_modal', ['formId' => $formId, 'roster' => $roster]) ?>
