@@ -166,7 +166,7 @@ public function testLosCaracteresDeControlSeDescartanYElArchivoAbre(): void
 
         assertEquals('a1', $celdas['E1']);
         assertEquals('a23', $celdas['AA1']);
-        assertEquals('codigo', $celdas['AB1']);
+        assertEquals('Código', $celdas['AB1']);
     }
 
     public function testElNombreDeLaPestañaSeLimpiaYSeRecorta(): void
@@ -218,9 +218,9 @@ public function testLosCaracteresDeControlSeDescartanYElArchivoAbre(): void
         );
         $celdas = self::celdas(self::parte($binario, 'xl/worksheets/sheet1.xml'));
 
-        assertEquals('telefono', $celdas['D1']);
+        assertEquals('Teléfono', $celdas['D1']);
         assertEquals('Sede', $celdas['E1']);
-        assertEquals('codigo', $celdas['F1']);
+        assertEquals('Código', $celdas['F1']);
     }
 
     // ---- Utilidades ----

@@ -242,7 +242,12 @@ class Auth
     public static function login(int $userId): void
     {
         self::$requestUser = null;
-        session_regenerate_id(true);
+        // En el runner no hay sesión activa (CLI), así que regenerar el id
+        // escribe un warning y no hace nada. En producción bootstrap la
+        // abre siempre, de modo que este guard no debilita el login.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
         Session::set('user_id', $userId);
         // F2: instante de apertura de sesión, para poder cerrar las que
         // envejezcan por un cambio de contraseña (ver user()). Se lee el
@@ -254,10 +259,9 @@ class Auth
     /**
      * F2 — Fija la sesión como si el usuario se hubiera autenticado AHORA.
      *
-     * Es un SEAM de test, no una vía de producción: `login()` llama a
-     * `session_regenerate_id()`, que en el runner (sin sesión activa) escribe un
-     * warning por cada llamada, así que los tests que necesitan "estar
-     * dentro" la fijan a mano.
+     * Es un SEAM de test, no una vía de producción: fija a mano el
+     * `user_id` y el `auth_at` que en producción pone `login()`, sin tocar la
+     * cookie de sesión (en el runner no hay sesión activa que regenerar).
      *
      * Existe como método y no como dos líneas copiadas en cada test porque el
      * `auth_at` es OBLIGATORIO: sin él, `user()` trata la sesión como

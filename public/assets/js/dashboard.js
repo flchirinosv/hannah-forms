@@ -599,6 +599,18 @@
                 formulario = montaje;
             }
             if (!cuerpo || !formulario) { return; }
+            /* Si el propio montaje es el formulario no se puede ocultar después
+             * de moverlo: el `hidden` viajaría con él y el diálogo saldría vacío.
+             * El caso normal es un contenedor con el formulario dentro; ahí sí se
+             * oculta el hueco que queda en la vista. */
+            if (formulario === montaje) {
+                if (formulario.parentNode !== cuerpo) { cuerpo.appendChild(formulario); }
+                return;
+            }
+            if (formulario.parentNode === cuerpo) {
+                montaje.hidden = true;
+                return;
+            }
             cuerpo.appendChild(formulario);
             montaje.hidden = true;
         });
@@ -698,7 +710,15 @@
                      * para que añadir un hueco al buscador no obligue a tocar esto. */
                     Object.keys(data.html).forEach(function (id) {
                         const slot = document.getElementById(id);
-                        if (slot) { slot.innerHTML = data.html[id]; }
+                        if (!slot) { return; }
+                        const caja = document.createElement('div');
+                        caja.innerHTML = data.html[id];
+                        const raiz = caja.firstElementChild;
+                        if (raiz && raiz.id === id && caja.children.length === 1 && typeof slot.replaceWith === 'function') {
+                            slot.replaceWith(raiz);
+                            return;
+                        }
+                        slot.innerHTML = data.html[id];
                     });
                     window.history.pushState(null, '', url + '#participantes');
                 })
@@ -731,5 +751,9 @@
      * llama el arranque. Idempotente por el `data-vf-modal-*`: un contenedor ya
      * movido tiene `hidden` y no vuelve a aparecer en `moverFormulariosInline`. */
     window.vfInitAdminModals = iniciar;
-    iniciar();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciar, { once: true });
+    } else {
+        iniciar();
+    }
 })();

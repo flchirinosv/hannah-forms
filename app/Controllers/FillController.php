@@ -778,7 +778,12 @@ class FillController
         // `0 <= time()` como si fuera una fecha tira la puerta en cada petición.
         if (($grant['kind'] ?? '') === 'participant') {
             $participantId = (int) ($grant['id'] ?? 0);
-            if (!RosterDoor::sigueEnLaLista($formId, $participantId)) {
+            $participante = $participantId > 0 ? FormParticipant::find($participantId) : null;
+            if (
+                $participante === null
+                || (int) ($participante['form_id'] ?? 0) !== $formId
+                || !empty($participante['responded_at'])
+            ) {
                 unset($grants[$formId]);
                 Session::set('vf_form_access', $grants);
 

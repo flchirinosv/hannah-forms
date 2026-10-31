@@ -29,7 +29,6 @@ final class RosterTemplate
         'nombre'       => 'nombre',
         'nombres'      => 'nombre',
         'nombrecompleto' => 'nombre',
-        'nombrecompleto' => 'nombre',
         'correo'       => 'correo',
         'email'        => 'correo',
         'telefono'     => 'telefono',
@@ -165,21 +164,56 @@ final class RosterTemplate
             $sharedStrings = self::leerSharedStrings($zip);
             $filasRaw = self::parsearHoja($xmlHoja, $sharedStrings);
 
-            if ($filasRaw === []) {
-                throw new \RuntimeException('roster_hoja_vacia');
+            $cabecera = null;
+            $cabeceraIndice = null;
+            foreach ($filasRaw as $indice => $fila) {
+                if (!self::filaTieneContenido($fila)) {
+                    continue;
+                }
+                $cabecera = $fila;
+                $cabeceraIndice = $indice;
+                break;
             }
 
-            $cabeceras = $filasRaw[0];
+            if ($cabecera === null) {
+                throw new \RuntimeException($filasRaw === [] ? 'roster_vacia' : 'roster_sin_cabecera');
+            }
+
+            $columnas = [];
+            $cabeceras = [];
+            foreach ($cabecera as $i => $valor) {
+                $valor = trim((string) $valor);
+                if ($valor === '') {
+                    continue;
+                }
+                $columnas[] = $i;
+                $cabeceras[] = $valor;
+            }
+
+            if ($cabeceras === []) {
+                throw new \RuntimeException('roster_sin_cabecera');
+            }
+
             $filas = [];
-            for ($i = 1; $i < count($filasRaw); $i++) {
-                if ($i - 1 >= self::MAX_FILAS) {
+            foreach ($filasRaw as $indice => $fila) {
+                if ($cabeceraIndice !== null && $indice <= $cabeceraIndice) {
+                    continue;
+                }
+                if (count($filas) >= self::MAX_FILAS) {
                     break;
                 }
-                $filas[] = $filasRaw[$i];
-            }
-
-            if ($filas === []) {
-                throw new \RuntimeException('roster_sin_filas');
+                $proyectada = [];
+                $conContenido = false;
+                foreach ($columnas as $indice) {
+                    $valor = (string) ($fila[$indice] ?? '');
+                    if (trim($valor) !== '') {
+                        $conContenido = true;
+                    }
+                    $proyectada[] = $valor;
+                }
+                if ($conContenido) {
+                    $filas[] = $proyectada;
+                }
             }
 
             return ['cabeceras' => $cabeceras, 'filas' => $filas];
@@ -198,11 +232,11 @@ final class RosterTemplate
             }
             $size = (int) ($stat['size'] ?? 0);
             if ($size > self::MAX_PARTE_BYTES) {
-                throw new \RuntimeException('roster_zip_bomb');
+                throw new \RuntimeException('roster_demasiado_grande');
             }
             $total += $size;
             if ($total > self::MAX_TOTAL_BYTES) {
-                throw new \RuntimeException('roster_zip_bomb');
+                throw new \RuntimeException('roster_demasiado_grande');
             }
         }
     }
@@ -300,6 +334,10 @@ final class RosterTemplate
 
     private static function parsearHoja(string $xml, array $sharedStrings): array
     {
+        if (stripos($xml, '<!DOCTYPE') !== false) {
+            return [];
+        }
+
         libxml_use_internal_errors(true);
         $doc = new \DOMDocument();
         if (!$doc->loadXML($xml)) {
@@ -369,7 +407,10 @@ final class RosterTemplate
             if (!$v instanceof \DOMElement) {
                 return '';
             }
-            return ((string) ($v->nodeValue ?? '0')) === '1' ? '1' : '0';
+            return ((string) ($v->nodeValue ?? '0')) === '1' ? 'Sí' : '';
+        }
+        if ($tipo === 'e') {
+            return '';
         }
 
         $v = $c->getElementsByTagName('v')->item(0);
@@ -397,6 +438,17 @@ final class RosterTemplate
             $fila[] = isset($columnas[$i]) ? (string) $columnas[$i] : '';
         }
         return $fila;
+    }
+
+    private static function filaTieneContenido(array $fila): bool
+    {
+        foreach ($fila as $valor) {
+            if (trim((string) $valor) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function columnaAIndice(string $col): int
@@ -472,7 +524,14 @@ final class RosterTemplate
 
     private static function workbook(string $nombreHoja): string
     {
-        $nombre = self::escXml($nombreHoja);
+        $nombre = str_replace(['[', ']', ':', '*', '?', '/', '\\'], ' ', $nombreHoja);
+        $nombre = preg_replace('/[\x00-\x1F\x7F]/', '', $nombre) ?? $nombre;
+        $nombre = trim(preg_replace('/\s+/', ' ', $nombre) ?? $nombre);
+        if ($nombre === '') {
+            $nombre = 'Participantes';
+        }
+        $nombre = mb_substr($nombre, 0, 31, 'UTF-8');
+        $nombre = self::escXml($nombre);
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             . '<sheets><sheet name="' . $nombre . '" sheetId="1" r:id="rId1"/></sheets>'
@@ -510,8 +569,11 @@ final class RosterTemplate
         $xml = '<row r="' . $numFila . '">';
         $c = 0;
         foreach ($valores as $valor) {
-            $ref = self::indiceAColumna($c) . $numFila;
-            $xml .= '<c r="' . $ref . '" t="inlineStr"><is><t>' . self::escXml((string) $valor) . '</t></is></c>';
+            $valor = (string) $valor;
+            if ($valor !== '') {
+                $ref = self::indiceAColumna($c) . $numFila;
+                $xml .= '<c r="' . $ref . '" t="inlineStr"><is><t>' . self::escXml($valor) . '</t></is></c>';
+            }
             $c++;
         }
         $xml .= '</row>';
@@ -522,6 +584,7 @@ final class RosterTemplate
     private static function escXml(string $s): string
     {
         $s = str_replace("\r", '', $s);
+        $s = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $s) ?? $s;
         return htmlspecialchars($s, ENT_XML1 | ENT_COMPAT, 'UTF-8');
     }
 }

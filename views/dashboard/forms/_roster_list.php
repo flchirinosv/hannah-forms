@@ -15,8 +15,13 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
 ?>
 <?php if ($filas === []): ?>
     <div class="text-center text-muted py-4">
-        <p class="mb-2">No hay participantes en la lista.</p>
-        <p class="small mb-0">Descarga la plantilla, rellénala o añade uno manualmente.</p>
+        <?php if ((string) ($roster['q'] ?? '') !== ''): ?>
+            <p class="mb-2">Nadie en la lista coincide con la búsqueda.</p>
+            <p class="small mb-0">Prueba con otra cédula, nombre, correo o teléfono.</p>
+        <?php else: ?>
+            <p class="mb-2">No hay participantes en la lista.</p>
+            <p class="small mb-0">Descarga la plantilla, rellénala o añade uno manualmente.</p>
+        <?php endif; ?>
     </div>
 <?php else: ?>
     <div class="table-responsive">
@@ -39,7 +44,7 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
                     $pid = (int) ($fila['id'] ?? 0);
                     $data = is_array($fila['data'] ?? null) ? $fila['data'] : [];
                 ?>
-                    <tr data-vf-row data-vf-participant="<?= $pid ?>">
+                    <tr data-vf-row>
                         <td><?= View::escape((string) ($fila[$columnaIdent] ?? $fila['cedula'] ?? '')) ?></td>
                         <td><?= View::escape((string) ($fila['nombre'] ?? '')) ?></td>
                         <td><?= View::escape((string) ($fila['correo'] ?? '')) ?></td>
@@ -51,33 +56,65 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
                         <?php endforeach; ?>
                         <td><code><?= View::escape((string) ($fila['code'] ?? '')) ?></code></td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-secondary" type="button" data-vf-row-actions="#rowactions-<?= $pid ?>">
+                            <button class="btn btn-sm btn-outline-secondary" type="button"
+                                    data-vf-participant="<?= $pid ?>"
+                                    data-vf-participant-name="<?= View::escape((string) (($fila['nombre'] ?? '') !== '' ? $fila['nombre'] : ($fila[$columnaIdent] ?? $fila['cedula'] ?? ''))) ?>">
                                 <i class="fa-solid fa-ellipsis"></i>
                             </button>
                         </td>
                     </tr>
                     <tr class="d-none">
                         <td colspan="100">
-                            <div id="rowactions-<?= $pid ?>" class="d-flex flex-wrap gap-2 align-items-center">
-                                <form method="post" action="/forms/<?= $formId ?>/participants/update" class="d-flex flex-wrap gap-2 align-items-center">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <input type="hidden" name="participant_id" value="<?= $pid ?>">
-                                    <input class="form-control form-control-sm" style="max-width: 160px" name="<?= View::escape($columnaIdent) ?>" value="<?= View::escape((string) ($fila[$columnaIdent] ?? $fila['cedula'] ?? '')) ?>" placeholder="<?= $identificador === 'correo' ? 'Correo' : 'Cédula' ?>">
-                                    <input class="form-control form-control-sm" style="max-width: 200px" name="nombre" value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>" placeholder="Nombre completo">
-                                    <input class="form-control form-control-sm" style="max-width: 200px" name="correo" value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>" placeholder="Correo">
-                                    <input class="form-control form-control-sm" style="max-width: 160px" name="telefono" value="<?= View::escape((string) ($fila['telefono'] ?? '')) ?>" placeholder="Teléfono">
-                                    <?php foreach ($atributos as $atributo): 
-                                        $key = (string) ($atributo['key_name'] ?? '');
-                                    ?>
-                                        <input class="form-control form-control-sm" style="max-width: 160px" name="attr_<?= View::escape($key) ?>" value="<?= View::escape((string) ($data[$key] ?? '')) ?>" placeholder="<?= View::escape((string) ($atributo['label'] ?? $key)) ?>">
-                                    <?php endforeach; ?>
-                                    <button class="btn btn-sm btn-primary app-form-cta" type="submit">Guardar</button>
-                                </form>
-                                <form method="post" action="/forms/<?= $formId ?>/participants/delete" data-confirm="¿Quitar este participante de la lista?" data-confirm-tone="danger">
-                                    <?= \App\Core\Csrf::field() ?>
-                                    <input type="hidden" name="participant_id" value="<?= $pid ?>">
-                                    <button class="btn btn-sm btn-outline-danger app-form-cta" type="submit">Quitar</button>
-                                </form>
+                            <?php // Un ÚNICO hijo: `initAccionesDeFila()` mueve el primer
+                                  // elemento de la caja al modal. Con los dos formularios
+                                  // sueltos, cada cierre devolvía el que había viajado al
+                                  // final y el siguiente clic abría el otro (el de borrar). ?>
+                            <div id="rowactions-<?= $pid ?>">
+                                <div class="p-2">
+                                    <form id="rosterEditForm<?= $pid ?>" method="post" action="/forms/<?= $formId ?>/participants/update"
+                                          data-vf-error="rosterEditError<?= $pid ?>">
+                                        <?= \App\Core\Csrf::field() ?>
+                                        <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $identificador === 'correo' ? 'Correo' : 'Cédula' ?></label>
+                                                <input type="text" class="form-control form-control-sm" id="rosterEditId<?= $pid ?>" name="<?= View::escape($columnaIdent) ?>" value="<?= View::escape((string) ($fila[$columnaIdent] ?? $fila['cedula'] ?? '')) ?>" required>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label small mb-1" for="rosterEditNombre<?= $pid ?>">Nombre completo</label>
+                                                <input type="text" class="form-control form-control-sm" id="rosterEditNombre<?= $pid ?>" name="nombre" value="<?= View::escape((string) ($fila['nombre'] ?? '')) ?>">
+                                            </div>
+                                            <?php if ($identificador !== FormParticipant::IDENT_CORREO): ?>
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-1" for="rosterEditCorreo<?= $pid ?>">Correo</label>
+                                                    <input type="email" class="form-control form-control-sm" id="rosterEditCorreo<?= $pid ?>" name="correo" value="<?= View::escape((string) ($fila['correo'] ?? '')) ?>">
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="col-12">
+                                                <label class="form-label small mb-1" for="rosterEditTelefono<?= $pid ?>">Teléfono</label>
+                                                <input type="text" class="form-control form-control-sm" id="rosterEditTelefono<?= $pid ?>" name="telefono" value="<?= View::escape((string) ($fila['telefono'] ?? '')) ?>">
+                                            </div>
+                                            <?php foreach ($atributos as $atributo):
+                                                $key = (string) ($atributo['key_name'] ?? '');
+                                                $label = (string) ($atributo['label'] ?? $key);
+                                            ?>
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-1" for="rosterEditAttr<?= $pid ?>-<?= View::escape($key) ?>"><?= View::escape($label) ?></label>
+                                                    <input type="text" class="form-control form-control-sm" id="rosterEditAttr<?= $pid ?>-<?= View::escape($key) ?>" name="attr_<?= View::escape($key) ?>" value="<?= View::escape((string) ($data[$key] ?? '')) ?>">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <p class="small mb-0 mt-2 d-none text-danger fw-semibold" id="rosterEditError<?= $pid ?>" role="alert"></p>
+                                    </form>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                                        <form method="post" action="/forms/<?= $formId ?>/participants/delete" data-confirm="¿Quitar este participante de la lista?" data-confirm-ok="Sí, quitar" data-confirm-tone="danger">
+                                            <?= \App\Core\Csrf::field() ?>
+                                            <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                            <button class="btn btn-outline-danger app-form-cta" type="submit"><i class="fa-solid fa-user-minus me-1"></i>Quitar</button>
+                                        </form>
+                                        <button class="btn btn-primary app-form-cta ms-auto" type="submit" form="rosterEditForm<?= $pid ?>">Guardar</button>
+                                    </div>
+                                </div>
                             </div>
                         </td>
                     </tr>

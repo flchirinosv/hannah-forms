@@ -27,7 +27,7 @@ $modo = (string) ($importMapping['modo'] ?? 'fusionar');
             <select class="form-select form-select-sm" id="mapIdent" name="map_identificador">
                 <option value="">Seleccionar...</option>
                 <?php foreach ($cabeceras as $i => $c): ?>
-                    <option value="<?= $i ?>" <?= ($sugerencia['identificador'] === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
+                    <option value="<?= $i ?>" <?= (($sugerencia['identificador'] ?? null) === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -36,7 +36,7 @@ $modo = (string) ($importMapping['modo'] ?? 'fusionar');
             <select class="form-select form-select-sm" id="mapNombre" name="map_nombre">
                 <option value="">No importar</option>
                 <?php foreach ($cabeceras as $i => $c): ?>
-                    <option value="<?= $i ?>" <?= ($sugerencia['nombre'] === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
+                    <option value="<?= $i ?>" <?= (($sugerencia['nombre'] ?? null) === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -45,7 +45,7 @@ $modo = (string) ($importMapping['modo'] ?? 'fusionar');
             <select class="form-select form-select-sm" id="mapCorreo" name="map_correo">
                 <option value="">No importar</option>
                 <?php foreach ($cabeceras as $i => $c): ?>
-                    <option value="<?= $i ?>" <?= ($sugerencia['correo'] === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
+                    <option value="<?= $i ?>" <?= (($sugerencia['correo'] ?? null) === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -54,7 +54,7 @@ $modo = (string) ($importMapping['modo'] ?? 'fusionar');
             <select class="form-select form-select-sm" id="mapTelefono" name="map_telefono">
                 <option value="">No importar</option>
                 <?php foreach ($cabeceras as $i => $c): ?>
-                    <option value="<?= $i ?>" <?= ($sugerencia['telefono'] === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
+                    <option value="<?= $i ?>" <?= (($sugerencia['telefono'] ?? null) === $i) ? 'selected' : '' ?>><?= View::escape((string) $c) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>

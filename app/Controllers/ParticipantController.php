@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Access;
 use App\Core\Auth;
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Request;
 use App\Core\Response;
@@ -12,11 +14,12 @@ use App\Core\SecurityLog;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Form;
+use App\Models\FormAccess;
 use App\Models\FormParticipant;
 use App\Services\FormPanel;
 use App\Services\FormSettings;
-use App\Services\I18n;
-use App\Services\Mailer;
+use App\Core\I18n;
+use App\Core\Mailer;
 use App\Services\ParticipantImporter;
 use App\Services\RosterImportPending;
 use App\Services\RosterPanel;
@@ -25,6 +28,9 @@ use App\Services\RosterTemplate;
 final class ParticipantController
 {
     private const INVITE_FALLOS_SEGUIDOS = 3;
+
+    /** Filas por página de la API del listado (la pantalla usa 25). */
+    private const POR_PAGINA = 50;
 
     // =====================================================================
     // Listado
@@ -37,18 +43,48 @@ final class ParticipantController
             return;
         }
 
-        $q = (string) Request::get('q', '');
-        $page = (int) Request::get('page', 1);
+        $q = trim((string) Request::get('q', ''));
+        $page = max(1, (int) Request::get('page', 1));
         $sort = (string) Request::get('sort', 'cedula');
+
+        if (self::wantsJson()) {
+            $settings = Form::settings($id);
+            $locale = I18n::forRequest($settings);
+            $total = FormParticipant::countForForm($id, $q);
+            $filas = FormParticipant::allForForm($id, self::POR_PAGINA, ($page - 1) * self::POR_PAGINA, $q, $sort);
+
+            $datos = [];
+            foreach ($filas as $fila) {
+                $fila['data'] = FormParticipant::attributesOf((int) $fila['id']);
+                $datos[] = $fila;
+            }
+
+            Response::json([
+                'ok' => true,
+                'identifier' => FormParticipant::identifierFor($id),
+                'search' => $q,
+                'sort' => $sort,
+                'page' => $page,
+                'per_page' => self::POR_PAGINA,
+                'total' => $total,
+                'pages' => $total > 0 ? (int) ceil($total / self::POR_PAGINA) : 1,
+                'participantes' => $datos,
+                'atributos' => FormParticipant::catalogFor($id),
+                'motivos' => [
+                    FormParticipant::MOTIVO_DUPLICADO => I18n::t('roster.err_duplicado', $locale, ['id' => '']),
+                    FormParticipant::MOTIVO_VACIO => I18n::t('roster.err_vacio', $locale),
+                    FormParticipant::MOTIVO_LARGO => I18n::t('roster.err_largo', $locale),
+                    FormParticipant::MOTIVO_CORREO => I18n::t('roster.err_correo', $locale),
+                    FormParticipant::MOTIVO_ATRIBUTO => I18n::t('roster.err_atributo', $locale),
+                    FormParticipant::MOTIVO_VALOR_LARGO => I18n::t('roster.err_valor_largo', $locale),
+                ],
+            ]);
+            return;
+        }
 
         $datos = RosterPanel::data($id, $q, $page, $sort);
         $informe = $this->informeEnSesionMostrar();
         $importMapping = RosterImportPending::obtener($id, (int) ($form['user_id'] ?? Auth::id() ?? 0));
-
-        if (self::wantsJson()) {
-            Response::json(['rosterList' => View::partial('dashboard/forms/_roster_list', ['roster' => $datos, 'formId' => $id])]);
-            return;
-        }
 
         $html = RosterPanel::panel($datos, $form, $informe, $importMapping);
         echo $html;
@@ -126,21 +162,16 @@ final class ParticipantController
         $correo = trim((string) ($campos['correo'] ?? ''));
         $telefono = trim((string) ($campos['telefono'] ?? ''));
 
-        $data = [];
-        foreach ($campos as $k => $v) {
-            if (strpos($k, 'attr_') === 0) {
-                $data[substr($k, 5)] = is_array($v) ? implode(', ', $v) : (string) $v;
-            }
-        }
+        $data = self::datosAtributos($campos, $id);
 
         $r = FormParticipant::create($id, $valorIdent, trim((string) ($campos['nombre'] ?? '')), $correo, $telefono, $data, $identificador);
         if (!$r['ok']) {
             $locale = I18n::forRequest(Form::settings($id));
-            $this->ok($id, self::textoErrorMotivo((string) ($r['motivo'] ?? ''), $locale, $identificador), false, ['error_field' => $this->campoError($identificador, (string) ($r['motivo'] ?? ''))], ['list', 'stats', 'invites', 'addForm']);
+            $this->ok($id, self::textoErrorMotivo((string) ($r['motivo'] ?? ''), $locale, $valorIdent), false, ['error_field' => $this->campoError($identificador, (string) ($r['motivo'] ?? ''))], ['list', 'stats', 'invites']);
             return;
         }
 
-        $this->ok($id, I18n::t('roster.added', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites', 'addForm']);
+        $this->ok($id, I18n::t('roster.created', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
     public function update(int $id): void
@@ -165,21 +196,16 @@ final class ParticipantController
         $correo = trim((string) ($campos['correo'] ?? ''));
         $telefono = trim((string) ($campos['telefono'] ?? ''));
 
-        $data = [];
-        foreach ($campos as $k => $v) {
-            if (strpos($k, 'attr_') === 0) {
-                $data[substr($k, 5)] = is_array($v) ? implode(', ', $v) : (string) $v;
-            }
-        }
+        $data = self::datosAtributos($campos, $id);
 
         $r = FormParticipant::update($pid, $id, $valorIdent, trim((string) ($campos['nombre'] ?? '')), $correo, $telefono, $data, $identificador);
         if (!$r['ok']) {
             $locale = I18n::forRequest(Form::settings($id));
-            $this->ok($id, self::textoErrorMotivo((string) ($r['motivo'] ?? ''), $locale, $identificador), false, ['error_field' => $this->campoError($identificador, (string) ($r['motivo'] ?? ''))], ['list', 'stats', 'invites', 'catalog']);
+            $this->ok($id, self::textoErrorMotivo((string) ($r['motivo'] ?? ''), $locale, $valorIdent), false, ['error_field' => $this->campoError($identificador, (string) ($r['motivo'] ?? ''))], ['list', 'stats', 'invites', 'catalog']);
             return;
         }
 
-        $this->ok($id, I18n::t('roster.updated', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
+        $this->ok($id, I18n::t('roster.saved', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
     public function destroy(int $id): void
@@ -193,9 +219,12 @@ final class ParticipantController
         }
 
         $pid = (int) ($_POST['participant_id'] ?? 0);
-        if ($pid > 0) {
-            FormParticipant::delete($pid, $id);
+        if ($pid <= 0 || !FormParticipant::existeEnFormulario($id, $pid)) {
+            $this->ok($id, I18n::t('roster.not_found', I18n::forRequest(Form::settings($id))), false);
+            return;
         }
+
+        FormParticipant::delete($pid, $id);
         $this->ok($id, I18n::t('roster.deleted', I18n::forRequest(Form::settings($id))), true, [], ['list', 'stats', 'invites']);
     }
 
@@ -345,8 +374,44 @@ final class ParticipantController
 
     public function import(int $id): void
     {
-        // Compatibilidad: redirigir al flujo de preview
-        $this->preview($id);
+        $form = $this->rosterForm($id, 'import');
+        if ($form === null) {
+            return;
+        }
+        if (!$this->csrfOk($id, 'roster.invalid_csrf')) {
+            return;
+        }
+        if (!RosterTemplate::puedeLeer()) {
+            $this->ok($id, I18n::t('roster.sin_zip', I18n::forRequest(Form::settings($id))), false);
+            return;
+        }
+
+        $fichero = $_FILES['archivo'] ?? null;
+        if (!is_array($fichero) || (int) ($fichero['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->ok($id, I18n::t('roster.sin_archivo', I18n::forRequest(Form::settings($id))), false);
+            return;
+        }
+
+        $identificador = FormParticipant::identifierFor($id);
+        $r = ParticipantImporter::importar(
+            $id,
+            (string) $fichero['tmp_name'],
+            $identificador,
+            (string) Request::post('modo', ParticipantImporter::MODO_FUSIONAR)
+        );
+
+        $locale = I18n::forRequest(Form::settings($id));
+        if (!$r['ok']) {
+            $this->ok($id, self::textoError((string) $r['error'], $locale, $identificador), false, [
+                'total' => $r['total'],
+                'omitidos' => $r['omitidos'],
+                'problemas' => $r['problemas'],
+            ], ['list', 'stats', 'catalog', 'addForm', 'report'], $r);
+            return;
+        }
+
+        SecurityLog::record('roster.imported', $r['modo'] . ' ' . $r['total'] . ' filas en /forms/' . $id);
+        $this->ok($id, self::textoResumen($r, $locale), true, $r, ['list', 'stats', 'invites', 'catalog', 'addForm', 'report'], $r);
     }
 
     public function truncate(int $id): void
@@ -379,8 +444,9 @@ final class ParticipantController
         }
 
         $locale = I18n::forRequest(Form::settings($id));
-        if (FormParticipant::identifierFor($id) !== FormParticipant::IDENT_CORREO) {
-            $this->ok($id, I18n::t('roster.invite_no_correo', $locale), false, [], ['invites']);
+        $identificador = FormParticipant::identifierFor($id);
+        if ($identificador !== FormParticipant::IDENT_CORREO) {
+            $this->ok($id, I18n::t('roster.invite_no_cedula', $locale, ['id' => $identificador]), false, [], ['invites']);
             return;
         }
         if (!Mailer::isConfigured()) {
@@ -390,10 +456,11 @@ final class ParticipantController
 
         $pendientes = FormParticipant::pendingInvites($id, RosterPanel::INVITE_POR_TANDA);
         if ($pendientes === []) {
-            $this->ok($id, I18n::t('roster.invite_none', $locale), true, [], ['invites']);
+            $this->ok($id, I18n::t('roster.invite_none_left', $locale), true, [], ['invites']);
             return;
         }
 
+        $antes = FormParticipant::pendingInviteCount($id);
         $enviados = 0;
         $fallidos = 0;
         $fallidosSeguidos = 0;
@@ -407,33 +474,34 @@ final class ParticipantController
             }
             try {
                 $url = \App\Core\PublicUrl::rosterUrl((string) $form['slug'], (string) $p['code']);
-                $mailer = new Mailer($locale);
-                $mailer->send($correo, I18n::t('roster.mail_invite_subject', $locale), 'mail/roster_invite', [
+                ob_start();
+                View::render('mail/roster_invite', [
                     'form' => $form,
                     'url' => $url,
                     'nombre' => $p['nombre'] ?? '',
-                ]);
+                ], null);
+                $htmlInvite = (string) ob_get_clean();
+                Mailer::send([$correo], I18n::t('roster.invite_subject', $locale, ['form' => (string) ($form['title'] ?? '')]), $htmlInvite, strip_tags($htmlInvite));
                 FormParticipant::markInvited((int) $p['id']);
                 $enviados++;
                 $fallidosSeguidos = 0;
             } catch (\Throwable $e) {
-                $fallidos = $enviados + 1;
+                $fallidos++;
                 $fallidosSeguidos++;
             }
         }
 
-        $quedan = max(0, FormParticipant::pendingInviteCount($id) - $enviados);
+        $parado = $fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS;
+        $quedan = max(0, $antes - $enviados);
         $msg = I18n::t('roster.invite_sent', $locale, ['n' => $enviados]);
-        if ($fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS) {
-            $msg .= ' ' . I18n::t('roster.invite_stopped', $locale);
+        if ($parado) {
+            $msg .= ' ' . I18n::t('roster.invite_stopped', $locale, ['n' => self::INVITE_FALLOS_SEGUIDOS, 's' => $enviados]);
+        } elseif ($fallidos > 0) {
+            $msg .= ' ' . I18n::t('roster.invite_sent_some', $locale, ['n' => $enviados, 'f' => $fallidos]);
         } elseif ($quedan > 0) {
-            $msg .= ' ' . I18n::t('roster.invite_remain', $locale, ['n' => $quedan]);
+            $msg .= ' ' . I18n::t('roster.invite_sent_cap', $locale, ['n' => $enviados, 'q' => $quedan]);
         }
-        if ($fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS || $fallidos > 0) {
-            $this->ok($id, $msg, false, [], ['invites']);
-            return;
-        }
-        $this->ok($id, $msg, true, [], ['invites']);
+        $this->ok($id, $msg, !$parado && $fallidos === 0, [], ['invites']);
     }
 
     public function remind(int $id): void
@@ -447,22 +515,27 @@ final class ParticipantController
         }
 
         $locale = I18n::forRequest(Form::settings($id));
-        if (FormParticipant::identifierFor($id) !== FormParticipant::IDENT_CORREO) {
-            $this->ok($id, I18n::t('roster.invite_no_correo', $locale), false, [], ['invites']);
+        $identificador = FormParticipant::identifierFor($id);
+        if ($identificador !== FormParticipant::IDENT_CORREO) {
+            $this->ok($id, I18n::t('roster.remind_no_cedula', $locale, ['id' => $identificador]), false, [], ['invites']);
             return;
         }
         if (!Mailer::isConfigured()) {
-            $this->ok($id, I18n::t('roster.invite_no_smtp', $locale), false, [], ['invites']);
+            $this->ok($id, I18n::t('roster.remind_no_smtp', $locale), false, [], ['invites']);
             return;
         }
 
         $pendientes = FormParticipant::pendingReminders($id, RosterPanel::INVITE_POR_TANDA);
         if ($pendientes === []) {
-            $this->ok($id, I18n::t('roster.reminder_none', $locale), true, [], ['invites']);
+            $this->ok($id, I18n::t('roster.remind_none_left', $locale), true, [], ['invites']);
             return;
         }
 
+        $ajustes = Form::settings($id);
+        $deadline = self::deadlineTexto((string) ($ajustes['schedule']['close_at'] ?? ''), $locale);
+        $antes = FormParticipant::pendingReminderCount($id);
         $enviados = 0;
+        $fallidos = 0;
         $fallidosSeguidos = 0;
         foreach ($pendientes as $p) {
             if ($fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS) {
@@ -474,33 +547,37 @@ final class ParticipantController
             }
             try {
                 $url = \App\Core\PublicUrl::rosterUrl((string) $form['slug'], (string) $p['code']);
-                $mailer = new Mailer($locale);
-                $mailer->send($correo, I18n::t('roster.mail_reminder_subject', $locale), 'mail/roster_reminder', [
+                ob_start();
+                View::render('mail/roster_reminder', [
                     'form' => $form,
                     'url' => $url,
                     'nombre' => $p['nombre'] ?? '',
+                    'locale' => $locale,
+                    'deadline' => $deadline,
                     'formId' => $id,
-                ]);
+                ], null);
+                $htmlRem = (string) ob_get_clean();
+                Mailer::send([$correo], I18n::t('roster.remind_subject', $locale, ['form' => (string) ($form['title'] ?? '')]), $htmlRem, strip_tags($htmlRem));
                 FormParticipant::markReminded((int) $p['id']);
                 $enviados++;
                 $fallidosSeguidos = 0;
             } catch (\Throwable $e) {
+                $fallidos++;
                 $fallidosSeguidos++;
             }
         }
 
-        $quedan = max(0, FormParticipant::pendingReminderCount($id) - $enviados);
-        $msg = I18n::t('roster.reminder_sent', $locale, ['n' => $enviados]);
-        if ($fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS) {
-            $msg .= ' ' . I18n::t('roster.invite_stopped', $locale);
+        $parado = $fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS;
+        $quedan = max(0, $antes - $enviados);
+        $msg = I18n::t('roster.remind_sent', $locale, ['n' => $enviados]);
+        if ($parado) {
+            $msg .= ' ' . I18n::t('roster.remind_stopped', $locale, ['n' => self::INVITE_FALLOS_SEGUIDOS, 's' => $enviados]);
+        } elseif ($fallidos > 0) {
+            $msg .= ' ' . I18n::t('roster.remind_sent_some', $locale, ['n' => $enviados, 'f' => $fallidos]);
         } elseif ($quedan > 0) {
-            $msg .= ' ' . I18n::t('roster.reminder_remain', $locale, ['n' => $quedan]);
+            $msg .= ' ' . I18n::t('roster.remind_sent_cap', $locale, ['n' => $enviados, 'q' => $quedan]);
         }
-        if ($fallidosSeguidos >= self::INVITE_FALLOS_SEGUIDOS) {
-            $this->ok($id, $msg, false, [], ['invites']);
-            return;
-        }
-        $this->ok($id, $msg, true, [], ['invites']);
+        $this->ok($id, $msg, !$parado && $fallidos === 0, [], ['invites']);
     }
 
     public function destroyAttribute(int $id): void
@@ -513,11 +590,11 @@ final class ParticipantController
             return;
         }
 
-        $fieldId = (int) ($_POST['field_id'] ?? 0);
-        if ($fieldId > 0) {
-            FormParticipant::deleteAttribute($id, $fieldId);
+        $field = (string) ($_POST['field_id'] ?? $_POST['key_name'] ?? '');
+        if ($field !== '') {
+            FormParticipant::deleteAttribute($id, $field);
         }
-        $this->ok($id, I18n::t('roster.attr_deleted', I18n::forRequest(Form::settings($id))), true, [], ['list', 'catalog', 'addForm']);
+        $this->ok($id, I18n::t('roster.attribute_deleted', I18n::forRequest(Form::settings($id))), true, [], ['list', 'catalog', 'addForm']);
     }
 
     // =====================================================================
@@ -536,7 +613,7 @@ final class ParticipantController
             Response::redirect('/login');
             return null;
         }
-        if (!(int) ($form['user_id'] ?? 0) === (int) $user['id'] && !Auth::can('forms.manage_all')) {
+        if (!Access::canEdit((int) ($form['user_id'] ?? 0))) {
             Response::abort(403);
             return null;
         }
@@ -544,7 +621,7 @@ final class ParticipantController
             Response::abort(403);
             return null;
         }
-        if (FormSettings::mode(Form::settingsFrom($form)) !== FormSettings::ACCESS_ROSTER) {
+        if (FormAccess::mode(Form::settingsFrom($form)) !== FormSettings::ACCESS_ROSTER) {
             Response::abort(404);
             return null;
         }
@@ -553,7 +630,7 @@ final class ParticipantController
 
     private function csrfOk(int $id, string $clave): bool
     {
-        if (!\App\Core\Csrf::check()) {
+        if (!\App\Core\Csrf::verifyRequest()) {
             $locale = I18n::forRequest(Form::settings($id));
             Session::flash('error', I18n::t($clave, $locale));
             Response::redirect('/forms/' . $id . '/access#participantes');
@@ -567,6 +644,21 @@ final class ParticipantController
         $db = \App\Core\Database::getInstance(\App\Core\Config::db());
         $rows = $db->fetchAll('SELECT * FROM form_participants WHERE form_id = :form_id ORDER BY id ASC', ['form_id' => $formId]);
         return is_array($rows) ? $rows : [];
+    }
+
+    private static function deadlineTexto(string $closeAt, string $locale): string
+    {
+        $closeAt = trim($closeAt);
+        if ($closeAt === '') {
+            return '';
+        }
+
+        try {
+            $dt = new \DateTimeImmutable($closeAt, Clock::displayZone());
+            return $dt->format('d/m/Y H:i');
+        } catch (\Exception $e) {
+            return '';
+        }
     }
 
     private function valorIdentificador(string $identificador, array $campos): string
@@ -589,10 +681,32 @@ final class ParticipantController
         return '';
     }
 
-    private static function textoErrorMotivo(string $motivo, string $locale, string $columna): string
+    private static function datosAtributos(array $campos, int $formId = 0): array
+    {
+        $data = [];
+        foreach ($campos as $k => $v) {
+            if (strpos($k, 'attr_') === 0) {
+                $data[substr($k, 5)] = is_array($v) ? implode(', ', $v) : (string) $v;
+            }
+        }
+        if (is_array($campos['data'] ?? null)) {
+            foreach ($campos['data'] as $k => $v) {
+                $data[(string) $k] = is_array($v) ? implode(', ', $v) : (string) $v;
+            }
+        }
+
+        if ($formId > 0 && $data !== []) {
+            $permitidos = array_column(FormParticipant::catalogFor($formId), 'key_name');
+            $data = array_intersect_key($data, array_flip(array_map('strval', $permitidos)));
+        }
+
+        return $data;
+    }
+
+    private static function textoErrorMotivo(string $motivo, string $locale, string $valor): string
     {
         return match ($motivo) {
-            FormParticipant::MOTIVO_DUPLICADO => I18n::t('roster.err_duplicado', $locale, ['id' => '']),
+            FormParticipant::MOTIVO_DUPLICADO => I18n::t('roster.err_duplicado', $locale, ['id' => $valor]),
             FormParticipant::MOTIVO_VACIO => I18n::t('roster.err_vacio', $locale),
             FormParticipant::MOTIVO_LARGO => I18n::t('roster.err_largo', $locale),
             FormParticipant::MOTIVO_CORREO => I18n::t('roster.err_correo', $locale),
@@ -678,7 +792,14 @@ final class ParticipantController
 
     private function informeEnSesion(array $r): void
     {
-        Session::set('roster_report_' . $id = 0, null); // placeholder
+        $inf = $this->informe($r);
+        if ($inf === null) {
+            return;
+        }
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
+        }
+        Session::flashValue('roster_report', $inf);
     }
 
     private function informeEnSesionMostrar(): ?array
@@ -687,14 +808,16 @@ final class ParticipantController
         return is_array($val) ? $val : null;
     }
 
-    private static function informe(?array $r): ?array
+    private function informe(?array $r): ?array
     {
-        if (!is_array($r) || empty($r['problemas'])) {
-            if (is_array($r) && ($r['omitidos'] ?? 0) > 0 && empty($r['problemas'])) {
-                return ['omitidos' => (int) $r['omitidos'], 'problemas' => [], 'modo' => $r['modo'] ?? 'fusionar', 'total' => (int) ($r['total'] ?? 0)];
-            }
+        if (!is_array($r)) {
             return null;
         }
-        return ['omitidos' => (int) ($r['omitidos'] ?? 0), 'problemas' => $r['problemas'], 'modo' => $r['modo'] ?? 'fusionar', 'total' => (int) ($r['total'] ?? 0)];
+        $omitidos = (int) ($r['omitidos'] ?? 0);
+        $problemas = is_array($r['problemas'] ?? null) ? $r['problemas'] : [];
+        if ($omitidos <= 0 && $problemas === []) {
+            return null;
+        }
+        return ['omitidos' => $omitidos, 'problemas' => $problemas, 'modo' => $r['modo'] ?? 'fusionar', 'total' => (int) ($r['total'] ?? 0)];
     }
 }

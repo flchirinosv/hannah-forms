@@ -177,7 +177,15 @@
         if (!html || typeof html !== 'object') return;
         Object.keys(html).forEach(function (id) {
             var slot = document.getElementById(id);
-            if (slot) slot.innerHTML = html[id];
+            if (!slot) return;
+            var caja = document.createElement('div');
+            caja.innerHTML = html[id];
+            var raiz = caja.firstElementChild;
+            if (raiz && raiz.id === id && caja.children.length === 1 && typeof slot.replaceWith === 'function') {
+                slot.replaceWith(raiz);
+                return;
+            }
+            slot.innerHTML = html[id];
         });
     }
 

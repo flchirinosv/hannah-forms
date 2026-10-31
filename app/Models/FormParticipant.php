@@ -94,7 +94,7 @@ final class FormParticipant
 
     public static function identificadorDeArchivo(string $identificador): string
     {
-        return $identificador === 'codigo' ? 'cedula' : $identificador;
+        return $identificador === 'correo' ? 'correo' : 'cedula';
     }
 
     public static function normalizar(string $valor): string
@@ -313,45 +313,44 @@ final class FormParticipant
         self::db()->execute('UPDATE form_participants SET responded_at = NOW() WHERE id = :id AND responded_at IS NULL', ['id' => $id]);
     }
 
+    public static function desmarcarSiSinRespuestas(int $participantId): void
+    {
+        if ($participantId <= 0) {
+            return;
+        }
+
+        $row = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM submissions WHERE participant_id = :pid',
+            ['pid' => $participantId]
+        );
+
+        $count = (int) ($row['c'] ?? 0);
+        if ($count === 0) {
+            self::db()->execute('UPDATE form_participants SET responded_at = NULL WHERE id = :id', ['id' => $participantId]);
+        }
+    }
+
     public static function create(int $formId, $cedula = '', $nombre = '', $correo = '', $telefono = '', $data = [], string $identificador = 'cedula'): array
     {
         // Compatibilidad con API antigua: create($formId, $identificador, $datos)
         if (is_string($cedula) && in_array($cedula, ['cedula', 'correo', 'codigo'], true) && is_array($nombre)) {
             $identificadorOld = $cedula;
             $datos = $nombre;
-            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? '');
-            $nombre = (string) ($datos['nombre'] ?? '');
-            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
-            $telefono = (string) ($datos['telefono'] ?? '');
-            $data = is_array($correo) ? $correo : (is_array($telefono) ? $telefono : (is_array($data) && !is_string($data) ? $data : []));
-            // si $correo era array (3 args antiguos con array como 3er)
-            if (is_array($correo) && isset($correo['cedula']) || (is_array($correo) && isset($correo['nombre']) && !isset($correo[0]))) {
-                // ya manejado arriba
-            }
-            // ajustar
-            if (is_array($correo) && !isset($correo['cedula']) && !isset($correo['nombre']) && !isset($correo['correo'])) {
-                // no es datos
-            }
-            // mejor: si $correo es array
+            // El 4.º/5.º argumento puede traer los atributos del catálogo
+            // (p. ej. create($formId, 'cedula', [...], [$key => 'valor'])).
+            $dataEntrante = [];
             if (is_array($correo)) {
-                $data = $correo;
-                $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
+                $dataEntrante = $correo;
             } elseif (is_array($telefono)) {
-                $data = $telefono;
-                $telefono = '';
+                $dataEntrante = $telefono;
+            } elseif (is_array($data)) {
+                $dataEntrante = $data;
             }
-            if (is_array($data) && isset($data['cedula'])) {
-                $cedula = (string) $data['cedula'];
-            }
-            if (is_array($data) && isset($data['nombre'])) {
-                $nombre = (string) $data['nombre'];
-            }
-            if (is_array($data) && isset($data['correo'])) {
-                $correo = (string) $data['correo'];
-            }
-            if (is_array($data) && isset($data['telefono'])) {
-                $telefono = (string) $data['telefono'];
-            }
+            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? ($dataEntrante['cedula'] ?? ''));
+            $nombre = (string) ($datos['nombre'] ?? ($dataEntrante['nombre'] ?? ''));
+            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? ($dataEntrante['correo'] ?? ''));
+            $telefono = (string) ($datos['telefono'] ?? ($dataEntrante['telefono'] ?? ''));
+            $data = $dataEntrante;
             $identificador = $identificadorOld;
         }
 
@@ -393,7 +392,17 @@ final class FormParticipant
             $identificador = 'cedula';
         }
 
-        $identificadorValor = self::identifierValue($identificador, $cedula, $correo);
+        $code = null;
+        if ($identificador === 'codigo') {
+            $code = self::nuevoCode();
+            while (self::db()->fetch('SELECT id FROM form_participants WHERE code = :code', ['code' => $code]) !== null) {
+                $code = self::nuevoCode();
+            }
+            $identificadorValor = $code;
+        } else {
+            $identificadorValor = self::identifierValue($identificador, $cedula, $correo);
+        }
+
         $motivo = self::validarDatos($identificador, $identificadorValor, $correo);
         if ($motivo !== 'ok') {
             return ['ok' => false, 'motivo' => $motivo];
@@ -404,9 +413,16 @@ final class FormParticipant
             return ['ok' => false, 'motivo' => self::MOTIVO_DUPLICADO, 'id' => (int) $existe['id']];
         }
 
-        $code = self::nuevoCode();
-        while (self::db()->fetch('SELECT id FROM form_participants WHERE code = :code', ['code' => $code]) !== null) {
+        $motivoAtributos = self::validarAtributos($formId, $data);
+        if ($motivoAtributos !== 'ok') {
+            return ['ok' => false, 'motivo' => $motivoAtributos];
+        }
+
+        if ($code === null) {
             $code = self::nuevoCode();
+            while (self::db()->fetch('SELECT id FROM form_participants WHERE code = :code', ['code' => $code]) !== null) {
+                $code = self::nuevoCode();
+            }
         }
 
         $db = self::db();
@@ -428,29 +444,43 @@ final class FormParticipant
             self::guardarAtributos($formId, (int) $id, $data);
         }
 
-        return ['ok' => true, 'id' => (int) $id];
+        return ['ok' => true, 'id' => (int) $id, 'motivo' => 'ok'];
     }
 
     public static function update($id, $formId = null, $cedula = '', $nombre = '', $correo = '', $telefono = '', $data = [], string $identificador = 'cedula'): array
     {
-        // Compatibilidad API antigua: update($id, $formId, $identificador, $datos)
-        if (is_string($formId) && in_array($formId, ['cedula', 'correo', 'codigo'], true) && is_array($cedula)) {
-            $identificadorOld = $formId;
-            $datos = $cedula;
-            $fid = (int) $nombre;
-            $cedula = (string) ($datos['cedula'] ?? $datos['identificador'] ?? '');
-            $nombre = (string) ($datos['nombre'] ?? '');
-            $correo = (string) ($datos['correo'] ?? $datos['email'] ?? '');
-            $telefono = (string) ($datos['telefono'] ?? '');
-            if (is_array($correo)) { $data = $correo; $correo = ''; }
-            if (is_array($telefono)) { $data = $telefono; $telefono = ''; }
-            if (is_array($data) && isset($data['cedula'])) { $cedula = (string) $data['cedula']; }
-            if (is_array($data) && isset($data['nombre'])) { $nombre = (string) $data['nombre']; }
-            if (is_array($data) && isset($data['correo'])) { $correo = (string) $data['correo']; }
-            if (is_array($data) && isset($data['telefono'])) { $telefono = (string) $data['telefono']; }
-            $formId = $fid;
-            $identificador = $identificadorOld;
+        $fila = self::find((int) $id);
+        if ($fila === null) {
+            return ['ok' => false, 'motivo' => 'no_encontrado'];
         }
+
+        // Compatibilidad con la API antigua:
+        //   update($id, $identificador, $campos[, $data])
+        //   update($id, $formId, $identificador, $campos)
+        // Los campos que no vienen se conservan de la fila actual, y sin el
+        // cuarto argumento los atributos tampoco se tocan.
+        $escribirAtributos = true;
+        $datosCompat = null;
+        if (is_string($formId) && in_array($formId, ['cedula', 'correo', 'codigo'], true) && is_array($cedula)) {
+            $identificador = $formId;
+            $datosCompat = $cedula;
+            $formId = (int) $fila['form_id'];
+            $data = is_array($nombre) ? $nombre : null;
+            $escribirAtributos = is_array($nombre);
+        } elseif (is_string($cedula) && in_array($cedula, ['cedula', 'correo', 'codigo'], true) && is_array($nombre)) {
+            $identificador = $cedula;
+            $datosCompat = $nombre;
+            $data = null;
+            $escribirAtributos = false;
+        }
+
+        if (is_array($datosCompat)) {
+            $cedula = (string) ($datosCompat['cedula'] ?? $datosCompat['identificador'] ?? $fila['cedula'] ?? '');
+            $nombre = (string) ($datosCompat['nombre'] ?? $fila['nombre'] ?? '');
+            $correo = (string) ($datosCompat['correo'] ?? $datosCompat['email'] ?? $fila['correo'] ?? '');
+            $telefono = (string) ($datosCompat['telefono'] ?? $fila['telefono'] ?? '');
+        }
+
         if (is_array($nombre)) {
             $datos = $nombre;
             $nombre = (string) ($datos['nombre'] ?? '');
@@ -464,8 +494,7 @@ final class FormParticipant
         if (is_array($telefono)) { $data = $telefono; $telefono = ''; }
         if (!is_array($data)) { $data = []; }
 
-        $fila = self::find((int) $id);
-        if ($fila === null || (int) $fila['form_id'] !== (int) $formId) {
+        if ((int) $fila['form_id'] !== (int) $formId) {
             return ['ok' => false, 'motivo' => 'no_encontrado'];
         }
 
@@ -478,7 +507,11 @@ final class FormParticipant
             $identificador = 'cedula';
         }
 
-        $identificadorValor = self::identifierValue($identificador, $cedula, $correo);
+        if ($identificador === 'codigo') {
+            $identificadorValor = (string) ($fila['code'] ?? '');
+        } else {
+            $identificadorValor = self::identifierValue($identificador, $cedula, $correo);
+        }
         $motivo = self::validarDatos($identificador, $identificadorValor, $correo);
         if ($motivo !== 'ok') {
             return ['ok' => false, 'motivo' => $motivo];
@@ -487,6 +520,11 @@ final class FormParticipant
         $existe = self::findByIdentifierValue((int) $formId, $identificador, $identificadorValor);
         if ($existe !== null && (int) $existe['id'] !== (int) $id) {
             return ['ok' => false, 'motivo' => self::MOTIVO_DUPLICADO, 'id' => (int) $existe['id']];
+        }
+
+        $motivoAtributos = self::validarAtributos((int) $formId, $data);
+        if ($motivoAtributos !== 'ok') {
+            return ['ok' => false, 'motivo' => $motivoAtributos];
         }
 
         $cambioCorreo = $correo !== (string) ($fila['correo'] ?? '');
@@ -507,20 +545,23 @@ final class FormParticipant
             self::db()->execute('UPDATE form_participants SET invited_at = NULL WHERE id = :id', ['id' => (int) $id]);
         }
 
-        if (is_array($data)) {
+        if ($escribirAtributos) {
             self::guardarAtributos((int) $formId, (int) $id, $data);
         }
 
-        return ['ok' => true];
+        return ['ok' => true, 'id' => (int) $id, 'motivo' => 'ok'];
     }
 
-    public static function delete(int $id, int $formId): bool
+    public static function delete(int $id, ?int $formId = null): bool
     {
         $fila = self::find($id);
-        if ($fila === null || (int) $fila['form_id'] !== $formId) {
+        if ($fila === null) {
             return false;
         }
-        self::db()->execute('DELETE FROM form_participants WHERE id = :id AND form_id = :form_id', ['id' => $id, 'form_id' => $formId]);
+        if ($formId !== null && (int) $fila['form_id'] !== $formId) {
+            return false;
+        }
+        self::db()->execute('DELETE FROM form_participants WHERE id = :id', ['id' => $id]);
         return true;
     }
 
@@ -562,46 +603,204 @@ final class FormParticipant
         return is_array($rows) ? $rows : [];
     }
 
-    public static function ensureAttribute(int $formId, string $label): ?array
+    public static function ensureAttribute(int $formId, string $label): ?string
     {
-        $label = trim($label);
+        $label = self::normalizar($label);
         if ($label === '') {
             return null;
         }
-        $key = self::slug($label);
-        if ($key === '') {
-            return null;
+        if (mb_strlen($label, 'UTF-8') > 190) {
+            throw new \RuntimeException('atributo_no_creable');
         }
 
-        $existe = self::db()->fetch('SELECT * FROM form_participant_fields WHERE form_id = :form_id AND (key_name = :key OR label = :label)', ['form_id' => $formId, 'key' => $key, 'label' => $label]);
+        $existe = self::db()->fetch(
+            'SELECT * FROM form_participant_fields WHERE form_id = :form_id AND label = :label',
+            ['form_id' => $formId, 'label' => $label]
+        );
         if ($existe !== null) {
-            return $existe;
+            return (string) ($existe['key_name'] ?? '') ?: null;
+        }
+
+        $base = self::slug($label);
+        $key = $base;
+        $usadas = [];
+        foreach (self::catalogFor($formId) as $fila) {
+            $usadas[(string) $fila['key_name']] = (string) $fila['label'];
+        }
+        $n = 1;
+        while (isset($usadas[$key])) {
+            $n++;
+            $sufijo = '_' . $n;
+            $key = mb_substr($base, 0, 64 - strlen($sufijo), 'UTF-8') . $sufijo;
+        }
+        if (mb_strlen($key, 'UTF-8') > 64) {
+            throw new \RuntimeException('atributo_no_creable');
         }
 
         $max = self::db()->fetch('SELECT COALESCE(MAX(position), -1) AS m FROM form_participant_fields WHERE form_id = :form_id', ['form_id' => $formId]);
         $pos = (int) ($max['m'] ?? -1) + 1;
 
         try {
-            $id = self::db()->insert(
+            self::db()->execute(
                 'INSERT INTO form_participant_fields (form_id, key_name, label, position) VALUES (:form_id, :key_name, :label, :position)',
                 ['form_id' => $formId, 'key_name' => $key, 'label' => $label, 'position' => $pos]
             );
         } catch (\Throwable $e) {
-            $existe = self::db()->fetch('SELECT * FROM form_participant_fields WHERE form_id = :form_id AND (key_name = :key OR label = :label)', ['form_id' => $formId, 'key' => $key, 'label' => $label]);
-            return $existe;
+            $existe = self::db()->fetch(
+                'SELECT * FROM form_participant_fields WHERE form_id = :form_id AND (key_name = :key OR label = :label)',
+                ['form_id' => $formId, 'key' => $key, 'label' => $label]
+            );
+            if ($existe !== null) {
+                return (string) ($existe['key_name'] ?? '') ?: null;
+            }
+            throw new \RuntimeException('atributo_no_creable', 0, $e);
         }
 
-        return self::db()->fetch('SELECT * FROM form_participant_fields WHERE id = :id', ['id' => $id]);
+        return $key;
     }
 
-    public static function deleteAttribute(int $formId, int $fieldId): bool
+    public static function deleteAttribute(int $formId, int|string $field): bool
     {
-        $fila = self::db()->fetch('SELECT id FROM form_participant_fields WHERE id = :id AND form_id = :form_id', ['id' => $fieldId, 'form_id' => $formId]);
+        if (is_int($field) || ctype_digit((string) $field)) {
+            $fila = self::db()->fetch(
+                'SELECT id, key_name FROM form_participant_fields WHERE id = :id AND form_id = :form_id',
+                ['id' => (int) $field, 'form_id' => $formId]
+            );
+        } else {
+            $fila = self::db()->fetch(
+                'SELECT id, key_name FROM form_participant_fields WHERE key_name = :key AND form_id = :form_id',
+                ['key' => (string) $field, 'form_id' => $formId]
+            );
+        }
         if ($fila === null) {
             return false;
         }
-        self::db()->execute('DELETE FROM form_participant_fields WHERE id = :id AND form_id = :form_id', ['id' => $fieldId, 'form_id' => $formId]);
+
+        $key = (string) $fila['key_name'];
+        self::db()->transaccionar(function () use ($formId, $fila, $key): void {
+            self::db()->execute(
+                'DELETE FROM form_participant_attrs WHERE form_id = :form_id AND key_name = :key',
+                ['form_id' => $formId, 'key' => $key]
+            );
+            self::db()->execute(
+                'DELETE FROM form_participant_fields WHERE id = :id AND form_id = :form_id',
+                ['id' => (int) $fila['id'], 'form_id' => $formId]
+            );
+        });
+
         return true;
+    }
+
+    public static function sinIdentificadorPara(int $formId, string $identificador): int
+    {
+        $columna = self::COLUMNA_IDENTIFICADOR[$identificador] ?? null;
+        if ($columna === null) {
+            return 0;
+        }
+        $row = self::db()->fetch(
+            "SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id AND TRIM({$columna}) = ''",
+            ['form_id' => $formId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /** Expresión SQL del valor con el que se identificaría cada fila. */
+    private static function expresionIdentificador(string $identificador): ?string
+    {
+        return match ($identificador) {
+            'correo' => "LOWER(TRIM(correo))",
+            'cedula' => 'TRIM(cedula)',
+            'codigo' => 'TRIM(code)',
+            default  => null,
+        };
+    }
+
+    /**
+     * Qué pasaría al cambiar el identificador, sin escribir nada.
+     *
+     * Se cuenta en SQL y no agrupando en PHP porque el UNIQUE de la puerta usa
+     * la colación de la tabla: «V-1» y «v-1» son la misma identidad para el
+     * índice aunque no lo sean para un array asociativo.
+     *
+     * @return array{sin_identidad:int,a_cambiar:int,repetidos_cuento:int,repetidos:list<string>}
+     */
+    public static function planDeReidentificacion(int $formId, string $identificador): array
+    {
+        $expr = self::expresionIdentificador($identificador);
+        if ($expr === null) {
+            return ['sin_identidad' => 0, 'a_cambiar' => 0, 'repetidos_cuento' => 0, 'repetidos' => []];
+        }
+
+        $sin = self::db()->fetch(
+            "SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id AND TRIM({$expr}) = ''",
+            ['form_id' => $formId]
+        );
+        $cambiar = self::db()->fetch(
+            "SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id AND TRIM({$expr}) <> '' AND identifier_value <> {$expr}",
+            ['form_id' => $formId]
+        );
+        $grupos = self::db()->fetchAll(
+            "SELECT COUNT(*) AS c, {$expr} AS v FROM form_participants WHERE form_id = :form_id AND TRIM({$expr}) <> '' GROUP BY v HAVING COUNT(*) > 1 ORDER BY v ASC",
+            ['form_id' => $formId]
+        );
+
+        $repetidos = [];
+        $cuenta = 0;
+        foreach ($grupos as $grupo) {
+            $cuenta += (int) ($grupo['c'] ?? 0);
+            if (count($repetidos) < 5) {
+                $repetidos[] = (string) ($grupo['v'] ?? '');
+            }
+        }
+
+        return [
+            'sin_identidad' => (int) ($sin['c'] ?? 0),
+            'a_cambiar' => (int) ($cambiar['c'] ?? 0),
+            'repetidos_cuento' => $cuenta,
+            'repetidos' => $repetidos,
+        ];
+    }
+
+    /**
+     * Reescribe SOLO `identifier_value` con el identificador nuevo.
+     *
+     * El `code` no se toca: es la credencial que ya se repartió y un enlace
+     * viejo tiene que seguir entrando. Devuelve cuántas filas cambiaron.
+     */
+    public static function reidentificar(int $formId, string $identificador): int
+    {
+        $expr = self::expresionIdentificador($identificador);
+        if ($expr === null) {
+            return 0;
+        }
+
+        return self::db()->execute(
+            "UPDATE form_participants SET identifier_value = {$expr} WHERE form_id = :form_id AND TRIM({$expr}) <> '' AND identifier_value <> {$expr}",
+            ['form_id' => $formId]
+        );
+    }
+
+    private static function validarAtributos(int $formId, array $data): string
+    {
+        if ($data === []) {
+            return 'ok';
+        }
+        $catalogo = [];
+        foreach (self::catalogFor($formId) as $campo) {
+            $catalogo[(string) $campo['key_name']] = true;
+        }
+        foreach ($data as $key => $value) {
+            $key = (string) $key;
+            if (!isset($catalogo[$key])) {
+                return self::MOTIVO_ATRIBUTO;
+            }
+            if (mb_strlen(trim((string) $value), 'UTF-8') > self::MAX_VALOR_ATRIBUTO) {
+                return self::MOTIVO_VALOR_LARGO;
+            }
+        }
+
+        return 'ok';
     }
 
     public static function attributesOf(int $participantId): array
@@ -612,6 +811,89 @@ final class FormParticipant
             foreach ($rows as $r) {
                 $out[(string) $r['key_name']] = (string) $r['value'];
             }
+        }
+        return $out;
+    }
+
+    public static function valuesOf(int $formId, string $keyName): array
+    {
+        $keyName = trim($keyName);
+        if ($formId <= 0 || $keyName === '') {
+            return [];
+        }
+
+        $rows = self::db()->fetchAll(
+            'SELECT value, COUNT(*) AS c FROM form_participant_attrs
+             WHERE form_id = :form_id AND key_name = :key_name AND value <> \'\'
+             GROUP BY value ORDER BY c DESC, value ASC LIMIT 200',
+            ['form_id' => $formId, 'key_name' => $keyName]
+        );
+
+        $out = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $out[] = (string) ($row['value'] ?? '');
+            }
+        }
+
+        return $out;
+    }
+
+    public static function valoresConConteo(int $formId, string $keyName): array
+    {
+        $keyName = trim($keyName);
+        if ($formId <= 0 || $keyName === '') {
+            return ['valores' => [], 'total' => 0];
+        }
+
+        $rows = self::db()->fetchAll(
+            'SELECT value, COUNT(*) AS c FROM form_participant_attrs
+             WHERE form_id = :form_id AND key_name = :key_name AND value <> \'\'
+             GROUP BY value ORDER BY c DESC, value ASC',
+            ['form_id' => $formId, 'key_name' => $keyName]
+        );
+
+        $valores = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $valores[(string) ($row['value'] ?? '')] = (int) ($row['c'] ?? 0);
+            }
+        }
+
+        $total = self::db()->fetch(
+            'SELECT COUNT(*) AS c FROM form_participants WHERE form_id = :form_id',
+            ['form_id' => $formId]
+        );
+
+        return ['valores' => $valores, 'total' => (int) ($total['c'] ?? 0)];
+    }
+
+    public static function atributosDe(array $pids): array
+    {
+        $pids = array_values(array_filter(array_map('intval', $pids), static fn ($v) => $v > 0));
+        if ($pids === []) {
+            return [];
+        }
+        $in = [];
+        $params = [];
+        foreach ($pids as $i => $pid) {
+            $in[] = ':p' . $i;
+            $params['p' . $i] = $pid;
+        }
+        $rows = self::db()->fetchAll('SELECT participant_id, key_name, value FROM form_participant_attrs WHERE participant_id IN (' . implode(',', $in) . ')', $params);
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $pid = (int) ($r['participant_id'] ?? 0);
+            if ($pid <= 0) {
+                continue;
+            }
+            if (!isset($out[$pid])) {
+                $out[$pid] = [];
+            }
+            $out[$pid][(string) ($r['key_name'] ?? '')] = (string) ($r['value'] ?? '');
         }
         return $out;
     }
@@ -691,9 +973,123 @@ final class FormParticipant
         if (!is_string($s)) {
             $s = mb_strtolower(trim($texto), 'UTF-8');
         }
-        $s = preg_replace('/[^a-z0-9]+/', '-', $s) ?? $s;
-        $s = trim($s, '-');
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s) ?? $s;
+        $s = trim($s, '_');
+        if ($s === '') {
+            return 'attr';
+        }
+        if (preg_match('/^[0-9]/', $s) === 1) {
+            $s = '_' . $s;
+        }
 
-        return $s === '' ? 'attr' : $s;
+        return $s;
+    }
+
+    /**
+     * Resuelve identidades de varios participantes del MISMO formulario.
+     * Se filtra por form_id en el WHERE para evitar fuga entre formularios.
+     */
+    public static function identidadesDe(int $formId, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $pids = [];
+        foreach ($ids as $id) {
+            if ($id === null || $id === '') {
+                continue;
+            }
+            $pid = (int) $id;
+            if ($pid <= 0) {
+                continue;
+            }
+            $pids[$pid] = true;
+        }
+        if ($pids === []) {
+            return [];
+        }
+        $pids = array_keys($pids);
+        $placeholders = [];
+        $params = ['form_id' => $formId];
+        foreach ($pids as $i => $pid) {
+            $k = 'p' . $i;
+            $placeholders[] = ':' . $k;
+            $params[$k] = (int) $pid;
+        }
+        $rows = self::db()->fetchAll(
+            'SELECT id, identifier_value, nombre, correo FROM form_participants WHERE form_id = :form_id AND id IN (' . implode(',', $placeholders) . ')',
+            $params
+        );
+        $out = [];
+        if (is_array($rows)) {
+            foreach ($rows as $r) {
+                $pid = (int) ($r['id'] ?? 0);
+                if ($pid <= 0) {
+                    continue;
+                }
+                $out[$pid] = [
+                    'identifier_value' => (string) ($r['identifier_value'] ?? ''),
+                    'nombre' => (string) ($r['nombre'] ?? ''),
+                    'correo' => (string) ($r['correo'] ?? ''),
+                ];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Datos para pintar la celda "quién respondió".
+     * Con identificador = correo, el correo ya va en el principal así que no se repite.
+     */
+    public static function identidadDe(array $fila, string $identificador): array
+    {
+        $principal = (string) ($fila['identifier_value'] ?? '');
+        $nombre = trim((string) ($fila['nombre'] ?? ''));
+        $correo = trim((string) ($fila['correo'] ?? ''));
+        if ($identificador === 'correo') {
+            $correo = '';
+        }
+        return [
+            'principal' => $principal,
+            'nombre' => $nombre,
+            'correo' => $correo,
+        ];
+    }
+
+    /**
+     * Resuelve el filtro por atributo para analítica. Solo permite atributos del catálogo
+     * (no filtros inválidos). Devuelve ['key' => ..., 'value' => ...] o null.
+     */
+    public static function filtroAtributo(int $formId, string $key, string $value): ?array
+    {
+        $key = trim($key);
+        $value = trim($value);
+        if ($key === '' || $value === '') {
+            return null;
+        }
+        if (isset(self::COLUMNA_IDENTIFICADOR[$key]) || in_array($key, ['cedula', 'nombre', 'correo'], true)) {
+            return null;
+        }
+        if (self::atributoDeCatalogo($formId, $key) === null) {
+            return null;
+        }
+        return ['form_id' => $formId, 'key' => $key, 'value' => $value];
+    }
+
+    public static function atributoDeCatalogo(int $formId, string $key): ?array
+    {
+        $key = trim($key);
+        if ($key === '') {
+            return null;
+        }
+        if (isset(self::COLUMNA_IDENTIFICADOR[$key]) || in_array($key, ['cedula', 'nombre', 'correo'], true)) {
+            return null;
+        }
+        foreach (self::catalogFor($formId) as $c) {
+            if ((string) ($c['key_name'] ?? '') === $key) {
+                return is_array($c) ? $c : null;
+            }
+        }
+        return null;
     }
 }

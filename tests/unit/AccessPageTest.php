@@ -92,8 +92,70 @@ class AccessPageTest
             str_contains($html, 'data-vf-modal-move="#rosterAddModal"'),
             'el montaje del alta apunta a su modal: es lo que lee `moverFormulariosInline()`'
         );
+        assertTrue(
+            (bool) preg_match('/<form\b[^>]*\bdata-vf-modal-form\b/', $html),
+            'lo que se mueve al modal es el formulario, no su contenedor: mover el contenedor y ocultarlo deja el diálogo vacío'
+        );
+        assertTrue(
+            !preg_match('/<div\b[^>]*\bdata-vf-modal-move="#rosterAddModal"[^>]*\bdata-vf-modal-form\b/', $html),
+            'el contenedor no puede ser a la vez el nodo que se mueve y el que se oculta'
+        );
         assertTrue(str_contains($html, 'data-vf-participant="' . $pid . '"'), 'el `⋯` de la fila');
         assertTrue(str_contains($html, 'id="rowactions-' . $pid . '"'), 'y su caja de acciones');
+    }
+
+    /**
+     * La caja de acciones tiene UN solo hijo, que es el panel que viaja al modal.
+     *
+     * `initAccionesDeFila()` mueve `caja.firstElementChild` y, al cerrar, lo
+     * devuelve con `appendChild()`. Con los dos formularios (editar y quitar)
+     * como hijos sueltos, el que había viajado volvía al final: el clic
+     * siguiente movía el otro y el modal alternaba entre «formulario + Guardar»
+     * y «solo Quitar». El panel envuelve las dos acciones para que el primer
+     * hijo sea siempre el mismo.
+     */
+    public function testLaCajaDeAccionesTieneUnSoloHijoYElModalNoAlterna(): void
+    {
+        self::modo(FormSettings::ACCESS_ROSTER);
+        FormParticipant::create((int) self::$formId, 'cedula', ['cedula' => 'V-1', 'nombre' => 'Ana']);
+        $pid = (int) (FormParticipant::findByIdentifier((int) self::$formId, 'cedula', 'V-1')['id'] ?? 0);
+
+        $doc = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="utf-8" ?>' . self::pagina());
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($doc);
+
+        $cajas = $xpath->query('//*[@id="rowactions-' . $pid . '"]');
+        assertSame(1, $cajas->length, 'la fila tiene su caja de acciones');
+
+        $caja = $cajas->item(0);
+        $hijos = 0;
+        foreach ($caja->childNodes as $nodo) {
+            if ($nodo->nodeType === XML_ELEMENT_NODE) {
+                $hijos++;
+            }
+        }
+        assertSame(1, $hijos, 'la caja tiene un único hijo: el panel que se mueve al modal');
+        assertSame(
+            2,
+            $xpath->query('.//form', $caja)->length,
+            'el panel conserva las dos acciones: editar y quitar'
+        );
+        assertSame(
+            1,
+            $xpath->query('.//form[@id="rosterEditForm' . $pid . '"]', $caja)->length,
+            'y el formulario de edición sigue siendo el que se mueve, no el de borrar'
+        );
+
+        $columnas = $xpath->query('.//form[@id="rosterEditForm' . $pid . '"]/*[contains(concat(" ", normalize-space(@class), " "), " row ")]/*[starts-with(normalize-space(@class), "col-")]');
+        assertTrue($columnas->length >= 4, 'el formulario de edición pinta sus campos');
+        foreach ($columnas as $columna) {
+            assertTrue(
+                str_contains(' ' . $columna->getAttribute('class') . ' ', ' col-12 '),
+                'todos los campos van en una sola columna, como el alta'
+            );
+        }
     }
 
     /**

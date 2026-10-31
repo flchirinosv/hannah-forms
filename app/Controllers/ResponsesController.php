@@ -363,9 +363,6 @@ class ResponsesController
     private static function validarFecha(string $fecha): string
     {
         $fecha = trim($fecha);
-        if ($fecha === '' || \DateTime::createFromFormat('Y-m-d', $fecha) === false) {
-            return '';
-        }
-        return $fecha;
+        return Submission::isValidDay($fecha) ? $fecha : '';
     }
 }

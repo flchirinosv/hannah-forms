@@ -171,3 +171,42 @@ Se corrige comparando el código como entero (`(int) substr(...)`) y se añade
 por reflexión con el saludo real de Mailjet y con un código/EOF inválidos. Mutar la
 comparación de vuelta a string pone el test en rojo. Verificado con un envío real:
 el servidor acepta y finaliza el mensaje.
+
+## Validación integral de la aplicación (2026-10-27)
+
+Auditoría de rutas, controladores, servicios, vistas, esquema, permisos y tests
+contra `docs/plan-validacion-completa.md`. Tres defectos reales y dos cabos
+sueltos de coherencia; el resto de fases quedó validado por código, tests y
+smoke de rutas.
+
+- **El catálogo de `SecurityLog` filtraba eventos reales**: `recent()` solo
+  devuelve las claves de `knownEvents()`, así que los eventos emitidos pero no
+  registrados desaparecían del panel sin aviso. Se añadieron los diez que
+  faltaban (`authz.denied`, `admin.user_create`, `form.publish`,
+  `rate_limit.form_access`, `rate_limit.form_code`, `access.link_issued_by_owner`,
+  `access.link_sent`, `roster.code_rejected`, `roster.imported`,
+  `roster.truncated`) y `admin.group_update`. `rate_limit.dash_` sigue siendo un
+  prefijo dinámico, no un evento literal. Lo vigila
+  `SecurityLogTest::testTodosLosEventosLiteralesEstanEnElCatalogo`, que recorre
+  `SecurityLog::record('…')` en `app/`.
+- **Actualizar un grupo se anotaba como `admin.group_create`**: corregido a
+  `admin.group_update` en `AdminController::groupUpdate()`, con regresión en
+  `AdminRbacTest`.
+- **Nombre de grupo duplicado daba un 500 por el UNIQUE**: `groupCreate()` y
+  `groupUpdate()` lo comprueban antes con `RoleGroup::findByName()`, que usa la
+  colación de la columna (la misma que el índice: no distingue mayúsculas ni
+  acentos). En el update se excluye el propio id.
+- **Un rol o usuario inventado en el POST de un grupo llegaba a las FK**: ahora
+  `groupMembershipError()` valida los ids contra `Role::all()`/`User::all()` antes
+  de crear o tocar la N:M; se conserva el comportamiento de ignorar ids `<= 0`.
+  Un POST manipulado recibe un mensaje y no deja el grupo a medio escribir.
+- **El filtro de fechas de respuestas no usaba el predicado común**:
+  `ResponsesController::validarFecha()` aceptaba `2026-02-30` porque
+  `createFromFormat` la corrige a marzo, mientras la analítica y el CSV usan
+  `Submission::isValidDay()`. Ahora delega en él, así que el mismo `?from`/`?to`
+  recorta el mismo periodo en las tres superficies.
+- **Tests nuevos**: 3 en `AdminRbacTest` (nombre repetido en alta, renombrado
+  repetido e ids inexistentes), 1 más para el evento de actualización, 1 en
+  `SecurityLogTest` (catálogo completo) y 1 en `ResponsesTest` (día inexistente).
+  `ControllerActionsTest::testTodasLasRutasRespondenSinErroresNiEndpointsMudos`
+  sigue verde con las 97 rutas.

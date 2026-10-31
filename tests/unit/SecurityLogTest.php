@@ -74,6 +74,39 @@ class SecurityLogTest
         assertSame((int) self::$userId, (int) $row['user_id'], 'un usuario real deja su id en la fila');
     }
 
+    public function testTodosLosEventosLiteralesEstanEnElCatalogo(): void
+    {
+        $dir = dirname(__DIR__, 2) . '/app';
+        $eventos = [];
+        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
+        foreach ($it as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+            $src = (string) file_get_contents($file->getPathname());
+            if (preg_match_all("/SecurityLog::record\(\s*'([^']+)'/", $src, $m)) {
+                foreach ($m[1] as $event) {
+                    // `rate_limit.dash_` es un prefijo que se concatena con el
+                    // scope real; no es un evento literal.
+                    if (str_ends_with($event, '_')) {
+                        continue;
+                    }
+                    $eventos[$event][] = $file->getFilename();
+                }
+            }
+        }
+
+        assertTrue($eventos !== [], 'el barrido tiene que encontrar llamadas a record()');
+        $known = SecurityLog::knownEvents();
+        foreach ($eventos as $event => $archivos) {
+            assertTrue(
+                in_array($event, $known, true),
+                'el evento «' . $event . '» se registra en ' . implode(', ', array_unique($archivos))
+                    . ' pero falta en SecurityLog::knownEvents()'
+            );
+        }
+    }
+
     public function testRecentFiltraPorEventoConocidoYPagina(): void
     {
         SecurityLog::record('auth.login_ok', 'marca-slog-c');

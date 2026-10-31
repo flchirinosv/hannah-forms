@@ -484,8 +484,8 @@ class PiiMaskingTest
     /**
      * Deja al usuario `userId` como el de la sesión.
      *
-     * No se usa `Auth::login()` a propósito: llama a `session_regenerate_id()`,
-     * que en el runner (sin sesión activa) escribe un warning por cada llamada.
+     * No se usa `Auth::login()` a propósito: es la puerta de producción, y el
+     * seam de test es `Auth::assumeLoggedIn()`.
      * `Auth::id()` lee `Session::get('user_id')` y los permisos se cachean por
      * request, así que con `forgetCache()` el estado es idéntico.
      */

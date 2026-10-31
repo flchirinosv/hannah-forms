@@ -14,7 +14,7 @@ El *por qué* de cada cambio está archivado en `docs/decisiones.md`.
 
 ## Comandos
 
-- Suite completa: `php scripts/test.php` → 129 archivos, 1378 métodos, ~7–9 min;
+- Suite completa: `php scripts/test.php` → 129 archivos, 1385 métodos, ~8–13 min;
   sale 1 solo si hay `Fallidos` o `Errores`.
 - Un test: `php scripts/test.php --filter <substring del NOMBRE DEL MÉTODO>` (con
   espacio, no `--filter=`). Casa por **nombre de método**, no de clase: un filtro
@@ -979,8 +979,10 @@ receta de migración idempotente; los commands `/test`, `/migrate` y
 - **Alta y edición del listado van en MODAL, con la UX de `/admin`** (y se acepta
   perder la edición sin JS): el alta conserva camino sin JS (el formulario se sirve
   EN LÍNEA y `moverFormulariosInline()` de `dashboard.js` lo traslada a
-  `#rosterAddModal`, con `data-vf-modal-move="#rosterAddModal"` + `data-vf-modal-form`
-  sobre `#rosterAddForm`); la edición por fila es el mismo patrón que la tabla de
+  `#rosterAddModal`, con `data-vf-modal-move="#rosterAddModal"` en `#rosterAddForm`
+  y `data-vf-modal-form` en el `<form>` de dentro —nunca los dos en el mismo nodo:
+  mover el contenedor y ocultarlo dejaría el diálogo vacío—); la edición por fila
+  es el mismo patrón que la tabla de
   usuarios (`⋯` = `data-vf-participant`, panel `#rowactions-<pid>` que se MUEVE a
   `#rosterEditModal` y se devuelve al cerrar). `dashboard.js` generalizó
   `initTablaAcciones()` a **`initAccionesDeFila(modalId, atributo, prefijoCaja)`**,

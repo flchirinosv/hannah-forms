@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Controllers\ResponsesController;
 use App\Core\Config;
 use App\Core\Database;
 use App\Models\Answer;
@@ -185,6 +186,22 @@ class ResponsesTest
 
         $ranking = \App\Core\View::answerValue('{"B":"1","A":"2"}', 'ranking');
         assertTrue(strpos($ranking, 'vf-chip-pos">1') < strpos($ranking, 'vf-chip-pos">2'), 'el ranking se ordena por el puesto');
+    }
+
+    /**
+     * El filtro de fechas de respuestas tiene que usar el MISMO predicado que
+     * la analítica y el CSV: `createFromFormat` acepta `2026-02-30` y la
+     * "corrige" a marzo, así que un día inexistente recortaba otro periodo.
+     */
+    public function testElFiltroDeFechasRechazaUnDiaQueNoExiste(): void
+    {
+        $metodo = new \ReflectionMethod(ResponsesController::class, 'validarFecha');
+        $metodo->setAccessible(true);
+
+        assertSame('2026-02-28', $metodo->invoke(null, '2026-02-28'));
+        assertSame('', $metodo->invoke(null, '2026-02-30'), 'un día inexistente no se puede colar');
+        assertSame('', $metodo->invoke(null, '2026-01-01x'), 'la basura tampoco');
+        assertSame('', $metodo->invoke(null, ''));
     }
 
     public function testExportPayloadEstructuraYDecodifica(): void

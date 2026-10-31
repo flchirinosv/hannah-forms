@@ -135,6 +135,75 @@ class AdminRbacTest
         assertSame('descripción nueva', (string) $group['description']);
     }
 
+    public function testGuardarGrupoRegistraElEventoDeActualizacion(): void
+    {
+        $this->authAsAdmin();
+
+        $out = $this->callJson('groupUpdate', [
+            'group_id' => (string) self::$groupA,
+            'name'     => 'Grupo A ' . self::$prefix,
+        ]);
+
+        assertTrue(($out['ok'] ?? false) === true, 'el guardado responde ok: ' . json_encode($out));
+
+        $eventos = array_column(SecurityLog::recent('admin.group_update', 1, 200)['items'], 'detail');
+        assertTrue(
+            in_array('grupo #' . self::$groupA . ' actualizado («Grupo A ' . self::$prefix . '»)', $eventos, true),
+            'un guardado de grupo no se puede anotar como admin.group_create'
+        );
+    }
+
+    public function testCrearGrupoRechazaUnNombreQueYaExiste(): void
+    {
+        $this->authAsAdmin();
+        $antes = count(RoleGroup::all());
+
+        $out = $this->call('groupCreate', ['name' => 'Grupo A ' . self::$prefix]);
+
+        assertTrue($out['error'] !== '', 'un nombre repetido tiene que dar error: ' . $out['exito']);
+        assertSame($antes, count(RoleGroup::all()), 'el alta rechazada no crea una segunda fila');
+    }
+
+    public function testGuardarGrupoRechazaRenombrarARepetido(): void
+    {
+        $this->authAsAdmin();
+
+        $out = $this->callJson('groupUpdate', [
+            'group_id' => (string) self::$groupB,
+            'name'     => 'Grupo A ' . self::$prefix,
+        ]);
+
+        assertSame(false, $out['ok'] ?? null, 'el JSON del error no puede decir ok: ' . json_encode($out));
+        assertSame(
+            'Grupo B ' . self::$prefix,
+            (string) RoleGroup::find(self::$groupB)['name'],
+            'el nombre anterior sobrevive al rechazo'
+        );
+    }
+
+    public function testGuardarGrupoRechazaRolOUsuarioInexistente(): void
+    {
+        $editorId = (int) $this->roleWithPermission('rbac-mal', 'forms.create');
+        RoleGroup::setRoles(self::$groupA, [$editorId]);
+        RoleGroup::setUsers(self::$groupA, [self::$targetId]);
+        $this->authAsAdmin();
+
+        $porRol = $this->callJson('groupUpdate', [
+            'group_id' => (string) self::$groupA,
+            'roles'    => ['99999999'],
+        ]);
+        assertSame(false, $porRol['ok'] ?? null, 'un rol inventado no se puede colar: ' . json_encode($porRol));
+        assertSame([$editorId], self::groupRoles(self::$groupA), 'el rol anterior se queda intacto');
+        assertSame([self::$targetId], self::groupUsers(self::$groupA), 'los miembros anteriores se quedan intactos');
+
+        $porUsuario = $this->callJson('groupUpdate', [
+            'group_id' => (string) self::$groupA,
+            'users'    => ['99999999'],
+        ]);
+        assertSame(false, $porUsuario['ok'] ?? null, 'un usuario inventado no se puede colar: ' . json_encode($porUsuario));
+        assertSame([self::$targetId], self::groupUsers(self::$groupA), 'la pertenencia anterior se queda intacta');
+    }
+
     public function testGuardarGrupoSinRecargaDevuelveLaCabeceraResumen(): void
     {
         $editorId = (int) $this->roleWithPermission('rbac-sum', 'forms.create');

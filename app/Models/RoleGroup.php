@@ -46,6 +46,15 @@ class RoleGroup
         return self::db()->fetch('SELECT * FROM role_groups WHERE id = :id', ['id' => $id]);
     }
 
+    /**
+     * Grupo por nombre exacto, o null. La colación de la columna no distingue
+     * mayúsculas ni acentos, igual que el UNIQUE que protege el alta.
+     */
+    public static function findByName(string $name): ?array
+    {
+        return self::db()->fetch('SELECT * FROM role_groups WHERE name = :name LIMIT 1', ['name' => trim($name)]);
+    }
+
     public static function create(string $name, string $description = ''): int
     {
         self::db()->execute(

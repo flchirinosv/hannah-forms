@@ -209,7 +209,7 @@ class RosterIdentifierTest
     {
         self::modo(FormSettings::ACCESS_ROSTER, 'cedula');
         $ana = self::persona(['cedula' => 'V-1', 'nombre' => 'Ana']); // sin correo
-        $luis = self::persona(['correo' => 'luis@test.local', 'nombre' => 'Luis']); // sin cédula
+        $luis = self::persona(['correo' => 'luis@test.local', 'nombre' => 'Luis'], 'codigo'); // sin cédula
 
         $r = self::guardar(['access_mode' => 'roster', 'access_identifier' => 'correo']);
 
@@ -445,7 +445,7 @@ class RosterIdentifierTest
      * El identificador es un argumento y no «cédula» fijo porque el modelo no deja
      * entrar a nadie sin identidad: una persona creada con identificador `cedula` y
      * sin cédula se rechaza (`identificador_vacio`), que es justo lo que la fase 3
-     * decidió. Para tener a alguien «sin cédula» hay que meterla por `indicador`.
+     * decidió. Para tener a alguien «sin cédula» hay que meterla por `codigo`.
      *
      * @param array<string,string> $campos
      */

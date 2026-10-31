@@ -1107,24 +1107,12 @@
     function countAnswered() {
         const cards = progressFieldCards();
         let done = 0;
-        let reqDone = 0;
-        let reqTotal = 0;
         cards.forEach((card) => {
-            const req = card.dataset.vfRequired === '1';
             const filled = isCardAnswered(card);
             if (filled) {
                 done += 1;
             }
-            if (req) {
-                reqTotal += 1;
-                if (filled) {
-                    reqDone += 1;
-                }
-            }
         });
-        if (reqTotal > 0) {
-            return Math.round((reqDone / reqTotal) * 100);
-        }
         return cards.length ? Math.round((done / cards.length) * 100) : 0;
     }
 

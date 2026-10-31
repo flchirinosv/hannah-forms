@@ -12,21 +12,23 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
 $atributos = is_array($roster['atributos'] ?? null) ? $roster['atributos'] : [];
 $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedula';
 ?>
-<form method="post" action="/forms/<?= $formId ?>/participants" data-vf-error="rosterAddError" data-vf-clear="rosterAddIdent">
+<form method="post" action="/forms/<?= $formId ?>/participants" data-vf-modal-form data-vf-error="rosterAddError" data-vf-clear="rosterAddId">
     <?= Csrf::field() ?>
     <div class="row g-2">
         <div class="col-12">
-            <label class="form-label small mb-1" for="rosterAddIdent"><?= $identificador === 'correo' ? 'Correo' : 'Cédula' ?></label>
-            <input type="text" class="form-control form-control-sm" id="rosterAddIdent" name="<?= View::escape($columnaIdent) ?>" required>
+            <label class="form-label small mb-1" for="rosterAddId"><?= $identificador === 'correo' ? 'Correo' : 'Cédula' ?></label>
+            <input type="text" class="form-control form-control-sm" id="rosterAddId" name="<?= View::escape($columnaIdent) ?>" required>
         </div>
         <div class="col-12">
             <label class="form-label small mb-1" for="rosterAddNombre">Nombre completo</label>
             <input type="text" class="form-control form-control-sm" id="rosterAddNombre" name="nombre">
         </div>
-        <div class="col-12">
-            <label class="form-label small mb-1" for="rosterAddCorreo">Correo</label>
-            <input type="email" class="form-control form-control-sm" id="rosterAddCorreo" name="correo">
-        </div>
+        <?php if ($identificador !== FormParticipant::IDENT_CORREO): ?>
+            <div class="col-12">
+                <label class="form-label small mb-1" for="rosterAddCorreo">Correo</label>
+                <input type="email" class="form-control form-control-sm" id="rosterAddCorreo" name="correo">
+            </div>
+        <?php endif; ?>
         <div class="col-12">
             <label class="form-label small mb-1" for="rosterAddTelefono">Teléfono</label>
             <input type="text" class="form-control form-control-sm" id="rosterAddTelefono" name="telefono">
@@ -37,13 +39,13 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
         ?>
             <div class="col-12">
                 <label class="form-label small mb-1" for="rosterAddAttr<?= View::escape($key) ?>"><?= View::escape($label) ?></label>
-                <input type="text" class="form-control form-control-sm" id="rosterAddAttr<?= View::escape($key) ?>" name="attr_<?= View::escape($key) ?>">
+                <input type="text" class="form-control form-control-sm" id="rosterAddAttr<?= View::escape($key) ?>" name="data[<?= View::escape($key) ?>]">
             </div>
         <?php endforeach; ?>
     </div>
     <div class="d-flex justify-content-end mt-3">
         <button type="submit" class="btn btn-primary app-form-cta">
-            <i class="fa-solid fa-plus me-1"></i>Agregar
+            <i class="fa-solid fa-plus me-1"></i>Añadir a la lista
         </button>
     </div>
     <p class="small mb-0 mt-2 d-none text-danger fw-semibold" id="rosterAddError" role="alert"></p>

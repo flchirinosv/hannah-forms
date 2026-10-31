@@ -1330,10 +1330,24 @@ class AdminController
             Response::redirect('/admin/groups');
             return;
         }
+        if (RoleGroup::findByName($name) !== null) {
+            Session::flash('error', 'Ya hay un grupo con ese nombre.');
+            Response::redirect('/admin/groups');
+            return;
+        }
+
+        $roleIds = self::postedIds('roles');
+        $memberIds = self::postedIds('users');
+        $membershipError = self::groupMembershipError($roleIds, $memberIds);
+        if ($membershipError !== null) {
+            Session::flash('error', $membershipError);
+            Response::redirect('/admin/groups');
+            return;
+        }
 
         $groupId = RoleGroup::create($name, trim(Request::post('description', '')));
-        RoleGroup::setRoles($groupId, self::postedIds('roles'));
-        RoleGroup::setUsers($groupId, self::postedIds('users'));
+        RoleGroup::setRoles($groupId, $roleIds);
+        RoleGroup::setUsers($groupId, $memberIds);
         SecurityLog::record('admin.group_create', 'grupo #' . $groupId . ' («' . $name . '»)');
         Session::flash('success', 'Grupo creado.');
         Response::redirect('/admin/groups');
@@ -1396,6 +1410,30 @@ class AdminController
             }
         }
 
+        $duplicado = RoleGroup::findByName($name);
+        if ($duplicado !== null && (int) $duplicado['id'] !== $groupId) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => 'Ya hay un grupo con ese nombre.'], 422);
+                return;
+            }
+            Session::flash('error', 'Ya hay un grupo con ese nombre.');
+            Response::redirect('/admin/groups');
+            return;
+        }
+
+        $roleIds = self::postedIds('roles');
+        $memberIds = self::postedIds('users');
+        $membershipError = self::groupMembershipError($roleIds, $memberIds);
+        if ($membershipError !== null) {
+            if ($json) {
+                Response::json(['ok' => false, 'error' => $membershipError], 422);
+                return;
+            }
+            Session::flash('error', $membershipError);
+            Response::redirect('/admin/groups');
+            return;
+        }
+
         // La fila del grupo solo se toca si el nombre o la descripción cambian:
         // `setRoles`/`setUsers` borran y reinsertan dentro de su propia
         // transacción, y hacerlo en cada guardado daría una falsa sensación de
@@ -1408,11 +1446,9 @@ class AdminController
         if ($name !== (string) $current['name'] || $description !== (string) ($current['description'] ?? '')) {
             RoleGroup::update($groupId, $name, $description);
         }
-        $roleIds = self::postedIds('roles');
-        $memberIds = self::postedIds('users');
         RoleGroup::setRoles($groupId, $roleIds);
         RoleGroup::setUsers($groupId, $memberIds);
-        SecurityLog::record('admin.group_create', 'grupo #' . $groupId . ' actualizado («' . $name . '»)');
+        SecurityLog::record('admin.group_update', 'grupo #' . $groupId . ' actualizado («' . $name . '»)');
 
         if ($json) {
             /* Dos huecos, porque el rediseño separó el resumen (cabecera) del
@@ -1810,6 +1846,30 @@ class AdminController
             return [];
         }
         return array_values(array_map('intval', $posted));
+    }
+
+    /**
+     * Valida los ids de roles y miembros antes de tocar la N:M. Sin esto un
+     * POST manipulado llega a las FK y la respuesta es un 500 en vez de un
+     * mensaje; los ids <= 0 se ignoran, como hacía `RoleGroup::setRoles()`.
+     */
+    private static function groupMembershipError(array $roleIds, array $memberIds): ?string
+    {
+        $validRoles = array_fill_keys(array_map('intval', array_column(Role::all(), 'id')), true);
+        foreach ($roleIds as $roleId) {
+            if ($roleId > 0 && !isset($validRoles[$roleId])) {
+                return 'Uno de los roles ya no existe.';
+            }
+        }
+
+        $validUsers = array_fill_keys(array_map('intval', array_column(User::all(), 'id')), true);
+        foreach ($memberIds as $userId) {
+            if ($userId > 0 && !isset($validUsers[$userId])) {
+                return 'Uno de los usuarios ya no existe.';
+            }
+        }
+
+        return null;
     }
 
     /**

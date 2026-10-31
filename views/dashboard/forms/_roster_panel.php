@@ -140,28 +140,26 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
                         </div>
                     </div>
                 </div>
+                <div class="vf-import-danger px-3 pb-3">
+                    <hr class="my-0">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
+                        <p class="small text-muted mb-0">
+                            <strong>Vaciar la lista</strong> quita a todas las personas. El catálogo de atributos se queda.
+                        </p>
+                        <form method="post" action="/forms/<?= $formId ?>/participants/truncate" data-confirm="¿Vaciar toda la lista de participantes? Esta acción no se puede deshacer." data-confirm-ok="Sí, vaciar la lista" data-confirm-tone="danger">
+                            <?= Csrf::field() ?>
+                            <button type="submit" class="btn btn-outline-danger app-form-cta">
+                                <i class="fa-solid fa-trash-can me-1"></i>Vaciar la lista
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="vf-import-danger">
-        <hr class="my-0">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
-            <p class="small text-muted mb-0">
-                <strong>Vaciar la lista</strong> quita a todas las personas. El catálogo de atributos se queda.
-            </p>
-            <form method="post" action="/forms/<?= $formId ?>/participants/truncate" data-confirm="¿Vaciar toda la lista de participantes? Esta acción no se puede deshacer." data-confirm-tone="danger">
-                <?= Csrf::field() ?>
-                <button type="submit" class="btn btn-outline-danger app-form-cta">
-                    <i class="fa-solid fa-trash-can me-1"></i>Vaciar la lista
-                </button>
-            </form>
-        </div>
-    </div>
 </div>
 
-<div data-vf-modal-move="#rosterAddModal" data-vf-modal-form id="rosterAddForm">
+<div data-vf-modal-move="#rosterAddModal" id="rosterAddForm">
     <?= View::partial('dashboard/forms/_roster_add_form', ['roster' => $roster, 'formId' => $formId]) ?>
 </div>
-
-<?= View::partial('dashboard/forms/_roster_edit_modal', ['formId' => $formId, 'roster' => $roster]) ?>

@@ -84,16 +84,17 @@ final class ParticipantImporter
 
         $fallo = null;
         $resumen = ['insertados' => 0, 'actualizados' => 0, 'sin_cambios' => 0];
+        $asegurados = ['keys' => [], 'nuevos' => []];
 
         try {
-            self::db()->transaccionar(function () use ($formId, $modo, $filas, $columnas, $preparadas, $identificador, &$resumen): void {
-                self::asegurarAtributos($formId, $columnas['atributos']);
+            self::db()->transaccionar(function () use ($formId, $modo, $filas, $columnas, $preparadas, $identificador, &$resumen, &$asegurados): void {
+                $asegurados = self::asegurarAtributos($formId, $columnas['atributos']);
 
                 if ($modo === self::MODO_REEMPLAZAR) {
                     FormParticipant::truncate($formId);
                 }
 
-                $resumen = self::escribir($formId, $preparadas['filas'], $identificador, $columnas['atributos_catalogo'] ?? []);
+                $resumen = self::escribir($formId, $preparadas['filas'], $identificador, $asegurados['keys']);
             });
         } catch (\RuntimeException $e) {
             if ($e->getMessage() !== self::ERROR_ATRIBUTO) {
@@ -117,7 +118,7 @@ final class ParticipantImporter
             'actualizados' => $resumen['actualizados'],
             'sin_cambios' => $resumen['sin_cambios'],
             'omitidos' => (int) ($preparadas['omitidos'] ?? 0),
-            'atributos_nuevos' => $preparadas['nuevos'],
+            'atributos_nuevos' => $asegurados['nuevos'],
             'problemas' => $preparadas['problemas'],
         ];
     }
@@ -142,6 +143,7 @@ final class ParticipantImporter
             'movil' => 'telefono',
             'celular' => 'telefono',
             'codigo' => 'ignorar',
+            'indicador' => 'ignorar',
         ];
 
         if (is_array($mapeo)) {
@@ -271,8 +273,10 @@ final class ParticipantImporter
                 }
             }
 
-            $identificadorValor = FormParticipant::identifierValue($identificador, $campos['cedula'], $campos['correo']);
-            $motivo = FormParticipant::validarDatos($identificador, $identificadorValor, $campos['correo']);
+            $identificadorValor = $archivo === 'correo'
+                ? FormParticipant::normalizarCorreo($campos['correo'])
+                : FormParticipant::normalizar($campos['cedula']);
+            $motivo = FormParticipant::validarDatos($archivo, $identificadorValor, $campos['correo']);
             if ($motivo !== 'ok') {
                 self::anotar($problemas, $numero, $motivo, null, $omitidos);
                 continue;
@@ -291,14 +295,11 @@ final class ParticipantImporter
                 'correo' => $campos['correo'],
                 'telefono' => $campos['telefono'],
                 'identificador' => $identificador,
+                'archivo' => $archivo,
                 'identificadorValor' => $identificadorValor,
                 'data' => $bruto,
                 'fila' => $numero,
             ];
-        }
-
-        if ($omitidos > 0 && $buenas === []) {
-            return ['error' => 'todas_fuera', 'filas' => [], 'problemas' => $problemas, 'omitidos' => $omitidos, 'nuevos' => []];
         }
 
         return ['error' => null, 'filas' => $buenas, 'problemas' => $problemas, 'omitidos' => $omitidos, 'nuevos' => $nuevos];
@@ -314,14 +315,27 @@ final class ParticipantImporter
 
     private static function asegurarAtributos(int $formId, array $atributos): array
     {
+        $antes = [];
+        foreach (FormParticipant::catalogFor($formId) as $campo) {
+            $antes[FormParticipant::normalizar((string) $campo['label'])] = true;
+        }
+
         $catalogo = [];
+        $nuevos = [];
         foreach ($atributos as $label) {
-            $cat = FormParticipant::ensureAttribute($formId, (string) $label);
-            if (is_array($cat) && isset($cat['key_name'])) {
-                $catalogo[(string) $cat['key_name']] = true;
+            $label = FormParticipant::normalizar((string) $label);
+            $key = FormParticipant::ensureAttribute($formId, $label);
+            if ($key === null) {
+                throw new \RuntimeException(self::ERROR_ATRIBUTO);
+            }
+            $catalogo[$key] = true;
+            if (!isset($antes[$label])) {
+                $nuevos[] = $label;
+                $antes[$label] = true;
             }
         }
-        return $catalogo;
+
+        return ['keys' => $catalogo, 'nuevos' => $nuevos];
     }
 
     private static function escribir(int $formId, array $filas, string $identificador, array $catalogoKeys): array
@@ -334,7 +348,7 @@ final class ParticipantImporter
         $catalogo = FormParticipant::catalogFor($formId);
         $keyMap = [];
         foreach ($catalogo as $c) {
-            $keyMap[(string) $c['label']] = (string) $c['key_name'];
+            $keyMap[FormParticipant::normalizar((string) $c['label'])] = (string) $c['key_name'];
         }
 
         foreach ($filas as $fila) {
@@ -343,8 +357,9 @@ final class ParticipantImporter
             $correo = FormParticipant::normalizarCorreo((string) ($fila['correo'] ?? ''));
             $telefono = FormParticipant::normalizar((string) ($fila['telefono'] ?? ''));
             $identificadorValor = (string) ($fila['identificadorValor'] ?? '');
+            $archivoIdentificador = (string) ($fila['archivo'] ?? 'cedula');
 
-            $existe = FormParticipant::findByIdentifierValue($formId, $identificador, $identificadorValor);
+            $existe = FormParticipant::findByIdentifier($formId, $archivoIdentificador, $identificadorValor);
             if ($existe !== null) {
                 $cambio = false;
                 if ((string) $existe['cedula'] !== $cedula) {
@@ -360,15 +375,19 @@ final class ParticipantImporter
                     $cambio = true;
                 }
 
+                $identidad = $identificador === 'codigo'
+                    ? (string) ($existe['code'] ?? '')
+                    : $identificadorValor;
+
                 $db->execute(
-                    'UPDATE form_participants SET cedula = :cedula, nombre = :nombre, correo = :correo, telefono = :telefono WHERE id = :id AND form_id = :form_id',
-                    ['cedula' => $cedula, 'nombre' => $nombre, 'correo' => $correo, 'telefono' => $telefono, 'id' => (int) $existe['id'], 'form_id' => $formId]
+                    'UPDATE form_participants SET cedula = :cedula, nombre = :nombre, correo = :correo, telefono = :telefono, identifier_value = :identifier_value WHERE id = :id AND form_id = :form_id',
+                    ['cedula' => $cedula, 'nombre' => $nombre, 'correo' => $correo, 'telefono' => $telefono, 'identifier_value' => $identidad, 'id' => (int) $existe['id'], 'form_id' => $formId]
                 );
 
                 if (is_array($fila['data'] ?? null)) {
                     $dataMap = [];
                     foreach ($fila['data'] as $k => $v) {
-                        $kl = (string) $k;
+                        $kl = FormParticipant::normalizar((string) $k);
                         if (isset($keyMap[$kl])) {
                             $dataMap[$keyMap[$kl]] = $v;
                         } elseif (isset($catalogoKeys[$kl]) || in_array(FormParticipant::slug($kl), $catalogoKeys, true)) {
@@ -391,15 +410,17 @@ final class ParticipantImporter
                 $code = self::nuevoCodeDb();
             }
 
-            $pid = $db->insert(
+            $identidad = $identificador === 'codigo' ? $code : $identificadorValor;
+            $db->execute(
                 'INSERT INTO form_participants (form_id, cedula, nombre, correo, telefono, identifier_value, code) VALUES (:form_id, :cedula, :nombre, :correo, :telefono, :identifier_value, :code)',
-                ['form_id' => $formId, 'cedula' => $cedula, 'nombre' => $nombre, 'correo' => $correo, 'telefono' => $telefono, 'identifier_value' => $identificadorValor, 'code' => $code]
+                ['form_id' => $formId, 'cedula' => $cedula, 'nombre' => $nombre, 'correo' => $correo, 'telefono' => $telefono, 'identifier_value' => $identidad, 'code' => $code]
             );
+            $pid = $db->lastInsertId();
 
             if ($pid > 0 && is_array($fila['data'] ?? null)) {
                 $dataMap = [];
                 foreach ($fila['data'] as $k => $v) {
-                    $kl = (string) $k;
+                    $kl = FormParticipant::normalizar((string) $k);
                     if (isset($keyMap[$kl])) {
                         $dataMap[$keyMap[$kl]] = $v;
                     }

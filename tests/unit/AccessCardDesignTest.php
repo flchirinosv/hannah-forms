@@ -176,6 +176,18 @@ class AccessCardDesignTest
         $cierre = strpos($html, '</details>', $inicio);
         assertTrue($cierre !== false, 'la tarjeta de importar tiene su <details> que plegar');
         assertTrue($vaciar > $cierre, 'vaciar va FUERA del <details>: es irreversible y no puede esconderse');
+
+        $doc = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="utf-8" ?>' . $html);
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($doc);
+        $tarjeta = $xpath->query('//*[@id="rosterImportCard"]')->item(0);
+        assertNotNull($tarjeta, 'la tarjeta de importar tiene que existir');
+        assertNotNull(
+            $xpath->query('.//form[contains(@action, "/participants/truncate")]', $tarjeta)->item(0),
+            'vaciar va DENTRO de la tarjeta de importar; fuera de ella el botón queda suelto y parece de otra zona'
+        );
     }
 
     /**

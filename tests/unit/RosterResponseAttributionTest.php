@@ -335,7 +335,9 @@ class RosterResponseAttributionTest
         $pid = self::idsDeParticipantes()[0];
 
         assertSame(1, FormParticipant::respondedCountForForm((int) self::$formId), 'antes: la tarjeta la cuenta como respondida');
-        assertFalse(FormParticipant::existeEnFormulario((int) self::$formId, $pid), 'y la puerta ya no la deja pasar');
+        $filaAntes = FormParticipant::find($pid);
+        assertNotNull($filaAntes);
+        assertNotNull($filaAntes['responded_at'], 'y la fila conserva la marca de haber respondido');
 
         self::borrar($sid);
 

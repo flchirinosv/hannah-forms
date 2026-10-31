@@ -56,7 +56,7 @@ final class RosterPanel
         $html = [];
 
         if (in_array('list', $cambia, true)) {
-            $html['rosterList'] = View::partial('dashboard/forms/_roster_list', ['roster' => $datos, 'formId' => $formId]);
+            $html['rosterList'] = '<div id="rosterList">' . View::partial('dashboard/forms/_roster_list', ['roster' => $datos, 'formId' => $formId]) . '</div>';
         }
         if (in_array('stats', $cambia, true)) {
             $html['rosterStats'] = View::partial('dashboard/forms/_roster_stats', ['roster' => $datos]);
