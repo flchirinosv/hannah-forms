@@ -1,0 +1,3187 @@
+{
+ "A1": {
+  "status": "OK",
+  "detail": "public/index.php:0,config/bootstrap.php:0,public/install.php:0",
+  "at": "2026-10-31 16:56:06"
+ },
+ "A2": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/ status=200",
+  "at": "2026-10-31 16:56:07"
+ },
+ "A3": {
+  "status": "OK",
+  "detail": "status=404 texto='404\\nPágina no encontrada\\n\\nLa página que buscas no existe o fue movida.\\n\\nVolver al inicio'",
+  "at": "2026-10-31 16:56:07"
+ },
+ "A4": {
+  "status": "OK",
+  "detail": "status=405",
+  "at": "2026-10-31 16:56:07"
+ },
+ "A5": {
+  "status": "OK",
+  "detail": "/root/workspace/php/vanilla-forms/storage/uploads wsp=True",
+  "at": "2026-10-31 16:56:07"
+ },
+ "A6": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-10-31 16:56:08"
+ },
+ "A7": {
+  "status": "OK",
+  "detail": "cards 16/16/16",
+  "at": "2026-10-31 16:56:10"
+ },
+ "B1": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard",
+  "at": "2026-10-31 17:21:37"
+ },
+ "B2": {
+  "status": "OK",
+  "detail": "VanillaForms\nLa contraseña debe tener al menos 10 caracteres.\nNombre completo\nEmail\nContraseña\nConfirmar contraseña\nCrear cuenta\n\n¿Ya tienes cuenta? Inicia sesi",
+  "at": "2026-10-31 17:21:35"
+ },
+ "B3": {
+  "status": "OK",
+  "detail": "VanillaForms\nNo se pudo completar el registro. Verifica los datos e intenta de nuevo.\nNombre completo\nEmail\nContraseña\nConfirmar contraseña\nCrear cuenta\n\n¿Ya tienes cuenta? Inicia ",
+  "at": "2026-10-31 17:21:39"
+ },
+ "B4": {
+  "status": "OK",
+  "detail": "placeholder='Mínimo 10 caracteres' minlength=10 server=10",
+  "at": "2026-10-31 17:21:34"
+ },
+ "B5": {
+  "status": "OK",
+  "detail": "Credenciales incorrectas.",
+  "at": "2026-10-31 17:21:44"
+ },
+ "B6": {
+  "status": "OK",
+  "detail": "iguales=True",
+  "at": "2026-10-31 17:21:44"
+ },
+ "B7": {
+  "status": "OK",
+  "detail": "VanillaForms\nDemasiados intentos de inicio de sesión. Intenta de nuevo en unos minutos.\nEmail\nContraseña ¿Olvidaste tu contraseña?\nIniciar sesión\n\n¿No tienes cu",
+  "at": "2026-10-31 17:21:53"
+ },
+ "B8": {
+  "status": "OK",
+  "detail": "urls=http://127.0.0.1:10001/forgot-password==http://127.0.0.1:10001/forgot-password textos='VanillaForms\\nSi esa dirección está registrada, te enviamos u'/'VanillaForms\\nSi esa dirección está registrada, te enviamos u'",
+  "at": "2026-10-31 17:21:57"
+ },
+ "B9": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/reset-password?t=c52a5a547ccaca495f4c5107bf2f7ad1",
+  "at": "2026-10-31 17:21:59"
+ },
+ "B10": {
+  "status": "OK",
+  "detail": "reset=True url=http://127.0.0.1:10001/reset-password?t=c52a5a547ccaca495f4c5107bf2f7ad1 texto='VanillaForms\\nEste enlace no es válido o ha caducado. Pide uno nuevo desde «Olvidé mi contraseña». Pedir un enlace nuevo\\n'",
+  "at": "2026-10-31 17:22:02"
+ },
+ "B11": {
+  "status": "OK",
+  "detail": "login_nueva=True url=http://127.0.0.1:10001/account/password",
+  "at": "2026-10-31 17:22:05"
+ },
+ "B12": {
+  "status": "OK",
+  "detail": "antes=200 despues=http://127.0.0.1:10001/login (no hay UI en /admin; se probó el mecanismo del modelo)",
+  "at": "2026-10-31 17:22:10"
+ },
+ "B13": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/login",
+  "at": "2026-10-31 17:22:12"
+ },
+ "B14": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/login",
+  "at": "2026-10-31 17:22:14"
+ },
+ "B15": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/login",
+  "at": "2026-10-31 17:22:19"
+ },
+ "B16": {
+  "status": "OK",
+  "detail": "enlace=False",
+  "at": "2026-10-31 17:22:21"
+ },
+ "B17": {
+  "status": "OK",
+  "detail": "status=403",
+  "at": "2026-10-31 17:22:21"
+ },
+ "B18": {
+  "status": "OK",
+  "detail": "status=403 texto='<!DOCTYPE html>\\n<html lang=\"es\">\\n<head>\\n    <meta charset=\"UTF-8\">\\n    <meta name=\"viewport\" content'",
+  "at": "2026-10-31 17:22:21"
+ },
+ "B19": {
+  "status": "OK",
+  "detail": "http=302 fila=['315136', '2', '1']",
+  "at": "2026-10-31 17:22:24"
+ },
+ "B20": {
+  "status": "OK",
+  "detail": "login=http://127.0.0.1:10001/dashboard",
+  "at": "2026-10-31 17:22:29"
+ },
+ "B21": {
+  "status": "OK",
+  "detail": "admin=200/http://127.0.0.1:10001/admin post=200 <!DOCTYPE html>\n<html lang=\"es\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width",
+  "at": "2026-10-31 17:22:26"
+ },
+ "B22": {
+  "status": "OK",
+  "detail": "http=302",
+  "at": "2026-10-31 17:22:26"
+ },
+ "B23": {
+  "status": "OK",
+  "detail": "http=302",
+  "at": "2026-10-31 17:22:26"
+ },
+ "B24": {
+  "status": "OK",
+  "detail": "get=403 post=403",
+  "at": "2026-10-31 17:22:35"
+ },
+ "B25": {
+  "status": "OK",
+  "detail": "['315136', '2', '1']",
+  "at": "2026-10-31 17:22:26"
+ },
+ "B26": {
+  "status": "OK",
+  "detail": "status=200",
+  "at": "2026-10-31 17:22:32"
+ },
+ "B27": {
+  "status": "OK",
+  "detail": "post=200 link=True register=200",
+  "at": "2026-10-31 17:22:36"
+ },
+ "C1": {
+  "status": "OK",
+  "detail": "200 simple=True",
+  "at": "2026-10-31 17:28:30"
+ },
+ "C2": {
+  "status": "OK",
+  "detail": "post=200 url=http://127.0.0.1:10001/forms/264029/builder status=draft builder=200",
+  "at": "2026-10-31 17:28:31"
+ },
+ "C3": {
+  "status": "OK",
+  "detail": "63->64 dup=['264030', '[BT] C2 nuevo (copia)']",
+  "at": "2026-10-31 17:28:32"
+ },
+ "C4": {
+  "status": "OK",
+  "detail": "creados=30 bloqueado=True",
+  "at": "2026-10-31 17:28:44"
+ },
+ "C5": {
+  "status": "OK",
+  "detail": "rutas=52 malas=[]",
+  "at": "2026-10-31 17:28:50"
+ },
+ "C6": {
+  "status": "OK",
+  "detail": "403",
+  "at": "2026-10-31 17:28:50"
+ },
+ "C7": {
+  "status": "OK",
+  "detail": "list=200 ficha=200",
+  "at": "2026-10-31 17:28:51"
+ },
+ "C8": {
+  "status": "OK",
+  "detail": "sidebar sticky de escritorio",
+  "at": "2026-10-31 17:28:54"
+ },
+ "C9": {
+  "status": "OK",
+  "detail": "sin_scroll_horizontal=True",
+  "at": "2026-10-31 17:28:54"
+ },
+ "C10": {
+  "status": "OK",
+  "detail": "class=app-sidebar offcanvas-lg offcanvas-start show vis=visible",
+  "at": "2026-10-31 17:28:55"
+ },
+ "C11": {
+  "status": "OK",
+  "detail": "textos del menú/usuario presentes",
+  "at": "2026-10-31 17:28:55"
+ },
+ "C12": {
+  "status": "OK",
+  "detail": "botones de contenido con icono se reducen a icono",
+  "at": "2026-10-31 17:28:55"
+ },
+ "C13": {
+  "status": "OK",
+  "detail": "CTA y cabecera comparten clases y alto declarado",
+  "at": "2026-10-31 17:28:54"
+ },
+ "C14": {
+  "status": "FALLA",
+  "detail": "la subnavegación de /admin conserva los rótulos en móvil; la doc espera solo iconos",
+  "at": "2026-10-31 17:28:55"
+ },
+ "C15": {
+  "status": "OK",
+  "detail": "crear con icono y badges legibles",
+  "at": "2026-10-31 17:28:55"
+ },
+ "C16": {
+  "status": "OK",
+  "detail": "reglas de alineación presentes",
+  "at": "2026-10-31 17:28:54"
+ },
+ "D1": {
+  "status": "OK",
+  "detail": "lienzo vacío con estado y botón",
+  "at": "2026-10-31 18:24:11"
+ },
+ "D2": {
+  "status": "OK",
+  "detail": "tarjeta con tipo, obligatoria y herramientas",
+  "at": "2026-10-31 18:24:13"
+ },
+ "D3": {
+  "status": "FALLA",
+  "detail": "la doc pide cajón derecho; el constructor usa modal centrado (una sola instancia)",
+  "at": "2026-10-31 18:24:13"
+ },
+ "D4": {
+  "status": "OK",
+  "detail": "etiqueta y opciones persisten",
+  "at": "2026-10-31 18:24:17"
+ },
+ "D5": {
+  "status": "OK",
+  "detail": "orden antes=['text', 'email'] después=['email', 'text'] (drag no soportado; onEnd real)",
+  "at": "2026-10-31 18:24:23"
+ },
+ "D6": {
+  "status": "OK",
+  "detail": "21 tipos, tarjetas=21",
+  "at": "2026-10-31 18:24:34"
+ },
+ "D7": {
+  "status": "OK",
+  "detail": "cambiar de pestaña conserva contenido",
+  "at": "2026-10-31 18:24:38"
+ },
+ "D8": {
+  "status": "OK",
+  "detail": "servidor rechaza obligatorio vacío",
+  "at": "2026-10-31 18:24:39"
+ },
+ "D9": {
+  "status": "OK",
+  "detail": "mensajes por tipo: longitud y máximo",
+  "at": "2026-10-31 18:24:39"
+ },
+ "D10": {
+  "status": "FALLA",
+  "detail": "la doc espera la fila concreta; el servidor dice «todas las filas» sin nombrar la fila",
+  "at": "2026-10-31 18:24:39"
+ },
+ "D11": {
+  "status": "OK",
+  "detail": "ranking duplicado rechazado",
+  "at": "2026-10-31 18:24:40"
+ },
+ "D12": {
+  "status": "OK",
+  "detail": "marca PII persiste",
+  "at": "2026-10-31 18:24:43"
+ },
+ "D13": {
+  "status": "OK",
+  "detail": "sección no ofrece marcar PII",
+  "at": "2026-10-31 18:24:46"
+ },
+ "D14": {
+  "status": "OK",
+  "detail": "fallo de red se avisa, no dice que guardó",
+  "at": "2026-10-31 18:24:49"
+ },
+ "D15": {
+  "status": "OK",
+  "detail": "recargar sin Guardar pierde el cambio",
+  "at": "2026-10-31 18:24:51"
+ },
+ "D16": {
+  "status": "OK",
+  "detail": "ciclo autorreferente rechazado con HTTP 422",
+  "at": "2026-10-31 18:24:54"
+ },
+ "D17": {
+  "status": "FALLA",
+  "detail": "la etiqueta «nombre» no dispara el aviso: PII_HINT_RE usa nomb[re], que no casa con «nombre»",
+  "at": "2026-10-31 18:24:57"
+ },
+ "D18": {
+  "status": "OK",
+  "detail": "Sí marca y guarda PII (con «correo»)",
+  "at": "2026-10-31 18:24:59"
+ },
+ "D19": {
+  "status": "OK",
+  "detail": "No es descarta el aviso",
+  "at": "2026-10-31 18:25:00"
+ },
+ "D20": {
+  "status": "OK",
+  "detail": "al reescribir la etiqueta vuelve el aviso",
+  "at": "2026-10-31 18:25:00"
+ },
+ "D21": {
+  "status": "FALLA",
+  "detail": "«Nombre de la empresa» tampoco dispara el aviso por el mismo patrón roto",
+  "at": "2026-10-31 18:25:00"
+ },
+ "D22": {
+  "status": "OK",
+  "detail": "sección/página sin aviso PII",
+  "at": "2026-10-31 18:25:02"
+ },
+ "D23": {
+  "status": "FALLA",
+  "detail": "la doc espera preview que cambie al instante; el constructor ya no tiene preview embebido",
+  "at": "2026-10-31 18:25:03"
+ },
+ "D24": {
+  "status": "OK",
+  "detail": "nota verde de fuente local",
+  "at": "2026-10-31 18:25:03"
+ },
+ "D25": {
+  "status": "OK",
+  "detail": "por defecto sin @font-face en el publicado",
+  "at": "2026-10-31 18:25:03"
+ },
+ "D26": {
+  "status": "OK",
+  "detail": "lista de campos email para confirmación",
+  "at": "2026-10-31 18:25:07"
+ },
+ "D27": {
+  "status": "OK",
+  "detail": "1 campos numéricos con contexto",
+  "at": "2026-10-31 18:25:07"
+ },
+ "E1": {
+  "status": "FALLA",
+  "detail": "la doc espera 403; hoy devuelve 200 con la página «En preparación» (decisión F3)",
+  "at": "2026-10-31 18:34:51"
+ },
+ "E2": {
+  "status": "OK",
+  "detail": "GET publicado -> 200",
+  "at": "2026-10-31 18:34:51"
+ },
+ "E3": {
+  "status": "OK",
+  "detail": "cerrado: 5 respuestas siguen, GET 200",
+  "at": "2026-10-31 18:34:52"
+ },
+ "E4": {
+  "status": "OK",
+  "detail": "publicar con revisión -> status draft, 302",
+  "at": "2026-10-31 18:34:53"
+ },
+ "E5": {
+  "status": "OK",
+  "detail": "save 200; status=['draft', 'NULL', 'NULL']",
+  "at": "2026-10-31 18:34:56"
+ },
+ "E6": {
+  "status": "OK",
+  "detail": "aprobar propio -> approved, log=['formulario #263833 (bt-revisi-n) propio']",
+  "at": "2026-10-31 18:34:57"
+ },
+ "E7": {
+  "status": "OK",
+  "detail": "user sin forms.review -> 403, status in_review",
+  "at": "2026-10-31 18:34:58"
+ },
+ "E8": {
+  "status": "OK",
+  "detail": "GET 200, POST 403",
+  "at": "2026-10-31 18:34:58"
+ },
+ "E9": {
+  "status": "OK",
+  "detail": "devolver -> draft",
+  "at": "2026-10-31 18:34:58"
+ },
+ "E10": {
+  "status": "OK",
+  "detail": "aprobar publicado -> status published, HTTP 302",
+  "at": "2026-10-31 18:34:59"
+ },
+ "E11": {
+  "status": "OK",
+  "detail": "futuro bloquea (200), pasado sirve (200)",
+  "at": "2026-10-31 18:34:59"
+ },
+ "E12": {
+  "status": "OK",
+  "detail": "cierre anterior a apertura: 200",
+  "at": "2026-10-31 18:35:00"
+ },
+ "E13": {
+  "status": "OK",
+  "detail": "cupo lleno: GET 200, POST 403",
+  "at": "2026-10-31 18:35:00"
+ },
+ "E14": {
+  "status": "OK",
+  "detail": "cupo 0 sin activar -> 200",
+  "at": "2026-10-31 18:35:00"
+ },
+ "F1": {
+  "status": "FALLA",
+  "detail": "la doc exige token; hoy 302 -> /f/bt-p-blico-simple/thanks (solo se añade ?t= con quiz activo)",
+  "at": "2026-10-31 19:01:26"
+ },
+ "F2": {
+  "status": "OK",
+  "detail": "quiz thanks anónimo -> 200, /f/bt-quiz/thanks?t=f5c0b46cc9b5511777bea68b8e111425",
+  "at": "2026-10-31 19:01:27"
+ },
+ "F3": {
+  "status": "OK",
+  "detail": "token alterado -> 200",
+  "at": "2026-10-31 19:01:27"
+ },
+ "F4": {
+  "status": "OK",
+  "detail": "inválido por servidor: 200, 15->15",
+  "at": "2026-10-31 19:01:28"
+ },
+ "F5": {
+  "status": "OK",
+  "detail": "espacios: 200, 15->15",
+  "at": "2026-10-31 19:01:28"
+ },
+ "F6": {
+  "status": "N/A",
+  "detail": "Lightpanda no implementa la tecla Tab; la travesía solo-teclado no es medible en este navegador",
+  "at": "2026-10-31 19:01:28"
+ },
+ "F7": {
+  "status": "OK",
+  "detail": "escala=True, nps=True, estrellas=True, anillo CSS=True",
+  "at": "2026-10-31 19:01:28"
+ },
+ "F8": {
+  "status": "OK",
+  "detail": "foco tras Siguiente: {'tag': 'SECTION', 'cls': 'vf-page-block flip-in', 'txt': 'Paso 2 · El material'}",
+  "at": "2026-10-31 19:01:33"
+ },
+ "F9": {
+  "status": "OK",
+  "detail": "foco tras Anterior=SECTION, primer campo=False",
+  "at": "2026-10-31 19:01:37"
+ },
+ "F10": {
+  "status": "OK",
+  "detail": "recarga restaura: 'borrador F10'",
+  "at": "2026-10-31 19:01:42"
+ },
+ "F11": {
+  "status": "OK",
+  "detail": "oculto->visible: True->True, guardado=['valor B']",
+  "at": "2026-10-31 19:01:46"
+ },
+ "F12": {
+  "status": "OK",
+  "detail": "envío 302; oculto no guardado=None",
+  "at": "2026-10-31 19:01:47"
+ },
+ "F13": {
+  "status": "OK",
+  "detail": "AND sección+hijo: False,True,False,False",
+  "at": "2026-10-31 19:01:52"
+ },
+ "F14": {
+  "status": "OK",
+  "detail": "último paso -> 302 /f/feedback-de-curso-multi-paso-copia/thanks",
+  "at": "2026-10-31 19:01:52"
+ },
+ "F15": {
+  "status": "OK",
+  "detail": "4 órdenes distintos en 8 GET",
+  "at": "2026-10-31 19:01:54"
+ },
+ "F16": {
+  "status": "OK",
+  "detail": "auto avanza=True; recarga con borrador no avanza=True",
+  "at": "2026-10-31 19:01:59"
+ },
+ "F17": {
+  "status": "OK",
+  "detail": "ranking duplicado no avanza solo",
+  "at": "2026-10-31 19:02:04"
+ },
+ "F18": {
+  "status": "OK",
+  "detail": "iframe mismo dominio: 2 frames",
+  "at": "2026-10-31 19:02:08"
+ },
+ "F19": {
+  "status": "FALLA",
+  "detail": "embed desactivado -> 200",
+  "at": "2026-10-31 19:02:08"
+ },
+ "F20": {
+  "status": "OK",
+  "detail": "?lang=en -> 200",
+  "at": "2026-10-31 19:02:09"
+ },
+ "F21": {
+  "status": "OK",
+  "detail": "hover=5, fuera=3, valor=3",
+  "at": "2026-10-31 19:02:13"
+ },
+ "F22": {
+  "status": "OK",
+  "detail": "orden=['Dos', 'Uno', 'Tres'], inputs=['1', '2', '3'], guardado=['{\"Uno\":\"2\",\"Dos\":\"1\",\"Tres\":\"3\"}']",
+  "at": "2026-10-31 19:02:18"
+ },
+ "F23": {
+  "status": "OK",
+  "detail": "Dos -> Dos",
+  "at": "2026-10-31 19:02:24"
+ },
+ "F24": {
+  "status": "OK",
+  "detail": "inputs=3, clase JS=False, CSS sin JS=True",
+  "at": "2026-10-31 19:02:24"
+ },
+ "G1": {
+  "status": "OK",
+  "detail": "lleno={'EQ': True, 'NEQ': False, 'CON': True, 'NCON': False, 'FILL': True, 'EMPTY': False, 'RE': True} vacío={'EQ': False, 'NEQ': True, 'CON': False, 'NCON': True, 'FILL': False, 'EMPTY': True, 'RE': False} otro={'EQ': False, 'NEQ': True, 'CON': False, 'NCON': True, 'FILL': True, 'EMPTY': False, 'RE': False}",
+  "at": "2026-10-31 19:56:20"
+ },
+ "G2": {
+  "status": "OK",
+  "detail": "oculto 302 0->1; visible 200 1->1",
+  "at": "2026-10-31 19:56:21"
+ },
+ "G3": {
+  "status": "FALLA",
+  "detail": "GET=['277209', '277210', '277208'] error=['277208', '277209', '277210']",
+  "at": "2026-10-31 19:56:21"
+ },
+ "G4": {
+  "status": "OK",
+  "detail": "bloques=[('Paso 1 de 2', None, False), ('Paso 2 de 3', '1', False), ('Paso 2 de 2', None, True)]",
+  "at": "2026-10-31 19:56:25"
+ },
+ "G5": {
+  "status": "OK",
+  "detail": "Avance=50% (A contestada de A+C; B omitida)",
+  "at": "2026-10-31 19:56:25"
+ },
+ "G6": {
+  "status": "OK",
+  "detail": "bloque='Paso 2 de 2', pie='AnteriorPaso 2 de 2EnviarEnviar'",
+  "at": "2026-10-31 19:56:25"
+ },
+ "H1": {
+  "status": "OK",
+  "detail": "POST 302; guardados=3",
+  "at": "2026-10-31 20:46:39"
+ },
+ "H2": {
+  "status": "OK",
+  "detail": "códigos=[200, 200, 200]; respuestas 1->1",
+  "at": "2026-10-31 20:46:39"
+ },
+ "H3": {
+  "status": "OK",
+  "detail": ".exe renombrado: 200, respuestas 1->1",
+  "at": "2026-10-31 20:46:40"
+ },
+ "H4": {
+  "status": "OK",
+  "detail": "1,2MB con máximo 1MB: 200, 0->0",
+  "at": "2026-10-31 20:46:40"
+ },
+ "H5": {
+  "status": "OK",
+  "detail": "dos con máximo 1: 200, 0->0",
+  "at": "2026-10-31 20:46:41"
+ },
+ "H6": {
+  "status": "OK",
+  "detail": "9MB > post_max_size: 413",
+  "at": "2026-10-31 20:46:41"
+ },
+ "H7": {
+  "status": "OK",
+  "detail": "descarga 200, 169 bytes",
+  "at": "2026-10-31 20:46:42"
+ },
+ "H8": {
+  "status": "OK",
+  "detail": "stored=2026/11/e433b556e4a5c156d3ed13243361ac35.pdf, disco=True, URL directa=403",
+  "at": "2026-10-31 20:46:42"
+ },
+ "H9": {
+  "status": "FALLA",
+  "detail": "borrada: archivo_en_disco=False; dry-run=Vaciaría 0 directorio(s) vacío(s).\nBase: /root/workspace/php/vanilla-forms/storage/uploads",
+  "at": "2026-10-31 20:46:43"
+ },
+ "H10": {
+  "status": "OK",
+  "detail": "user sin responses.pii=403, admin=200",
+  "at": "2026-10-31 20:46:44"
+ },
+ "I1": {
+  "status": "OK",
+  "detail": "GET 200 con campo; POST 200",
+  "at": "2026-10-31 20:59:13"
+ },
+ "I2": {
+  "status": "OK",
+  "detail": "GET 200; pide acceso=True",
+  "at": "2026-10-31 20:59:13"
+ },
+ "I3": {
+  "status": "N/A",
+  "detail": "Sin SMTP configurado: no se puede comprobar la entrega del correo",
+  "at": "2026-10-31 20:59:13"
+ },
+ "I4": {
+  "status": "OK",
+  "detail": "{'lista': (302, 'http://127.0.0.1:10001/f/bt-email/access'), 'fuera': (302, 'http://127.0.0.1:10001/f/bt-email/access')}",
+  "at": "2026-10-31 20:59:14"
+ },
+ "I5": {
+  "status": "OK",
+  "detail": "POST sin acceso: 403",
+  "at": "2026-10-31 20:59:14"
+ },
+ "I6": {
+  "status": "OK",
+  "detail": "token de allowlist en email: 200, pide acceso=True",
+  "at": "2026-10-31 20:59:15"
+ },
+ "I7": {
+  "status": "OK",
+  "detail": "antes=True, después_pide_acceso=True",
+  "at": "2026-10-31 20:59:16"
+ },
+ "I8": {
+  "status": "OK",
+  "detail": "con token=True, tras sesión=True, otra sesión pide=True",
+  "at": "2026-10-31 20:59:17"
+ },
+ "I9": {
+  "status": "OK",
+  "detail": "share=http://127.0.0.1:10001/f/bt-allowlist, QR=200, destino pide acceso=True",
+  "at": "2026-10-31 20:59:18"
+ },
+ "I10": {
+  "status": "OK",
+  "detail": "aviso_inicial=1, sin_recarga=True, filas=1, valor=\"\", foco=accessAddEmail, aviso_final=0",
+  "at": "2026-10-31 20:59:22"
+ },
+ "I11": {
+  "status": "OK",
+  "detail": "filas=1, error=\"i10@bt.local ya estaba en la lista.\"",
+  "at": "2026-10-31 20:59:23"
+ },
+ "I12": {
+  "status": "OK",
+  "detail": "filas=1, validez=False, typeMismatch=True, motivo=\"Please enter an email address.\"",
+  "at": "2026-10-31 20:59:23"
+ },
+ "I13": {
+  "status": "OK",
+  "detail": "sin_recarga=True, filas=2",
+  "at": "2026-10-31 20:59:24"
+ },
+ "I14": {
+  "status": "OK",
+  "detail": "POST nativo 200; fila=True",
+  "at": "2026-10-31 20:59:25"
+ },
+ "I15": {
+  "status": "OK",
+  "detail": "user -> 403",
+  "at": "2026-10-31 20:59:26"
+ },
+ "I16": {
+  "status": "OK",
+  "detail": "True->False, texto=\"Registro público cerrado\", sin_recarga=True, BD=0",
+  "at": "2026-10-31 20:59:30"
+ },
+ "I17": {
+  "status": "FALLA",
+  "detail": "casilla True->False, aviso=\"No se pudo contactar con el servidor: el ajuste sigue como estaba.\", clase=\"form-text mb-0 text-danger fw-semibold\"",
+  "at": "2026-10-31 20:59:32"
+ },
+ "I18": {
+  "status": "OK",
+  "detail": ".env=true + fila=0 -> /register 403",
+  "at": "2026-10-31 20:59:32"
+ },
+ "J1": {
+  "status": "OK",
+  "detail": "POST 200; GET admin 200; en_claro=True",
+  "at": "2026-10-31 21:02:26"
+ },
+ "J2": {
+  "status": "OK",
+  "detail": "GET user 200; oculto=True, correo=True, libre=True",
+  "at": "2026-10-31 21:02:26"
+ },
+ "J3": {
+  "status": "OK",
+  "detail": "GET user 200; ip_masked=True, a_la_vista=False",
+  "at": "2026-10-31 21:02:26"
+ },
+ "J4": {
+  "status": "OK",
+  "detail": "GET 200; filas=2, columnas=6, oculto=True",
+  "at": "2026-10-31 21:02:26"
+ },
+ "J5": {
+  "status": "OK",
+  "detail": "GET 200; total=1, respuestas=1, nombre=[oculto], correo=j***@e***.com",
+  "at": "2026-10-31 21:02:27"
+ },
+ "J6": {
+  "status": "OK",
+  "detail": "user ip=True, ua_oculto=True; admin crudo=True",
+  "at": "2026-10-31 21:02:27"
+ },
+ "J7": {
+  "status": "OK",
+  "detail": "GET 200; total=5001, filas=5001, ultima=[oculto]",
+  "at": "2026-10-31 21:02:28"
+ },
+ "J8": {
+  "status": "OK",
+  "detail": "detalle=True; csv=True; json=Comentario publico",
+  "at": "2026-10-31 21:02:28"
+ },
+ "K1": {
+  "status": "OK",
+  "detail": "GET 200; chart=True, numero=True, detalle=True",
+  "at": "2026-10-31 21:22:01"
+ },
+ "K2": {
+  "status": "OK",
+  "detail": "antes #1; pagina2 #16; clase=''; enlaces=5; abrir=200",
+  "at": "2026-10-31 21:22:06"
+ },
+ "K3": {
+  "status": "OK",
+  "detail": "volver #1; segunda vez #16; clase=''",
+  "at": "2026-10-31 21:22:09"
+ },
+ "K4": {
+  "status": "FALLA",
+  "detail": "avisos=[]; clase=''; enlaces=15",
+  "at": "2026-10-31 21:22:12"
+ },
+ "K5": {
+  "status": "OK",
+  "detail": "status=200; disposition=attachment; filename=\"bt-k-analitica.csv\"; content-type=text/csv; charset=utf-8; columnas=18",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K6": {
+  "status": "OK",
+  "detail": "filas=20; matriz='Fila 1: Bueno; Fila 2: '; ranking='Uno: 2; Dos: 3; Tres: 1'; casillas='Tres'",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K7": {
+  "status": "OK",
+  "detail": "filas=10; fechas=['2026-10-21 14:10:00', '2026-10-21 14:11:00', '2026-10-21 14:12:00', '2026-10-21 14:13:00', '2026-10-21 14:14:00', '2026-10-21 14:15:00', '2026-10-21 14:16:00', '2026-10-21 14:17:00', '2026-10-21 14:18:00', '2026-10-21 14:19:00']",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K8": {
+  "status": "OK",
+  "detail": "status=200; claves=['form', 'submissions', 'total']; total=20; submission=['answers', 'finished_at', 'id', 'ip_address', 'user_agent']",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K9": {
+  "status": "OK",
+  "detail": "status=200; claves=['app', 'description', 'fields', 'key', 'name', 'settings', 'version']; campos=17",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K10": {
+  "status": "OK",
+  "detail": "200=120; ultimo=429",
+  "at": "2026-10-31 21:22:46"
+ },
+ "K11": {
+  "status": "OK",
+  "detail": "BOM=False; ñ=True; café=True; año=True",
+  "at": "2026-10-31 21:22:33"
+ },
+ "K12": {
+  "status": "OK",
+  "detail": "href=/forms/264207/responses/281572; GET=200; #=1",
+  "at": "2026-10-31 21:22:12"
+ },
+ "K13": {
+  "status": "OK",
+  "detail": "pagina1 #1; pagina2 #16",
+  "at": "2026-10-31 21:22:12"
+ },
+ "K14": {
+  "status": "OK",
+  "detail": "total=True; valores=['Comentario número 19 con ñ y café', 'Comentario número 18 con ñ y café', 'Comentario número 17 con ñ y café', 'Comentario número 16 con ñ y café', 'Comentario número 15 con ñ y café']; fechas=5; ver=5; abrir=200",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K15": {
+  "status": "OK",
+  "detail": "21=['Comentario número 19 con ñ y café', 'Comentario número 18 con ñ y café', 'Comentario número 17 con ñ y café', 'Comentario número 16 con ñ y café', 'Comentario número 15 con ñ y café']; 20=['Comentario número 9 con ñ y café', 'Comentario número 8 con ñ y café', 'Comentario número 7 con ñ y café', 'Comentario número 6 con ñ y café', 'Comentario número 5 con ñ y café']",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K16": {
+  "status": "OK",
+  "detail": "admin_oculto=False; user_oculto=10",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K17": {
+  "status": "OK",
+  "detail": "presentes={'URL': True, 'TEL': True, 'TIME': True, 'DATE': True, 'DT': True, 'FILE': True}; json_archivo=False",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K18": {
+  "status": "OK",
+  "detail": "answer_count=20; avg=9.65; dist=[(1, 1), (2, 2), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1), (8, 1), (9, 1), (10, 1), (11, 1), (12, 1), (13, 1), (14, 1), (15, 1), (16, 1), (17, 1), (18, 1), (20, 1)]; suma=20; histograma_activo=True",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K19": {
+  "status": "OK",
+  "detail": "labels=['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']; data=[3, 0, 0, 0, 0, 0, 3, 4, 3, 4, 3]; colores=['#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#f59e0b', '#f59e0b', '#22c55e', '#22c55e']",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K20": {
+  "status": "OK",
+  "detail": "anillo=doughnut; tabla=True; barras={'type': 'bar', 'axis': 'y', 'labels': ['Uno · 10 (50%)', 'Dos · 10 (50%)']}",
+  "at": "2026-10-31 21:22:16"
+ },
+ "K21": {
+  "status": "OK",
+  "detail": "texto=id=\"campo-277640\"> Matriz Matriz — 20 respuestas Malo Bueno Total Fila 1 10 10 20 Fila 2 0 7 7 Total 10 17 27 ",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K22": {
+  "status": "OK",
+  "detail": "tabla=['Opción\\tPromedio\\tVecesUno\\t1.95\\t20', 'Dos\\t2.05\\t20', 'Tres\\t2\\t20']; barras={'labels': ['Uno', 'Tres', 'Dos'], 'data': [1.95, 2, 2.05], 'tip': \"function (ctx) {\\n                                var r = rows[ctx.dataIndex];\\n                                return 'Orden medio ' + ctx.raw + ' · ' + r.c + ' respuestas';\\n                            }\"}",
+  "at": "2026-10-31 21:22:19"
+ },
+ "K23": {
+  "status": "OK",
+  "detail": "posiciones=9564,9925,10167",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K24": {
+  "status": "OK",
+  "detail": "desde=Desde; hasta=Hasta",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K25": {
+  "status": "OK",
+  "detail": "anclas=16; selector=True; salto={'target': 'campo-277637', 'value': ''}",
+  "at": "2026-10-31 21:22:19"
+ },
+ "K26": {
+  "status": "OK",
+  "detail": "vacio=True; cta=True; filtrado=True",
+  "at": "2026-10-31 21:22:47"
+ },
+ "K27": {
+  "status": "OK",
+  "detail": "roster=True; filtrado=True; normal=False",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K28": {
+  "status": "OK",
+  "detail": "NUM:histogram=True; NUM:histogram=True; NPS:histogram=True; NPS:histogram=True; errores=[]",
+  "at": "2026-10-31 21:22:26"
+ },
+ "K29": {
+  "status": "OK",
+  "detail": "titulo=True; acciones=True; css_titulo=True",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K30": {
+  "status": "OK",
+  "detail": "anclas=16; etiqueta_larga=True",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K31": {
+  "status": "OK",
+  "detail": "rotulos=19; primero=#",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K32": {
+  "status": "OK",
+  "detail": "chips=1; matriz=True; ranking=['1', '2', '3']; pii=True",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K33": {
+  "status": "OK",
+  "detail": "resumen=True; canvas=True; insignias=['Detractores (0-6): 6', 'Pasivos (7-8): 7', 'Promotores (9-10): 7']",
+  "at": "2026-10-31 21:22:48"
+ },
+ "K34": {
+  "status": "OK",
+  "detail": "chips=1; matriz=True; ranking=True; pii=True",
+  "at": "2026-10-31 21:22:48"
+ },
+ "L1": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L2": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L3": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L4": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L5": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L6": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "L7": {
+  "status": "N/A",
+  "detail": "SMTP no configurado (MAIL_HOST y MAIL_FROM_ADDRESS vacíos): el bloque L se marca N/A según la nota del documento",
+  "at": "2026-10-31 21:23:28"
+ },
+ "M1": {
+  "status": "OK",
+  "detail": "GET=200; wrapper=True; input=True; tabindex=True; css=True",
+  "at": "2026-10-31 21:29:21"
+ },
+ "M2": {
+  "status": "OK",
+  "detail": "POST=200; destino=http://127.0.0.1:10001/f/bt-m-seguridad/thanks; submissions 0->0",
+  "at": "2026-10-31 21:29:21"
+ },
+ "M3": {
+  "status": "N/A",
+  "detail": "Turnstile no configurado: TURNSTILE_SITE_KEY y TURNSTILE_SECRET_KEY vacíos; no hay widget real que probar",
+  "at": "2026-10-31 21:29:21"
+ },
+ "M4": {
+  "status": "OK",
+  "detail": "GET=200 (página cerrada); POST=403",
+  "at": "2026-10-31 21:29:22"
+ },
+ "M5": {
+  "status": "OK",
+  "detail": "estados=[302, 302, 302, 302, 302, 302, 302, 302, 302, 302, 429]; permitidos=10; ultimo=429; submissions=12 (antes 2)",
+  "at": "2026-10-31 21:29:24"
+ },
+ "M6": {
+  "status": "OK",
+  "detail": "token1=32; token2=32; distintos=True; thanks1=200:True; thanks2=200:True; malo/sid=200/200:True; t1_en_malo=False; t1_en_sid=False",
+  "at": "2026-10-31 21:29:22"
+ },
+ "M7": {
+  "status": "OK",
+  "detail": "eventos={\"auth.login_fail\": 1, \"auth.register\": 11, \"rate_limit.fill\": 1}",
+  "at": "2026-10-31 21:29:33"
+ },
+ "M8": {
+  "status": "OK",
+  "detail": "recursos=5 mismo_origen=True; scripts=2 mismo_origen=True; inline=0; on*=0",
+  "at": "2026-10-31 21:29:26"
+ },
+ "M9": {
+  "status": "OK",
+  "detail": "X-Frame-Options='DENY'",
+  "at": "2026-10-31 21:29:27"
+ },
+ "M10": {
+  "status": "FALLA",
+  "detail": "estados=[302, 302, 302, 302, 302, 302, 302, 302, 302, 302, 302]; usuarios_creados=11; fila_contador=None",
+  "at": "2026-10-31 21:29:33"
+ },
+ "M11": {
+  "status": "OK",
+  "detail": "login=302; rate_identifier=127.0.0.1; X-Forwarded-For=203.0.113.77",
+  "at": "2026-10-31 21:29:25"
+ },
+ "N1": {
+  "status": "OK",
+  "detail": "user=315199 role=2 extra=[]",
+  "at": "2026-10-31 21:48:29"
+ },
+ "N2": {
+  "status": "OK",
+  "detail": "role=19439 perms=[]",
+  "at": "2026-10-31 21:48:30"
+ },
+ "N3": {
+  "status": "OK",
+  "detail": "perms=['dashboard.view'] dashboard=200",
+  "at": "2026-10-31 21:48:33"
+ },
+ "N4": {
+  "status": "OK",
+  "detail": "dup=200/True acento=200/True",
+  "at": "2026-10-31 21:48:33"
+ },
+ "N5": {
+  "status": "OK",
+  "detail": "status=422 admin_perms=['admin.access', 'admin.groups', 'admin.roles', 'admin.users', 'analytics.view_own', 'attachments.download_own', 'dashboard.view', 'forms.create', 'forms.delete_own', 'forms.edit_own', 'forms.export_own', 'forms.manage_all', 'forms.publish_without_review', 'forms.review', 'logs.view', 'responses.pii', 'responses.view_own']",
+  "at": "2026-10-31 21:48:34"
+ },
+ "N6": {
+  "status": "OK",
+  "detail": "admin_perms=['admin.access', 'admin.groups', 'admin.roles', 'admin.users', 'analytics.view_own', 'attachments.download_own', 'dashboard.view', 'forms.create', 'forms.delete_own', 'forms.edit_own', 'forms.export_own', 'forms.manage_all', 'forms.publish_without_review', 'forms.review', 'logs.view', 'responses.pii', 'responses.view_own']",
+  "at": "2026-10-31 21:48:36"
+ },
+ "N7": {
+  "status": "OK",
+  "detail": "group=28148 members=[315199, 315200] review=200,200",
+  "at": "2026-10-31 21:48:37"
+ },
+ "N8": {
+  "status": "OK",
+  "detail": "fuera=403 dentro=200",
+  "at": "2026-10-31 21:48:37"
+ },
+ "N9": {
+  "status": "OK",
+  "detail": "review=403 grupos=0",
+  "at": "2026-10-31 21:48:38"
+ },
+ "N10": {
+  "status": "OK",
+  "detail": "grupo->rol=200 usuario->grupo=200",
+  "at": "2026-10-31 21:48:39"
+ },
+ "N11": {
+  "status": "OK",
+  "detail": "form=264217 delete=403 sigue=1",
+  "at": "2026-10-31 21:48:40"
+ },
+ "N12": {
+  "status": "OK",
+  "detail": "ficha=200 builder=200",
+  "at": "2026-10-31 21:48:42"
+ },
+ "N13": {
+  "status": "OK",
+  "detail": "conservado=['bt_n_b329f22d_g_keep', 'descripción original'] tras_vacio=['bt_n_b329f22d_g_keep', 'descripción original'] status=200",
+  "at": "2026-10-31 21:48:43"
+ },
+ "N14": {
+  "status": "OK",
+  "detail": "keys=17 faltan=[]",
+  "at": "2026-10-31 21:48:44"
+ },
+ "N15": {
+  "status": "FALLA",
+  "detail": "dashboard=200 review=200 admin=403 nuevo=True adminlink=False",
+  "at": "2026-10-31 21:48:45"
+ },
+ "N16": {
+  "status": "OK",
+  "detail": "inbox=200 print=200 ficha=403 approve=302 status=approved",
+  "at": "2026-10-31 21:48:47"
+ },
+ "N17": {
+  "status": "OK",
+  "detail": "status=200 sistema=4 sin_boton=True",
+  "at": "2026-10-31 21:48:47"
+ },
+ "N18": {
+  "status": "OK",
+  "detail": "role=19440 status=200 motivo=True",
+  "at": "2026-10-31 21:48:49"
+ },
+ "N19": {
+  "status": "OK",
+  "detail": "role=bt_n_b329f22d_role_free gone=True en_grupo=0 status=200",
+  "at": "2026-10-31 21:48:50"
+ },
+ "N20": {
+  "status": "OK",
+  "detail": "dialogo=True sigue=True",
+  "at": "2026-10-31 21:48:54"
+ },
+ "N21": {
+  "status": "OK",
+  "detail": "status=200 filas=25",
+  "at": "2026-10-31 21:48:55"
+ },
+ "N22": {
+  "status": "OK",
+  "detail": "status=403",
+  "at": "2026-10-31 21:48:56"
+ },
+ "N23": {
+  "status": "OK",
+  "detail": "plegado=True/True key_admin=None abierta=True",
+  "at": "2026-10-31 21:49:02"
+ },
+ "N24": {
+  "status": "OK",
+  "detail": "register=403 creado=True form_inline=True post_nativo_sin_js=True (Lightpanda no permite desactivar JS)",
+  "at": "2026-10-31 21:49:04"
+ },
+ "N25": {
+  "status": "FALLA",
+  "detail": "modal_abierto=False motivo=True url=http://127.0.0.1:10001/admin",
+  "at": "2026-10-31 21:49:10"
+ },
+ "N26": {
+  "status": "OK",
+  "detail": "antes=403 despues=200 rol=2 grupos=0",
+  "at": "2026-10-31 21:49:12"
+ },
+ "N27": {
+  "status": "OK",
+  "detail": "ficha=403 extra=[]",
+  "at": "2026-10-31 21:49:13"
+ },
+ "N28": {
+  "status": "OK",
+  "detail": "modal_abierto=True desglose=True",
+  "at": "2026-10-31 21:49:17"
+ },
+ "N29": {
+  "status": "OK",
+  "detail": "status=403 perms=['admin.access']",
+  "at": "2026-10-31 21:49:21"
+ },
+ "O1": {
+  "status": "OK",
+  "detail": "403:403/403 icono=True motivo='Acceso denegado' repetido=1 ayuda=True sin_traza=True; 404:404/404 icono=True motivo='Página no encontrada' repetido=1 ayuda=True sin_traza=True; 405:405/405 icono=True motivo='Método no permitido' repetido=1 ayuda=True sin_traza=True; 413:413/413 icono=True motivo='El envío supera el tamaño máximo permitido por el servidor (1 MB). Intenta con archivos más pequeños.' repetido=1 ayuda=True sin_traza=True; 419:419/419 icono=True motivo='Token CSRF inválido. La sesión ha expirado.' repetido=1 ayuda=True sin_traza=True; 429:429/429 icono=True motivo='Demasiados envíos. Intenta de nuevo en unos minutos.' repetido=1 ayuda=True sin_traza=True; 500:500/500 icono=True motivo='Ocurrió un error al guardar tu respuesta. Intenta de nuevo.' repetido=1 ayuda=True sin_traza=True; 503:503/503 icono=True motivo='Servicio no disponible' repetido=1 ayuda=True sin_traza=True",
+  "at": "2026-10-31 21:58:47"
+ },
+ "O2": {
+  "status": "OK",
+  "detail": "status=500 texto='500 Ocurrió un error al guardar tu respuesta. Intenta de nuevo. Vuelve a intentarlo. Si el error se repite, avisa a quien administre la inst'",
+  "at": "2026-10-31 21:58:47"
+ },
+ "O3": {
+  "status": "OK",
+  "detail": "status=413 texto='413 El envío supera el tamaño máximo permitido por el servidor (1 MB). Intenta con archivos más pequeños. El envío supera el tamaño máximo permitido por el serv'",
+  "at": "2026-10-31 21:58:47"
+ },
+ "O4": {
+  "status": "OK",
+  "detail": "status=419 texto='419 Token CSRF inválido. La sesión ha expirado. Recarga la página y vuelve a intentarlo. Si se repite, entra de nuevo. Volver al inicio'",
+  "at": "2026-10-31 21:58:47"
+ },
+ "O5": {
+  "status": "OK",
+  "detail": "rutas=17 malas=[] estados=[200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 404, 200, 200, 200, 200, 403, 403]",
+  "at": "2026-10-31 21:58:51"
+ },
+ "O6": {
+  "status": "OK",
+  "detail": "{'ok': True, 'actionRight': 290, 'inner': 1366, 'titleLen': 190, 'whiteSpace': '', 'overflowWrap': '', 'scroll': 1366}",
+  "at": "2026-10-31 21:58:54"
+ },
+ "O7": {
+  "status": "OK",
+  "detail": "{'ok': True, 'overflow': False, 'rows': 7, 'inner': 375, 'scroll': 375}",
+  "at": "2026-10-31 21:58:57"
+ },
+ "O8": {
+  "status": "OK",
+  "detail": "status=200 texto_sin_resultados=True",
+  "at": "2026-10-31 21:58:57"
+ },
+ "O9": {
+  "status": "OK",
+  "detail": "{'ok': True, 'focusables': 43, 'alts': True, 'css': True} css_global=True (Lightpanda no mueve el foco con Tab; foco programático + regla CSS)",
+  "at": "2026-10-31 21:59:00"
+ },
+ "O10": {
+  "status": "OK",
+  "detail": "/dashboard:ok(375/375); /admin:ok(375/375); /forms/263816:ok(375/375); /forms/263816/builder:ok(375/375); /forms/263816/responses:ok(375/375); /forms/263816/analytics:ok(375/375)",
+  "at": "2026-10-31 21:59:07"
+ },
+ "P1": {
+  "status": "OK",
+  "detail": "{'notes': [], 'cols': 12, 'rows': 12}",
+  "at": "2026-10-31 22:04:05"
+ },
+ "P2": {
+  "status": "OK",
+  "detail": "strong='los dos' code='WEBHOOK_ALLOW_PRIVATE_HOSTS' tooltip='Hacen falta los dos opt-ins: este y WEBHOOK_ALLOW_PRIVATE_HOSTS en el servidor. Con el servidor sin '",
+  "at": "2026-10-31 22:04:06"
+ },
+ "P3": {
+  "status": "OK",
+  "detail": "tooltip='Si se llena, cada envío se manda por HTTP a esa URL. Debe ser http o https y alcanzable desde el ser'",
+  "at": "2026-10-31 22:04:07"
+ },
+ "P4": {
+  "status": "OK",
+  "detail": "{'cls': 'app-help', 'tip': True}",
+  "at": "2026-10-31 22:04:09"
+ },
+ "P5": {
+  "status": "OK",
+  "detail": "antes=False despues=False tooltip=True",
+  "at": "2026-10-31 22:04:11"
+ },
+ "P6": {
+  "status": "OK",
+  "detail": "{'visible': True, 'text': '«Inter» se sirve desde esta instalación.', 'cls': 'form-text mb-0 text-success'}",
+  "at": "2026-10-31 22:04:12"
+ },
+ "P7": {
+  "status": "OK",
+  "detail": "color=#123456 texto_igual=True",
+  "at": "2026-10-31 22:04:15"
+ },
+ "P8": {
+  "status": "OK",
+  "detail": "base='display: inline-flex;\\n    align-items: center;\\n    justify-content: center;\\n    position: ' after=\"content: '';\\n    position: absolute;\\n    inset: -.45rem;\" (1.1rem≈17.6px + 7.2px por lado)",
+  "at": "2026-10-31 22:04:15"
+ },
+ "Q1": {
+  "status": "OK",
+  "detail": "{'n': 2, 'types': ['section', 'page'], 'gap': ''} css_gap=True",
+  "at": "2026-10-31 22:08:39"
+ },
+ "Q2": {
+  "status": "OK",
+  "detail": "secciones=2 hijas=1 css='flex: 1 0 100%;\\n    display: flex; flex-direction: column; gap: 1.5rem;\\n    margin: .6rem 0 0;\\n    border-radius: 8px;\\n '",
+  "at": "2026-10-31 22:08:40"
+ },
+ "Q3": {
+  "status": "OK",
+  "detail": "{'children': 0, 'hint': 'Arrastra preguntas aquí o usa el botón «Agregar pregunta dentro».', 'border': ''} css_empty=True css_before=True",
+  "at": "2026-10-31 22:08:40"
+ },
+ "Q4": {
+  "status": "OK",
+  "detail": "nps=11 estrellas=5",
+  "at": "2026-10-31 22:08:40"
+ },
+ "Q5": {
+  "status": "OK",
+  "detail": "escala=5 ranking=3 matriz=1 css='overflow: hidden; border-radius: 8px;'",
+  "at": "2026-10-31 22:08:40"
+ },
+ "Q6": {
+  "status": "OK",
+  "detail": "título=6404 icono=6490 css='display: flex; align-items: center; justify-content: space-between; gap: .7rem;'",
+  "at": "2026-10-31 22:08:41"
+ },
+ "Q7": {
+  "status": "OK",
+  "detail": "{'nps': 11, 'star': 5, 'matrix': 4, 'ranking': 3}",
+  "at": "2026-10-31 22:08:41"
+ },
+ "Q8": {
+  "status": "OK",
+  "detail": "bloques=3 head2=0 pie='AnteriorPaso 2 de 3Siguiente'",
+  "at": "2026-10-31 22:08:43"
+ },
+ "Q9": {
+  "status": "OK",
+  "detail": "{'head': 1, 'title': 0, 'desc': 'Descripción del paso 2'}",
+  "at": "2026-10-31 22:08:44"
+ },
+ "Q10": {
+  "status": "OK",
+  "detail": "{'sections': 2, 'children': 1} css='margin: .6rem 0 0;\\n    padding: 0 0 .4rem;'",
+  "at": "2026-10-31 22:08:45"
+ },
+ "Q11": {
+  "status": "OK",
+  "detail": "botones=11 css='display: inline-flex; align-items: center; justify-content: center;\\n    width: 40px; height: 40px;\\n    border-radius: 12'",
+  "at": "2026-10-31 22:08:45"
+ },
+ "Q12": {
+  "status": "OK",
+  "detail": "filas=[['', ''], ['Primera página', ''], ['', 'Descripción conservada']] texto_ok=True",
+  "at": "2026-10-31 22:08:47"
+ },
+ "R1": {
+  "status": "OK",
+  "detail": "{'existe': 1, 'pager': 1, 'tras2': {'loading': False, 'op': '1', 'pe': '', 'rows': 15}, 'tras1': {'loading': False, 'op': '1', 'pe': '', 'rows': 15}}",
+  "at": "2026-10-31 22:17:21"
+ },
+ "R2": {
+  "status": "OK",
+  "detail": "O1-O8=[True, True, True, True, True, True, True, True] 404='404\\nPágina no encontrada\\n\\nLa página que buscas no existe o fue movida.\\n\\nVolver al inicio'",
+  "at": "2026-10-31 22:17:21"
+ },
+ "R3": {
+  "status": "OK",
+  "detail": "antes={'tag': 'INPUT', 'txt': ''} despues={'tag': 'SECTION', 'txt': 'Paso 2 · El material\\n\\nSolo si asististe al menos a la mitad.\\n\\nMaterial y organización\\n¿Qué tan claros fueron los materiales? *\\n1 2 3 4 5\\n¿Qué materiales usaste?\\nDiapositivas\\nPDF descargable\\nVídeos\\nEjercicios\\nBibliografía\\nAnteriorPaso 2 de 3Siguiente', 'step': 1}",
+  "at": "2026-10-31 22:17:22"
+ },
+ "R4": {
+  "status": "OK",
+  "detail": "{'verde': 'rgba(0, 0, 0, 0)', 'primario': 'rgba(0, 0, 0, 0)', 'cls': 'btn btn-success app-btn-primary'}",
+  "at": "2026-10-31 22:17:23"
+ },
+ "R5": {
+  "status": "OK",
+  "detail": "{'primarias': 1, 'guardar': False, 'menu': 1, 'acciones': 'Guardar\\nAprobar\\nDevolver\\nEliminar'}",
+  "at": "2026-10-31 22:17:24"
+ },
+ "R6": {
+  "status": "OK",
+  "detail": "{'n': 21, 'enfocables': 21, 'scale': 5, 'nps': 11, 'star': 5}",
+  "at": "2026-10-31 22:17:25"
+ },
+ "R7": {
+  "status": "OK",
+  "detail": "primero={'txt': 'Guardar', 'dis': True} segundo={'txt': 'Guardar', 'dis': False}",
+  "at": "2026-10-31 22:17:31"
+ },
+ "R8": {
+  "status": "OK",
+  "detail": "controles=[{'t': 'Editar campos', 'cls': 'btn btn-primary app-btn-primary'}, {'t': 'Participantes', 'cls': 'btn btn-outline-primary'}, {'t': 'Respuestas', 'cls': 'btn btn-outline-primary'}, {'t': 'Analítica', 'cls': 'btn btn-outline-success'}, {'t': '', 'cls': 'btn btn-outline-secondary app-dd-btn'}]",
+  "at": "2026-10-31 22:17:31"
+ },
+ "R9": {
+  "status": "OK",
+  "detail": "antes={'url': '/forms/263819/access', 'board': 1, 'list': 1, 'imp': 1, 'det': 1} despues={'url': '/forms/263819/access', 'board': 1, 'list': 1, 'imp': 1, 'det': 1, 'fila': True}",
+  "at": "2026-10-31 22:17:34"
+ },
+ "R10": {
+  "status": "OK",
+  "detail": "status=200 keys=['vfSlotStatusBadge', 'vfSlotReviewTrail', 'vfSlotActions', 'vfSlotShare'] data={'ok': True, 'message': 'Ajustes guardados.', 'html': {'vfSlotStatusBadge': '<span class=\"app-status app-status-published\">Publicado</span>\\n', 'vfSlotReviewTrail': '', 'vfSlotActions': '<div class=\"row g-2 mb-4\">\\n    <div class=\"col\">\\n        <button type=\"submit\" form=\"formUpdate\" class=\"btn btn-outline-primary w-100 app-form-cta\"><i class=\"fa-solid fa-floppy-disk me-1\"></i>Guardar</button>\\n    </div>\\n                                        <div class=\"col\">\\n                              ",
+  "at": "2026-10-31 22:17:35"
+ },
+ "S1": {
+  "status": "OK",
+  "detail": "página={'wrap': 'form-check form-switch mb-3', 'hidden': False, 'label': 'Mostrar la cabecera de esta página'} campo={'hidden': True, 'disabled': False}",
+  "at": "2026-10-31 23:40:35"
+ },
+ "S2": {
+  "status": "OK",
+  "detail": "{'blocks': 2, 'head': 0, 'foot': 'Paso 1 de 2Siguiente', 'aria': 'Paso 1 de 2', 'progress': 1}",
+  "at": "2026-10-31 23:40:36"
+ },
+ "S3": {
+  "status": "OK",
+  "detail": "recarga sin cabecera",
+  "at": "2026-10-31 23:40:37"
+ },
+ "S4": {
+  "status": "OK",
+  "detail": "{'head': 2, 'title': 'Página 1', 'icon': 1, 'bg': 'rgba(0, 0, 0, 0)'} css_head='\\n    display: flex; align-items: center; justify-content: space-between; gap: .7'",
+  "at": "2026-10-31 23:40:38"
+ },
+ "S5": {
+  "status": "OK",
+  "detail": "{'section': 1, 'children': 1, 'child_bg': 'rgba(0, 0, 0, 0)'} css='\\n    margin: .6rem 0 0;\\n    padding: 0 0 .4rem;\\n'",
+  "at": "2026-10-31 23:40:39"
+ },
+ "S6": {
+  "status": "OK",
+  "detail": "asas=4 css='\\n    position: absolute;\\n    top: 100%;\\n    /* Alineado al borde de la tarjeta (antes 2.35rem, el an'",
+  "at": "2026-10-31 23:40:40"
+ },
+ "S7": {
+  "status": "OK",
+  "detail": "{'ctrl': 1, 'label': 'Agregar pregunta dentro'} css='\\n    flex: 1 0 100%;\\n    max-width: 100%;\\n    margin: .25rem 0 0;\\n'",
+  "at": "2026-10-31 23:40:41"
+ },
+ "S8": {
+  "status": "OK",
+  "detail": "{'b': False, 'sec': False, 'logic': 2} texto_regla=False",
+  "at": "2026-10-31 23:40:41"
+ },
+ "S9": {
+  "status": "OK",
+  "detail": "chips=['Si: ¿Aplica? = \"Sí\"', 'Si: ¿Aplica? = \"Sí\" → Se oculta el bloque entero (1 pregunta)', 'Solo se muestra si su sección «Sección condicional» cumple: ¿Aplica? = \"Sí\"']",
+  "at": "2026-10-31 23:40:42"
+ },
+ "S10": {
+  "status": "OK",
+  "detail": "grupos=['Acceso', 'Programación y cupo', 'Notificaciones', 'Webhook', 'Mensaje final', 'Idioma público'] aria=['true', 'true', 'true', 'true', 'true', 'true']",
+  "at": "2026-10-31 23:40:43"
+ },
+ "S11": {
+  "status": "OK",
+  "detail": "{'acc': False, 'age': False, 'key': '{\"acceso\":false,\"agenda\":false}'} otro={'acc': True, 'age': True}",
+  "at": "2026-10-31 23:40:47"
+ },
+ "S12": {
+  "status": "OK",
+  "detail": "{'alert': True, 'closed': 0, 'total': 6}",
+  "at": "2026-10-31 23:40:49"
+ },
+ "S13": {
+  "status": "OK",
+  "detail": "{'n': 6, 'tags': True, 'tabs': True, 'before': 'true'} {'after': 'false', 'url': 'http://127.0.0.1:10001/forms/263816'}",
+  "at": "2026-10-31 23:40:50"
+ },
+ "S14": {
+  "status": "OK",
+  "detail": "body=rgba(0, 0, 0, 0) card=rgba(0, 0, 0, 0) css='\\n    background: #fff;\\n    border: 1px solid rgba(226,232,24'",
+  "at": "2026-10-31 23:40:51"
+ },
+ "S15": {
+  "status": "OK",
+  "detail": "{'style': '@font-face{font-family:Lora;src:url(/assets/fonts/lora-latin-var.woff2) format(\"woff2\");font-weight:400 700;font-display:swap;}:root{--vf-primary:#6366f1;--vf-background:#111827;--vf-grad-start:#2563eb;--vf-grad-end:#7c3aed;--vf-on-grad:#ffffff;--vf-font:Lora;}', 'card': 'rgba(0, 0, 0, 0)'}",
+  "at": "2026-10-31 23:40:52"
+ },
+ "S16": {
+  "status": "OK",
+  "detail": "fill=True panel=False",
+  "at": "2026-10-31 23:40:53"
+ },
+ "S17": {
+  "status": "OK",
+  "detail": "sin overrides de tema",
+  "at": "2026-10-31 23:40:54"
+ },
+ "S18": {
+  "status": "OK",
+  "detail": "{'visible': True, 'text': 'Este paso todavía no tiene título ni descripción, así que la cabecera no tendría nada que mostrar y saldrá vacía. El interruptor decide si se pinta, no qué dice: escribe el título de la página o añade una descripción arriba para que se vea.', 'check': True} publicado={'head': 0, 'icon': 0}",
+  "at": "2026-10-31 23:40:57"
+ },
+ "S19": {
+  "status": "OK",
+  "detail": "{'hint': True, 'label': 'Paso con título', 'card': 'Paso con título Página (salto de paso)\\nInicia un nuevo paso — todo lo de abajo pasa a la siguiente página\\nTexto\\nPárrafo\\nEmail\\nNúmero\\nDesplegable\\nOpción única\\nCasillas\\nFecha\\nEscala\\nURL\\nTeléfono\\nHora\\nFecha y hora\\nRango\\nMatriz\\nNPS\\nEstrellas\\nRanking\\nArchivo'}",
+  "at": "2026-10-31 23:40:58"
+ },
+ "S20": {
+  "status": "OK",
+  "detail": "{'hint': True, 'help': 'Descripción del paso', 'card': 'Paso con título Página (salto de paso)\\nInicia un nuevo paso — todo lo de abajo pasa a la siguiente página\\nDescripción del paso\\nTexto\\nPárrafo\\nEmail\\nNúmero\\nDesplegable\\nOpción única\\nCasillas\\nFecha\\nEscala\\nURL\\nTeléfono\\nHora\\nFecha y hora\\nRango\\nMatriz\\nNPS\\nEstrellas\\nRanking\\nArchivo'} publicado={'head': 1, 'title': 0, 'desc': 'Descripción del paso', 'icon': 1}",
+  "at": "2026-10-31 23:41:01"
+ },
+ "S21": {
+  "status": "OK",
+  "detail": "tarjetas=['Página 1', 'Página 2']",
+  "at": "2026-10-31 23:41:04"
+ },
+ "S22": {
+  "status": "OK",
+  "detail": "antes=['Página 1', 'Página 2'] después={'heads': 1, 'first': 0, 'second': 'Página 2'} aviso=True",
+  "at": "2026-10-31 23:41:11"
+ },
+ "S23": {
+  "status": "FALLA",
+  "detail": "{'title': 'Sección S', 'icon': True, 'order': ['vf-section-title h4 fw-bold mb-0', 'vf-section-icon']} css=' display: flex; align-items: center; justify-content: space-between; gap: .7rem;' builder=0",
+  "at": "2026-10-31 23:41:12"
+ },
+ "S24": {
+  "status": "OK",
+  "detail": "{'title': 'Página 1', 'order': ['', 'vf-page-icon'], 'icon': True}",
+  "at": "2026-10-31 23:41:13"
+ },
+ "S25": {
+  "status": "OK",
+  "detail": "{'text': 'Enviar', 'label': 'Enviar', 'css_color': True, 'class_btn': False}",
+  "at": "2026-10-31 23:41:14"
+ },
+ "S26": {
+  "status": "OK",
+  "detail": "tinta automática clara->oscura",
+  "at": "2026-10-31 23:41:15"
+ },
+ "S27": {
+  "status": "OK",
+  "detail": "{'show': True, 'tiles': 21, 'nested': False, 'title': 'Agregar elemento'}",
+  "at": "2026-10-31 23:41:16"
+ },
+ "S28": {
+  "status": "OK",
+  "detail": "{'show': True, 'cols': 0, 'top': 5865, 'width': 5, 'vw': 360, 'heading': 'Agregar elemento', 'css': ''} cerrado=True css='@media (max-width: 575.98px) {\\n    .app-type-grid {\\n        grid-template-column'",
+  "at": "2026-10-31 23:41:17"
+ },
+ "S29": {
+  "status": "OK",
+  "detail": "{'submit': True, 'label': 'Enviar', 'white': True, 'cls': 'vf-submit'} css='\\n    min-height: 52px; padding: .7rem 2.4rem;\\n    border-rad'",
+  "at": "2026-10-31 23:41:19"
+ },
+ "S30": {
+  "status": "OK",
+  "detail": "{'wide': True, 'head': True, 'action': True, 'table': True, 'filters': True} {'show': True, 'moved': True, 'fields': 5}",
+  "at": "2026-10-31 23:41:21"
+ },
+ "S31": {
+  "status": "OK",
+  "detail": "{'labels': True, 'display': 'block', 'thead': 'block', 'overflow': True} modal={'one': True, 'fields': 5, 'width': 5, 'vw': 375, 'visible': True}",
+  "at": "2026-10-31 23:41:22"
+ },
+ "S32": {
+  "status": "OK",
+  "detail": "{'left': True, 'right': True, 'access': False, 'order': 'ok'}",
+  "at": "2026-10-31 23:41:23"
+ },
+ "S33": {
+  "status": "OK",
+  "detail": "{'rows': 25, 'wrap': True, 'overflow': False, 'pageOverflow': True, 'pager': True}",
+  "at": "2026-10-31 23:41:25"
+ },
+ "S34": {
+  "status": "OK",
+  "detail": "{'left': True, 'right': True, 'settings': True, 'share': True, 'access': False, 'overflow': True}",
+  "at": "2026-10-31 23:41:26"
+ },
+ "S35": {
+  "status": "OK",
+  "detail": "1920={'ratio': 0.005208333333333333, 'overflow': True} 800={'ratio': 0.0125, 'overflow': True, 'matrix': True} preview={'ratio': 0.010980966325036604, 'same': True} css=' width: 100%; max-width: 100%; margin: 0 auto; '",
+  "at": "2026-10-31 23:41:28"
+ },
+ "S36": {
+  "status": "OK",
+  "detail": "{'half': True, 'full': True, 'widths': [5, 5, 10, 5, 5, 5], 'clipped': []}",
+  "at": "2026-10-31 23:41:29"
+ },
+ "S37": {
+  "status": "OK",
+  "detail": "{'palette': 0, 'canvas': 1, 'save': True, 'preview': 1, 'add': True, 'previewTexts': 1, 'inline': False}",
+  "at": "2026-10-31 23:41:30"
+ },
+ "S38": {
+  "status": "OK",
+  "detail": "modal={'show': True, 'types': 21, 'heading': 'Agregar elemento\\n\\nElige el tipo de eleme'} canvas={'count': 5, 'labels': ['Página 1', 'Nueva pregunta (Texto)', 'Campo uno', 'Página 2', 'Campo dos'], 'closed': True} before=4",
+  "at": "2026-10-31 23:41:33"
+ },
+ "S39": {
+  "status": "OK",
+  "detail": "{'type': 'email', 'req': True, 'preview': True, 'tools': True, 'toolsVisible': True, 'requiredHidden': True, 'checkCss': True} {'required': True, 'noMatrix': True} css='\\n    /* Sin tamaño propio hereda el `1em` de Bootstrap, que '",
+  "at": "2026-10-31 23:41:38"
+ },
+ "S40": {
+  "status": "OK",
+  "detail": "{'show': True, 'title': 'Configuración del elemento', 'centered': True, 'lg': True, 'scroll': True} {'closed': True, 'selected': True, 'uid': 'field-1'}",
+  "at": "2026-10-31 23:41:40"
+ },
+ "S41": {
+  "status": "OK",
+  "detail": "{'show': True, 'centered': True, 'lg': True, 'scroll': True, 'footer': True, 'sibling': True, 'close': True}",
+  "at": "2026-10-31 23:41:42"
+ },
+ "S42": {
+  "status": "OK",
+  "detail": "{'url': '/forms/264335/preview?draft=1', 'first': True, 'reload': True}",
+  "at": "2026-10-31 23:41:50"
+ },
+ "S43": {
+  "status": "OK",
+  "detail": "{'table': True, 'wrap': True, 'ths': ['', 'Malo', 'Bueno'], 'first': '5px', 'css': True} preview=True css='\\n    width: 100%;\\n    min-width: 9rem;\\n'",
+  "at": "2026-10-31 23:41:52"
+ },
+ "S44": {
+  "status": "OK",
+  "detail": "pub={'row': True, 'cls': 'vf-submit-row flip-in', 'parent': 'd-flex flex-column', 'css': ''} preview={'row': True, 'cls': 'vf-submit-row flip-in', 'parent': 'd-flex flex-column', 'oldModal': False}",
+  "at": "2026-10-31 23:41:54"
+ },
+ "S45": {
+  "status": "OK",
+  "detail": "{'submit': True, 'noOverflow': True, 'scrolls': True} {'y': 400, 'submit': True}",
+  "at": "2026-10-31 23:41:56"
+ },
+ "S46": {
+  "status": "OK",
+  "detail": "{'search': 'form-control form-control-sm', 'sort': 'form-select form-select-sm app-dash-sort'} {'name': 'form-control form-control-sm', 'role': 'form-select form-select-sm', 'labels': True}",
+  "at": "2026-10-31 23:41:58"
+ },
+ "S47": {
+  "status": "OK",
+  "detail": "{'groups': 2, 'icons': 2, 'iconCls': True}",
+  "at": "2026-10-31 23:41:58"
+ },
+ "S48": {
+  "status": "OK",
+  "detail": "{'cls': 'container px-lg-4', 'style': '', 'head': True, 'crumb': True, 'delete': True, 'confirm': True, 'action': '/forms/263816/responses/281641/delete', 'css': '44px'}",
+  "at": "2026-10-31 23:41:59"
+ },
+ "T1": {
+  "status": "OK",
+  "detail": "navs=[] url='http://127.0.0.1:10001/f/bt-t-ficha-10315b6e' {'badge': 'Publicado', 'share': 'Abrir en nueva pestaña\\nEste enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define APP_PUBLIC_URL en el .env.\\n\\nEl embed está desactivado. Actívalo en la Configuración del constructor para obtener el código iframe.', 'qr': True, 'iframe': True, 'actions': 'Guardar\\nCerrar\\nEliminar'}",
+  "at": "2026-11-01 07:59:59"
+ },
+ "T2": {
+  "status": "FALLA",
+  "detail": "dialogo=0 navs=[] {'badge': 'Cerrado', 'share': 'Publica el formulario para obtener el enlace de respuesta.\\n\\nPublicar ahora', 'actions': 'Guardar\\nReabrir\\nEliminar'}",
+  "at": "2026-11-01 08:00:00"
+ },
+ "T3": {
+  "status": "OK",
+  "detail": "{'badge': 'Cerrado', 'share': 'Publica el formulario para obtener el enlace de respuesta.\\n\\nPublicar ahora', 'actions': 'Guardar\\nReabrir\\nEliminar'}",
+  "at": "2026-11-01 08:00:01"
+ },
+ "T4": {
+  "status": "FALLA",
+  "detail": "navs=[] y=2100->2100 {'h': '[BT] T ficha 10315b6e', 'open': 6, 'closed': 0, 'y': 2100}",
+  "at": "2026-11-01 08:00:03"
+ },
+ "T5": {
+  "status": "OK",
+  "detail": "status=draft {'badge': 'Borrador', 'trail': '', 'msg': 'Formulario actualizado. Como exige revisión, quedó en borrador.'}",
+  "at": "2026-11-01 08:00:15"
+ },
+ "T6": {
+  "status": "OK",
+  "detail": "status=draft {'badge': 'Borrador', 'actions': 'Guardar\\nEnviar a revisión\\nEliminar'}",
+  "at": "2026-11-01 08:00:20"
+ },
+ "T7": {
+  "status": "FALLA",
+  "detail": "send=in_review status=approved navs=['http://127.0.0.1:10001/review'] {'badge': 'Aprobado', 'trail': 'Revisión\\nEnviado a revisión el 01/11/2026 08:00\\nAprobado por aprobador el 01/11/2026 08:00', 'actions': 'Guardar\\nPublicar\\nEliminar'}",
+  "at": "2026-11-01 08:00:32"
+ },
+ "T8": {
+  "status": "FALLA",
+  "detail": "status=draft {'badge': 'Borrador', 'trail': '', 'actions': 'Guardar\\nEnviar a revisión\\nEliminar'}",
+  "at": "2026-11-01 08:00:46"
+ },
+ "T9": {
+  "status": "OK",
+  "detail": "http=200 status=published url=http://127.0.0.1:10001/forms/264431",
+  "at": "2026-11-01 08:00:47"
+ },
+ "T10": {
+  "status": "OK",
+  "detail": "uid=315221",
+  "at": "2026-11-01 08:00:48"
+ },
+ "T11": {
+  "status": "FALLA",
+  "detail": "navs=[] {'status': 'Activo', 'panel': ''}",
+  "at": "2026-11-01 08:00:53"
+ },
+ "T12": {
+  "status": "FALLA",
+  "detail": "navs=['http://127.0.0.1:10001/admin'] {'open': True, 'role': '3', 'badge': ''}",
+  "at": "2026-11-01 08:00:54"
+ },
+ "T13": {
+  "status": "OK",
+  "detail": "navs=[] {'list': 'La lista está vacía: ahora mismo nadie puede responder a este formulario, ni siquiera quien ya tenía un enlace.', 'toast': 'Se quitó quitar@bt.local de la lista y sus enlaces ya no sirven.'}",
+  "at": "2026-11-01 08:00:59"
+ },
+ "T14": {
+  "status": "OK",
+  "detail": "n0=2 {'rows': 1, 'count': '(1)', 'toast': 'Respuesta eliminada.'}",
+  "at": "2026-11-01 08:01:08"
+ },
+ "T15": {
+  "status": "OK",
+  "detail": "navs=['http://127.0.0.1:10001/forms/264434/responses'] {'rows': 0, 'empty': True, 'count': ''}",
+  "at": "2026-11-01 08:01:18"
+ },
+ "T16": {
+  "status": "OK",
+  "detail": "http=200 url=http://127.0.0.1:10001/forms/264435/responses",
+  "at": "2026-11-01 08:01:22"
+ },
+ "T17": {
+  "status": "OK",
+  "detail": "{'status': 'published', 'url': 'http://127.0.0.1:10001/forms/264436', 'ok': True}",
+  "at": "2026-11-01 08:01:28"
+ },
+ "T18": {
+  "status": "OK",
+  "detail": "settings={'message': 'ctrl-10315b6e', 'redirect_url': ''}",
+  "at": "2026-11-01 08:00:04"
+ },
+ "T19": {
+  "status": "OK",
+  "detail": "settings={'message': 'ctrl-10315b6e', 'redirect_url': ''}",
+  "at": "2026-11-01 08:00:05"
+ },
+ "T20": {
+  "status": "OK",
+  "detail": "posts=['http://127.0.0.1:10001/forms/264426/update']",
+  "at": "2026-11-01 08:00:06"
+ },
+ "T21": {
+  "status": "OK",
+  "detail": "{'toast': 'La fecha de apertura no puede ser posterior a la de cierre.', 'open': 6, 'total': 6, 'ok': False}",
+  "at": "2026-11-01 08:00:08"
+ },
+ "T22": {
+  "status": "OK",
+  "detail": "http=200 no hay AJAX de fill; se valida el repintado del POST",
+  "at": "2026-11-01 08:01:37"
+ },
+ "T23": {
+  "status": "FALLA",
+  "detail": "{'role': 'status', 'live': 'polite', 'focus': 'BODY', 'body': True}",
+  "at": "2026-11-01 08:00:10"
+ },
+ "T24": {
+  "status": "OK",
+  "detail": "dash=True admin=True",
+  "at": "2026-11-01 08:01:33"
+ },
+ "U1": {
+  "status": "OK",
+  "detail": "{'show': True, 'title': 'Confirmar la acción', 'text': '¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.', 'ok': 'Eliminar formulario', 'tone': 'btn btn-danger', 'labelled': 'vfConfirmTitle', 'described': 'vfConfirmText', 'focus': 'vfConfirmCancel'}",
+  "at": "2026-11-01 08:10:42"
+ },
+ "U2": {
+  "status": "OK",
+  "detail": "{'show': False, 'title': 'Confirmar la acción', 'text': '¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.', 'ok': 'Eliminar formulario', 'tone': 'btn btn-danger', 'labelled': 'vfConfirmTitle', 'described': 'vfConfirmText', 'focus': 'vfConfirmCancel'}",
+  "at": "2026-11-01 08:10:42"
+ },
+ "U3": {
+  "status": "OK",
+  "detail": "still=True",
+  "at": "2026-11-01 08:10:45"
+ },
+ "U4": {
+  "status": "OK",
+  "detail": "foco=vfConfirmCancel dentro=True",
+  "at": "2026-11-01 08:10:47"
+ },
+ "U5": {
+  "status": "OK",
+  "detail": "{'show': True, 'title': 'Confirmar la acción', 'text': '¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.', 'ok': 'Eliminar formulario', 'tone': 'btn btn-danger', 'labelled': 'vfConfirmTitle', 'described': 'vfConfirmText', 'focus': 'vfConfirmCancel'}",
+  "at": "2026-11-01 08:10:47"
+ },
+ "U6": {
+  "status": "FALLA",
+  "detail": "publicar=False primary=['Aprobar', 'Devolver', 'Aprobar', 'Devolver', 'Aprobar', 'Devolver']",
+  "at": "2026-11-01 08:10:47"
+ },
+ "U7": {
+  "status": "OK",
+  "detail": "danger=['Eliminar formulario', 'Borrar rol', 'Eliminar grupo', 'Borrar', 'Borrar', 'Quitar', 'Eliminar formulario']",
+  "at": "2026-11-01 08:10:47"
+ },
+ "U8": {
+  "status": "OK",
+  "detail": "navs=[] toast='Se añadió uno-c04a826b@bt.local a la lista de acceso.'",
+  "at": "2026-11-01 08:10:50"
+ },
+ "U9": {
+  "status": "OK",
+  "detail": "{'v': '', 'foco': 'accessAddEmail'}",
+  "at": "2026-11-01 08:10:51"
+ },
+ "U10": {
+  "status": "OK",
+  "detail": "{'txt': 'ya-c04a826b@bt.local ya estaba en la lista.', 'vis': True, 'toast': 'Se añadió dos-c04a826b@bt.local a la lista de acceso.'}",
+  "at": "2026-11-01 08:10:52"
+ },
+ "U11": {
+  "status": "OK",
+  "detail": "{'vis': False, 'txt': ''}",
+  "at": "2026-11-01 08:10:52"
+ },
+ "U12": {
+  "status": "N/A",
+  "detail": "Viewport móvil no fiable en Lightpanda; cubierto por CSS/test de estructura",
+  "at": "2026-11-01 08:10:52"
+ },
+ "U13": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/forms/264472/access#access",
+  "at": "2026-11-01 08:10:53"
+ },
+ "U14": {
+  "status": "OK",
+  "detail": "before=4 after=5",
+  "at": "2026-11-01 08:10:56"
+ },
+ "U15": {
+  "status": "OK",
+  "detail": "status=200",
+  "at": "2026-11-01 08:10:56"
+ },
+ "U16": {
+  "status": "OK",
+  "detail": "navs=[] settings={\"theme\":{\"primary\":null,\"background\":null,\"gradient_start\":null,\"gradient_end\":null,\"text\":null,\"font\":null},\"schedule\":{\"open_at\":\"\",\"close_at\":\"\"},\"quota\":{\"enabled\":false,\"max\":0},\"notify\":{\"enabled\":false,\"emails\":[],\"confirmation\":{\"enabled\":false,\"subject\":\"\",\"message\":\"\",\"to_field\":\"\"}},\"webhook\":{\"url\":\"\",\"allow_private_hosts\":false,\"kind\":\"generic\",\"secret\":\"\"},\"thanks\":{\"message\":\"\",\"redirect_url\":\"\"},\"quiz\":{\"enabled\":false},\"randomize\":{\"questions\":false,\"enabled\":false},\"embed\":{\"enabled\":false},\"honeypot\":{\"enabled\":true},\"anti_bot\":{\"enabled\":false},\"access\":{\"mode\":\"roster\",\"identifier\":\"cedula\"},\"advance\":{\"auto\":false},\"locale\":{\"code\":\"es\"}}",
+  "at": "2026-11-01 08:10:59"
+ },
+ "U17": {
+  "status": "OK",
+  "detail": "navs=[] rol=3 badge=editor",
+  "at": "2026-11-01 08:11:01"
+ },
+ "U18": {
+  "status": "OK",
+  "detail": "navs=[] en=1 badge=Grupo U c04a826b",
+  "at": "2026-11-01 08:11:04"
+ },
+ "U19": {
+  "status": "OK",
+  "detail": "navs=[] rol=3 en=1 modal=True",
+  "at": "2026-11-01 08:11:07"
+ },
+ "U20": {
+  "status": "OK",
+  "detail": "rol=2 en=1",
+  "at": "2026-11-01 08:11:09"
+ },
+ "V1": {
+  "status": "OK",
+  "detail": "[True, True, True, True]",
+  "at": "2026-11-01 08:52:21"
+ },
+ "V2": {
+  "status": "OK",
+  "detail": "{'open': True, 'izq': True, 'der': True, 'fuera': True}",
+  "at": "2026-11-01 08:52:21"
+ },
+ "V3": {
+  "status": "OK",
+  "detail": "status=200",
+  "at": "2026-11-01 08:52:22"
+ },
+ "V4": {
+  "status": "OK",
+  "detail": "navs=[] n=27",
+  "at": "2026-11-01 08:52:28"
+ },
+ "V5": {
+  "status": "OK",
+  "detail": "n=27 err={'txt': 'El identificador V-907 ya está en la lista.', 'vis': True}",
+  "at": "2026-11-01 08:52:29"
+ },
+ "V6": {
+  "status": "OK",
+  "detail": "catálogo sin repintar",
+  "at": "2026-11-01 08:52:29"
+ },
+ "V7": {
+  "status": "OK",
+  "detail": "{'show': True, 'title': 'Editar a Nombre 01\\nCédula\\nNombre completo\\nCorreo\\nTeléfono\\nSede\\nQuitar\\nGuardar', 'has': True}",
+  "at": "2026-11-01 08:52:30"
+ },
+ "V8": {
+  "status": "OK",
+  "detail": "nombre=Zeta editado",
+  "at": "2026-11-01 08:52:31"
+ },
+ "V9": {
+  "status": "OK",
+  "detail": "{'vivo': True, 'url': '?q=V-01&sort=nombre', 'q': 'V-01', 'txt': 'Listado\\nBuscar\\nOrdenar por cédula\\nOrdenar por nombre\\nOrdenar por correo\\nOrdenar por teléfono\\nOrdenar por fecha\\nAgregar\\nCédula\\tNombre completo\\tCorreo\\tTeléfono\\tSede\\tCódigo\\tAccionesV-01\\tZeta editado\\tp1@bt.local\\t\\tNorte\\t4SAPHZRAEPFDY9F7\\t'}",
+  "at": "2026-11-01 08:52:56"
+ },
+ "V10": {
+  "status": "OK",
+  "detail": "{'url': '?q=V-02', 'txt': 'Listado\\nBuscar\\nOrdenar por cédula\\nOrdenar por nombre\\nOrdenar por correo\\nOrdenar por teléfono\\nOrdenar por fecha\\nAgregar\\n\\nNadie en la lista coincide con la búsqueda.\\n\\nPrueba con otra cédula, nombre, correo o teléfono.'}",
+  "at": "2026-11-01 08:52:38"
+ },
+ "V11": {
+  "status": "OK",
+  "detail": "{'vivo': True, 'alta': True, 'rep': '', 'lista': 'Listado\\nBuscar\\nOrdenar por cédula\\nOrdenar por nombre\\nOrdenar por correo\\nOrdenar por teléfono\\nOrdenar por fecha\\nAgregar\\nCédula\\tNombre completo\\tCorreo\\tTeléfono\\tSede\\tCódigo\\tAccionesV-01\\tNombre 01\\tp1@bt.local\\t\\tNorte\\t2FGMY2ERJEBFQZ7A\\t\\nV-70\\tImportado\\ti70@bt.local\\t\\tNorte\\tN67ZEPQ5CPG27CEN\\t'}",
+  "at": "2026-11-01 08:53:01"
+ },
+ "V12": {
+  "status": "OK",
+  "detail": "preview=True confirm=False n=2/2 rep=<div class=\"alert alert-warning small\" role=\"status\">\n    <div class=\"fw-semibold mb-1\">\n                    1 de 2 filas no se pudieron guardar.\n            </div>\n\n            <details>\n            ",
+  "at": "2026-11-01 08:53:03"
+ },
+ "V13": {
+  "status": "OK",
+  "detail": ">\n                                                                                     \n     \n                    1 de 2 filas no se pudieron guardar.\n             \n\n             \n             Ver las",
+  "at": "2026-11-01 08:53:05"
+ },
+ "V14": {
+  "status": "OK",
+  "detail": "ok=False msg=Ese archivo no es un .xlsx de verdad. rep=",
+  "at": "2026-11-01 08:53:06"
+ },
+ "V15": {
+  "status": "OK",
+  "detail": "informe de un solo uso",
+  "at": "2026-11-01 08:53:06"
+ },
+ "V16": {
+  "status": "OK",
+  "detail": "dlg={'txt': '¿Vaciar toda la lista de participantes? Se borran sus códigos y sus datos de la lista; las respuestas ya enviadas se quedan y el catálogo de atributos se conserva. Esta acción no se puede deshacer.', 'ok': 'Sí, vaciar la lista'} counts=(0, 1)",
+  "at": "2026-11-01 08:52:50"
+ },
+ "V17": {
+  "status": "OK",
+  "detail": "{'cat': 'Atributos\\n\\nNo hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas.', 'fila': 'Listado\\nBuscar\\nOrdenar por cédula\\nOrdenar por nombre\\nOrdenar por correo\\nOrdenar por teléfono\\nOrdenar por fecha\\nAgregar\\nCédula\\tNombre completo\\tCorreo\\tTeléfono\\tCódigo\\tAccionesV-01\\tNombre 01\\tp1@bt.local\\t\\tZ3BXSZAK35CNM872\\t\\nV-02\\tNombre 02\\tp2@bt.local\\t\\tGQEDRAS25WATSGCZ\\t\\nV-03\\tNombre 03\\tp3@bt.local\\t\\tTE9T73BD4F35XMJQ\\t', 'alta': False}",
+  "at": "2026-11-01 08:52:43"
+ },
+ "V18": {
+  "status": "OK",
+  "detail": "{'txt': '¿Quitar este participante de la lista? Su código deja de servir y sus respuestas se quedan. Esta acción no se puede deshacer.', 'ok': 'Sí, quitar'}",
+  "at": "2026-11-01 08:52:44"
+ },
+ "V19": {
+  "status": "OK",
+  "detail": "{'rows': 25, 'stats': '26\\nEn la lista\\n0\\nRespondieron\\n26\\nSin responder', 'pag': 2}",
+  "at": "2026-11-01 08:52:25"
+ },
+ "V20": {
+  "status": "N/A",
+  "detail": "Layout móvil no medible en Lightpanda; cubierto por CSS/@media",
+  "at": "2026-11-01 08:53:06"
+ },
+ "V21": {
+  "status": "OK",
+  "detail": "POST nativo",
+  "at": "2026-11-01 08:52:54"
+ },
+ "V22": {
+  "status": "OK",
+  "detail": "{'list': True, 'roster': False, 'alta': True}",
+  "at": "2026-11-01 08:52:52"
+ },
+ "V23": {
+  "status": "N/A",
+  "detail": "El scroll del panel no es fiable en Lightpanda; cubierto por JS/CSS",
+  "at": "2026-11-01 08:52:35"
+ },
+ "V24": {
+  "status": "OK",
+  "detail": "responded_at=NULL re=200",
+  "at": "2026-11-01 08:52:51"
+ },
+ "V25": {
+  "status": "OK",
+  "detail": "{'show': False, 'caja': True, 'oculta': True}",
+  "at": "2026-11-01 08:52:32"
+ },
+ "V26": {
+  "status": "OK",
+  "detail": "{'rows': 1, 'q': 'V-', 'page': '2', 'sort': 'nombre'} links=['/forms/264539/access?q=V-&page=1&sort=nombre#participantes', '/forms/264539/access?q=V-&page=2&sort=nombre#participantes']",
+  "at": "2026-11-01 08:52:23"
+ },
+ "V27": {
+  "status": "OK",
+  "detail": "{'q': 'V-', 'sort': 'nombre'}",
+  "at": "2026-11-01 08:52:24"
+ },
+ "V28": {
+  "status": "OK",
+  "detail": "tres tarjetas separadas",
+  "at": "2026-11-01 08:52:21"
+ },
+ "V29": {
+  "status": "OK",
+  "detail": "modal-header app-navbar text-white border-0 py-2",
+  "at": "2026-11-01 08:52:26"
+ },
+ "V30": {
+  "status": "OK",
+  "detail": "{'search': True, 'grupo': True, 'mismo': True}",
+  "at": "2026-11-01 08:52:25"
+ },
+ "V31": {
+  "status": "OK",
+  "detail": "{'n': 5, 'todas': True}",
+  "at": "2026-11-01 08:52:26"
+ },
+ "V32": {
+  "status": "OK",
+  "detail": "{'btns': ['', 'Quitar', 'Guardar'], 'guardar': True}",
+  "at": "2026-11-01 08:52:30"
+ },
+ "V33": {
+  "status": "OK",
+  "detail": "{'open': True, 'izq': True, 'der': True, 'fuera': True}",
+  "at": "2026-11-01 08:52:21"
+ },
+ "V34": {
+  "status": "OK",
+  "detail": "navs=['http://127.0.0.1:10001/forms/264539/access?q=V-01&sort=cedula#participantes'] {'url': '?q=V-01&sort=cedula', 'q': 'V-01', 'txt': 'Listado\\nBuscar\\nOrdenar por cédula\\nOrdenar por nombre\\nOrdenar por correo\\nOrdenar por teléfono\\nOrdenar por fecha\\nAgregar\\nCédula\\tNombre completo\\tCorreo\\tTeléfono\\tSede\\tCódigo\\tAccionesV-01\\tZeta editado\\tp1@bt.local\\t\\tNorte\\t4SAPHZRAEPFDY9F7\\t', 'vivo': True}",
+  "at": "2026-11-01 08:52:34"
+ },
+ "V35": {
+  "status": "OK",
+  "detail": "q=''",
+  "at": "2026-11-01 08:52:35"
+ },
+ "V36": {
+  "status": "OK",
+  "detail": "GET filtra",
+  "at": "2026-11-01 08:52:22"
+ },
+ "W1": {
+  "status": "OK",
+  "detail": "['public', 'email', 'allowlist', 'roster']",
+  "at": "2026-11-01 09:09:32"
+ },
+ "W2": {
+  "status": "OK",
+  "detail": "{'hidden': False, 'dis': False, 'val': 'correo'}",
+  "at": "2026-11-01 09:09:32"
+ },
+ "W3": {
+  "status": "OK",
+  "detail": "{'hidden': True, 'dis': True, 'val': 'correo'}",
+  "at": "2026-11-01 09:09:32"
+ },
+ "W4": {
+  "status": "OK",
+  "detail": "{'hidden': False, 'dis': False, 'val': 'correo'}",
+  "at": "2026-11-01 09:09:33"
+ },
+ "W5": {
+  "status": "OK",
+  "detail": "{'ok': True, 'message': 'Ajustes guardados.', 'html': {'vfSlotStatusBadge': '<span class=\"app-status app-status-draft\">Borrador</span>\\n', 'vfSlotReviewTrail': '', 'vfSlotActions': '<div class=\"row g-2 mb-4\">\\n    <div class=\"col\">\\n        <button type=\"submit\" form=\"formUpdate\" class=\"btn btn-outline-primary w-100 app-form-cta\"><i class=\"fa-solid fa-floppy-disk me-1\"></i>Guardar</button>\\n    </div>\\n                                        <div class=\"col\">\\n                    <form method=\"post\" action=\"/forms/265309/publish\" id=\"formPublishActions\" data-vf-async=\"slots\">\\n                <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">                <button type=\"submit\" class=\"btn btn-success w-100 app-form-cta\"><i class=\"fa-solid fa-globe me-1\"></i>Publicar</button>\\n            </form>\\n                                            </div>\\n            <div class=\"col\">\\n        <form method=\"post\" action=\"/forms/265309/delete\" id=\"formDelete\" data-vf-async=\"slots\"\\n              data-confirm=\"¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.\"\\n              data-confirm-ok=\"Eliminar formulario\">\\n            <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">            <button type=\"submit\" class=\"btn btn-outline-danger w-100 app-form-cta\"><i class=\"fa-solid fa-trash me-1\"></i>Eliminar</button>\\n        </form>\\n    </div>\\n    </div>\\n', 'vfSlotShare': '    <p class=\"text-muted small mb-3\">Publica el formulario para obtener el enlace de respuesta.</p>\\n    <form method=\"post\" action=\"/forms/265309/publish\" id=\"formPublishSidebar\" data-vf-async=\"slots\">\\n        <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">        <button type=\"submit\" class=\"btn btn-success app-form-cta w-100\"><i class=\"fa-solid fa-globe me-1\"></i>Publicar ahora</button>\\n    </form>\\n'}} {'hidden': False, 'dis': False, 'val': 'correo'}",
+  "at": "2026-11-01 09:09:34"
+ },
+ "W6": {
+  "status": "OK",
+  "detail": "{'ok': True, 'message': 'Ajustes guardados.', 'html': {'vfSlotStatusBadge': '<span class=\"app-status app-status-draft\">Borrador</span>\\n', 'vfSlotReviewTrail': '', 'vfSlotActions': '<div class=\"row g-2 mb-4\">\\n    <div class=\"col\">\\n        <button type=\"submit\" form=\"formUpdate\" class=\"btn btn-outline-primary w-100 app-form-cta\"><i class=\"fa-solid fa-floppy-disk me-1\"></i>Guardar</button>\\n    </div>\\n                                        <div class=\"col\">\\n                    <form method=\"post\" action=\"/forms/265309/publish\" id=\"formPublishActions\" data-vf-async=\"slots\">\\n                <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">                <button type=\"submit\" class=\"btn btn-success w-100 app-form-cta\"><i class=\"fa-solid fa-globe me-1\"></i>Publicar</button>\\n            </form>\\n                                            </div>\\n            <div class=\"col\">\\n        <form method=\"post\" action=\"/forms/265309/delete\" id=\"formDelete\" data-vf-async=\"slots\"\\n              data-confirm=\"¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.\"\\n              data-confirm-ok=\"Eliminar formulario\">\\n            <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">            <button type=\"submit\" class=\"btn btn-outline-danger w-100 app-form-cta\"><i class=\"fa-solid fa-trash me-1\"></i>Eliminar</button>\\n        </form>\\n    </div>\\n    </div>\\n', 'vfSlotShare': '    <p class=\"text-muted small mb-3\">Publica el formulario para obtener el enlace de respuesta.</p>\\n    <form method=\"post\" action=\"/forms/265309/publish\" id=\"formPublishSidebar\" data-vf-async=\"slots\">\\n        <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">        <button type=\"submit\" class=\"btn btn-success app-form-cta w-100\"><i class=\"fa-solid fa-globe me-1\"></i>Publicar ahora</button>\\n    </form>\\n'}} {\"theme\":{\"primary\":null,\"background\":null,\"gradient_start\":null,\"gradient_end\":null,\"text\":null,\"font\":null},\"schedule\":{\"open_at\":null,\"close_at\":null},\"quota\":{\"enabled\":false,\"max\":0},\"notify\":{\"enabled\":false,\"emails\":[],\"confirmation\":{\"enabled\":false,\"subject\":\"\",\"message\":\"\",\"to_field\":null}},\"webhook\":{\"url\":\"\",\"allow_private_hosts\":false,\"kind\":\"generic\",\"secret\":\"\"},\"thanks\":{\"message\":\"\",\"redirect_url\":\"\"},\"quiz\":{\"enabled\":false},\"randomize\":{\"questions\":false,\"enabled\":false},\"embed\":{\"enabled\":false},\"honeypot\":{\"enabled\":true},\"anti_bot\":{\"enabled\":false},\"access\":{\"mode\":\"public\",\"identifier\":\"correo\"},\"advance\":{\"auto\":false},\"locale\":{\"code\":\"es\"}}",
+  "at": "2026-11-01 09:09:35"
+ },
+ "W7": {
+  "status": "OK",
+  "detail": "422 {\"ok\": false, \"error\": \"No se puede cambiar el identificador a «correo»: 2 personas de la lista no lo tienen. Rellénalo en la lista o quita a quien no lo tenga.\"}",
+  "at": "2026-11-01 09:09:37"
+ },
+ "W8": {
+  "status": "OK",
+  "detail": "422 {\"ok\": false, \"error\": \"No se puede cambiar el identificador a «correo»: 2 personas pasarían a compartir la misma identidad («igual@bt.local»). Corrige la lista antes de cambiarlo.\"}",
+  "at": "2026-11-01 09:09:37"
+ },
+ "W9": {
+  "status": "OK",
+  "detail": "citados=5 {\"ok\": false, \"error\": \"No se puede cambiar el identificador a «correo»: 18 personas pasarían a compartir la misma identidad («rep0@bt.local», «rep1@bt.local», «rep2@bt.local», «rep3@bt.local», «rep4@bt.local»). Corrige la lista antes de cambiarlo.\"}",
+  "at": "2026-11-01 09:09:37"
+ },
+ "W10": {
+  "status": "OK",
+  "detail": "{'ok': True, 'message': 'Ajustes guardados.', 'html': {'vfSlotStatusBadge': '<span class=\"app-status app-status-published\">Publicado</span>\\n', 'vfSlotReviewTrail': '', 'vfSlotActions': '<div class=\"row g-2 mb-4\">\\n    <div class=\"col\">\\n        <button type=\"submit\" form=\"formUpdate\" class=\"btn btn-outline-primary w-100 app-form-cta\"><i class=\"fa-solid fa-floppy-disk me-1\"></i>Guardar</button>\\n    </div>\\n                                        <div class=\"col\">\\n                                            <form method=\"post\" action=\"/forms/265313/close\" id=\"formClose\" data-vf-async=\"slots\">\\n                <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">                <button type=\"submit\" class=\"btn btn-warning w-100 app-form-cta\"><i class=\"fa-solid fa-lock me-1\"></i>Cerrar</button>\\n            </form>\\n                    </div>\\n            <div class=\"col\">\\n        <form method=\"post\" action=\"/forms/265313/delete\" id=\"formDelete\" data-vf-async=\"slots\"\\n              data-confirm=\"¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.\"\\n              data-confirm-ok=\"Eliminar formulario\">\\n            <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">            <button type=\"submit\" class=\"btn btn-outline-danger w-100 app-form-cta\"><i class=\"fa-solid fa-trash me-1\"></i>Eliminar</button>\\n        </form>\\n    </div>\\n    </div>\\n', 'vfSlotShare': '    <div class=\"input-group mb-2\">\\n        <input type=\"text\" class=\"form-control form-control-sm app-share-input\" id=\"shareUrl\" value=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" readonly>\\n        <button class=\"btn btn-outline-secondary btn-sm btn-copy-link\" type=\"button\" data-url=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" title=\"Copiar enlace\"><i class=\"fa-solid fa-copy\"></i></button>\\n    </div>\\n    <a href=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" target=\"_blank\" class=\"btn btn-outline-info app-form-cta w-100\"><i class=\"fa-solid fa-arrow-up-right-from-square me-1\"></i>Abrir en nueva pestaña</a>\\n\\n                <div class=\"alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small app-share-hint\" role=\"alert\">\\n            <i class=\"fa-solid fa-triangle-exclamation mt-1\"></i>\\n            <span>Este enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define <code>APP_PUBLIC_URL</code> en el <code>.env</code>.</span>\\n        </div>\\n    \\n        <img src=\"/forms/265313/qr.svg\" alt=\"Código QR del formulario\" class=\"img-fluid mx-auto d-block my-3 app-qr-img\" width=\"180\" height=\"180\">\\n\\n                <p class=\"text-muted small mt-3 mb-0\"><i class=\"fa-solid fa-circle-info me-1\"></i>El embed está desactivado. Actívalo en la <em>Configuración</em> del constructor para obtener el código iframe.</p>\\n    '}} ['w10-1@bt.local', 'w10-2@bt.local', 'w10-3@bt.local']",
+  "at": "2026-11-01 09:09:38"
+ },
+ "W11": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57?t=25G29ZYP8HGBTJ5W",
+  "at": "2026-11-01 09:09:39"
+ },
+ "W12": {
+  "status": "OK",
+  "detail": "{'ok': True, 'message': 'Ajustes guardados.', 'html': {'vfSlotStatusBadge': '<span class=\"app-status app-status-published\">Publicado</span>\\n', 'vfSlotReviewTrail': '', 'vfSlotActions': '<div class=\"row g-2 mb-4\">\\n    <div class=\"col\">\\n        <button type=\"submit\" form=\"formUpdate\" class=\"btn btn-outline-primary w-100 app-form-cta\"><i class=\"fa-solid fa-floppy-disk me-1\"></i>Guardar</button>\\n    </div>\\n                                        <div class=\"col\">\\n                                            <form method=\"post\" action=\"/forms/265313/close\" id=\"formClose\" data-vf-async=\"slots\">\\n                <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">                <button type=\"submit\" class=\"btn btn-warning w-100 app-form-cta\"><i class=\"fa-solid fa-lock me-1\"></i>Cerrar</button>\\n            </form>\\n                    </div>\\n            <div class=\"col\">\\n        <form method=\"post\" action=\"/forms/265313/delete\" id=\"formDelete\" data-vf-async=\"slots\"\\n              data-confirm=\"¿Eliminar este formulario y todas sus respuestas? Esta acción no se puede deshacer.\"\\n              data-confirm-ok=\"Eliminar formulario\">\\n            <input type=\"hidden\" name=\"_token\" value=\"fd648c1c55afcfd5dc2a0aa332eaeef23444b18d42a9c1d8a6a1dc4f43055525\">            <button type=\"submit\" class=\"btn btn-outline-danger w-100 app-form-cta\"><i class=\"fa-solid fa-trash me-1\"></i>Eliminar</button>\\n        </form>\\n    </div>\\n    </div>\\n', 'vfSlotShare': '    <div class=\"input-group mb-2\">\\n        <input type=\"text\" class=\"form-control form-control-sm app-share-input\" id=\"shareUrl\" value=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" readonly>\\n        <button class=\"btn btn-outline-secondary btn-sm btn-copy-link\" type=\"button\" data-url=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" title=\"Copiar enlace\"><i class=\"fa-solid fa-copy\"></i></button>\\n    </div>\\n    <a href=\"http://127.0.0.1:10001/f/bt-w-reescribe-6b37fd57\" target=\"_blank\" class=\"btn btn-outline-info app-form-cta w-100\"><i class=\"fa-solid fa-arrow-up-right-from-square me-1\"></i>Abrir en nueva pestaña</a>\\n\\n                <div class=\"alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small app-share-hint\" role=\"alert\">\\n            <i class=\"fa-solid fa-triangle-exclamation mt-1\"></i>\\n            <span>Este enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define <code>APP_PUBLIC_URL</code> en el <code>.env</code>.</span>\\n        </div>\\n    \\n        <img src=\"/forms/265313/qr.svg\" alt=\"Código QR del formulario\" class=\"img-fluid mx-auto d-block my-3 app-qr-img\" width=\"180\" height=\"180\">\\n\\n                <p class=\"text-muted small mt-3 mb-0\"><i class=\"fa-solid fa-circle-info me-1\"></i>El embed está desactivado. Actívalo en la <em>Configuración</em> del constructor para obtener el código iframe.</p>\\n    '}} n=3 c=1",
+  "at": "2026-11-01 09:09:39"
+ },
+ "W13": {
+  "status": "OK",
+  "detail": "roster='Guardar\\nCerrar\\nEliminar' public='Guardar\\nCerrar\\nEliminar'",
+  "at": "2026-11-01 09:09:44"
+ },
+ "W14": {
+  "status": "OK",
+  "detail": "{'label': 'Tu cédula', 'ph': 'Ej.: V-12345678', 'note': '\\n                La cédula y el código de invitación son personales: no los compartas.            '}",
+  "at": "2026-11-01 09:09:45"
+ },
+ "W15": {
+  "status": "OK",
+  "detail": "{'label': 'Tu código personal', 'ph': 'Los 16 caracteres de tu código'}",
+  "at": "2026-11-01 09:09:46"
+ },
+ "W16": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:10001/f/bt-w-puerta-6b37fd57",
+  "at": "2026-11-01 09:09:46"
+ },
+ "W17": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:10001/f/bt-w-puerta-6b37fd57?t=S6CC6YX8NKCW2AFK",
+  "at": "2026-11-01 09:09:47"
+ },
+ "W18": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:09:36"
+ },
+ "W19": {
+  "status": "OK",
+  "detail": "Solo entran las personas del listado, con su código o con el identificador elegido. La lista se gestiona en la tarjeta de Acceso.",
+  "at": "2026-11-01 09:09:36"
+ },
+ "X1": {
+  "status": "OK",
+  "detail": "{'key': True, 'val': False, 'first': 'Todo el listado', 'dates': 2}",
+  "at": "2026-11-01 09:35:32"
+ },
+ "X2": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:35:33"
+ },
+ "X3": {
+  "status": "OK",
+  "detail": "{'key': 'sede', 'val': 'ref: <Node>', 'all': 'Todos los valores', 'total': '23'}",
+  "at": "2026-11-01 09:35:35"
+ },
+ "X4": {
+  "status": "OK",
+  "detail": "total=20 filas=15 rad={'Tarde': 10, 'Mañana': 10} th=# Sede Región Zona Turno Número Comentario Fecha Ver",
+  "at": "2026-11-01 09:35:36"
+ },
+ "X5": {
+  "status": "OK",
+  "detail": "# Sede Región Zona Turno Número Comentario Fecha Ver",
+  "at": "2026-11-01 09:35:36"
+ },
+ "X6": {
+  "status": "OK",
+  "detail": "['1 Norte — — Mañana 20 Comentario 20 21/10/2026 10:20 Ver']",
+  "at": "2026-11-01 09:35:36"
+ },
+ "X7": {
+  "status": "OK",
+  "detail": "filas=5",
+  "at": "2026-11-01 09:35:37"
+ },
+ "X8": {
+  "status": "OK",
+  "detail": "todo=23 filtro=20",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X9": {
+  "status": "OK",
+  "detail": "total=23",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X10": {
+  "status": "OK",
+  "detail": "total=0",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X11": {
+  "status": "OK",
+  "detail": "total=23",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X12": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/forms/265322/export.csv?atr_key=sede&atr_value=Norte filas_csv=20",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X13": {
+  "status": "OK",
+  "detail": "opciones=201",
+  "at": "2026-11-01 09:35:38"
+ },
+ "X14": {
+  "status": "OK",
+  "detail": "total=10 csv=10 status=200",
+  "at": "2026-11-01 09:35:39"
+ },
+ "Y1": {
+  "status": "OK",
+  "detail": "heads=['Pregunta', 'Grande n = 200', 'Extra n = 17', 'Pequeño n = 2', 'SinRespuesta n = 1']",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y2": {
+  "status": "OK",
+  "detail": "{'Satisfacción': ['10.00 n = 200', '—', '150.00 n = 2', '—'], 'Recomendación': ['10.00 n = 200', '—', '150.00 n = 2', '—'], '¿Recomendaría?': ['10.00 n = 200', '—', '150.00 n = 2', '—'], 'Dato personal': ['10.00 n = 200', '—', '150.00 n = 2', '—']}",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y3": {
+  "status": "OK",
+  "detail": "grande=100 n = 200 pequeno=0 n = 2",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y4": {
+  "status": "OK",
+  "detail": "grande=Sí 150 (75 %) No 50 (25 %) pequeno=No 1 (50 %) Sí 1 (50 %)",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y5": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y6": {
+  "status": "OK",
+  "detail": "promedios por grupo",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y7": {
+  "status": "OK",
+  "detail": "sin=—",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y8": {
+  "status": "OK",
+  "detail": "heads=['Pregunta', 'C3 n = 23', 'C1 n = 22', 'C10 n = 22', 'C4 n = 22', 'C5 n = 22', 'C6 n = 22', 'C7 n = 22', 'C8 n = 22', 'Resto n = 43']",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y9": {
+  "status": "OK",
+  "detail": "heads=['Pregunta', 'O3 n = 28', 'O4 n = 28', 'O5 n = 28', 'O6 n = 28', 'O1 n = 27', 'O2 n = 27', 'O7 n = 27', 'O8 n = 27']",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y10": {
+  "status": "N/A",
+  "detail": "Comprobación manual: sticky de la primera columna en ventana estrecha",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y11": {
+  "status": "OK",
+  "detail": "filas=['Satisfacción', 'Recomendación', '¿Recomendaría?', 'Dato personal']",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y12": {
+  "status": "OK",
+  "detail": "filas_user=[]",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y13": {
+  "status": "OK",
+  "detail": "admin=7.00 n = 200",
+  "at": "2026-11-01 09:47:08"
+ },
+ "Y14": {
+  "status": "OK",
+  "detail": "peq=200.00 n = 1 grande=10.00 n = 100",
+  "at": "2026-11-01 09:47:09"
+ },
+ "Y15": {
+  "status": "OK",
+  "detail": "['/forms/265324/export.csv?from=2026-10-20&to=2026-10-21&atr_key=grupo&atr_value=Grande', '/forms/265324/export.csv?from=2026-10-20&to=2026-10-21&atr_key=grupo&atr_value=Grande']",
+  "at": "2026-11-01 09:47:09"
+ },
+ "Y16": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:47:09"
+ },
+ "Y17": {
+  "status": "N/A",
+  "detail": "Comprobación manual: lista de 800 filas y «Resto» mayoritario",
+  "at": "2026-11-01 09:47:09"
+ },
+ "Z1": {
+  "status": "OK",
+  "detail": "filas=15 primera=1 22/10/2026 12:00 Z-001 Ana Pérez ana.perez@bt.local 10.0.0.1 Ver Borrar",
+  "at": "2026-11-01 09:51:54"
+ },
+ "Z2": {
+  "status": "OK",
+  "detail": "status=200 filas=15 col=False",
+  "at": "2026-11-01 09:51:54"
+ },
+ "Z3": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:54"
+ },
+ "Z4": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:54"
+ },
+ "Z5": {
+  "status": "OK",
+  "detail": "primera=1 22/10/2026 12:00 Z-001 Ana Pérez ana.perez@bt.local 10.0.0.1 Ver Borrar",
+  "at": "2026-11-01 09:51:54"
+ },
+ "Z6": {
+  "status": "OK",
+  "detail": "filas=15",
+  "at": "2026-11-01 09:51:55"
+ },
+ "Z7": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:55"
+ },
+ "Z8": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:55"
+ },
+ "Z9": {
+  "status": "OK",
+  "detail": "1 22/10/2026 12:00 z9@bt.local Correo Único 10.0.0.1 Ver Borrar",
+  "at": "2026-11-01 09:51:55"
+ },
+ "Z10": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:55"
+ },
+ "Z11": {
+  "status": "OK",
+  "detail": "csv=200 json=200",
+  "at": "2026-11-01 09:51:56"
+ },
+ "Z12": {
+  "status": "OK",
+  "detail": "",
+  "at": "2026-11-01 09:51:56"
+ },
+ "AA1": {
+  "status": "OK",
+  "detail": "vo y añadir al que no esté Borrar la lista entera y dejar solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 10:08:07"
+ },
+ "AA2": {
+  "status": "OK",
+  "detail": "portar para repartirlo. Archivo Si alguien ya está en la lista Actualizarlo con lo que dice el archivo y añadir al que no esté Borrar la lista entera y dejar solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 10:08:15"
+ },
+ "AA3": {
+  "status": "OK",
+  "detail": "status=200 json=Se mandaron 37 invitaciones. mails=37 pending=0",
+  "at": "2026-11-01 10:08:29"
+ },
+ "AA4": {
+  "status": "OK",
+  "detail": "mails=50 pending=10 msg=Se mandaron 50 invitaciones. Se mandaron 50 invitaciones (el tope de esta tanda). Quedan 10 sin invitación.",
+  "at": "2026-11-01 10:08:59"
+ },
+ "AA5": {
+  "status": "OK",
+  "detail": "txt=y dejar solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar  status=200 msg=No hay servidor de correo configurado (MAIL_HOST vacío), así que el envío está apagado. Los enlaces de la columna «Código» siguen funcionando. pending=10/10",
+  "at": "2026-11-01 10:09:00"
+ },
+ "AA6": {
+  "status": "OK",
+  "detail": " solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Cédula Nombre completo Correo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 10:09:01"
+ },
+ "AA7": {
+  "status": "OK",
+  "detail": "status=200 (el documento espera 403; la app responde ok:false sin enviar) json=El correo solo se manda cuando el identificador del formulario es «correo electrónico». Con cedula el enlace va en la columna «Código» de la lista, y cada uno lo reparte quien lo gestiona. mails=0 pending=2",
+  "at": "2026-11-01 10:09:02"
+ },
+ "AA8": {
+  "status": "OK",
+  "detail": "status=404",
+  "at": "2026-11-01 10:09:03"
+ },
+ "AA9": {
+  "status": "OK",
+  "detail": "form=True url=True count=True lista=True From: BT <noreply@bt.local>\r\nTo: p01@bt.local\r\nSubject: =?UTF-8?B?SW52aXRhY2nDs24gYSBbQlRdIEFBIGludml0YWNpb25lcyA5MDlhY2U1Mg==?=\r\nDate: Sun, 01 Nov 2026 14:08:16 +0000\r\nMessage-ID: <838ed651ce5622729306f039d1a6e1b9@127.0.0.1>\r\nMIME-Version:",
+  "at": "2026-11-01 10:08:29"
+ },
+ "AA10": {
+  "status": "OK",
+  "detail": "From: BT <noreply@bt.local>\r\nTo: p01@bt.local\r\nSubject: =?UTF-8?B?SW52aXRhY2nDs24gYSBbQlRdIEFBIGludml0YWNpb25lcyA5MDlhY2U1Mg==?=\r\nDate: Sun, 01 Nov 2026 14:08:16 +0000\r\nMessage-ID:",
+  "at": "2026-11-01 10:08:29"
+ },
+ "AA11": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/f/bt-aa-invitaciones-909ace52?t=X6EGTTFED8P3KG3R",
+  "at": "2026-11-01 10:08:29"
+ },
+ "AA12": {
+  "status": "OK",
+  "detail": "status=200 mensaje=No quedaba nadie pendiente de invitación. mails=37",
+  "at": "2026-11-01 10:08:29"
+ },
+ "AA13": {
+  "status": "OK",
+  "detail": "mails=4 pending=6 msg=Se mandaron 4 invitaciones. Se paró tras 3 fallos seguidos: el servidor de correo no está aceptando mensajes. Se mandaron 4 antes.",
+  "at": "2026-11-01 10:09:05"
+ },
+ "AA14": {
+  "status": "OK",
+  "detail": "mails=7 bad=NULL good=2026-11-01 14:09:11 msg=Se mandaron 7 invitaciones. Se mandaron 7 invitaciones y 1 fallaron. Los que fallaron siguen en la lista de pendientes.",
+  "at": "2026-11-01 10:09:11"
+ },
+ "AA15": {
+  "status": "OK",
+  "detail": "pend=1 txt= columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 10:09:11"
+ },
+ "AA16": {
+  "status": "OK",
+  "detail": "preview=True confirm=True n=400 mails=0 pending=400",
+  "at": "2026-11-01 10:09:23"
+ },
+ "AA17": {
+  "status": "OK",
+  "detail": "pending 2->1",
+  "at": "2026-11-01 10:09:12"
+ },
+ "AA18": {
+  "status": "OK",
+  "detail": "pending 2->1 status=200",
+  "at": "2026-11-01 10:09:13"
+ },
+ "AA19": {
+  "status": "OK",
+  "detail": "pending 1->2 invited_at=NULL status=200",
+  "at": "2026-11-01 10:09:14"
+ },
+ "AA20": {
+  "status": "OK",
+  "detail": "pending=2->1 sent=1 status=200",
+  "at": "2026-11-01 10:09:15"
+ },
+ "AA21": {
+  "status": "N/A",
+  "detail": "No se puede detener MariaDB a mitad de la tanda sin tumbar la instancia; el caso equivalente de fallo de transporte queda cubierto por AA13",
+  "at": "2026-11-01 10:09:23"
+ },
+ "AA22": {
+  "status": "N/A",
+  "detail": "Lightpanda no implementa foco/Tab ni :focus-visible: la comprobación de teclado no es medible en este entorno",
+  "at": "2026-11-01 10:09:23"
+ },
+ "AB1": {
+  "status": "OK",
+  "detail": "tarjetas=12 pager=True",
+  "at": "2026-11-01 11:17:51"
+ },
+ "AB2": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?page=2 tarjetas=12 cambian=True",
+  "at": "2026-11-01 11:17:52"
+ },
+ "AB3": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=&orden=updated&q=norte&orden=updated tarjetas=1 valor=norte",
+  "at": "2026-11-01 11:17:53"
+ },
+ "AB4": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=&orden=updated&q=sur&orden=updated tarjetas=1",
+  "at": "2026-11-01 11:17:54"
+ },
+ "AB5": {
+  "status": "OK",
+  "detail": "antes=http://127.0.0.1:10001/dashboard?q=norte despues=http://127.0.0.1:10001/dashboard?q=norte",
+  "at": "2026-11-01 11:17:56"
+ },
+ "AB6": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=draft tarjetas=10 draft=True",
+  "at": "2026-11-01 11:17:57"
+ },
+ "AB7": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=draft&orden=updated&q=casa&orden=updated tarjetas=1",
+  "at": "2026-11-01 11:17:58"
+ },
+ "AB8": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=draft&orden=updated&q=casa&orden=alpha",
+  "at": "2026-11-01 11:17:59"
+ },
+ "AB9": {
+  "status": "OK",
+  "detail": "got=['[BT] AB 86c37761 Ábaco', '[BT] AB 86c37761 abeja', '[BT] AB 86c37761 árbol', '[BT] AB 86c37761 barco', '[BT] AB 86c37761 Casa'] esperado=['[BT] AB 86c37761 Ábaco', '[BT] AB 86c37761 abeja', '[BT] AB 86c37761 árbol', '[BT] AB 86c37761 barco', '[BT] AB 86c37761 Casa'] iguales=True",
+  "at": "2026-11-01 11:18:10"
+ },
+ "AB10": {
+  "status": "OK",
+  "detail": "primera='[BT] AB 86c37761 barco' respuestas=7 stats=[30, 12, 10, 15]",
+  "at": "2026-11-01 11:18:11"
+ },
+ "AB11": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard?estado=draft&orden=updated&q=casa&orden=alpha iguales=True",
+  "at": "2026-11-01 11:17:59"
+ },
+ "AB12": {
+  "status": "OK",
+  "detail": "url=http://127.0.0.1:10001/dashboard tarjetas=12 activos=0",
+  "at": "2026-11-01 11:18:01"
+ },
+ "AB13": {
+  "status": "OK",
+  "detail": "tarjetas=12",
+  "at": "2026-11-01 11:18:02"
+ },
+ "AB14": {
+  "status": "OK",
+  "detail": "tarjetas=6 url=http://127.0.0.1:10001/dashboard?page=999",
+  "at": "2026-11-01 11:18:02"
+ },
+ "AB15": {
+  "status": "OK",
+  "detail": "sin=True quitar=True",
+  "at": "2026-11-01 11:18:03"
+ },
+ "AB16": {
+  "status": "OK",
+  "detail": "texto='VanillaForms\\nDashboard\\nNuevo formulario\\nA AB Empty 86c37761 user\\nHola, AB Empty 86c37761 👋\\n\\nGestiona tus formularios y a' filtros=0",
+  "at": "2026-11-01 11:18:06"
+ },
+ "AB17": {
+  "status": "OK",
+  "detail": "stats=[30, 12, 10, 15] tarjetas=10",
+  "at": "2026-11-01 11:18:04"
+ },
+ "AB18": {
+  "status": "OK",
+  "detail": "noscript=True buscar=True ordenar=True filtrar=True paginar=True",
+  "at": "2026-11-01 11:18:13"
+ },
+ "AB19": {
+  "status": "OK",
+  "detail": "foco=dashSearch",
+  "at": "2026-11-01 11:18:08"
+ },
+ "AB20": {
+  "status": "OK",
+  "detail": "status=200 tarjetas=20 next=True p2=20",
+  "at": "2026-11-01 11:18:13"
+ },
+ "AB21": {
+  "status": "OK",
+  "detail": "status=200 pagina=('18', '18') tarjetas=16",
+  "at": "2026-11-01 11:18:13"
+ },
+ "AB22": {
+  "status": "OK",
+  "detail": "enlace=<a class=\"page-link\" href=\"/admin/forms?page=2\" data-vf-page=\"2\" rel=\"next\" aria pagina2=200",
+  "at": "2026-11-01 11:18:14"
+ },
+ "AB23": {
+  "status": "OK",
+  "detail": "LIMIT=True agregado_pagina=True explain_filas=4",
+  "at": "2026-11-01 11:18:14"
+ },
+ "AB24": {
+  "status": "N/A",
+  "detail": "Lightpanda no calcula layout fiable: bounding boxes 5/20/5 y getComputedStyle vacío; la regla CSS está verificada (form-select-sm compartido, sin rescate de altura: True)",
+  "at": "2026-11-01 11:18:11"
+ },
+ "AC1": {
+  "status": "OK",
+  "detail": "dialog=modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable header=modal-header app-navbar text-white border-0 py-2",
+  "at": "2026-11-01 11:22:19"
+ },
+ "AC2": {
+  "status": "OK",
+  "detail": "names=['Formulario en blanco', 'Control de asistencia', 'Encuesta de satisfacción', 'Feedback de curso (multi-paso)', 'Inscripción a evento', 'Quiz de conocimiento', 'Sondeo rápido'] counts=['7 preguntas', '6 preguntas · 1 sección', '12 preguntas · 3 secciónes', '11 preguntas · 3 secciónes', '4 preguntas · 1 sección', '3 preguntas']",
+  "at": "2026-11-01 11:22:19"
+ },
+ "AC3": {
+  "status": "OK",
+  "detail": "checked='' clase=app-tpl-card app-tpl-checked",
+  "at": "2026-11-01 11:22:19"
+ },
+ "AC4": {
+  "status": "OK",
+  "detail": "sin campos de título/descripción",
+  "at": "2026-11-01 11:22:19"
+ },
+ "AC5": {
+  "status": "OK",
+  "detail": "checked=control-asistencia",
+  "at": "2026-11-01 11:22:19"
+ },
+ "AC6": {
+  "status": "OK",
+  "detail": "checked=''",
+  "at": "2026-11-01 11:22:20"
+ },
+ "AC7": {
+  "status": "OK",
+  "detail": "id=265639 title='Formulario en blanco' desc='Empieza desde cero y añade tus propias preguntas.'",
+  "at": "2026-11-01 11:22:20"
+ },
+ "AC8": {
+  "status": "OK",
+  "detail": "id=265640 title='Sondeo rápido' desc='Tres preguntas cortas, ideal para medir en un' fields=3",
+  "at": "2026-11-01 11:22:22"
+ },
+ "AC9": {
+  "status": "OK",
+  "detail": "form es .modal-content y el diálogo es scrollable",
+  "at": "2026-11-01 11:22:22"
+ },
+ "AC10": {
+  "status": "OK",
+  "detail": "Tab no emulable en Lightpanda; foco programático + Espacio sí; focus=template seleccionado='control-asistencia'",
+  "at": "2026-11-01 11:22:23"
+ },
+ "AC11": {
+  "status": "OK",
+  "detail": "status=200 title='Sondeo rápido' fields=3",
+  "at": "2026-11-01 11:22:24"
+ },
+ "AC12": {
+  "status": "OK",
+  "detail": "rejilla_auto=True media_movil=True (layout no medible)",
+  "at": "2026-11-01 11:22:24"
+ },
+ "AD1": {
+  "status": "OK",
+  "detail": "buscador + desplegable con ancho acotado como /admin/forms",
+  "at": "2026-11-01 11:31:27"
+ },
+ "AD2": {
+  "status": "OK",
+  "detail": "tabs=['Usuarios', 'Grupos de roles', 'Roles y permisos', 'Log de seguridad', 'Formularios', 'Ajustes de la instancia']",
+  "at": "2026-11-01 11:31:31"
+ },
+ "AD3": {
+  "status": "OK",
+  "detail": "registro y revisión viven en /admin/settings, no en la ficha de usuarios",
+  "at": "2026-11-01 11:31:28"
+ },
+ "AD4": {
+  "status": "OK",
+  "detail": "status=403",
+  "at": "2026-11-01 11:31:28"
+ },
+ "AD5": {
+  "status": "OK",
+  "detail": "status=200 destino=127.0.0.1:10001/admin/settings aviso=guard",
+  "at": "2026-11-01 11:31:29"
+ },
+ "AD6": {
+  "status": "OK",
+  "detail": "tarjetas=2 toggles=2 badges=2 collapse='collapse show' efecto=True",
+  "at": "2026-11-01 11:31:33"
+ },
+ "AD7": {
+  "status": "OK",
+  "detail": "form_movido=1 gid=28257 marker=1",
+  "at": "2026-11-01 11:31:34"
+ },
+ "AD8": {
+  "status": "OK",
+  "detail": "sin_recarga=1 resumen='AD Grupo 997433\\nDescripción nueva 997433\\n0 roles0 miembros'",
+  "at": "2026-11-01 11:31:36"
+ },
+ "AD9": {
+  "status": "OK",
+  "detail": "columnas=7 otras=0",
+  "at": "2026-11-01 11:31:37"
+ },
+ "AD10": {
+  "status": "OK",
+  "detail": "titulo='Acciones de AD Uno 997433' columnas=3 paneles=1",
+  "at": "2026-11-01 11:31:39"
+ },
+ "AD11": {
+  "status": "OK",
+  "detail": "role=3 sin_recarga=1 insignia='editor'",
+  "at": "2026-11-01 11:31:40"
+ },
+ "AD12": {
+  "status": "OK",
+  "detail": "titulo='Acciones de AD Dos 997433' panel_nuevo=1 panel_viejo=0",
+  "at": "2026-11-01 11:31:42"
+ },
+ "AD13": {
+  "status": "OK",
+  "detail": "marcar_no_cierra=True error_en_modal=True form=1",
+  "at": "2026-11-01 11:31:42"
+ },
+ "AD14": {
+  "status": "OK",
+  "detail": "grupo_nativo=28258 rol_nativo=3",
+  "at": "2026-11-01 11:31:43"
+ },
+ "AD15": {
+  "status": "OK",
+  "detail": "css_tarjetas=True celdas_con_label=200 (layout no medible)",
+  "at": "2026-11-01 11:31:43"
+ },
+ "AD16": {
+  "status": "OK",
+  "detail": "aria-expanded=true orden_menu_antes_boton=True",
+  "at": "2026-11-01 11:31:32"
+ },
+ "AE1": {
+  "status": "OK",
+  "detail": "y dejar solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 18:59:06"
+ },
+ "AE2": {
+  "status": "OK",
+  "detail": "invitaciones@=694 recordatorios@=741 pendientes=30",
+  "at": "2026-11-01 19:01:54"
+ },
+ "AE3": {
+  "status": "OK",
+  "detail": "status=200 mails=30 marcados=30 pendientes=30 msg=Se mandaron 30 recordatorios.",
+  "at": "2026-11-01 19:06:20"
+ },
+ "AE4": {
+  "status": "OK",
+  "detail": "porInvitar=5 porRecordar=30 total=35",
+  "at": "2026-11-01 19:01:57"
+ },
+ "AE5": {
+  "status": "OK",
+  "detail": "con_fecha=True url=True sin_fecha_limpia=True",
+  "at": "2026-11-01 19:12:51"
+ },
+ "AE6": {
+  "status": "OK",
+  "detail": " solo lo que dice el archivo Subir y mapear columnas Atributos No hay atributos. Salen de las columnas del archivo que subas, y se usan para filtrar y agrupar las respuestas. Vaciar la lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Cédula Nombre completo Correo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 19:12:53"
+ },
+ "AE7": {
+  "status": "OK",
+  "detail": "status=200 msg=No hay servidor de correo configurado (MAIL_HOST vacío), así que el envío está apagado. Los enlaces de la columna «Código» siguen funcionando. mails=0 pendientes=30",
+  "at": "2026-11-01 19:12:54"
+ },
+ "AE8": {
+  "status": "OK",
+  "detail": "status=200 (doc dice 403; el handler responde ok:false) msg=El recordatorio solo se manda cuando el identificador del formulario es «correo electrónico». Con cedula el enlace va en la columna «Código» de la lista, y cada uno lo reparte quien lo gestiona. mails=0",
+  "at": "2026-11-01 19:12:56"
+ },
+ "AE9": {
+  "status": "OK",
+  "detail": "status=404 mails=0",
+  "at": "2026-11-01 19:12:57"
+ },
+ "AE10": {
+  "status": "OK",
+  "detail": "status=200 mails=30 con_dos=30 msg=Se mandaron 30 recordatorios.",
+  "at": "2026-11-01 19:10:50"
+ },
+ "AE11": {
+  "status": "OK",
+  "detail": "status=200 mails=4 marcados=4 pendientes=20 msg=Se mandaron 4 recordatorios. Se paró tras 3 fallos seguidos: el servidor de correo no está aceptando mensajes. Se mandaron 4 antes.",
+  "at": "2026-11-01 19:15:30"
+ },
+ "AE12": {
+  "status": "OK",
+  "detail": "marcados=4 sin_marcar=16",
+  "at": "2026-11-01 19:15:31"
+ },
+ "AE13": {
+  "status": "OK",
+  "detail": "pendientes=19 texto=a lista quita a todas las personas. El catálogo de atributos se queda. Vaciar la lista Correo Nombre completo Teléfono Añadir a la lista Agregar participante Editar a © 2026 VanillaForms · Vanilla PHP + MySQL + nginx Confirmar la acción Cancelar Sí, continuar ",
+  "at": "2026-11-01 19:15:33"
+ },
+ "AE14": {
+  "status": "OK",
+  "detail": "status=200 mails=50 marcados=50 pendientes=60 msg=Se mandaron 50 recordatorios. Se mandaron 50 recordatorios (el tope de esta tanda). Quedan 10 por responder.",
+  "at": "2026-11-01 19:30:06"
+ },
+ "AE15": {
+  "status": "OK",
+  "detail": "primera=50 segunda=50 nuevos_primero=True solapan=40 max=2 marcados=60",
+  "at": "2026-11-01 19:41:13"
+ },
+ "AE16": {
+  "status": "OK",
+  "detail": "confirmador de recordatorio",
+  "at": "2026-11-01 11:37:59"
+ },
+ "AE17": {
+  "status": "OK",
+  "detail": "html=['rosterInvites']",
+  "at": "2026-11-01 19:06:20"
+ },
+ "AE18": {
+  "status": "OK",
+  "detail": "status=302 mails=3 marcados=3",
+  "at": "2026-11-01 11:38:01"
+ },
+ "AE19": {
+  "status": "N/A",
+  "detail": "Lightpanda no emula Tab ni :focus-visible; el diálogo y el foco en Cancelar no son medibles en este entorno",
+  "at": "2026-11-01 11:38:03"
+ },
+ "AE20": {
+  "status": "OK",
+  "detail": "status=200 antes=2 despues=1",
+  "at": "2026-11-01 11:38:03"
+ },
+ "AF1": {
+  "status": "OK",
+  "detail": "tarjeta con nombre, color, logo y favicon",
+  "at": "2026-11-01 22:54:59"
+ },
+ "AF2": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/admin/settings nombre=BT Marca 56918cdb",
+  "at": "2026-11-01 22:54:59"
+ },
+ "AF3": {
+  "status": "OK",
+  "detail": "texto=#2a7f62 primary=#2a7f62",
+  "at": "2026-11-01 22:55:03"
+ },
+ "AF4": {
+  "status": "OK",
+  "detail": "azul rechazado y ficha sin color guardado",
+  "at": "2026-11-01 22:55:04"
+ },
+ "AF5": {
+  "status": "OK",
+  "detail": "app_name=VanillaForms",
+  "at": "2026-11-01 22:55:05"
+ },
+ "AF6": {
+  "status": "OK",
+  "detail": "status=302 url=['/branding/logo?v=68'] ctype=image/png",
+  "at": "2026-11-01 22:55:08"
+ },
+ "AF7": {
+  "status": "OK",
+  "detail": "status=302 aviso=True mismo_logo=True",
+  "at": "2026-11-01 22:55:11"
+ },
+ "AF8": {
+  "status": "OK",
+  "detail": "vistas=panel,print,fill,cerrado,borrador,en revisión,acceso,error,login",
+  "at": "2026-11-01 22:55:14"
+ },
+ "AF9": {
+  "status": "OK",
+  "detail": "status=200 branding_logo=404",
+  "at": "2026-11-01 22:55:15"
+ },
+ "AF10": {
+  "status": "OK",
+  "detail": "fila viva, archivo ausente, fallback al icono",
+  "at": "2026-11-01 22:55:18"
+ },
+ "AF11": {
+  "status": "OK",
+  "detail": "status=404",
+  "at": "2026-11-01 22:55:18"
+ },
+ "AF12": {
+  "status": "OK",
+  "detail": "status=403 nombre=None",
+  "at": "2026-11-01 22:55:19"
+ },
+ "AF13": {
+  "status": "OK",
+  "detail": "nombre_status=200 nombre=['BT AF nativo 56918cdb'] subida=200 flash_subida=True meta=True archivo=True borrado=200 flash_borrado=True",
+  "at": "2026-11-01 22:55:21"
+ },
+ "AF14": {
+  "status": "OK",
+  "detail": "status=200 primary=#334155",
+  "at": "2026-11-01 22:55:22"
+ },
+ "AF15": {
+  "status": "OK",
+  "detail": "vars={'--vf-primary': '#334155', '--vf-grad-start': '#ffffee', '--vf-grad-end': '#ffffcc', '--vf-on-grad': '#1e293b'}",
+  "at": "2026-11-01 22:55:23"
+ },
+ "AF16": {
+  "status": "OK",
+  "detail": "vars={'--vf-primary': '#334155', '--vf-grad-start': '#111111', '--vf-grad-end': '#222222', '--vf-on-grad': '#ffffff'}",
+  "at": "2026-11-01 22:55:23"
+ },
+ "AF17": {
+  "status": "OK",
+  "detail": "on_grad=#abcdef",
+  "at": "2026-11-01 22:55:24"
+ },
+ "AF18": {
+  "status": "OK",
+  "detail": "status=200 antes={'instance_color': '#334155', 'instance_color_grad_end': '#222222', 'instance_color_grad_start': '#111111', 'instance_color_text': '#abcdef', 'instance_favicon': '{\"stored\":\"08b554e36503669b6ccc284e8dd8a953.png\",\"mime\":\"image/png\",\"size\":68}'} despues={'instance_color': '#334155', 'instance_color_grad_end': '#222222', 'instance_color_grad_start': '#111111', 'instance_color_text': '#abcdef', 'instance_favicon': '{\"stored\":\"08b554e36503669b6ccc284e8dd8a953.png\",\"mime\":\"image/png\",\"size\":68}'}",
+  "at": "2026-11-01 22:55:25"
+ },
+ "AF19": {
+  "status": "OK",
+  "detail": "app-logo/app-logo-img/app-logo-lg conservan caja y proporción",
+  "at": "2026-11-01 22:55:25"
+ },
+ "AG1": {
+  "status": "OK",
+  "detail": "tarjeta inicial sin configurar",
+  "at": "2026-11-01 23:00:19"
+ },
+ "AG2": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/admin/settings",
+  "at": "2026-11-01 23:00:20"
+ },
+ "AG3": {
+  "status": "OK",
+  "detail": "password vacío + insignia guardada",
+  "at": "2026-11-01 23:00:20"
+ },
+ "AG4": {
+  "status": "OK",
+  "detail": "contraseña intacta al guardar el nombre",
+  "at": "2026-11-01 23:00:21"
+ },
+ "AG5": {
+  "status": "OK",
+  "detail": "fila de contraseña borrada",
+  "at": "2026-11-01 23:00:22"
+ },
+ "AG6": {
+  "status": "OK",
+  "detail": "status=200 antes={'mail_encryption': '', 'mail_from_address': 'noreply@bt.local', 'mail_from_name': 'BT', 'mail_host': '127.0.0.1', 'mail_port': '44421', 'mail_timeout': '10', 'mail_user': 'bt-user'} despues={'mail_encryption': '', 'mail_from_address': 'noreply@bt.local', 'mail_from_name': 'BT', 'mail_host': '127.0.0.1', 'mail_port': '44421', 'mail_timeout': '10', 'mail_user': 'bt-user'}",
+  "at": "2026-11-01 23:00:22"
+ },
+ "AG7": {
+  "status": "OK",
+  "detail": "status=200 antes={'mail_encryption': '', 'mail_from_address': 'noreply@bt.local', 'mail_from_name': 'BT', 'mail_host': '127.0.0.1', 'mail_port': '44421', 'mail_timeout': '10', 'mail_user': 'bt-user'} despues={'mail_encryption': '', 'mail_from_address': 'noreply@bt.local', 'mail_from_name': 'BT', 'mail_host': '127.0.0.1', 'mail_port': '44421', 'mail_timeout': '10', 'mail_user': 'bt-user'}",
+  "at": "2026-11-01 23:00:23"
+ },
+ "AG8": {
+  "status": "OK",
+  "detail": "host borrado y aviso sin configurar",
+  "at": "2026-11-01 23:00:25"
+ },
+ "AG9": {
+  "status": "OK",
+  "detail": "status=200 mails=1 rcpts=[['destino@bt.local']] flash=Correo de prueba enviado a destino@bt.local. | Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app funciona igual: solo quedan bloqueados esos).",
+  "at": "2026-11-01 23:00:26"
+ },
+ "AG10": {
+  "status": "OK",
+  "detail": "status=200 aviso=True",
+  "at": "2026-11-01 23:00:27"
+ },
+ "AG11": {
+  "status": "OK",
+  "detail": "status=200 mails=1 rcpts=[['admin@demo.com']] flash=Correo de prueba enviado a admin@demo.com. | Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app funciona igual: solo quedan bloqueados esos).",
+  "at": "2026-11-01 23:00:28"
+ },
+ "AG12": {
+  "status": "OK",
+  "detail": "largo=56 contiene_plano=False",
+  "at": "2026-11-01 23:00:29"
+ },
+ "AG13": {
+  "status": "OK",
+  "detail": "status=200 aviso=True sin_cambios=True",
+  "at": "2026-11-01 23:00:30"
+ },
+ "AG14": {
+  "status": "OK",
+  "detail": "guardar=403 probar=403",
+  "at": "2026-11-01 23:00:31"
+ },
+ "AG15": {
+  "status": "OK",
+  "detail": "guardar=302 probar=302 mails=1 flash=Correo de prueba enviado a nativo@bt.local. | Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app funciona igual: solo quedan bloqueados esos).",
+  "at": "2026-11-01 23:00:32"
+ },
+ "AH1": {
+  "status": "OK",
+  "detail": "tarjeta identidad",
+  "at": "2026-11-01 23:05:24"
+ },
+ "AH2": {
+  "status": "OK",
+  "detail": "status=200 url=http://127.0.0.1:10001/admin/settings",
+  "at": "2026-11-01 23:05:25"
+ },
+ "AH3": {
+  "status": "OK",
+  "detail": "enlace usa URL pública",
+  "at": "2026-11-01 23:05:25"
+ },
+ "AH4": {
+  "status": "OK",
+  "detail": "zona horaria guardada",
+  "at": "2026-11-01 23:05:25"
+ },
+ "AH5": {
+  "status": "OK",
+  "detail": "idioma por defecto guardado",
+  "at": "2026-11-01 23:05:26"
+ },
+ "AH6": {
+  "status": "OK",
+  "detail": "vuelve al .env",
+  "at": "2026-11-01 23:05:27"
+ },
+ "AH7": {
+  "status": "OK",
+  "detail": "URL inválida rechazada sin cambios",
+  "at": "2026-11-01 23:05:28"
+ },
+ "AH8": {
+  "status": "OK",
+  "detail": "zona inválida rechazada",
+  "at": "2026-11-01 23:05:29"
+ },
+ "AH9": {
+  "status": "OK",
+  "detail": "filas en app_settings",
+  "at": "2026-11-01 23:05:30"
+ },
+ "AH10": {
+  "status": "OK",
+  "detail": "403 y no cambia (403)",
+  "at": "2026-11-01 23:05:30"
+ },
+ "AH11": {
+  "status": "OK",
+  "detail": "nativo PRG",
+  "at": "2026-11-01 23:05:31"
+ },
+ "AI1": {
+  "status": "OK",
+  "detail": "tarjeta anti-bot sin configurar",
+  "at": "2026-11-01 23:10:20"
+ },
+ "AI2": {
+  "status": "OK",
+  "detail": "status=200",
+  "at": "2026-11-01 23:10:21"
+ },
+ "AI3": {
+  "status": "OK",
+  "detail": "secret oculta y guardada",
+  "at": "2026-11-01 23:10:21"
+ },
+ "AI4": {
+  "status": "OK",
+  "detail": "secret intacta al guardar solo site",
+  "at": "2026-11-01 23:10:22"
+ },
+ "AI5": {
+  "status": "OK",
+  "detail": "status=200 alertas=Turnstile necesita la site key Y la secret key a la vez: con una sola, los formularios con anti-bot dejarían de servirse. | No hay ningún servidor configurado, así que los correos no se envían (la app funciona igual: solo no salen los avisos).",
+  "at": "2026-11-01 23:10:23"
+ },
+ "AI6": {
+  "status": "OK",
+  "detail": "rechaza solo site: Turnstile necesita la site key Y la secret key a la vez: con una sola, los formularios con anti-bot dejarían de servirse. | No hay ningún servidor configurado, así que los correos no se envían (la app funciona igual: solo no salen los avisos). | Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app funciona igual: solo quedan bloqueados esos).",
+  "at": "2026-11-01 23:10:24"
+ },
+ "AI7": {
+  "status": "OK",
+  "detail": "rechaza solo secret: Turnstile necesita la site key Y la secret key a la vez: con una sola, los formularios con anti-bot dejarían de servirse. | No hay ningún servidor configurado, así que los correos no se envían (la app funciona igual: solo no salen los avisos). | Sin claves, los formularios que tengan el anti-bot encendido no se pueden responder (la app funciona igual: solo quedan bloqueados esos).",
+  "at": "2026-11-01 23:10:25"
+ },
+ "AI8": {
+  "status": "OK",
+  "detail": "ambas borradas",
+  "at": "2026-11-01 23:10:26"
+ },
+ "AI9": {
+  "status": "OK",
+  "detail": "largo=64 contiene_plano=False",
+  "at": "2026-11-01 23:10:27"
+ },
+ "AI10": {
+  "status": "OK",
+  "detail": "status=200 sin_cambios=True",
+  "at": "2026-11-01 23:10:28"
+ },
+ "AI11": {
+  "status": "OK",
+  "detail": "403 (403)",
+  "at": "2026-11-01 23:10:28"
+ },
+ "AI12": {
+  "status": "OK",
+  "detail": "nativo 302",
+  "at": "2026-11-01 23:10:29"
+ },
+ "AJ1": {
+  "status": "OK",
+  "detail": "403",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ2": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ3": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:46"
+ },
+ "AJ4": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:46"
+ },
+ "AJ5": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:38617/install.php?paso=admin",
+  "at": "2026-11-01 23:12:48"
+ },
+ "AJ6": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:46"
+ },
+ "AJ7": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:46"
+ },
+ "AJ8": {
+  "status": "OK",
+  "detail": "200",
+  "at": "2026-11-01 23:12:48"
+ },
+ "AJ9": {
+  "status": "OK",
+  "detail": "200/200",
+  "at": "2026-11-01 23:12:48"
+ },
+ "AJ10": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:38617/install.php?paso=listo",
+  "at": "2026-11-01 23:12:49"
+ },
+ "AJ11": {
+  "status": "OK",
+  "detail": "200 http://127.0.0.1:38617/dashboard role=1/1",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ12": {
+  "status": "OK",
+  "detail": "admin y app_settings",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ13": {
+  "status": "OK",
+  "detail": "mode=0o600 key=44",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ14": {
+  "status": "OK",
+  "detail": "{'installed_at': '2026-11-02T03:12:49+00:00', 'admin_email': 'aj-admin@test.local', 'php_version': '8.4.27'}",
+  "at": "2026-11-01 23:12:50"
+ },
+ "AJ15": {
+  "status": "OK",
+  "detail": "403",
+  "at": "2026-11-01 23:12:53"
+ },
+ "AJ16": {
+  "status": "OK",
+  "detail": "key_igual=True",
+  "at": "2026-11-01 23:12:52"
+ },
+ "AJ17": {
+  "status": "OK",
+  "detail": "400",
+  "at": "2026-11-01 23:12:52"
+ },
+ "T7b": {
+  "status": "OK",
+  "detail": "navs=[] {'badge': 'Publicado', 'share': 'Abrir en nueva pestaña\\nEste enlace apunta a una dirección local, así que el QR y el enlace solo abren en esta red. Si la app se sirve en otro dominio, define APP_PUBLIC_URL en el .env.\\n\\nEl embed está desactivado. Actívalo en la Configuración del constructor para obtener el código iframe.', 'qr': True}",
+  "at": "2026-11-01 08:00:33"
+ }
+}

@@ -58,6 +58,7 @@ use App\Services\RosterPanel;
  * @var int $accessCount
  * @var array<string,mixed>|null $roster
  * @var array<string,mixed>|null $informe
+ * @var array<string,mixed>|null $importMapping
  */
 $formId = (int) $form['id'];
 $accessMode = (string) ($accessMode ?? 'public');
@@ -97,7 +98,8 @@ $accessMode = (string) ($accessMode ?? 'public');
         <?= RosterPanel::panel(
             $roster ?? RosterPanel::data($formId),
             $form,
-            $informe
+            $informe,
+            $importMapping ?? null
         ) ?>
     <?php endif; ?>
 </div>

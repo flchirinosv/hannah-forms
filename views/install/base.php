@@ -37,7 +37,7 @@ $actual = 'base';
 <?php endif; ?>
 
 <form method="post" action="/install.php?paso=base" class="row g-3">
-    <input type="hidden" name="csrf_token" value="<?= View::escape($csrf) ?>">
+    <input type="hidden" name="_token" value="<?= View::escape($csrf) ?>">
 
     <div class="col-md-8">
         <label class="form-label" for="db_host">Servidor (host)</label>

@@ -84,7 +84,7 @@ final class ParticipantController
 
         $datos = RosterPanel::data($id, $q, $page, $sort);
         $informe = $this->informeEnSesionMostrar();
-        $importMapping = RosterImportPending::obtener($id, (int) ($form['user_id'] ?? Auth::id() ?? 0));
+        $importMapping = RosterImportPending::obtener($id, (int) (Auth::id() ?? 0));
 
         $html = RosterPanel::panel($datos, $form, $informe, $importMapping);
         echo $html;

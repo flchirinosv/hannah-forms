@@ -43,23 +43,14 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
                         <h2 class="h6 mb-0">Listado</h2>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#rosterAddModal">
-                            <i class="fa-solid fa-user-plus me-1"></i>Agregar
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <form class="mb-3" data-vf-roster-search action="/forms/<?= $formId ?>/access" method="get">
-                        <div class="row g-2 align-items-center">
-                            <div class="col-12 col-lg-6">
+                        <form class="mb-0" data-vf-roster-search action="/forms/<?= $formId ?>/access" method="get">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
                                     <input type="search" class="form-control" name="q" value="<?= View::escape((string) $roster['q']) ?>" placeholder="Buscar por cédula, nombre, correo o teléfono">
                                     <button class="btn btn-outline-secondary" type="submit">Buscar</button>
                                 </div>
-                            </div>
-                            <div class="col-6 col-lg-3">
-                                <select class="form-select form-select-sm js-auto-submit" name="sort">
+                                <select class="form-select form-select-sm w-auto js-auto-submit" name="sort">
                                     <option value="cedula" <?= $roster['sort'] === 'cedula' ? 'selected' : '' ?>>Ordenar por cédula</option>
                                     <option value="nombre" <?= $roster['sort'] === 'nombre' ? 'selected' : '' ?>>Ordenar por nombre</option>
                                     <option value="correo" <?= $roster['sort'] === 'correo' ? 'selected' : '' ?>>Ordenar por correo</option>
@@ -67,8 +58,13 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
                                     <option value="creado" <?= $roster['sort'] === 'creado' ? 'selected' : '' ?>>Ordenar por fecha</option>
                                 </select>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#rosterAddModal">
+                            <i class="fa-solid fa-user-plus me-1"></i>Agregar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
                     <div id="rosterList">
                         <?= View::partial('dashboard/forms/_roster_list', ['roster' => $roster, 'formId' => $formId]) ?>
                     </div>
@@ -146,7 +142,7 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
                         <p class="small text-muted mb-0">
                             <strong>Vaciar la lista</strong> quita a todas las personas. El catálogo de atributos se queda.
                         </p>
-                        <form method="post" action="/forms/<?= $formId ?>/participants/truncate" data-confirm="¿Vaciar toda la lista de participantes? Esta acción no se puede deshacer." data-confirm-ok="Sí, vaciar la lista" data-confirm-tone="danger">
+                        <form method="post" action="/forms/<?= $formId ?>/participants/truncate" data-confirm="¿Vaciar toda la lista de participantes? Se borran sus códigos y sus datos de la lista; las respuestas ya enviadas se quedan y el catálogo de atributos se conserva. Esta acción no se puede deshacer." data-confirm-ok="Sí, vaciar la lista" data-confirm-tone="danger">
                             <?= Csrf::field() ?>
                             <button type="submit" class="btn btn-outline-danger app-form-cta">
                                 <i class="fa-solid fa-trash-can me-1"></i>Vaciar la lista

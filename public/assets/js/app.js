@@ -187,6 +187,13 @@
             }
             slot.innerHTML = html[id];
         });
+        /* Un repintado puede traer un formulario inline nuevo (el alta del
+         * roster vive en el modal): los modales escuchan este evento para
+         * volver a moverlo. Sin el aviso, el campo nuevo se queda en el
+         * contenedor oculto y el diálogo enseña el formulario viejo. */
+        if (typeof document.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+            document.dispatchEvent(new CustomEvent('vf:slots'));
+        }
     }
 
     // El botón de #formUpdate vive FUERA del formulario (usa `form="formUpdate"`),

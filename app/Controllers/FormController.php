@@ -21,6 +21,7 @@ use App\Models\FormParticipant;
 use App\Services\FormPanel;
 use App\Services\FormSettings;
 use App\Services\ReviewPolicy;
+use App\Services\RosterImportPending;
 use App\Services\RosterPanel;
 use App\Services\TemplateService;
 
@@ -276,6 +277,13 @@ class FormController
                 : null,
             'informe'     => $mode === FormSettings::ACCESS_ROSTER
                 ? Session::takeValue('roster_report')
+                : null,
+            // El mapeo de una importación se guarda en la sesión y caduca a los
+            // 30 minutos: sin pasarlo aquí, recargar la pantalla (el camino sin
+            // JavaScript) perdía el formulario de mapeo y la importación no se
+            // podía completar.
+            'importMapping' => $mode === FormSettings::ACCESS_ROSTER
+                ? RosterImportPending::obtener($id, (int) $user['id'])
                 : null,
         ]);
     }

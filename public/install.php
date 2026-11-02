@@ -49,8 +49,21 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('X-Frame-Options: DENY');
 
+// --- Estado del asistente ----------------------------------------------------
+// Se resuelve ANTES del gate: al terminar, el instalador se marca como hecho y
+// redirige a `?paso=listo`; sin esta excepción, la propia redirección final
+// caería en el 403 y nadie vería «Instalación completada». Lo mismo pasa en una
+// reinstalación con `?force`: el paso base redirige a `?paso=admin` sin el
+// parámetro y la sesión en curso es la que mantiene el asistente abierto.
+$paso = (string) ($_GET['paso'] ?? 'requisitos');
+$datos = Session::get('vf_install_datos', []);
+if (!is_array($datos)) {
+    $datos = [];
+}
+
 // --- Gate: si ya hay instalación, el instalador no hace nada más. ------------
-if (InstallGuard::estaInstalado() && !isset($_GET['force'])) {
+if (InstallGuard::estaInstalado() && !isset($_GET['force'])
+    && $paso !== 'listo' && $datos === []) {
     http_response_code(403);
     View::render('install/installed', [], 'install');
     exit;
@@ -61,13 +74,7 @@ $requisitos = InstallGuard::revisarRequisitos($raiz);
 
 $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-// --- Estado del asistente ----------------------------------------------------
-$paso = (string) ($_GET['paso'] ?? 'requisitos');
 $errores = [];
-$datos = Session::get('vf_install_datos', []);
-if (!is_array($datos)) {
-    $datos = [];
-}
 
 // Formulario de BD: preferimos lo que el usuario teclea; si no, los valores de
 // `.env`/config, y si no, defaults de desarrollo.

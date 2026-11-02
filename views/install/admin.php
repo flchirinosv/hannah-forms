@@ -34,7 +34,7 @@ $passwordMin = \App\Controllers\AuthController::PASSWORD_MIN;
 <?php endif; ?>
 
 <form method="post" action="/install.php?paso=admin" class="row g-3">
-    <input type="hidden" name="csrf_token" value="<?= View::escape($csrf) ?>">
+    <input type="hidden" name="_token" value="<?= View::escape($csrf) ?>">
 
     <div class="col-12">
         <label class="form-label" for="admin_name">Nombre</label>

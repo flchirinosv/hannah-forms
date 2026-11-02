@@ -210,3 +210,23 @@ smoke de rutas.
   `SecurityLogTest` (catálogo completo) y 1 en `ResponsesTest` (día inexistente).
   `ControllerActionsTest::testTodasLasRutasRespondenSinErroresNiEndpointsMudos`
   sigue verde con las 97 rutas.
+
+## Instalador web: CSRF y redirección final (2026-11-01)
+
+La suite funcional AJ encontró dos defectos reales en el instalador guiado:
+
+- **El POST nunca pasaba el CSRF**: `views/install/base.php` y
+  `views/install/admin.php` mandaban el token como `csrf_token`, pero
+  `Csrf::verifyRequest()` solo lee `_token`. El asistente respondía
+  «Token de seguridad inválido» con cualquier envío, así que no se podía
+  instalar desde la web. Se alinean los dos campos con el contrato real.
+- **La instalación terminaba en un 403**: al crear el admin se escribía
+  `storage/installed.lock` y se redirigía a `?paso=listo`; esa siguiente
+  petición ya veía la instalación hecha y el guard la cerraba antes de pintar
+  «Instalación completada». Lo mismo rompía una reinstalación con `?force`, cuyo
+  paso base redirige a `?paso=admin` sin el parámetro. El gate ahora deja pasar
+  el paso `listo` y una sesión de instalación en curso, sin abrir el asistente a
+  una visita normal (`GET /install.php` sigue dando 403).
+
+Lo cubre `tests/browser/block_aj.py`, que instala sobre una copia descartable
+del proyecto y una base temporal.

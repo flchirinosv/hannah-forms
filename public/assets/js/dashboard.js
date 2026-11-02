@@ -105,8 +105,11 @@
                 timer = setTimeout(() => {
                     // Escribir lo mismo que ya estaba no recarga nada: con el
                     // buscador de antes solo reordenaba las tarjetas, y aquí
-                    // sería tirar la página entera por un espacio de más.
-                    if (search.value === last) {
+                    // sería tirar la página entera por un espacio de más. El
+                    // servidor ya recorta el `q` (Form::whereListado), así que
+                    // comparar sin espacios es lo que hace que «norte » y
+                    // «norte» sean la misma búsqueda.
+                    if (search.value.trim() === last.trim()) {
                         return;
                     }
                     last = search.value;
@@ -611,6 +614,14 @@
                 montaje.hidden = true;
                 return;
             }
+            /* Tras un repintado, el diálogo ya tiene el formulario anterior y el
+             * nuevo viene en el contenedor oculto: se retira el viejo antes de
+             * mover el nuevo, o quedarían dos formularios y el visible sería el
+             * que no tiene los campos del catálogo recién importado. */
+            Array.prototype.slice.call(cuerpo.querySelectorAll('[data-vf-modal-form]'))
+                .forEach(function (previo) {
+                    if (previo !== formulario) { previo.remove(); }
+                });
             cuerpo.appendChild(formulario);
             montaje.hidden = true;
         });
@@ -743,13 +754,15 @@
 
     function iniciar() {
         moverFormulariosInline();
+        document.addEventListener('vf:slots', moverFormulariosInline);
         initAccionesDeFila('userActionsModal', 'data-vf-user', 'rowactions-');
         initAccionesDeFila('rosterEditModal', 'data-vf-participant', 'rowactions-');
     }
 
-    /* Expuesta porque una repintada puede traer marcado nuevo que mover; hoy la
-     * llama el arranque. Idempotente por el `data-vf-modal-*`: un contenedor ya
-     * movido tiene `hidden` y no vuelve a aparecer en `moverFormulariosInline`. */
+    /* Expuesta porque una repintada puede traer marcado nuevo que mover: la llama
+     * el arranque y, después, el evento `vf:slots` que emite `vfApplySlots`. Es
+     * idempotente por el `data-vf-modal-*`: un contenedor ya movido tiene
+     * `hidden` y no vuelve a aparecer en `moverFormulariosInline`. */
     window.vfInitAdminModals = iniciar;
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', iniciar, { once: true });

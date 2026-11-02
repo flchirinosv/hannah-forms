@@ -56,6 +56,7 @@ final class RosterImportPending
             'user_id' => $userId,
             'path' => $destino,
             'cabeceras' => $cabeceras,
+            'sugerencia' => self::sugerencia($cabeceras),
             'total' => $totalFilas,
             'modo' => in_array($modo, [ParticipantImporter::MODO_FUSIONAR, ParticipantImporter::MODO_REEMPLAZAR], true) ? $modo : ParticipantImporter::MODO_FUSIONAR,
             'created_at' => time(),

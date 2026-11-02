@@ -918,6 +918,30 @@
         renderFieldCanvas();
     }
 
+    /**
+     * Aviso de la cabecera del paso. Vive en el ámbito del módulo, no dentro de
+     * `init()`: `fillSettings()` lo llama al abrir el panel y una declaración
+     * anidada en otra función no es visible desde allí (el `typeof` fallaba y el
+     * aviso se quedaba oculto).
+     */
+    function updatePageHeaderHint() {
+        const hint = document.getElementById('pageHeaderHint');
+        if (!hint || !el.fieldPageHeader || !el.fieldPageHeaderWrap) return;
+        // El control entero se esconde en los tipos que no son salto de
+        // página, y en una sección no hay cabecera que apagar.
+        if (el.fieldPageHeaderWrap.classList.contains('d-none')) {
+            hint.classList.add('d-none');
+            return;
+        }
+        const sinContenido = el.fieldLabel.value.trim() === ''
+            && el.fieldHelp.value.trim() === '';
+        if (!el.fieldPageHeader.checked || !sinContenido) {
+            hint.classList.add('d-none');
+            return;
+        }
+        hint.classList.remove('d-none');
+    }
+
     function fillSettings(f) {
         const info = typeInfo[f.type] || {};
         // F2: el formulario vive siempre dentro del drawer; no hay estado vacío
@@ -2302,23 +2326,6 @@
          * El preview y el fill aplican el MISMO criterio (ver `previewBody()`):
          * sin título ni descripción no se pinta caja, ni con icono.
          */
-        function updatePageHeaderHint() {
-            const hint = document.getElementById('pageHeaderHint');
-            if (!hint || !el.fieldPageHeader || !el.fieldPageHeaderWrap) return;
-            // El control entero se esconde en los tipos que no son salto de
-            // página, y en una sección no hay cabecera que apagar.
-            if (el.fieldPageHeaderWrap.classList.contains('d-none')) {
-                hint.classList.add('d-none');
-                return;
-            }
-            const sinContenido = el.fieldLabel.value.trim() === ''
-                && el.fieldHelp.value.trim() === '';
-            if (!el.fieldPageHeader.checked || !sinContenido) {
-                hint.classList.add('d-none');
-                return;
-            }
-            hint.classList.remove('d-none');
-        }
         const btnSuggest = document.getElementById('btnPiiSuggest');
         if (btnSuggest) {
             btnSuggest.addEventListener('click', () => {

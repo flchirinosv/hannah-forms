@@ -12,7 +12,7 @@ $identificador = (string) ($roster['identificador'] ?? 'cedula');
 $atributos = is_array($roster['atributos'] ?? null) ? $roster['atributos'] : [];
 $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedula';
 ?>
-<form method="post" action="/forms/<?= $formId ?>/participants" data-vf-modal-form data-vf-error="rosterAddError" data-vf-clear="rosterAddId">
+<form method="post" action="/forms/<?= $formId ?>/participants" data-vf-modal-form data-vf-async="slots" data-vf-error="rosterAddError" data-vf-clear="rosterAddId">
     <?= Csrf::field() ?>
     <div class="row g-2">
         <div class="col-12">

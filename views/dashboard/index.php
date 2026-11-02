@@ -343,7 +343,7 @@ $relativeTs = static function (string $timestamp): string {
                     <h6 class="app-type-grid-title"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>¿Cómo quieres empezar?</h6>
                     <div class="app-tpl-grid mb-4">
                         <label class="app-tpl-card app-tpl-checked">
-                            <input class="d-none" type="radio" name="template" value="" checked>
+                            <input class="visually-hidden" type="radio" name="template" value="" checked>
                             <span class="app-tpl-cover app-tpl-cover-blank"><i class="fa-solid fa-plus"></i></span>
                             <span class="app-tpl-body">
                                 <span class="app-tpl-name"><?= View::escape((string) ($blank['name'] ?? 'Formulario en blanco')) ?></span>
@@ -368,7 +368,7 @@ $relativeTs = static function (string $timestamp): string {
                             <?php foreach ($templates as $tpl): ?>
                                 <?php $tipos = is_array($tpl['types'] ?? null) ? $tpl['types'] : []; ?>
                                 <label class="app-tpl-card">
-                                    <input class="d-none" type="radio" name="template" value="<?= View::escape((string) $tpl['key']) ?>">
+                                    <input class="visually-hidden" type="radio" name="template" value="<?= View::escape((string) $tpl['key']) ?>">
                                     <span class="app-tpl-cover"><i class="fa-solid <?= View::escape($vfTypeIcon[(string) ($tipos[0] ?? '')] ?? 'fa-clipboard-list') ?>"></i></span>
                                     <span class="app-tpl-body">
                                         <span class="app-tpl-name"><?= View::escape((string) $tpl['name']) ?></span>

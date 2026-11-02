@@ -72,9 +72,12 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
                             <div id="rowactions-<?= $pid ?>">
                                 <div class="p-2">
                                     <form id="rosterEditForm<?= $pid ?>" method="post" action="/forms/<?= $formId ?>/participants/update"
-                                          data-vf-error="rosterEditError<?= $pid ?>">
+                                          data-vf-async="slots" data-vf-error="rosterEditError<?= $pid ?>">
                                         <?= \App\Core\Csrf::field() ?>
                                         <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                        <input type="hidden" name="rosterQ" value="<?= View::escape((string) $roster['q']) ?>">
+                                        <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
+                                        <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
                                         <div class="row g-2">
                                             <div class="col-12">
                                                 <label class="form-label small mb-1" for="rosterEditId<?= $pid ?>"><?= $identificador === 'correo' ? 'Correo' : 'Cédula' ?></label>
@@ -107,9 +110,12 @@ $columnaIdent = FormParticipant::COLUMNA_IDENTIFICADOR[$identificador] ?? 'cedul
                                         <p class="small mb-0 mt-2 d-none text-danger fw-semibold" id="rosterEditError<?= $pid ?>" role="alert"></p>
                                     </form>
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
-                                        <form method="post" action="/forms/<?= $formId ?>/participants/delete" data-confirm="¿Quitar este participante de la lista?" data-confirm-ok="Sí, quitar" data-confirm-tone="danger">
+                                        <form method="post" action="/forms/<?= $formId ?>/participants/delete" data-vf-async="slots" data-confirm="¿Quitar este participante de la lista? Su código deja de servir y sus respuestas se quedan. Esta acción no se puede deshacer." data-confirm-ok="Sí, quitar" data-confirm-tone="danger">
                                             <?= \App\Core\Csrf::field() ?>
                                             <input type="hidden" name="participant_id" value="<?= $pid ?>">
+                                            <input type="hidden" name="rosterQ" value="<?= View::escape((string) $roster['q']) ?>">
+                                            <input type="hidden" name="rosterPage" value="<?= (int) $roster['page'] ?>">
+                                            <input type="hidden" name="rosterSort" value="<?= View::escape((string) $roster['sort']) ?>">
                                             <button class="btn btn-outline-danger app-form-cta" type="submit"><i class="fa-solid fa-user-minus me-1"></i>Quitar</button>
                                         </form>
                                         <button class="btn btn-primary app-form-cta ms-auto" type="submit" form="rosterEditForm<?= $pid ?>">Guardar</button>

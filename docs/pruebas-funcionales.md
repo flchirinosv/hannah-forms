@@ -1037,7 +1037,7 @@ anti-bot encendido **no se sirven** (403).
 | AI2 | Rellena la site key y la secret y guarda | Vuelve (PRG) con «Claves de Turnstile actualizadas» y el estado pasa a «Configurado» | A | |
 | AI3 | Reabre tras guardar la secret | El campo de la secret está **vacío** y aparece la insignia «guardada»; no se muestra nunca el valor | A | |
 | AI4 | Guarda solo otro campo sin tocar la secret | La secret guardada **sigue ahí** (la insignia no desaparece) | A | |
-| AI5 | Marca «Borrar la secret key guardada» y guarda | La insignia desaparece; cae al `.env` o queda sin configurar | A | |
+| AI5 | Marca «Borrar la secret key guardada» y guarda, dejando la site key | Se rechaza (no se deja media configuración) y la secret sigue guardada; para borrarla, vacía también la site key (AI8) | A | |
 | AI6 | Guarda solo la site key (sin secret) | Aviso de que se necesitan **las dos** y **no** se guarda nada a medias | A | |
 | AI7 | Guarda solo la secret (sin site key) | Mismo aviso, sin escrituras parciales | A | |
 | AI8 | Deja ambas en blanco y guarda | Se borran las filas y el panel vuelve al `.env` | A | |
@@ -1063,7 +1063,7 @@ aplica el esquema, crea el primer admin y escribe el `.env`. Hacer estas pruebas
 | AJ7 | Contraseña de BD incorrecta | Mensaje con el error real de MySQL (no el genérico) | A | |
 | AJ8 | Crea el admin con email inválido | Aviso «Email no válido», no se crea | A | |
 | AJ9 | Crea el admin con contraseña corta o distinta a la repetición | Aviso de longitud / de coincidencia | A | |
-| AJ10 | Completa el paso admin y termina | Pantalla «Instalación completada» y redirección a `/login` | A | |
+| AJ10 | Completa el paso admin y termina | Pantalla «Instalación completada» con enlace a `/login` | A | |
 | AJ11 | Entra con el email y la contraseña elegidos | Inicia sesión y llega al dashboard con rol `admin` | A | |
 | AJ12 | Inspecciona `app_settings` y `users` | Rol `admin` insertado; el usuario nuevo tiene ese rol | M | |
 | AJ13 | Mira el `.env` tras instalar | Trae `DB_*`, `APP_URL` y una `APP_KEY` nueva; permisos `0600` | M | |
